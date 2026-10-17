@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { REPLAY_EFFECT_LAYER_ORDER, replayEffectsAt, replayTrajectorySample, replayTrajectoryTrail } from '../renderer/src/replay-effects.ts';
+import { paintReplayArea, replayTrailSeconds, REPLAY_EFFECT_LAYER_ORDER, replayEffectsAt, replayTrajectorySample, replayTrajectoryTrail } from '../renderer/src/replay-effects.ts';
 
 const trajectory=(points)=>({startTick:points[0][0],endTick:points.at(-1)[0],points});
 const utility=(kind,tick,endTick,path=null)=>({id:`u-${kind}-${tick}`,eventIndex:1,kind,variant:null,throwerId:null,entityId:1,
@@ -20,12 +20,56 @@ test('trail covers only the recent window and grows with speed at the same tick 
   const slow=trajectory([[0,0,0,0],[40,0,40,0]]),fast=trajectory([[0,0,0,0],[40,0,400,0]]);
   const length=trail=>trail.slice(1).reduce((sum,point,index)=>sum+Math.hypot(point.x-trail[index].x,point.y-trail[index].y),0);
   const slowTrail=replayTrajectoryTrail(slow,40,64),fastTrail=replayTrajectoryTrail(fast,40,64);
-  assert.ok(length(fastTrail)>length(slowTrail)*5,'fixed time window makes a faster trail longer');
+  assert.ok(length(fastTrail)>length(slowTrail)*10,'bounded speed window reinforces the distance difference');
   assert.ok(slowTrail.length>=2&&fastTrail.length>=2);
   const long=trajectory([[0,0,0,0],[100,0,1000,0]]);
   const recent=replayTrajectoryTrail(long,100,64);
-  assert.ok(recent[0].tick>=100-23-0.5,'tail is clipped to the recent flight window');
+  assert.ok(recent[0].tick>=100-50,'tail never exceeds the bounded .78s window');
   assert.ok(recent.at(-1).tick<=100);
+});
+
+test('speed window is bounded and trails retain every bounce, level barrier and missing span',()=>{
+  assert.equal(replayTrailSeconds(0,64),.30);
+  assert.equal(replayTrailSeconds(2000,64),.78);
+  assert.equal(replayTrailSeconds(2000,null),.34);
+  assert.ok(replayTrailSeconds(700,64)>replayTrailSeconds(300,64));
+  const path=trajectory([[0,0,0,0],[4,100,0,0],[8,0,0,0],[12,0,100,0],[16,0,0,0],[20,0,0,1000]]);
+  const trail=replayTrajectoryTrail(path,20,64);
+  assert.deepEqual(trail.map(p=>[p.tick,p.x,p.y,p.z]),path.points,'folds/bounces/floor changes are not skipped by uniform resampling');
+  assert.equal(replayTrajectoryTrail(path,-1,64).length,0);
+  const gap=trajectory([[0,0,0,0],[4,20,0,0],[30,100,0,0],[34,110,0,0]]);
+  assert.ok(replayTrajectoryTrail(gap,34,64,.78).find(p=>p.tick===30).breakBefore);
+  assert.ok(replayTrajectoryTrail(gap,29,64,.78).at(-1).breakBefore,'partial missing span cannot be bridged either');
+  const fast=trajectory(Array.from({length:33},(_,i)=>[i*4,i*70,0,0]));
+  const length=points=>points.at(-1).x-points[0].x;
+  assert.ok(length(replayTrajectoryTrail(fast,128,64))>length(replayTrajectoryTrail(fast,128,64,.34))*2);
+});
+
+// Recording paint operations proves determinism independent of Chromium GPU/CPU raster
+// antialiasing, while the real Electron script separately verifies loaded Canvas pixels.
+const paintTrace=(kind,tick,rate=64,eventIndex=1)=>{
+  const trace=[],ctx=new Proxy({}, {get:(_,key)=>(...args)=>{
+    trace.push([key,...args]);
+    if(key==='createRadialGradient')return {addColorStop:(...stops)=>trace.push(['stop',...stops])};
+  },set:(_,key,value)=>{trace.push([key,typeof value==='object'?'gradient':value]);return true;}});
+  paintReplayArea(ctx,{...utility(kind,100,1500),eventIndex},tick,rate,0,0,40);
+  return trace;
+};
+test('smoke/fire paint has reproducible local deformation, stable plateau alpha and real lifecycle limits',()=>{
+  for(const kind of ['smoke','fire']){
+    const first=paintTrace(kind,300),later=paintTrace(kind,311);
+    assert.deepEqual(paintTrace(kind,300),first,'seek/backward/pause has no accumulated particle state');
+    assert.notDeepEqual(first,later,'local shapes evolve with Replay time');
+    assert.notDeepEqual(first,paintTrace(kind,300,64,2),'distinct effects have stable independent phases');
+    assert.deepEqual(first.filter(c=>c[0]==='globalAlpha'),later.filter(c=>c[0]==='globalAlpha'),'no global brightness oscillation');
+    assert.deepEqual(paintTrace(kind,99),[]);assert.deepEqual(paintTrace(kind,1501),[]);
+    assert.ok(paintTrace(kind,110).find(c=>c[0]==='globalAlpha')[1]<1,'original .35s fade in');
+    assert.ok(paintTrace(kind,1490).find(c=>c[0]==='globalAlpha')[1]<1,'original 1.4s fade out');
+    assert.equal(first.filter(c=>c[0]==='save').length,first.filter(c=>c[0]==='restore').length,'Canvas stack is balanced');
+    assert.ok(paintTrace(kind,300,null).length>0,'unknown rate retains visual fallback');
+  }
+  assert.equal(paintTrace('smoke',300).filter(c=>c[0]==='createRadialGradient').length,9);
+  assert.equal(paintTrace('fire',300).filter(c=>c[0]==='bezierCurveTo').length,18,'nine independent short flame tongues');
 });
 
 test('areas, bursts, blind and burn state are exact functions of the displayed tick',()=>{
@@ -59,4 +103,15 @@ test('areas, bursts, blind and burn state are exact functions of the displayed t
 
 test('the declared paint order keeps areas and trails below players and status above them',()=>{
   assert.deepEqual([...REPLAY_EFFECT_LAYER_ORDER],['map','areas','trajectories','projectiles','players','status','selection']);
+});
+
+test('missing optional evidence keeps old chunks usable without inventing flight or effects',()=>{
+  for(const absent of [null,undefined,{}]){
+    const frame=replayEffectsAt(absent,50,null);
+    assert.equal(frame.flying.length+frame.smoke.length+frame.fire.length+frame.flashes.length+frame.explosions.length,0);
+  }
+  const smoke=utility('smoke',10,100,null);
+  assert.equal(replayEffectsAt(chunk([smoke]),5,64).flying.length,0);
+  assert.equal(replayEffectsAt(chunk([smoke]),50,null).smoke.length,1,'effect-only fallback does not invent a flight or clock');
+  assert.equal(replayEffectsAt(chunk([smoke]),101,64).smoke.length,0);
 });

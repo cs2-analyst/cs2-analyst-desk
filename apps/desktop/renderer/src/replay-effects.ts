@@ -8,7 +8,7 @@ import type { DesktopReplayChunk, DesktopReplayTrajectory, DesktopReplayUtility 
 export const REPLAY_EFFECT_LAYER_ORDER = ['map', 'areas', 'trajectories', 'projectiles', 'players', 'status', 'selection'] as const;
 
 export interface ReplayFlightSample { tick: number; x: number; y: number; z: number; speed: number }
-export interface ReplayTrailSample { tick: number; x: number; y: number; z: number }
+export interface ReplayTrailSample { tick: number; x: number; y: number; z: number; breakBefore?: boolean }
 export interface ReplayFlyingEffect {
   utility: DesktopReplayUtility;
   sample: ReplayFlightSample;
@@ -61,28 +61,127 @@ export function replayTrajectorySample(trajectory: DesktopReplayTrajectory, tick
   };
 }
 
-/**
- * Recent-flight trail over a fixed real-time window (default 0.34s). A faster projectile
- * covers more world distance in the same window, so its trail is necessarily longer. The
- * oldest sample is the tail; callers thin/fade it towards the head.
+/** Bounded speed response in seconds; unknown clock keeps the historical fallback. */
+export function replayTrailSeconds(speed: number, tickRate: number | null): number {
+  if (!(tickRate && tickRate > 0) || !Number.isFinite(speed)) return 0.34;
+  const amount = Math.min(1, Math.max(0, (speed - 100) / 900));
+  return 0.30 + 0.48 * amount * amount * (3 - 2 * amount);
+}
+
+/** Recent observed path, including EVERY vertex (bounces must not be shortcut by resampling).
+ * The optional fixed window is retained for comparison. No point precedes the real start.
  */
 export function replayTrajectoryTrail(trajectory: DesktopReplayTrajectory, tick: number, tickRate: number | null,
-  seconds = 0.34): ReplayTrailSample[] {
+  seconds = replayTrailSeconds(replayTrajectorySample(trajectory, tick, tickRate)?.speed ?? 0, tickRate)): ReplayTrailSample[] {
   if (!Number.isFinite(tick) || tick < trajectory.startTick || tick > trajectory.endTick) return [];
   const rate = tickRate && tickRate > 0 ? tickRate : 8;
   const windowTicks = Math.max(1, Math.round(rate * Math.max(0.05, seconds)));
   const from = Math.max(trajectory.startTick, tick - windowTicks);
-  const steps = 14, out: ReplayTrailSample[] = [];
-  for (let index = 0; index <= steps; index++) {
-    const at = from + (tick - from) * index / steps;
+  const out: ReplayTrailSample[] = [];
+  const maxGap = Math.max(2, Math.ceil(rate / 8));
+  const append = (at: number, breakBefore = false) => {
     const sample = replayTrajectorySample(trajectory, at, tickRate);
-    if (sample) out.push({ tick: at, x: sample.x, y: sample.y, z: sample.z });
+    if (sample) out.push({ tick: at, x: sample.x, y: sample.y, z: sample.z, ...(breakBefore ? { breakBefore: true } : {}) });
+  };
+  append(from);
+  for (let index = 0; index < trajectory.points.length; index++) {
+    const point = trajectory.points[index];
+    if (point[0] <= from || point[0] >= tick) continue;
+    append(point[0], index > 0 && point[0] - trajectory.points[index - 1][0] > maxGap);
+  }
+  if (tick > from) {
+    const right = trajectory.points.findIndex(point => point[0] >= tick);
+    append(tick, right > 0 && trajectory.points[right][0] - trajectory.points[right - 1][0] > maxGap);
   }
   return out;
 }
 
 const burstProgress = (utility: DesktopReplayUtility, tick: number) =>
   Math.min(1, Math.max(0, (tick - utility.tick) / Math.max(1, utility.endTick - utility.tick)));
+
+// Shared immutable lobe placement. Per-effect rotation/phase is derived from evidence,
+// not a random frame state or a growing particle/cache collection.
+const smokeLobes = [
+  [0.02, -0.02, 0.78, 0.41], [-0.43, 0.05, 0.67, 0.37], [0.36, 0.29, 0.63, 0.38],
+  [-0.19, -0.43, 0.65, 0.36], [0.42, -0.30, 0.59, 0.34], [-0.36, 0.40, 0.56, 0.32],
+  [0.03, 0.54, 0.51, 0.31], [0.05, -0.10, 0.50, 0.29], [-0.15, 0.16, 0.42, 0.26],
+] as const;
+const fireLobes = [
+  [0, 0, .56], [-.39, -.12, .44], [.38, .02, .46], [-.05, -.42, .41],
+  [-.18, .39, .45], [.30, .40, .35], [.35, -.37, .34], [-.51, .30, .31], [.02, .12, .36],
+] as const;
+
+/** Canvas 2D ground area; pure tick/evidence input, unchanged 0.35s/1.4s lifecycle envelope.
+ * radius is a DISPLAY radius, not observed smoke/fire geometry or visibility evidence.
+ */
+export function paintReplayArea(ctx: CanvasRenderingContext2D, utility: DesktopReplayUtility,
+  tick: number, tickRate: number | null, x: number, y: number, radius: number): void {
+  if (tick < utility.tick || tick > utility.endTick || !(radius > 0)) return;
+  const rate = tickRate && tickRate > 0 ? tickRate : 64;
+  const life = Math.min(1, Math.max(0, (tick - utility.tick + 1) / (rate * .35)),
+    Math.max(0, (utility.endTick - tick + 1) / (rate * 1.4)));
+  if (!(life > 0)) return;
+  const seconds = (tick - utility.tick) / rate;
+  const seed = ((utility.eventIndex * 2654435761 + utility.tick * 97 + (utility.entityId ?? 0) * 17) >>> 0) / 4294967296;
+  const rotation = seed * Math.PI * 2;
+  ctx.save(); ctx.translate(x, y); ctx.rotate(rotation); ctx.globalAlpha = life;
+  if (utility.kind === 'smoke') {
+    for (let i = 0; i < smokeLobes.length; i++) {
+      const [lx, ly, size, alpha] = smokeLobes[i];
+      const phase = seed * 13 + i * 2.399;
+      const dx = .045 * Math.sin(seconds * (.28 + i * .017) + phase);
+      const dy = .04 * Math.sin(seconds * (.23 + i * .021) + phase * 1.7);
+      const stretch = 1 + .055 * Math.sin(seconds * (.31 + i * .013) + phase);
+      ctx.save(); ctx.translate((lx + dx) * radius, (ly + dy) * radius);
+      ctx.rotate(phase + .06 * Math.sin(seconds * .19 + phase)); ctx.scale(stretch, .83 / stretch);
+      const r = radius * size, gradient = ctx.createRadialGradient(-r * .14, -r * .18, r * .08, 0, 0, r);
+      // Lit dense core, shaded volume, feathered edge; nine overlapping ellipses, no ring.
+      gradient.addColorStop(0, `rgba(211,216,218,${alpha})`);
+      gradient.addColorStop(.40, `rgba(175,184,190,${alpha * .91})`);
+      gradient.addColorStop(.72, `rgba(117,132,147,${alpha * .57})`);
+      gradient.addColorStop(1, 'rgba(104,119,135,0)');
+      ctx.fillStyle = gradient; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+    }
+  } else if (utility.kind === 'fire') {
+    for (let i = 0; i < fireLobes.length; i++) {
+      const [lx, ly, size] = fireLobes[i], phase = seed * 17 + i * 2.399;
+      const wobble = Math.sin(seconds * (3.1 + i * .17) + phase);
+      const lick = Math.sin(seconds * (4.7 + i * .23) + phase * 1.9);
+      const r = radius * size;
+      ctx.save(); ctx.translate(radius * (lx + .025 * wobble), radius * (ly + .023 * lick));
+      ctx.rotate(phase + .08 * wobble); ctx.scale(1 + .065 * lick, .77 + .045 * wobble);
+      const heat = ctx.createRadialGradient(0, 0, r * .13, 0, 0, r * 1.36);
+      heat.addColorStop(0, 'rgba(255,105,12,.43)');
+      heat.addColorStop(.58, 'rgba(213,49,9,.31)');
+      heat.addColorStop(1, 'rgba(112,22,10,0)');
+      ctx.fillStyle = heat; ctx.beginPath(); ctx.arc(0, 0, r * 1.36, 0, Math.PI * 2); ctx.fill();
+      // Irregular flame perimeter laid flat on the ground; each tongue has its own phase.
+      ctx.beginPath();
+      for (let vertex = 0; vertex < 16; vertex++) {
+        const angle = vertex * Math.PI / 8;
+        const tongue = 1 + .15 * Math.sin(vertex * 2.7 + seconds * (2.5 + i * .09) + phase)
+          + .08 * Math.sin(vertex * 4.1 - seconds * 3.3 + phase);
+        const px = Math.cos(angle) * r * tongue, py = Math.sin(angle) * r * tongue;
+        if (vertex === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      const flame = ctx.createRadialGradient(-r * .08, r * .06, 0, 0, 0, r * 1.2);
+      flame.addColorStop(0, 'rgba(255,239,113,.88)');
+      flame.addColorStop(.24, 'rgba(255,201,49,.84)');
+      flame.addColorStop(.52, 'rgba(255,126,15,.76)');
+      flame.addColorStop(.80, 'rgba(242,65,10,.50)');
+      flame.addColorStop(1, 'rgba(167,31,8,0)');
+      ctx.fillStyle = flame; ctx.fill();
+      // Short curved hot tongue: displacement/shape flicker instead of global alpha pulsing.
+      ctx.fillStyle = 'rgba(255,230,101,.64)';
+      ctx.beginPath(); ctx.moveTo(-r * .28, r * .16);
+      ctx.bezierCurveTo(-r * .44, -r * .08, r * (.04 + .10 * lick), -r * (.62 + .08 * wobble), r * .06, -r * .73);
+      ctx.bezierCurveTo(r * .16, -r * .23, r * .43, r * .07, r * .18, r * .22);
+      ctx.closePath(); ctx.fill(); ctx.restore();
+    }
+  }
+  ctx.restore();
+}
 
 /**
  * Discrete effect state at one displayed tick. Everything is derived from chunk evidence

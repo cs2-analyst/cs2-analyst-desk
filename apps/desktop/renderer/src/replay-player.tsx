@@ -6,7 +6,7 @@ import { mapResourceState, radarHeading, resolveMapLayer, worldToRadar } from '.
 import type { ReplayMapDefinition } from './replay-map';
 import { replayMapAssets } from './replay-map-assets';
 import { appendReplayEvents, nextReplayRound, replayBlockAt, replayDisplayFrame, ReplayChunkCache, ReplayClock, resolveReplayPlayerId } from './replay-state';
-import { replayEffectsAt } from './replay-effects';
+import { paintReplayArea, replayEffectsAt } from './replay-effects';
 import type { ReplayEffectFrame } from './replay-effects';
 import { QuestionCircleIcon, PauseIcon, PlayIcon } from './icons';
 import { useRoundMenu } from './round-menu';
@@ -158,41 +158,21 @@ function drawArea(ctx: CanvasRenderingContext2D, map: ReplayMapDefinition, layer
   if (!utility.position || resolveMapLayer(map, utility.position[2]) !== layerId) return;
   const point = worldToRadar(map, { x: utility.position[0], y: utility.position[1] });
   if (!point) return;
-  const fadeIn = Math.min(1, Math.max(0, (tick - utility.tick + 1) / Math.max(1, (rate ?? 64) * 0.35)));
-  const fadeOut = Math.min(1, Math.max(0, (utility.endTick - tick + 1) / Math.max(1, (rate ?? 64) * 1.4)));
-  const life = Math.min(fadeIn, fadeOut);
-  if (life <= 0) return;
-  if (utility.kind === 'smoke') {
-    const radius = mapRadius(map, 144);
-    radial(ctx, point.x, point.y, radius * 1.12, palette.utility.smoke, 0.34 * life, 0.1);
-    radial(ctx, point.x + radius * 0.34, point.y - radius * 0.28, radius * 0.72, palette.utility.smoke, 0.18 * life, 0.12);
-    return;
-  }
-  if (utility.kind !== 'fire') return;
-  const radius = mapRadius(map, 150), phase = tick * 0.37;
-  radial(ctx, point.x, point.y, radius * 1.18, palette.utility.incendiary, 0.30 * life, 0.05);
-  for (let index = 0; index < 3; index++) {
-    const angle = phase + index * 2.1;
-    const offset = radius * (0.16 + 0.11 * Math.sin(phase * 0.7 + index));
-    radial(ctx, point.x + Math.cos(angle) * offset, point.y + Math.sin(angle) * offset * 0.75,
-      radius * (0.38 + 0.09 * Math.sin(phase * 1.3 + index)), index === 1 ? palette.utility.molotov : palette.utility.incendiary,
-      (0.42 - index * 0.06) * life, 0.12);
-  }
-  radial(ctx, point.x, point.y, radius * 0.32, palette.utility.incendiary, 0.50 * life, 0.05);
+  paintReplayArea(ctx, utility, tick, rate, point.x, point.y, mapRadius(map, utility.kind === 'smoke' ? 184 : 158));
 }
 /** Layer 3: only the most recent flight, thinning and fading towards the tail. */
 function drawTrail(ctx: CanvasRenderingContext2D, map: ReplayMapDefinition, layerId: string,
-  trail: { x: number; y: number; z: number }[], color: string) {
+  trail: { tick: number; x: number; y: number; z: number; breakBefore?: boolean }[], color: string) {
   if (trail.length < 2) return;
   ctx.lineCap = 'round';
   for (let index = 0; index < trail.length - 1; index++) {
     const a = trail[index], b = trail[index + 1];
-    if (resolveMapLayer(map, a.z) !== layerId || resolveMapLayer(map, b.z) !== layerId) continue;
+    if (b.breakBefore || resolveMapLayer(map, a.z) !== layerId || resolveMapLayer(map, b.z) !== layerId) continue;
     const from = worldToRadar(map, { x: a.x, y: a.y }), to = worldToRadar(map, { x: b.x, y: b.y });
     if (!from || !to) continue;
-    const head = (index + 1) / trail.length;
-    const width = 1.8 + 4.2 * head;
-    ctx.globalAlpha = 0.28 + 0.54 * Math.pow(head, 1.2);
+    const head = (b.tick - trail[0].tick) / Math.max(1, trail.at(-1)!.tick - trail[0].tick);
+    const width = 0.9 + 5.3 * head;
+    ctx.globalAlpha = 0.10 + 0.80 * Math.pow(head, 1.2);
     // A faint dark under-stroke keeps the trail readable over both dark and sand-coloured
     // radar areas without turning it into an opaque line.
     ctx.strokeStyle = 'rgba(17,24,33,0.45)'; ctx.lineWidth = width + 1.6;
