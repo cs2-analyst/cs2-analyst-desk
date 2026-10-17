@@ -187,6 +187,8 @@ try {
     }
     await evaluate('document.querySelector("[aria-label=回放回合]").focus()');
     await click('回放回合');await wait(()=>evaluate('[...document.querySelectorAll("[role=listbox]")].some(b=>b.checkVisibility())'),'round list');
+    const winOption=await evaluate('(()=>{const b=[...document.querySelectorAll("[role=listbox]")].find(b=>b.checkVisibility()),opts=[...b.querySelectorAll("[role=option]")],picked=opts.find(o=>o.getAttribute("aria-selected")==="true"),other=opts.find(o=>o.getAttribute("aria-selected")==="false");return {selected:Boolean(picked),other:Boolean(other),selectedBar:picked&&getComputedStyle(picked,"::before").opacity,unselectedBar:other&&getComputedStyle(other,"::before").opacity,checkIcons:b.querySelectorAll(".fui-Option__checkIcon").length};})()');
+    assert.deepEqual(winOption,{selected:true,other:true,selectedBar:'1',unselectedBar:'0',checkIcons:0},'WinUI accent bar replaces the default Fluent checkmark');
     const menu=await evaluate('(()=>{const b=[...document.querySelectorAll("[role=listbox]")].find(b=>b.checkVisibility()),r=b.getBoundingClientRect();return {height:r.height,top:r.top,bottom:r.bottom,overflow:getComputedStyle(b).overflowY,scroll:b.scrollHeight-b.clientHeight};})()');
     assert.ok(menu.height<=320.5&&menu.top>=0&&menu.bottom<=height);assert.equal(menu.overflow,'auto');assert.ok(menu.scroll>0);
     await key('Escape','Escape',27);await wait(()=>evaluate('![...document.querySelectorAll("[role=listbox]")].some(b=>b.checkVisibility())'),'menu escape');
