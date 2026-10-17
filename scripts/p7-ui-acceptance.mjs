@@ -220,7 +220,17 @@ try {
   metrics.checks.push('play/pause icon, text and stable width');
 
   const seek = async value => {
-    await evaluate('(()=>{const s=document.querySelector("[aria-label=回放进度]");Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value").set.call(s,' + value + ');s.dispatchEvent(new Event("input",{bubbles:true}));})()');
+    const setValue = async next => evaluate('(()=>{const s=document.querySelector("[aria-label=回放进度]");Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value").set.call(s,' + next + ');s.dispatchEvent(new Event("input",{bubbles:true}));})()');
+    // A controlled Fluent Slider can suppress an input event when the DOM value already
+    // equals the requested target (for example immediately after playback pauses at the
+    // round end). Force one nearby value first so the final seek is never a no-op.
+    const current = Number(await evaluate('Number(document.querySelector("[aria-label=回放进度]").value)'));
+    if (current === value) {
+      const bounds = await evaluate('(()=>{const s=document.querySelector("[aria-label=回放进度]");return {min:Number(s.min),max:Number(s.max)};})()');
+      const bridge = value > bounds.min ? value - 1 : value < bounds.max ? value + 1 : value;
+      if (bridge !== value) { await setValue(bridge); await delay(24); }
+    }
+    await setValue(value);
     await wait(() => evaluate('Math.abs(Number(document.querySelector("#replay-panel canvas[role=img]").dataset.tick)-' + value + ')<.01'), 'seek ' + value);
   };
   const chooseRound = async round => {

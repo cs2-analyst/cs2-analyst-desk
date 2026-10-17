@@ -299,3 +299,65 @@ pnpm typecheck
 pnpm build
 node scripts/replay-smoke.mjs
 ```
+## 2026-10-18 — P7 回放增强：投掷文案、真实轨迹与道具效果
+
+基线 `fe9ec36`。本轮只增强比赛回放，不进入 P8；版本号、tag、release 未变。详细数据契约见
+[P7 回放增强：道具轨迹与效果](./replay-utility-effects.md)，additive 契约摘要同步在
+[Replay contract](./replay-contract.md)。
+
+实现：
+
+- 关键事件列表中的 utility 行改为 `[昵称] 投掷了 [道具类型]`；昵称依次取自事件 thrower、projectile owner，
+  不在 roster 时显示“未知玩家”。击杀、炸弹、拆除等非投掷文案保持原样。
+- 新增一次 `parseGrenades(bytes, [], false)`，按 entity id + projectile 类别 + 连续 run 分段；
+  smoke/flash/HE/decoy 用 detonate entity id 匹配，fire 用真实投掷者 + `weapon_fire` 时间窗匹配。
+  轨迹保留真实投掷/爆开锚点，按约 16 Hz 抽样，不画直线。
+- 烟雾/火焰结束使用 `smokegrenade_expired` / `inferno_expire`；被烟雾扑灭的火焰自然提前结束。
+  致盲窗口来自 `player_blind.blind_duration`，灼烧窗口只由 inferno damage tick 聚合，不使用距离推断。
+- Renderer 使用现有双层 Canvas，层序 map → areas → trajectories → projectiles → players → status → selection；
+  烟雾/火焰半透明且在玩家点之前，被闪/被烧图标在玩家点之后；HE 1s、flash 0.5s 展示窗口、decoy 无持续区域。
+- `DesktopReplayChunk` 只携带与自身 tick 窗口相交的效果；旧字段、旧 chunk、seek/时钟/回合窗口语义不变。
+
+真实 Dust2 数据与实测：
+
+| 指标 | 结果 |
+| --- | --- |
+| utility 效果 | 632（smoke 182 / HE 82 / flash 229 / fire 138 / decoy 1） |
+| 真实 projectile 轨迹 | 632 / 632 |
+| 致盲窗口 / 灼烧窗口 | 500 / 15（来自 67 条 inferno damage） |
+| 效果结束来源 | observed 299 / nominal 310 / round-end 23 |
+| 会话块 / 最大块 / 缓存 | 159 / 380403 字节 / 36495839 字节 |
+| 回放解析（Node，含新增 native 查询） | 6.46–6.88s；基线 3.29s |
+| 完整导入（真实 Electron） | 9.5–10.3s（≤15s） |
+| 首帧 / 12 次 IPC p95 / Canvas p95 | 130.9–133.2ms / 8.7–12.1ms / 0.2–0.3ms |
+| Utility 进程峰值 | 1685307392 字节（≤2.5 GiB） |
+| 原报告 fingerprint | 不变 |
+
+P7 验收脚本的 `seek` 辅助函数补了受控 Slider 同值 input 的桥接（先写相邻值再写目标值），
+仅修复自动化竞态，产品 Slider/时钟/seek 行为未改；`node scripts/p7-ui-acceptance.mjs` 随后 PASS。
+
+真实 Electron 截图（本机 `.tmp/p6-qa/`，不提交）：`p7-utility-trajectory.png`、`p7-utility-smoke.png`、
+`p7-utility-flash-blind.png`、`p7-utility-fire.png`、`p7-utility-he.png`，以及带烟雾的
+`built-electron-1024x640.png` / `built-electron-1920x1032.png`。实际验证了飞行图标、拖尾、烟雾持续区、
+闪光光晕 + 真实被闪图标、火焰区 + 真实被烧图标、HE 1s 爆炸、回合切换清空、向前/向后 seek、
+事件点击 seek、跨块播放和两种目标分辨率；`reportUnchanged=true`。
+
+验证命令：
+
+```powershell
+node --test packages/dem-parser/tests/replay.test.mjs
+node --test apps/desktop/tests/replay-effects.test.mjs apps/desktop/tests/replay-session.test.mjs
+pnpm --filter @cs2-analyst/dem-parser test
+pnpm --filter @cs2-analyst/desktop test
+pnpm typecheck
+pnpm build
+node scripts/replay-smoke.mjs
+node scripts/p7-ui-acceptance.mjs
+git diff --check
+git ls-files '*.dem'
+```
+
+已知缺口：新增 native projectile 查询使回放解析超过 P6 的“≤5s”探测预算（完整导入仍 ≤15s）；
+fire 的 molotov/incendiary 区分依赖可关联的 `weapon_fire`；burn 窗口由真实伤害 tick 聚合而非逐帧状态；
+未实现 3D 抛物线、LOS、地形遮挡或双层地图道具专项截图。以上不改变既有 Replay/Heatmap/Analytics/
+Findings/Deep Review 结论。

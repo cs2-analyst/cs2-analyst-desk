@@ -128,6 +128,19 @@ try{
   page=await connect(target.webSocketDebuggerUrl);const version=await(await fetch(`http://127.0.0.1:${port}/json/version`,{signal:AbortSignal.timeout(1000)})).json();browser=await connect(version.webSocketDebuggerUrl);
   const exceptions=[];page.socket.addEventListener('message',e=>{const m=JSON.parse(e.data);if(m.method==='Runtime.exceptionThrown')exceptions.push(m.params);});
   const evaluate=async expression=>{const r=await page.send('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true});if(r.exceptionDetails)throw new Error(JSON.stringify(r.exceptionDetails));return r.result?.value;};
+  const canvasSelector='#replay-panel canvas[role=img]';
+  const seekReplay=async tick=>{
+    await evaluate(`(()=>{const slider=document.querySelector('[aria-label="回放进度"]');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(slider,${tick});slider.dispatchEvent(new Event('input',{bubbles:true}));})()`);
+    await waitFor(()=>evaluate(`Math.abs(Number(document.querySelector('${canvasSelector}').dataset.tick)-${tick})<.01`),'utility seek '+tick);
+  };
+  const selectReplayRound=async round=>{
+    await evaluate('document.querySelector("[aria-label=回放回合]").click()');
+    await waitForUi(evaluate, `Boolean([...document.querySelectorAll('[role=option]')].find(o=>o.textContent.trim()===${JSON.stringify('R'+round)}))`,'round option R'+round);
+    await evaluate(`[...document.querySelectorAll('[role=option]')].find(o=>o.textContent.trim()===${JSON.stringify('R'+round)}).click()`);
+    await waitFor(()=>evaluate(`document.querySelector('[data-replay-session]').dataset.replayRound===${JSON.stringify(String(round))}`),'round selection R'+round);
+  };
+  const effectCount=async name=>Number(await evaluate(`Number(document.querySelector('${canvasSelector}').dataset.${name})||0`));
+  const capture=async name=>{const shot=await page.send('Page.captureScreenshot',{format:'png'});writeFileSync(join(qa,name),Buffer.from(shot.data,'base64'));};
   await page.send('Runtime.enable');await page.send('Page.enable');await page.send('Network.enable');await page.send('Network.emulateNetworkConditions',{offline:true,latency:0,downloadThroughput:-1,uploadThroughput:-1});
   await waitFor(()=>evaluate('Boolean(window.cs2Analyst&&document.querySelector("main"))'),'preload/React');
   assert.equal(await evaluate('typeof window.require'),'undefined');
@@ -181,6 +194,69 @@ try{
   assert.ok(await evaluate(`[...document.querySelectorAll('[role=tooltip]')].some(t=>t.textContent.includes('白框为选中玩家'))`));
   await evaluate('document.activeElement.blur()');
   await checkReplayLayout(evaluate, '比赛回放默认窗口');
+  // P7 utility evidence: real projectile runs and real effect windows, not fabricated lines.
+  const effectProbe=await evaluate(`(async()=>{
+    const session=document.querySelector('[data-replay-session]'),chunks=[];
+    for(const block of [0,1,2,3,4,5,6,7]){const r=await window.cs2Analyst.replay.getChunk({sessionId:session.dataset.replaySession,round:1,block});if(r.kind==='success')chunks.push(r.chunk);}
+    const utilities=chunks.flatMap(c=>c.utilities??[]),events=chunks.flatMap(c=>c.events);
+    const withFlight=kind=>utilities.find(u=>u.kind===kind&&u.trajectory&&u.trajectory.points.length>=2);
+    return {smoke:withFlight('smoke'),flash:withFlight('flashbang'),he:withFlight('hegrenade'),
+      utilityEvent:events.find(e=>e.type==='utility'&&e.description.includes('投掷了')&&!e.description.includes('decoy')),
+      killEvent:events.find(e=>e.type==='kill')??events.find(e=>e.type==='bomb')};
+  })()`);
+  assert.ok(effectProbe.smoke,'real smoke trajectory required');assert.ok(effectProbe.flash,'real flash trajectory required');
+  assert.ok(effectProbe.he,'real HE trajectory required');assert.ok(effectProbe.utilityEvent,'real utility event copy required');
+  assert.ok(effectProbe.killEvent&&!effectProbe.killEvent.description.includes('投掷了'),'non-utility copy stays unchanged');
+  const flightTick=Math.floor((effectProbe.smoke.trajectory.startTick+effectProbe.smoke.trajectory.endTick)/2);
+  await seekReplay(flightTick);
+  await waitFor(()=>evaluate(`Number(document.querySelector('${canvasSelector}').dataset.flying)>0`),'flying utility icon and trail');
+  assert.equal(await effectCount('smoke'),0,'a projectile is not drawn as an area before detonation');
+  await capture('p7-utility-trajectory.png');
+  const smokeTick=effectProbe.smoke.tick+Math.min(128,Math.floor((effectProbe.smoke.endTick-effectProbe.smoke.tick)/2));
+  await seekReplay(smokeTick);
+  await waitFor(()=>evaluate(`Number(document.querySelector('${canvasSelector}').dataset.smoke)>0`),'smoke area window');
+  assert.equal(await effectCount('flying'),0,'the detonated projectile is no longer flying');
+  await capture('p7-utility-smoke.png');
+  await seekReplay(effectProbe.smoke.trajectory.startTick-20);
+  await waitFor(()=>evaluate(`Number(document.querySelector('${canvasSelector}').dataset.effects)===0`),'backward seek clears future effects');
+  await seekReplay(effectProbe.flash.tick+2);
+  await waitFor(()=>evaluate(`Number(document.querySelector('${canvasSelector}').dataset.flashes)>0`),'flash burst');
+  await waitFor(()=>evaluate(`Number(document.querySelector('${canvasSelector}').dataset.blind)>0`),'real blind victim window');
+  await capture('p7-utility-flash-blind.png');
+  await seekReplay(effectProbe.he.tick+32);
+  await waitFor(()=>evaluate(`Number(document.querySelector('${canvasSelector}').dataset.explosions)>0`),'HE burst');
+  await capture('p7-utility-he.png');
+  await seekReplay(effectProbe.he.tick+Math.round(meta.tickRate)+2);
+  await waitFor(()=>evaluate(`Number(document.querySelector('${canvasSelector}').dataset.explosions)===0`),'HE burst ends after one second');
+  await seekReplay(effectProbe.utilityEvent.tick);
+  await waitFor(()=>evaluate(`Boolean(document.querySelector('[data-replay-event="${effectProbe.utilityEvent.id}"]'))`),'utility key event row');
+  const utilityText=await evaluate(`document.querySelector('[data-replay-event="${effectProbe.utilityEvent.id}"]').textContent`);
+  assert.ok(utilityText.includes(effectProbe.utilityEvent.description),'key event row uses the real thrower copy');
+  assert.ok(utilityText.includes('投掷了'));
+  await evaluate(`document.querySelector('[data-replay-event="${effectProbe.utilityEvent.id}"]').click()`);
+  await waitFor(()=>evaluate(`Math.abs(Number(document.querySelector('${canvasSelector}').dataset.tick)-${effectProbe.utilityEvent.tick})<.01`),'key event click seek');
+  await waitFor(()=>evaluate(`Number(document.querySelector('${canvasSelector}').dataset.effects)>0`),'effect state after event click');
+  await seekReplay(effectProbe.killEvent.tick);
+  await waitFor(()=>evaluate(`Boolean(document.querySelector('[data-replay-event="${effectProbe.killEvent.id}"]'))`),'kill key event row');
+  const killText=await evaluate(`document.querySelector('[data-replay-event="${effectProbe.killEvent.id}"]').textContent`);
+  assert.ok(killText.includes(effectProbe.killEvent.description)&&!killText.includes('投掷了'),'kill copy is unchanged');
+  const revisionBeforeRound=await evaluate('Number(document.querySelector("[data-replay-session]").dataset.replayRevision)');
+  await selectReplayRound(2);
+  await waitFor(()=>evaluate(`Number(document.querySelector('[data-replay-session]').dataset.replayRevision)>${revisionBeforeRound}`),'R2 replay block load');
+  await waitFor(()=>evaluate(`Number(document.querySelector('${canvasSelector}').dataset.effects)===0&&Number(document.querySelector('${canvasSelector}').dataset.flying)===0`),'round switch clears all old effects');
+  const fireProbe=await evaluate(`(async()=>{
+    const session=document.querySelector('[data-replay-session]'),chunks=[];
+    for(const block of [0,1,2,3]){const r=await window.cs2Analyst.replay.getChunk({sessionId:session.dataset.replaySession,round:2,block});if(r.kind==='success')chunks.push(r.chunk);}
+    return (chunks.flatMap(c=>c.utilities??[])).find(u=>u.kind==='fire'&&u.trajectory&&u.trajectory.points.length>=2)??null;
+  })()`);
+  assert.ok(fireProbe,'real fire trajectory required');
+  await seekReplay(fireProbe.tick+64);
+  await waitFor(()=>evaluate(`Number(document.querySelector('${canvasSelector}').dataset.fire)>0`),'fire area window');
+  await capture('p7-utility-fire.png');
+  await selectReplayRound(1);
+  const roundOne=meta.rounds.find(round=>round.round===1);
+  await waitFor(()=>evaluate(`Number(document.querySelector('[data-replay-session]').dataset.replayTick)===${roundOne.startTick}`),'R1 start tick');
+  await waitFor(()=>evaluate(`Number(document.querySelector('${canvasSelector}').dataset.effects)===0&&Number(document.querySelector('${canvasSelector}').dataset.flying)===0`),'round return starts from clean effect state');
   // Round menu: compact cap, internal scroll, selected option reveal, keyboard-close.
   await evaluate('document.querySelector("[aria-label=回放回合]").click()');
   await waitForUi(evaluate, `Boolean([...document.querySelectorAll('[role=listbox]')].at(-1)?.querySelector('[role=option]'))`, 'round menu open');
@@ -270,7 +346,11 @@ try{
     await waitFor(()=>evaluate(`Number(document.querySelector('[data-replay-session]')?.dataset.replayRound)===${linked.round}&&Math.abs(Number(document.querySelector('#replay-panel canvas[role=img]')?.dataset.tick)-${expected})<.01`),'Finding evidence link');metrics.findingLink='PASS';
   }else metrics.findingLink='not eligible';
   metrics.screenshotSizing='CDP viewport/DPR simulation; native maximize/restore checked separately';
-  for(const [width,height,dpr] of [[1280,800,1],[1024,640,1],[1280,800,2],[800,600,1],[1280,800,1]]){
+  await selectReplayRound(1);
+  await waitFor(()=>evaluate(`Number(document.querySelector('[data-replay-session]').dataset.replayTick)===${roundOne.startTick}`),'R1 start for responsive screenshots');
+  await seekReplay(smokeTick);
+  await waitFor(()=>evaluate(`Number(document.querySelector('${canvasSelector}').dataset.smoke)>0`),'smoke visible for responsive screenshots');
+  for(const [width,height,dpr] of [[1280,800,1],[1024,640,1],[1920,1032,1],[1280,800,2],[800,600,1],[1280,800,1]]){
     await page.send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:dpr,mobile:false});
     await waitForUi(evaluate, `innerWidth === ${width} && innerHeight === ${height}`, 'viewport resize');
     assert.equal(await evaluate('document.documentElement.scrollWidth>window.innerWidth'),false,`horizontal overflow ${width}`);

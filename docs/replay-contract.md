@@ -28,3 +28,23 @@ Utility会话缓存按内容SHA/schema/解析器采样版本/地图资源身份�
 成功报告后worker持久保留至会话结束；回放错误独立降级，报告仍可用。
 
 本契约为additive变更，不迁移历史缓存（仅会话缓存）。安装版必须同时构建同一版本Main/preload/Renderer。
+## P7 回放增强：道具轨迹与效果（additive）
+
+本轮不改变既有采样、时钟、seek、回合窗口或分块语义，只追加可选的 utility 证据：
+
+- `ReplayRound.utilities?` / `DesktopReplayChunk.utilities?`：`kind`、`variant`（仅 fire 的
+  molotov/incendiary）、`throwerId`、`entityId`、`tick`、`endTick`、`endSource`、`position`、
+  `flight: { startTick, endTick, points:[tick,x,y,z][] } | null`。
+- `ReplayRound.blinds?` / chunk `blinds?`：来自 `player_blind.blind_duration` 的真实致盲窗口。
+- `ReplayRound.burns?` / chunk `burns?`：只由真实 inferno damage tick 聚合的灼烧窗口。
+- 每个 chunk 只携带与自身 tick 窗口相交的效果；没有效果时数组省略，旧 chunk/旧消费者保持可用。
+
+轨迹来自 `parseGrenades(bytes, [], false)` 的逐 tick projectile 位置，按实体 id/类别/连续 run 分段并与
+detonate 事件匹配；fire 按真实投掷者与 `weapon_fire` 时间窗匹配。无法可靠匹配时 `flight=null`，
+绝不生成起点到终点直线。烟雾/火焰结束优先使用 `smokegrenade_expired` / `inferno_expire`，
+缺失时才回退 `round-end` 或文档化 nominal，并在 `endSource` 标记。
+
+Renderer 层序固定为 map → areas → trajectories → projectiles → players → status → selection；
+烟雾/火焰为半透明区域并绘制在玩家点之前，被闪/被烧图标绘制在玩家点之后。
+
+详细数据来源、降级、验收与性能权衡见 [P7 回放增强：道具轨迹与效果](./replay-utility-effects.md)。
