@@ -207,17 +207,17 @@ try {
   const play = 'document.querySelector("[aria-label=播放回放]")', pause = 'document.querySelector("[aria-label=暂停回放]")';
   const playWidth = await evaluate(play + '.getBoundingClientRect().width');
   assert.ok(await evaluate(play + '.querySelector("svg") !== null'));
-  assert.ok((await evaluate(play + '.textContent')).includes('播放'));
+  assert.equal((await evaluate(play + '.textContent')).trim(), '');
   await evaluate(play + '.click()');
   await waitForUi(evaluate, 'document.querySelector("[aria-label=暂停回放]") !== null', 'pause label');
   const pauseWidth = await evaluate(pause + '.getBoundingClientRect().width');
   assert.ok(Math.abs(playWidth - pauseWidth) <= 1, 'play/pause button width is stable');
   assert.ok(await evaluate(pause + '.querySelector("svg") !== null'));
-  assert.ok((await evaluate(pause + '.textContent')).includes('暂停'));
+  assert.equal((await evaluate(pause + '.textContent')).trim(), '');
   await evaluate(pause + '.click()');
   await waitForUi(evaluate, 'document.querySelector("[aria-label=播放回放]") !== null', 'play label after pause');
   assert.ok(Math.abs(await evaluate(play + '.getBoundingClientRect().width') - playWidth) <= 1);
-  metrics.checks.push('play/pause icon, text and stable width');
+  metrics.checks.push('play/pause icon-only, aria label and stable width');
 
   const seek = async value => {
     const setValue = async next => evaluate('(()=>{const s=document.querySelector("[aria-label=回放进度]");Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value").set.call(s,' + next + ');s.dispatchEvent(new Event("input",{bubbles:true}));})()');
@@ -394,7 +394,7 @@ try {
     assert.ok(row.left >= syntheticRows.listLeft - 1 && row.right <= syntheticRows.listRight + 1, row.name + ' stays inside the list');
   }
   const scrollSyntheticIntoView = async name => {
-    await evaluate('(() => { const list = document.querySelector("[aria-label=回放事件浏览]"); const row = [...list.querySelectorAll("[data-qa-event-row]")].find(node => node.dataset.qaEventRow === "' + name + '"); list.scrollTop = Math.max(0, row.getBoundingClientRect().top - list.getBoundingClientRect().top + list.scrollTop); })()');
+    await evaluate('(() => { const list = document.querySelector("[aria-label=回放事件浏览]"); const row = [...list.querySelectorAll("[data-qa-event-row]")].find(node => node.dataset.qaEventRow === "' + name + '"); list.scrollTo({top:Math.max(0, row.getBoundingClientRect().top - list.getBoundingClientRect().top + list.scrollTop),behavior:"instant"}); })()');
     await settleUi(evaluate, 'synthetic ' + name + ' scroll');
     const visible = await evaluate('(() => { const list = document.querySelector("[aria-label=回放事件浏览]"); const lr = list.getBoundingClientRect(); const row = [...list.querySelectorAll("[data-qa-event-row]")].find(node => node.dataset.qaEventRow === "' + name + '"); const r = row.getBoundingClientRect(); return r.top >= lr.top - 1 && r.bottom <= lr.bottom + 1; })()');
     assert.equal(visible, true, name + ' row is fully visible in its saved screenshot');

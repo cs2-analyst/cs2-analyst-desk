@@ -5,10 +5,10 @@ import type { DesktopReplayChunk, DesktopReplayEvent, DesktopReplayFrame, Deskto
 import { mapResourceState, radarHeading, resolveMapLayer, worldToRadar } from './replay-map';
 import type { ReplayMapDefinition } from './replay-map';
 import { replayMapAssets } from './replay-map-assets';
-import { appendReplayEvents, nextReplayRound, replayBlockAt, replayDisplayFrame, ReplayChunkCache, ReplayClock, resolveReplayPlayerId } from './replay-state';
+import { appendReplayEvents, nextReplayRound, replayBlockAt, replayDisplayFrame, replayRelativeTick, replayRoundTime, reliableReplayRate, ReplayChunkCache, ReplayClock, resolveReplayPlayerId } from './replay-state';
 import { paintReplayArea, paintReplayHEBurst, replayEffectsAt } from './replay-effects';
 import type { ReplayEffectFrame } from './replay-effects';
-import { QuestionCircleIcon, PauseIcon, PlayIcon } from './icons';
+import { QuestionCircleIcon, PauseIcon, PlayIcon, ReplayStartIcon, ReplayEndIcon, ReplayRewindIcon, ReplayForwardIcon } from './icons';
 import { useRoundMenu } from './round-menu';
 import { palette } from './theme';
 import { replayEffectAssetUrls } from './replay-effect-assets';
@@ -29,7 +29,8 @@ const useStyles = makeStyles({
   barTitle: { display: 'flex', alignItems: 'baseline', gap: '8px' },
   controls: { display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' },
   dropdown: { minWidth: '104px', maxWidth: '168px' },
-  playButton: { minWidth: '92px' },
+  playButton: { minWidth: '44px', width: '44px', height: '44px', borderRadius: '50%', padding: 0 },
+  transportButton: { minWidth: '28px', width: '28px', height: '32px', padding: 0 },
   switch: { marginLeft: '2px' },
   spacer: { flex: 1 },
   body: {
@@ -49,6 +50,10 @@ const useStyles = makeStyles({
   },
   map: { position: 'relative', flexShrink: 0 },
   mapInfo: { position: 'absolute', top: '8px', right: '8px', zIndex: 1 },
+  mapPhase: {
+    position: 'absolute', bottom: '10px', left: '10px', zIndex: 1, width: 'fit-content',
+    backgroundColor: palette.replay.surface, pointerEvents: 'none',
+  },
   help: {
     color: tokens.colorNeutralForeground3, flexShrink: 0,
     ':hover': { color: tokens.colorNeutralForeground1 },
@@ -92,9 +97,25 @@ const useStyles = makeStyles({
     width: '100%', alignSelf: 'end', display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px 12px',
     backgroundColor: palette.card, border: `1px solid ${palette.border}`, borderRadius: tokens.borderRadiusLarge,
     boxSizing: 'border-box',
+    '@media (max-width: 1200px)': { padding: '8px' },
   },
-  transportRow: { display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px' },
-  progress: { width:'100%' },
+  transportRow: { display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' },
+  timeline: { display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 },
+  time: { flexShrink: 0, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', color: tokens.colorNeutralForeground2 },
+  progress: { flex: 1, minWidth: 0 },
+  // Equal outside tracks keep the controls centered on the whole map/transport.
+  transportControls: {
+    display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)', alignItems: 'center', gap: '8px',
+    '@media (max-width: 1200px)': { gap: '4px' },
+  },
+  fileInfo: { minWidth: 0, display: 'flex', alignItems: 'center', gap: '6px' },
+  fileName: { display: 'block', flex: '0 1 auto', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: tokens.colorNeutralForeground3 },
+  playback: { display: 'flex', alignItems: 'center', gap: '6px', '@media (max-width: 1200px)': { gap: '4px' } },
+  selectors: { display: 'flex', justifySelf: 'end', alignItems: 'center', gap: '6px', minWidth: 0 },
+  transportDropdown: {
+    minWidth: '80px', width: '80px', maxWidth: '80px',
+    '@media (max-width: 1200px)': { minWidth: '60px', width: '60px', maxWidth: '60px' },
+  },
   // Thousands of one-tick steps otherwise produce an opaque Fluent rail tick-mark overlay.
   progressRail: { '::before':{display:'none'} },
 });
@@ -129,7 +150,7 @@ function HelpTip({ label, content }: { label: string; content: string }) {
   </Tooltip>;
 }
 const blockAt=replayBlockAt;
-const timeText=(tick:number,round:DesktopReplayRoundInfo,rate:number|null)=>rate===null?`原始 tick ${Math.round(tick)}`:`+${((tick-round.startTick)/rate).toFixed(2)} 秒`;
+const timeText=(tick:number,round:DesktopReplayRoundInfo,rate:number|null)=>!reliableReplayRate(rate)?`原始 tick ${Math.round(tick)}`:`+${((tick-round.startTick)/rate).toFixed(2)} 秒`;
 
 const colorRgb = (hex: string): [number, number, number] => {
   const value = Number.parseInt(hex.slice(1), 16);
@@ -230,8 +251,8 @@ function drawStatusIcon(ctx: CanvasRenderingContext2D, x: number, y: number, kin
   ctx.restore();
 }
 
-export function ReplayPlayer({ metadata, initialPlayerId, active, jump }: {
-  metadata:DesktopReplayMetadata;initialPlayerId:string;active:boolean;jump:ReplayJump|null;
+export function ReplayPlayer({ metadata, fileName, initialPlayerId, active, jump }: {
+  metadata:DesktopReplayMetadata;readonly fileName:string;initialPlayerId:string;active:boolean;jump:ReplayJump|null;
 }) {
   const s=useStyles(),first=metadata.rounds[0];
   const [roundNumber,setRoundNumber]=useState(first?.round??0),[tick,setTick]=useState(first?.startTick??0);
@@ -255,6 +276,8 @@ export function ReplayPlayer({ metadata, initialPlayerId, active, jump }: {
   const visibleEventsRef=useRef<DesktopReplayEvent[]>([]),seenEventIds=useRef(new Set<string>()),lastEventTick=useRef(-Infinity);
   const continuousRef=useRef(continuous);continuousRef.current=continuous;
   const info=metadata.rounds.find(r=>r.round===roundNumber);
+  const timed=reliableReplayRate(metadata.tickRate);
+  const displayFileName=fileName.split(/[\\/]/).at(-1)??'';
   const block=info?blockAt(info,tick):undefined,chunk=block?cache.current.get(roundNumber,block.index):undefined;
   const playerIds=metadata.players.map(p=>p.id);
   const mapState=mapResourceState(metadata.map,replayMapAssets),map=mapState.definition;
@@ -295,20 +318,37 @@ export function ReplayPlayer({ metadata, initialPlayerId, active, jump }: {
     list.scrollTo({top:list.scrollHeight,behavior:reduced?'auto':'smooth'});
   },[appendSequence]);
 
-  function seek(next:number,round=live.current.info,resetEvents=false) {
+  function seek(next:number,round=live.current.info,resetEvents=false,keepPlaying=false) {
     if(!round)return;
-    clock.current.pause(performance.now(),metadata.tickRate);resume.current=false;setPlaying(false);
-    const bounded=Math.max(round.startTick,Math.min(round.endTick,next));clock.current.seek(bounded,performance.now());setTick(bounded);setError(null);
+    const now=performance.now(),wasPlaying=clock.current.playing||resume.current;
+    clock.current.pause(now,metadata.tickRate);resume.current=false;setPlaying(false);
+    const bounded=Math.max(round.startTick,Math.min(round.endTick,next));clock.current.seek(bounded,now);setTick(bounded);setError(null);
     if(resetEvents)resetVisibleEvents();else trimVisibleEvents(bounded);
+    // A manual endpoint always stops; relative seeks resume only with the target chunk.
+    if(keepPlaying&&wasPlaying&&bounded<round.endTick&&live.current.active&&!document.hidden){
+      const needed=blockAt(round,bounded);
+      if(needed&&cache.current.get(round.round,needed.index)){clock.current.play(now);setPlaying(true);}
+      else if(needed)resume.current=true;
+    }
+  }
+  function skip(seconds:number){
+    const round=live.current.info;if(!round)return;
+    const next=replayRelativeTick(clock.current.read(performance.now(),metadata.tickRate),seconds,round,metadata.tickRate);
+    if(next!==null)seek(next,round,false,true);
   }
   function selectRound(number:number,nextTick?:number){
     const round=metadata.rounds.find(r=>r.round===number);if(!round)return;
     live.current.info=round;setRoundNumber(number);seek(nextTick??round.startTick,round,true);
   }
   function toggle(){
-    const round=live.current.info;if(!round||metadata.tickRate===null)return;
-    if(clock.current.playing){clock.current.pause(performance.now(),metadata.tickRate);resume.current=false;setPlaying(false);setTick(clock.current.tick);}
-    else {if(clock.current.tick>=round.endTick){clock.current.seek(round.startTick,performance.now());trimVisibleEvents(round.startTick);setTick(round.startTick);}clock.current.play(performance.now());setPlaying(true);}
+    const round=live.current.info;if(!round||!timed)return;
+    if(clock.current.playing||resume.current){clock.current.pause(performance.now(),metadata.tickRate);resume.current=false;setPlaying(false);setTick(clock.current.tick);}
+    else {
+      if(clock.current.tick>=round.endTick){clock.current.seek(round.startTick,performance.now());trimVisibleEvents(round.startTick);setTick(round.startTick);}
+      const needed=blockAt(round,clock.current.tick);
+      if(needed&&cache.current.get(round.round,needed.index)){clock.current.play(performance.now());setPlaying(true);}
+      else if(needed)resume.current=true;
+    }
   }
   async function load(round:DesktopReplayRoundInfo,index:number,prefetch=false){
     const key=`${round.round}:${index}`;
@@ -500,9 +540,6 @@ export function ReplayPlayer({ metadata, initialPlayerId, active, jump }: {
     <div className={s.bar}>
       <div className={s.barTitle}><Title2>比赛回放</Title2><Caption1 className={s.muted}>R{roundNumber}</Caption1></div>
       <div className={s.controls}>
-        <Button appearance="primary" className={s.playButton} aria-label={playing?'暂停回放':'播放回放'} aria-pressed={playing} disabled={metadata.tickRate===null||!active} onClick={toggle} icon={playing?<PauseIcon size={16}/>:<PlayIcon size={16}/>}>{playing?'暂停':'播放'}</Button>
-        <Dropdown className={s.dropdown} aria-label="回放倍速" value={`${speed}×`} selectedOptions={[String(speed)]} disabled={metadata.tickRate===null} onOptionSelect={(_,d)=>{if(!d.optionValue)return;const value=Number(d.optionValue);clock.current.setSpeed(value,performance.now(),metadata.tickRate);setSpeed(value);}}>{[.25,.5,1,2,4].map(v=><Option key={v} value={String(v)}>{`${v}×`}</Option>)}</Dropdown>
-        <Dropdown ref={roundMenu.triggerRef} className={s.dropdown} aria-label="回放回合" value={`R${roundNumber}`} selectedOptions={[String(roundNumber)]} listbox={{className:roundMenu.listboxClassName}} positioning={roundMenu.positioning} onOpenChange={roundMenu.onOpenChange} onOptionSelect={(_,d)=>d.optionValue&&selectRound(Number(d.optionValue))}>{metadata.rounds.map(r=><Option key={r.round} value={String(r.round)}>{`R${r.round}`}</Option>)}</Dropdown>
         <Switch className={s.switch} checked={continuous} onChange={(_,d)=>setContinuous(d.checked)} label="连续播放" />
         <Switch className={s.switch} checked={showNicknames} onChange={(_,d)=>setNicknames({sessionId:metadata.sessionId,visible:d.checked})} label="显示昵称" />
         {map&&map.layers.length>1?<Dropdown className={s.dropdown} aria-label="回放楼层" value={floor==='auto'?'跟随玩家':map.layers.find(l=>l.id===floor)?.label} selectedOptions={[floor]} onOptionSelect={(_,d)=>d.optionValue&&setFloor(d.optionValue)}><Option value="auto">跟随玩家</Option>{map.layers.map(l=><Option key={l.id} value={l.id}>{l.label}</Option>)}</Dropdown>:null}
@@ -523,21 +560,42 @@ export function ReplayPlayer({ metadata, initialPlayerId, active, jump }: {
             {info.coverage==='partial'?<span>该回合存在缺失或歧义状态；断点不连接，未知状态不补齐。</span>:null}
           </div>} />
         </div>
+        {info.freezeEndTick!==null&&tick<info.freezeEndTick?<Badge className={s.mapPhase} data-replay-phase appearance="outline" size="small">冻结阶段</Badge>:null}
         <div ref={box} className={s.map}>
           <canvas ref={baseCanvas} className={s.canvas} aria-hidden="true" />
           <canvas ref={canvas} className={s.canvas} tabIndex={0} role="img" aria-label={`R${roundNumber} 全局地图；空格播放或暂停，左右方向键定位，Home/End跳至回合起止。`} onKeyDown={e=>{if(e.key===' '){e.preventDefault();toggle();}else if(['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){e.preventDefault();const at=clock.current.read(performance.now(),metadata.tickRate);seek(e.key==='Home'?info.startTick:e.key==='End'?info.endTick:at+(e.key==='ArrowLeft'?-1:1)*(metadata.tickRate??1));}}} />
         </div>
       </div>:<div ref={mapColumn} className={s.mapColumn} data-replay-map><Body1>本机没有配套雷达资源或图片无法装载；仍可浏览事件与玩家状态。</Body1></div>}
         <div className={s.transport} data-replay-transport>
-          <Slider aria-label="回放进度" className={s.progress} rail={{className:s.progressRail}}
-            min={info.startTick} max={info.endTick} step={1} value={Math.round(tick)} aria-valuetext={timeText(tick,info,metadata.tickRate)} onChange={(_,d)=>seek(d.value)} />
-          <div className={s.transportRow}>
-            <Body1 data-replay-time>{timeText(tick,info,metadata.tickRate)} / {timeText(info.endTick,info,metadata.tickRate)}</Body1>
-            {info.freezeEndTick!==null&&tick<info.freezeEndTick?<Badge appearance="outline">冻结阶段</Badge>:null}
-            {loading?<Spinner size="tiny" label="加载回放数据…"/>:null}
-            {error?<div role="alert"><Body1>{error}</Body1><Button size="small" onClick={()=>{failed.current.clear();setError(null);}}>重试</Button></div>:null}
-            {metadata.tickRate===null?<Caption1>时钟不可靠，仅支持原始 tick 与事件定位，不能正常倍速播放。</Caption1>:null}
+          <div className={s.timeline} data-replay-timeline>
+            <Caption1 className={s.time} data-replay-time>{replayRoundTime(tick,info,metadata.tickRate)}</Caption1>
+            <Slider aria-label="回放进度" className={s.progress} rail={{className:s.progressRail}}
+              min={info.startTick} max={info.endTick} step={1} value={Math.round(tick)} aria-valuetext={timeText(tick,info,metadata.tickRate)} onChange={(_,d)=>seek(d.value)} />
+            <Caption1 className={s.time} data-replay-duration>{replayRoundTime(info.endTick,info,metadata.tickRate)}</Caption1>
           </div>
+          <div className={s.transportControls} data-replay-controls>
+            <div className={s.fileInfo}>
+              <Tooltip content={displayFileName} relationship="description" withArrow>
+                <span className={s.fileName} data-replay-filename tabIndex={0}>{displayFileName}</span>
+              </Tooltip>
+              {loading?<Spinner size="tiny" aria-label="加载回放数据…"/>:null}
+            </div>
+            <div className={s.playback} role="group" aria-label="回放播放控制" data-replay-playback>
+              <Tooltip content="回到最初" relationship="description" withArrow><Button appearance="subtle" className={s.transportButton} aria-label="回到最初" disabled={!active} icon={<ReplayStartIcon/>} onClick={()=>seek(info.startTick)}/></Tooltip>
+              <Tooltip content="倒退 10 秒" relationship="description" withArrow><Button appearance="subtle" className={s.transportButton} aria-label="倒退 10 秒" disabled={!timed||!active} icon={<ReplayRewindIcon/>} onClick={()=>skip(-10)}/></Tooltip>
+              <Tooltip content={playing?'暂停':'播放'} relationship="description" withArrow><Button appearance="primary" className={s.playButton} aria-label={playing?'暂停回放':'播放回放'} aria-pressed={playing} disabled={!timed||!active} icon={playing?<PauseIcon size={26}/>:<PlayIcon size={26}/>} onClick={toggle}/></Tooltip>
+              <Tooltip content="前进 30 秒" relationship="description" withArrow><Button appearance="subtle" className={s.transportButton} aria-label="前进 30 秒" disabled={!timed||!active} icon={<ReplayForwardIcon/>} onClick={()=>skip(30)}/></Tooltip>
+              <Tooltip content="直达最后" relationship="description" withArrow><Button appearance="subtle" className={s.transportButton} aria-label="直达最后" disabled={!active} icon={<ReplayEndIcon/>} onClick={()=>seek(info.endTick)}/></Tooltip>
+            </div>
+            <div className={s.selectors}>
+              <Dropdown size="small" className={s.transportDropdown} aria-label="回放倍速" value={`${speed}×`} selectedOptions={[String(speed)]} disabled={!timed} onOptionSelect={(_,d)=>{if(!d.optionValue)return;const value=Number(d.optionValue);clock.current.setSpeed(value,performance.now(),metadata.tickRate);setSpeed(value);}}>{[.25,.5,1,1.5,2,4].map(v=><Option key={v} value={String(v)}>{`${v}×`}</Option>)}</Dropdown>
+              <Dropdown size="small" ref={roundMenu.triggerRef} className={s.transportDropdown} aria-label="回放回合" value={`R${roundNumber}`} selectedOptions={[String(roundNumber)]} listbox={{className:roundMenu.listboxClassName}} positioning={roundMenu.positioning} onOpenChange={roundMenu.onOpenChange} onOptionSelect={(_,d)=>d.optionValue&&selectRound(Number(d.optionValue))}>{metadata.rounds.map(r=><Option key={r.round} value={String(r.round)}>{`R${r.round}`}</Option>)}</Dropdown>
+            </div>
+          </div>
+          {error||!timed?<div className={s.transportRow}>
+            {error?<div role="alert"><Body1>{error}</Body1><Button size="small" onClick={()=>{failed.current.clear();setError(null);}}>重试</Button></div>:null}
+            {!timed?<Caption1>时钟不可靠，仅支持原始 tick 与事件定位，不能正常倍速播放。</Caption1>:null}
+          </div>:null}
         </div>
       </div>
       <div className={s.side} data-replay-rail>

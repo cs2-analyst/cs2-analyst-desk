@@ -89,6 +89,23 @@ export function PauseIcon(props: IconProps) {
   </Icon>;
 }
 
+/** 回放控制：回合起止与相对跳转，保持本地图标的 20px 网格。 */
+export function ReplayStartIcon(props: IconProps) {
+  return <Icon {...props}><path d="M5 5v10M14.5 5 7.5 10l7 5V5Z" /></Icon>;
+}
+
+export function ReplayEndIcon(props: IconProps) {
+  return <Icon {...props}><path d="M15 5v10M5.5 5l7 5-7 5V5Z" /></Icon>;
+}
+
+export function ReplayRewindIcon(props: IconProps) {
+  return <Icon {...props}><path d="m8 4-4 3 4 3M4 7h7a5 5 0 1 1-4.5 7" /></Icon>;
+}
+
+export function ReplayForwardIcon(props: IconProps) {
+  return <Icon {...props}><path d="m12 4 4 3-4 3M16 7H9a5 5 0 1 0 4.5 7" /></Icon>;
+}
+
 /** 侧边栏导航：比赛回放（折叠地图）。 */
 export function ReplayIcon(props: IconProps) {
   return <Icon {...props}>

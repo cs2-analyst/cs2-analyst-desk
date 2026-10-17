@@ -36,6 +36,22 @@ export function appendReplayEvents(current: readonly DesktopReplayEvent[], seen:
   return { events: next.length > limit ? next.slice(next.length - limit) : next, appended: appended.length };
 }
 
+export const reliableReplayRate = (rate: number | null): rate is number => rate !== null && Number.isFinite(rate) && rate > 0;
+
+/** Round-relative display only; the slider and clock keep their original tick precision. */
+export function replayRoundTime(tick: number, round: Pick<DesktopReplayRoundInfo, 'startTick' | 'endTick'>, rate: number | null): string {
+  if (!reliableReplayRate(rate)) return `原始 tick ${Math.round(tick)}`;
+  const seconds = Math.floor((Math.max(round.startTick, Math.min(round.endTick, tick)) - round.startTick) / rate);
+  const mm = String(Math.floor(seconds / 60) % 60).padStart(2, '0');
+  const ss = String(seconds % 60).padStart(2, '0');
+  return seconds >= 3600 ? `${Math.floor(seconds / 3600)}:${mm}:${ss}` : `${mm}:${ss}`;
+}
+
+export function replayRelativeTick(tick: number, seconds: number, round: Pick<DesktopReplayRoundInfo, 'startTick' | 'endTick'>, rate: number | null): number | null {
+  if (!reliableReplayRate(rate)) return null;
+  return Math.max(round.startTick, Math.min(round.endTick, tick + seconds * rate));
+}
+
 export class ReplayClock {
   tick: number; anchorMs = 0; speed = 1; playing = false;
   constructor(tick: number) { this.tick = tick; }

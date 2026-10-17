@@ -91,11 +91,34 @@ test('utility tabs merge the two fire grenades and never confuse missing metrics
 test('replay surface is named 比赛回放 in its title, aria label and unavailable fallback', () => {
   const metadata = { schemaVersion: 1, available: false, unavailableReason: '本场缺少可靠回放窗口', sessionId: null, matchId: 'm', map: 'de_dust2',
     resourceId: 'de_dust2', samplingVersion: 'test', tickRate: 64, maxInterpolationTicks: 8, perspective: 'global', players: [], rounds: [], excludedRounds: [] };
-  const html = render(createElement(ReplayPlayer, { metadata, initialPlayerId: '1', active: false, jump: null }));
+  const html = render(createElement(ReplayPlayer, { metadata, fileName: 'dust2.dem', initialPlayerId: '1', active: false, jump: null }));
   assert.ok(html.includes('比赛回放'));
   assert.ok(html.includes('aria-label="比赛回放"'));
   assert.equal(html.includes('地图回放'), false);
   assert.equal(html.includes('2D 地图回放'), false);
+});
+
+test('replay transport has five icon controls, round-relative time and filename without paths; unreliable rate disables timed controls', () => {
+  const metadata = { available: true, sessionId: 's', matchId: 'm', map: 'de_dust2', tickRate: 128, players: [], excludedRounds: [],
+    rounds: [{ round: 1, startTick: 12000, endTick: 23680, freezeEndTick: null, blocks: [{ index: 0, startTick: 12000, endTick: 23680 }] }] };
+  const props={metadata,fileName:'C:\\private\\'+ 'long-demo-name-'.repeat(20)+'.dem',initialPlayerId:'',active:true,jump:null};
+  const html=render(createElement(ReplayPlayer,props));
+  assert.ok(html.includes('00:00')&&html.includes('01:31'));
+  assert.ok(html.includes('data-replay-filename'));
+  assert.equal(html.includes('private'),false);
+  const controls=html.slice(html.indexOf('aria-label="回放播放控制"'),html.indexOf('</div>',html.indexOf('aria-label="回放播放控制"')));
+  assert.equal([...controls.matchAll(/<button\b/g)].length,5);
+  for(const label of ['回到最初','倒退 10 秒','播放回放','前进 30 秒','直达最后'])assert.ok(controls.includes(`aria-label="${label}"`));
+  assert.equal(controls.includes('>播放<'),false);
+  const unknown=render(createElement(ReplayPlayer,{...props,metadata:{...metadata,tickRate:null}}));
+  assert.ok(unknown.includes('原始 tick 12000')&&unknown.includes('原始 tick 23680'));
+  for(const label of ['倒退 10 秒','播放回放','前进 30 秒'])assert.match(unknown,new RegExp(`<button[^>]*aria-label="${label}"[^>]*disabled`));
+  for(const label of ['回到最初','直达最后'])assert.doesNotMatch(unknown,new RegExp(`<button[^>]*aria-label="${label}"[^>]*disabled`));
+  for(const tickRate of [0,-1,NaN,Infinity]){
+    const invalid=render(createElement(ReplayPlayer,{...props,metadata:{...metadata,tickRate}}));
+    assert.match(invalid,/aria-valuetext="原始 tick 12000"/);
+    assert.equal(invalid.includes('NaN 秒')||invalid.includes('Infinity 秒'),false);
+  }
 });
 
 test('heatmap details distinguish zero events, undefined ratios, source loss and filtered population', () => {
