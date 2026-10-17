@@ -30,6 +30,16 @@ const useStyles = makeStyles({
     '&[aria-selected="true"]::before': {
       opacity: 1,
     },
+    '@media (forced-colors: active)': {
+      '::before': {
+        // Background fills are forced to Canvas; a foreground border stays visible.
+        backgroundColor: 'transparent',
+        borderLeftColor: 'currentColor',
+        borderLeftStyle: 'solid',
+        borderLeftWidth: '3px',
+        boxSizing: 'border-box',
+      },
+    },
   },
 });
 
