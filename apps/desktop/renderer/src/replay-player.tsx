@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
-import { Badge, Body1, Button, Caption1, Dropdown, Option, Slider, Spinner, Switch, Title2, Tooltip, makeStyles, tokens } from '@fluentui/react-components';
+import { Badge, Body1, Button, Caption1, Dropdown, Slider, Spinner, Switch, Title2, Tooltip, makeStyles, tokens } from '@fluentui/react-components';
 import type { DesktopReplayChunk, DesktopReplayEvent, DesktopReplayFrame, DesktopReplayMetadata, DesktopReplayRoundInfo, DesktopReplayUtility } from '@cs2-analyst/report-contract';
 import { mapResourceState, radarHeading, resolveMapLayer, worldToRadar } from './replay-map';
 import type { ReplayMapDefinition } from './replay-map';
@@ -10,6 +10,7 @@ import { paintReplayArea, paintReplayHEBurst, replayEffectsAt } from './replay-e
 import type { ReplayEffectFrame } from './replay-effects';
 import { QuestionCircleIcon, PauseIcon, PlayIcon, ReplayStartIcon, ReplayEndIcon, ReplayRewindIcon, ReplayForwardIcon } from './icons';
 import { useRoundMenu } from './round-menu';
+import { WinOption as Option } from './winui-option';
 import { palette } from './theme';
 import { replayEffectAssetUrls } from './replay-effect-assets';
 import type { ReplayEffectImages } from './replay-effect-assets';
