@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   Badge, Body1, Button, Card, Caption1, Divider, Dropdown, FluentProvider,
-  MessageBar, MessageBarBody, Option, Spinner, Subtitle1, Tab, TabList, Title1, Title2,
+  MessageBar, MessageBarBody, Spinner, Subtitle1, Tab, TabList, Title1, Title2,
   Tooltip, makeStyles, tokens,
 } from '@fluentui/react-components';
 import type {
@@ -21,6 +21,7 @@ import { Home } from './home';
 import { Sidebar } from './sidebar';
 import type { ViewId } from './sidebar';
 import { ReplayPlayer } from './replay-player';
+import { WinOption as Option } from './winui-option';
 import { HeatmapView } from './heatmap-view';
 import type { ReplayJump } from './replay-player';
 
