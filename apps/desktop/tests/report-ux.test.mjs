@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import { createHash } from 'node:crypto';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { SSRProvider } from '@fluentui/react-components';
+import { Listbox, SSRProvider } from '@fluentui/react-components';
 
 // Transform the actual TSX components in memory, without adding a test build or UI seam.
 const require = createRequire(import.meta.url);
@@ -32,10 +32,22 @@ const { DeepReview } = await import('../renderer/src/deep-review.tsx');
 const { AnalysisViews } = await import('../renderer/src/analysis-views.tsx');
 const { HeatmapView, HeatmapLayerDetails } = await import('../renderer/src/heatmap-view.tsx');
 const { ReplayPlayer } = await import('../renderer/src/replay-player.tsx');
+const { WinOption } = await import('../renderer/src/winui-option.tsx');
 const { fixture: heatmapFixture, map: heatmapMap } = await import('./heatmap-fixture.mjs');
 const { projectMapHeatmap } = await import('../shared/heatmap.ts');
 const { utilityDamageRows, utilityThrowRows } = await import('../renderer/src/utility-display.ts');
 const render = element => renderToStaticMarkup(createElement(SSRProvider, null, element));
+
+
+test('WinUI options retain Fluent selection semantics without the default leading checkmark', () => {
+  const html = render(createElement(Listbox, { selectedOptions: ['R7'] },
+    createElement(WinOption, { value: 'R1' }, 'R1'),
+    createElement(WinOption, { value: 'R7' }, 'R7')));
+  assert.equal([...html.matchAll(/role="option"/g)].length, 2);
+  assert.equal([...html.matchAll(/aria-selected="true"/g)].length, 1);
+  assert.equal([...html.matchAll(/aria-selected="false"/g)].length, 1);
+  assert.equal(html.includes('fui-Option__checkIcon'), false, 'native check icon slot is intentionally suppressed');
+});
 
 test('heatmap missing metadata renders independent disabled layers, all filters, and honest map/source limits', () => {
   const html = render(createElement(HeatmapView, { players: [], active: true, sessionActive: true }));
