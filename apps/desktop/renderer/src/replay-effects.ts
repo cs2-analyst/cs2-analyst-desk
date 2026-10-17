@@ -106,10 +106,22 @@ const smokeLobes = [
   [-0.19, -0.43, 0.65, 0.36], [0.42, -0.30, 0.59, 0.34], [-0.36, 0.40, 0.56, 0.32],
   [0.03, 0.54, 0.51, 0.31], [0.05, -0.10, 0.50, 0.29], [-0.15, 0.16, 0.42, 0.26],
 ] as const;
-const fireLobes = [
-  [0, 0, .56], [-.39, -.12, .44], [.38, .02, .46], [-.05, -.42, .41],
-  [-.18, .39, .45], [.30, .40, .35], [.35, -.37, .34], [-.51, .30, .31], [.02, .12, .36],
+// Back-to-front groups on the ground, each containing three separate pointed flames.
+const fireGroups = [
+  [-.27, -.43, .78], [.25, -.37, .89], [-.52, -.06, .86], [.01, -.02, 1],
+  [.51, .06, .83], [-.28, .34, .93], [.24, .40, .85],
 ] as const;
+
+/** A narrow flame silhouette with a side notch and a curved pointed tip, rooted at (0,0). */
+function flameTongue(ctx: CanvasRenderingContext2D, width: number, height: number, lean: number): void {
+  ctx.beginPath(); ctx.moveTo(0, 0);
+  ctx.bezierCurveTo(-width * .70, -height * .01, -width * .82, -height * .20, -width * .55, -height * .43);
+  ctx.bezierCurveTo(-width * .48, -height * .27, -width * .20, -height * .32, -width * .26, -height * .65);
+  ctx.bezierCurveTo(-width * .04, -height * .48, width * .11, -height * .78, width * lean, -height);
+  ctx.bezierCurveTo(width * .38, -height * .82, width * .84, -height * .39, width * .58, -height * .18);
+  ctx.bezierCurveTo(width * .50, -height * .04, width * .26, height * .02, 0, 0);
+  ctx.closePath(); ctx.fill();
+}
 
 /** Canvas 2D ground area; pure tick/evidence input, unchanged 0.35s/1.4s lifecycle envelope.
  * radius is a DISPLAY radius, not observed smoke/fire geometry or visibility evidence.
@@ -124,7 +136,7 @@ export function paintReplayArea(ctx: CanvasRenderingContext2D, utility: DesktopR
   const seconds = (tick - utility.tick) / rate;
   const seed = ((utility.eventIndex * 2654435761 + utility.tick * 97 + (utility.entityId ?? 0) * 17) >>> 0) / 4294967296;
   const rotation = seed * Math.PI * 2;
-  ctx.save(); ctx.translate(x, y); ctx.rotate(rotation); ctx.globalAlpha = life;
+  ctx.save(); ctx.translate(x, y); ctx.rotate(utility.kind === 'smoke' ? rotation : 0); ctx.globalAlpha = life;
   if (utility.kind === 'smoke') {
     for (let i = 0; i < smokeLobes.length; i++) {
       const [lx, ly, size, alpha] = smokeLobes[i];
@@ -143,41 +155,40 @@ export function paintReplayArea(ctx: CanvasRenderingContext2D, utility: DesktopR
       ctx.fillStyle = gradient; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill(); ctx.restore();
     }
   } else if (utility.kind === 'fire') {
-    for (let i = 0; i < fireLobes.length; i++) {
-      const [lx, ly, size] = fireLobes[i], phase = seed * 17 + i * 2.399;
-      const wobble = Math.sin(seconds * (3.1 + i * .17) + phase);
-      const lick = Math.sin(seconds * (4.7 + i * .23) + phase * 1.9);
-      const r = radius * size;
-      ctx.save(); ctx.translate(radius * (lx + .025 * wobble), radius * (ly + .023 * lick));
-      ctx.rotate(phase + .08 * wobble); ctx.scale(1 + .065 * lick, .77 + .045 * wobble);
-      const heat = ctx.createRadialGradient(0, 0, r * .13, 0, 0, r * 1.36);
-      heat.addColorStop(0, 'rgba(255,105,12,.43)');
-      heat.addColorStop(.58, 'rgba(213,49,9,.31)');
-      heat.addColorStop(1, 'rgba(112,22,10,0)');
-      ctx.fillStyle = heat; ctx.beginPath(); ctx.arc(0, 0, r * 1.36, 0, Math.PI * 2); ctx.fill();
-      // Irregular flame perimeter laid flat on the ground; each tongue has its own phase.
-      ctx.beginPath();
-      for (let vertex = 0; vertex < 16; vertex++) {
-        const angle = vertex * Math.PI / 8;
-        const tongue = 1 + .15 * Math.sin(vertex * 2.7 + seconds * (2.5 + i * .09) + phase)
-          + .08 * Math.sin(vertex * 4.1 - seconds * 3.3 + phase);
-        const px = Math.cos(angle) * r * tongue, py = Math.sin(angle) * r * tongue;
-        if (vertex === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    // A subdued, connected ground bed anchors the flames without bright circular hotspots.
+    ctx.fillStyle = 'rgba(168,43,8,.22)'; ctx.beginPath();
+    ctx.moveTo(-radius * .86, -radius * .04);
+    ctx.bezierCurveTo(-radius * .72, -radius * .52, -radius * .17, -radius * .63, radius * .14, -radius * .51);
+    ctx.bezierCurveTo(radius * .55, -radius * .57, radius * .92, -radius * .20, radius * .84, radius * .18);
+    ctx.bezierCurveTo(radius * .74, radius * .56, radius * .22, radius * .65, -radius * .10, radius * .57);
+    ctx.bezierCurveTo(-radius * .52, radius * .66, -radius * .92, radius * .35, -radius * .86, -radius * .04);
+    ctx.closePath(); ctx.fill();
+    const mirror = seed < .5 ? -1 : 1;
+    for (let i = 0; i < fireGroups.length; i++) {
+      const [gx, gy, size] = fireGroups[i], r = radius * size;
+      ctx.save(); ctx.translate(gx * radius * mirror, gy * radius);
+      ctx.fillStyle = 'rgba(230,75,10,.20)'; ctx.beginPath();
+      ctx.ellipse(0, 0, r * .38, r * .11, 0, 0, Math.PI * 2); ctx.fill();
+      for (let flame = 0; flame < 3; flame++) {
+        const phase = seed * 17 + i * 2.399 + flame * 1.71;
+        const sway = Math.sin(seconds * (3.1 + i * .19 + flame * .37) + phase);
+        const stretch = 1 + .09 * Math.sin(seconds * (4.3 + i * .17 + flame * .29) + phase * 1.7)
+          + .035 * Math.sin(seconds * 6.1 + phase * 2.3);
+        const height = r * (flame === 1 ? .69 : flame === 0 ? .43 : .51) * stretch;
+        const width = r * (flame === 1 ? .16 : .135);
+        ctx.save(); ctx.translate((flame - 1) * r * .19, flame === 1 ? 0 : r * .025);
+        ctx.rotate((flame - 1) * .10 + sway * .055);
+        const body = ctx.createLinearGradient(0, 0, 0, -height);
+        body.addColorStop(0, 'rgba(210,49,7,.78)');
+        body.addColorStop(.28, 'rgba(255,103,9,.94)');
+        body.addColorStop(.68, 'rgba(255,163,28,.96)');
+        body.addColorStop(1, 'rgba(255,205,75,.88)');
+        ctx.fillStyle = body; flameTongue(ctx, width, height, sway * .45);
+        ctx.fillStyle = 'rgba(255,234,139,.94)';
+        flameTongue(ctx, width * .48, height * .65, sway * .30);
+        ctx.restore();
       }
-      ctx.closePath();
-      const flame = ctx.createRadialGradient(-r * .08, r * .06, 0, 0, 0, r * 1.2);
-      flame.addColorStop(0, 'rgba(255,239,113,.88)');
-      flame.addColorStop(.24, 'rgba(255,201,49,.84)');
-      flame.addColorStop(.52, 'rgba(255,126,15,.76)');
-      flame.addColorStop(.80, 'rgba(242,65,10,.50)');
-      flame.addColorStop(1, 'rgba(167,31,8,0)');
-      ctx.fillStyle = flame; ctx.fill();
-      // Short curved hot tongue: displacement/shape flicker instead of global alpha pulsing.
-      ctx.fillStyle = 'rgba(255,230,101,.64)';
-      ctx.beginPath(); ctx.moveTo(-r * .28, r * .16);
-      ctx.bezierCurveTo(-r * .44, -r * .08, r * (.04 + .10 * lick), -r * (.62 + .08 * wobble), r * .06, -r * .73);
-      ctx.bezierCurveTo(r * .16, -r * .23, r * .43, r * .07, r * .18, r * .22);
-      ctx.closePath(); ctx.fill(); ctx.restore();
+      ctx.restore();
     }
   }
   ctx.restore();

@@ -50,7 +50,7 @@ test('speed window is bounded and trails retain every bounce, level barrier and 
 const paintTrace=(kind,tick,rate=64,eventIndex=1)=>{
   const trace=[],ctx=new Proxy({}, {get:(_,key)=>(...args)=>{
     trace.push([key,...args]);
-    if(key==='createRadialGradient')return {addColorStop:(...stops)=>trace.push(['stop',...stops])};
+    if(key==='createRadialGradient'||key==='createLinearGradient')return {addColorStop:(...stops)=>trace.push(['stop',...stops])};
   },set:(_,key,value)=>{trace.push([key,typeof value==='object'?'gradient':value]);return true;}});
   paintReplayArea(ctx,{...utility(kind,100,1500),eventIndex},tick,rate,0,0,40);
   return trace;
@@ -59,6 +59,7 @@ test('smoke/fire paint has reproducible local deformation, stable plateau alpha 
   for(const kind of ['smoke','fire']){
     const first=paintTrace(kind,300),later=paintTrace(kind,311);
     assert.deepEqual(paintTrace(kind,300),first,'seek/backward/pause has no accumulated particle state');
+    assert.deepEqual(paintTrace(kind,500,128),first,'the same elapsed Replay seconds produce the same local motion at another tick rate');
     assert.notDeepEqual(first,later,'local shapes evolve with Replay time');
     assert.notDeepEqual(first,paintTrace(kind,300,64,2),'distinct effects have stable independent phases');
     assert.deepEqual(first.filter(c=>c[0]==='globalAlpha'),later.filter(c=>c[0]==='globalAlpha'),'no global brightness oscillation');
@@ -69,7 +70,9 @@ test('smoke/fire paint has reproducible local deformation, stable plateau alpha 
     assert.ok(paintTrace(kind,300,null).length>0,'unknown rate retains visual fallback');
   }
   assert.equal(paintTrace('smoke',300).filter(c=>c[0]==='createRadialGradient').length,9);
-  assert.equal(paintTrace('fire',300).filter(c=>c[0]==='bezierCurveTo').length,18,'nine independent short flame tongues');
+  const fire=paintTrace('fire',300);
+  assert.equal(fire.filter(c=>c[0]==='createLinearGradient').length,21,'seven groups each have three distinct flames');
+  assert.equal(fire.filter(c=>c[0]==='createRadialGradient'||c[0]==='arc').length,0,'flame bodies never revert to circular hotspots');
 });
 
 test('areas, bursts, blind and burn state are exact functions of the displayed tick',()=>{

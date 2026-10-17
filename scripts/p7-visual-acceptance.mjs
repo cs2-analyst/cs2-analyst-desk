@@ -14,6 +14,7 @@ import { closeApp, connectCdp, waitFor, withCleanup } from './smoke-runtime.mjs'
 import { ProcessScope } from './installed-smoke-lifecycle.mjs';
 import { settleUi } from './window-shell-checks.mjs';
 import { replayTrajectorySample, replayTrajectoryTrail } from '../apps/desktop/renderer/src/replay-effects.ts';
+import { replayMapDefinitions, worldToRadar } from '../apps/desktop/shared/replay-map-geometry.ts';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const label = process.env.P7_VISUAL_LABEL ?? 'after';
@@ -116,6 +117,23 @@ try {
     await round(2);
     for (let i=0;i<5;i++) { await seek(fire.tick+64+i*11); await shot(`fire-${i}-${width}`); }
     assert.ok(await evaluate('document.documentElement.scrollHeight-innerHeight<=1'));
+  }
+  if (process.env.P7_CAPTURE_FIRE === '1') {
+    // A real 1x playback excerpt, captured from Electron's compositor, for human animation review.
+    await round(2); await choose('回放倍速', '1×'); await seek(fire.tick + 32);
+    const point = worldToRadar(replayMapDefinitions.find(map=>map.id==='de_dust2'), {x:fire.position[0],y:fire.position[1]});
+    const clip = await evaluate(`(()=>{const r=${canvas}.getBoundingClientRect();return {x:Math.round(r.x+${point.x}/1024*r.width-100),y:Math.round(r.y+${point.y}/1024*r.height-80),width:200,height:160,scale:1};})()`);
+    metrics.firePlaybackFrames=[];
+    await evaluate("document.querySelector('[aria-label=播放回放]').click()");
+    for(let frame=0;frame<16;frame++) {
+      await delay(100);
+      const state=await evaluate(`({tick:Number(${canvas}.dataset.tick),time:performance.now()})`);
+      const shot=await page.send('Page.captureScreenshot',{format:'png',clip,captureBeyondViewport:false});
+      const path=join(qa,`fire-play-${String(frame).padStart(2,'0')}.png`);
+      writeFileSync(path,Buffer.from(shot.data,'base64'));metrics.firePlaybackFrames.push({...state,path});
+    }
+    await evaluate("document.querySelector('[aria-label=暂停回放]').click()");
+    assert.ok(metrics.firePlaybackFrames.at(-1).tick>metrics.firePlaybackFrames[0].tick);
   }
   await round(1); await seek(smoke.tick+160);
   const before = await bitmap();
