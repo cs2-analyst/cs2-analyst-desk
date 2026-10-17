@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import { Badge, Body1, Button, Caption1, Dropdown, Option, Slider, Spinner, Switch, Title2, Tooltip, makeStyles, tokens } from '@fluentui/react-components';
-import type { DesktopReplayChunk, DesktopReplayEvent, DesktopReplayFrame, DesktopReplayMetadata, DesktopReplayRoundInfo } from '@cs2-analyst/report-contract';
+import type { DesktopReplayChunk, DesktopReplayEvent, DesktopReplayFrame, DesktopReplayMetadata, DesktopReplayRoundInfo, DesktopReplayUtility } from '@cs2-analyst/report-contract';
 import { mapResourceState, radarHeading, resolveMapLayer, worldToRadar } from './replay-map';
+import type { ReplayMapDefinition } from './replay-map';
 import { replayMapAssets } from './replay-map-assets';
 import { appendReplayEvents, nextReplayRound, replayBlockAt, replayDisplayFrame, ReplayChunkCache, ReplayClock, resolveReplayPlayerId } from './replay-state';
+import { replayEffectsAt } from './replay-effects';
+import type { ReplayEffectFrame } from './replay-effects';
 import { QuestionCircleIcon, PauseIcon, PlayIcon } from './icons';
 import { useRoundMenu } from './round-menu';
 import { palette } from './theme';
@@ -126,6 +129,140 @@ function HelpTip({ label, content }: { label: string; content: string }) {
 const blockAt=replayBlockAt;
 const timeText=(tick:number,round:DesktopReplayRoundInfo,rate:number|null)=>rate===null?`原始 tick ${Math.round(tick)}`:`+${((tick-round.startTick)/rate).toFixed(2)} 秒`;
 
+const colorRgb = (hex: string): [number, number, number] => {
+  const value = Number.parseInt(hex.slice(1), 16);
+  return [value >> 16 & 255, value >> 8 & 255, value & 255];
+};
+/** Canvas alpha compositing is intentional: areas stay translucent so the radar remains readable. */
+const rgba = (hex: string, alpha: number) => {
+  const [r, g, b] = colorRgb(hex);
+  return `rgba(${r},${g},${b},${Math.max(0, Math.min(1, alpha)).toFixed(3)})`;
+};
+const mapRadius = (map: { scale: number; width: number }, world: number) => world / map.scale * map.width / 1024;
+const emptyEffects = (): ReplayEffectFrame => ({ flying: [], smoke: [], fire: [], flashes: [], explosions: [], blinds: new Set(), burns: new Set() });
+const effectColor = (kind: DesktopReplayUtility['kind']) => kind === 'smoke' ? palette.utility.smoke
+  : kind === 'flashbang' ? palette.utility.flashbang : kind === 'hegrenade' ? palette.utility.he
+  : kind === 'fire' ? palette.utility.incendiary : palette.utility.decoy;
+function radial(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number, color: string, alpha: number, inner = 0.05) {
+  if (!(radius > 0) || !(alpha > 0)) return;
+  const gradient = ctx.createRadialGradient(x, y, radius * inner, x, y, radius);
+  gradient.addColorStop(0, rgba(color, alpha));
+  gradient.addColorStop(0.55, rgba(color, alpha * 0.55));
+  gradient.addColorStop(1, rgba(color, 0));
+  ctx.fillStyle = gradient;
+  ctx.beginPath(); ctx.arc(x, y, radius, 0, Math.PI * 2); ctx.fill();
+}
+/** Layer 2: persistent smoke/fire areas. Both fade in/out from real ticks and never hide players. */
+function drawArea(ctx: CanvasRenderingContext2D, map: ReplayMapDefinition, layerId: string,
+  utility: DesktopReplayUtility, tick: number, rate: number | null) {
+  if (!utility.position || resolveMapLayer(map, utility.position[2]) !== layerId) return;
+  const point = worldToRadar(map, { x: utility.position[0], y: utility.position[1] });
+  if (!point) return;
+  const fadeIn = Math.min(1, Math.max(0, (tick - utility.tick + 1) / Math.max(1, (rate ?? 64) * 0.35)));
+  const fadeOut = Math.min(1, Math.max(0, (utility.endTick - tick + 1) / Math.max(1, (rate ?? 64) * 1.4)));
+  const life = Math.min(fadeIn, fadeOut);
+  if (life <= 0) return;
+  if (utility.kind === 'smoke') {
+    const radius = mapRadius(map, 144);
+    radial(ctx, point.x, point.y, radius * 1.12, palette.utility.smoke, 0.34 * life, 0.1);
+    radial(ctx, point.x + radius * 0.34, point.y - radius * 0.28, radius * 0.72, palette.utility.smoke, 0.18 * life, 0.12);
+    return;
+  }
+  if (utility.kind !== 'fire') return;
+  const radius = mapRadius(map, 150), phase = tick * 0.37;
+  radial(ctx, point.x, point.y, radius * 1.18, palette.utility.incendiary, 0.30 * life, 0.05);
+  for (let index = 0; index < 3; index++) {
+    const angle = phase + index * 2.1;
+    const offset = radius * (0.16 + 0.11 * Math.sin(phase * 0.7 + index));
+    radial(ctx, point.x + Math.cos(angle) * offset, point.y + Math.sin(angle) * offset * 0.75,
+      radius * (0.38 + 0.09 * Math.sin(phase * 1.3 + index)), index === 1 ? palette.utility.molotov : palette.utility.incendiary,
+      (0.42 - index * 0.06) * life, 0.12);
+  }
+  radial(ctx, point.x, point.y, radius * 0.32, palette.utility.incendiary, 0.50 * life, 0.05);
+}
+/** Layer 3: only the most recent flight, thinning and fading towards the tail. */
+function drawTrail(ctx: CanvasRenderingContext2D, map: ReplayMapDefinition, layerId: string,
+  trail: { x: number; y: number; z: number }[], color: string) {
+  if (trail.length < 2) return;
+  ctx.lineCap = 'round';
+  for (let index = 0; index < trail.length - 1; index++) {
+    const a = trail[index], b = trail[index + 1];
+    if (resolveMapLayer(map, a.z) !== layerId || resolveMapLayer(map, b.z) !== layerId) continue;
+    const from = worldToRadar(map, { x: a.x, y: a.y }), to = worldToRadar(map, { x: b.x, y: b.y });
+    if (!from || !to) continue;
+    const head = (index + 1) / trail.length;
+    const width = 1.8 + 4.2 * head;
+    ctx.globalAlpha = 0.28 + 0.54 * Math.pow(head, 1.2);
+    // A faint dark under-stroke keeps the trail readable over both dark and sand-coloured
+    // radar areas without turning it into an opaque line.
+    ctx.strokeStyle = 'rgba(17,24,33,0.45)'; ctx.lineWidth = width + 1.6;
+    ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke();
+    ctx.strokeStyle = color; ctx.lineWidth = width;
+    ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+}
+/** Layer 4: small projectile glyphs, deliberately compact so they never mask the map. */
+function drawProjectile(ctx: CanvasRenderingContext2D, map: ReplayMapDefinition, layerId: string,
+  utility: DesktopReplayUtility, x: number, y: number, z: number) {
+  if (resolveMapLayer(map, z) !== layerId) return;
+  const point = worldToRadar(map, { x, y });
+  if (!point) return;
+  const color = effectColor(utility.kind), size = 7.2;
+  ctx.save(); ctx.translate(point.x, point.y); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.fillStyle = 'rgba(17,24,33,0.80)'; ctx.beginPath(); ctx.arc(0, 0, size + 2.2, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 1.35;
+  if (utility.kind === 'smoke') {
+    ctx.beginPath(); ctx.arc(-1.9, 0.5, 2.2, 0, Math.PI * 2); ctx.arc(1.2, -0.8, 2.7, 0, Math.PI * 2); ctx.arc(2.1, 1.6, 1.8, 0, Math.PI * 2); ctx.fill();
+  } else if (utility.kind === 'flashbang') {
+    ctx.beginPath(); for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; ctx.moveTo(Math.cos(a) * 2.1, Math.sin(a) * 2.1); ctx.lineTo(Math.cos(a) * size, Math.sin(a) * size); } ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, 0, 1.9, 0, Math.PI * 2); ctx.fill();
+  } else if (utility.kind === 'hegrenade') {
+    ctx.beginPath(); ctx.arc(0, 0, 3.5, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-2.4, 0); ctx.lineTo(2.4, 0); ctx.moveTo(0, -2.4); ctx.lineTo(0, 2.4); ctx.stroke();
+  } else if (utility.kind === 'fire') {
+    ctx.beginPath(); ctx.moveTo(0, 4.6); ctx.bezierCurveTo(-4.6, 1.4, -2.2, -1.8, -0.6, -4.8); ctx.bezierCurveTo(1.6, -1.2, 3.8, 0.4, 3.0, 2.6); ctx.bezierCurveTo(2.6, 3.8, 1.6, 4.6, 0, 4.6); ctx.fill();
+  } else {
+    ctx.beginPath(); ctx.arc(0, 0, 3.1, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, 0, 1.3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(2.2, -2.2); ctx.lineTo(4.4, -4.4); ctx.stroke();
+  }
+  ctx.restore();
+}
+/** Layer 4: short, bright-but-bounded bursts. Players are painted later. */
+function drawBurst(ctx: CanvasRenderingContext2D, map: ReplayMapDefinition, layerId: string,
+  utility: DesktopReplayUtility, progress: number) {
+  if (!utility.position || resolveMapLayer(map, utility.position[2]) !== layerId) return;
+  const point = worldToRadar(map, { x: utility.position[0], y: utility.position[1] });
+  if (!point) return;
+  if (utility.kind === 'flashbang') {
+    const radius = mapRadius(map, 120 + 620 * progress);
+    radial(ctx, point.x, point.y, radius, '#ffffff', Math.pow(1 - progress, 1.7) * 0.58, 0.02);
+    return;
+  }
+  const radius = mapRadius(map, 55 + 170 * progress), alpha = (1 - progress) * 0.55;
+  radial(ctx, point.x, point.y, radius, palette.utility.he, alpha, 0.02);
+  ctx.globalAlpha = (1 - progress) * 0.75; ctx.strokeStyle = palette.utility.he; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(point.x, point.y, radius * 0.86, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1;
+}
+/** Layer 6: player status overlays above every player point. */
+function drawStatusIcon(ctx: CanvasRenderingContext2D, x: number, y: number, kind: 'blind' | 'burn') {
+  ctx.save(); ctx.translate(x, y); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  const outline = 'rgba(17,24,33,0.92)';
+  if (kind === 'blind') {
+    ctx.strokeStyle = outline; ctx.lineWidth = 4.4; ctx.beginPath(); ctx.ellipse(0, 0, 7.2, 4.4, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-6.8, 6.8); ctx.lineTo(6.8, -6.8); ctx.stroke();
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.9; ctx.beginPath(); ctx.ellipse(0, 0, 7.2, 4.4, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-6.8, 6.8); ctx.lineTo(6.8, -6.8); ctx.stroke();
+    ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(0, 0, 1.7, 0, Math.PI * 2); ctx.fill();
+  } else {
+    ctx.strokeStyle = outline; ctx.lineWidth = 4.4;
+    ctx.beginPath(); ctx.moveTo(0, 7.2); ctx.bezierCurveTo(-6.2, 2.7, -3.2, -2.7, -0.9, -7.1); ctx.bezierCurveTo(1.6, -2.4, 5.8, -0.2, 4.4, 3.1); ctx.bezierCurveTo(3.8, 5.3, 2.2, 7.2, 0, 7.2); ctx.stroke();
+    ctx.fillStyle = palette.utility.incendiary; ctx.beginPath(); ctx.moveTo(0, 7.2); ctx.bezierCurveTo(-6.2, 2.7, -3.2, -2.7, -0.9, -7.1); ctx.bezierCurveTo(1.6, -2.4, 5.8, -0.2, 4.4, 3.1); ctx.bezierCurveTo(3.8, 5.3, 2.2, 7.2, 0, 7.2); ctx.fill();
+  }
+  ctx.restore();
+}
+
 export function ReplayPlayer({ metadata, initialPlayerId, active, jump }: {
   metadata:DesktopReplayMetadata;initialPlayerId:string;active:boolean;jump:ReplayJump|null;
 }) {
@@ -227,9 +364,26 @@ export function ReplayPlayer({ metadata, initialPlayerId, active, jump }: {
     const ctx=target.getContext('2d');if(!ctx)return;
     const started=performance.now();ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,target.width,target.height);
     target.dataset.tick=String(at);target.dataset.playerCount='0';
+    // Effects are a pure function of the chunk and the current tick: no accumulation, so
+    // seek/pause/round changes cannot leave a stale area or reveal a future one.
+    const effects=current&&currentChunk?replayEffectsAt(currentChunk,at,metadata.tickRate):emptyEffects();
+    target.dataset.effects=String(effects.smoke.length+effects.fire.length+effects.flashes.length+effects.explosions.length);
+    target.dataset.smoke=String(effects.smoke.length);target.dataset.fire=String(effects.fire.length);
+    target.dataset.flying=String(effects.flying.length);target.dataset.flashes=String(effects.flashes.length);
+    target.dataset.explosions=String(effects.explosions.length);target.dataset.blind=String(effects.blinds.size);target.dataset.burn=String(effects.burns.size);
     if(!view.map||!current||!view.imageReady||!view.layerId)return;
-    const map=view.map;ctx.setTransform(target.width/map.width,0,0,target.height/map.height,0,0);
-    let drawnPlayers=0;
+    const map=view.map,layerId=view.layerId;ctx.setTransform(target.width/map.width,0,0,target.height/map.height,0,0);
+    // Layer 2: persistent areas. They are translucent and painted before every player mark.
+    for(const utility of effects.smoke)drawArea(ctx,map,layerId,utility,at,metadata.tickRate);
+    for(const utility of effects.fire)drawArea(ctx,map,layerId,utility,at,metadata.tickRate);
+    // Layer 3: recent trails only, then layer 4 projectile icons/bursts.
+    for(const flying of effects.flying)drawTrail(ctx,map,layerId,flying.trail,effectColor(flying.utility.kind));
+    for(const flying of effects.flying)drawProjectile(ctx,map,layerId,flying.utility,flying.sample.x,flying.sample.y,flying.sample.z);
+    for(const burst of effects.flashes)drawBurst(ctx,map,layerId,burst.utility,burst.progress);
+    for(const burst of effects.explosions)drawBurst(ctx,map,layerId,burst.utility,burst.progress);
+    // Layer 5: players and their existing discrete markers.
+    let drawnPlayers=0,selectedPoint:{x:number;y:number}|null=null;
+    const statusMarks:{x:number;y:number;kind:'blind'|'burn'}[]=[];
     for(const p of current.players){
       if(p[7]!==true||p[2]===null||p[3]===null||resolveMapLayer(map,p[4])!==view.layerId)continue;
       const point=worldToRadar(map,{x:p[2],y:p[3]});if(!point||point.x<0||point.y<0||point.x>map.width||point.y>map.height)continue;
@@ -239,14 +393,16 @@ export function ReplayPlayer({ metadata, initialPlayerId, active, jump }: {
       ctx.beginPath();if(p[8]==='CT')ctx.rect(point.x-7,point.y-7,14,14);else ctx.arc(point.x,point.y,chosen?9:7,0,Math.PI*2);ctx.fill();ctx.stroke();
       if(p[5]!==null){const heading=radarHeading(p[5]);if(heading){ctx.strokeStyle=color;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(point.x+heading.x*10,point.y+heading.y*10);ctx.lineTo(point.x+heading.x*22,point.y+heading.y*22);ctx.stroke();}}
       ctx.font='bold 12px Segoe UI';ctx.textAlign='center';ctx.fillStyle=palette.replay.surface;ctx.fillText(String(p[0]+1),point.x,point.y+4);
-      if(chosen){ctx.fillStyle=palette.replay.selection;ctx.font='14px Segoe UI';ctx.fillText(metadata.players[p[0]]?.nickname.slice(0,22)??'',point.x,point.y-14);}
+      const playerId=metadata.players[p[0]]?.id;
+      if(playerId&&effects.blinds.has(playerId))statusMarks.push({x:point.x+13,y:point.y-10,kind:'blind'});
+      if(playerId&&effects.burns.has(playerId))statusMarks.push({x:point.x+13,y:point.y+10,kind:'burn'});
+      if(chosen)selectedPoint={x:point.x,y:point.y};
     }
     const bomb=current.bomb;
     if(bomb.position&&resolveMapLayer(map,bomb.position[2])===view.layerId){const p=worldToRadar(map,{x:bomb.position[0],y:bomb.position[1]});if(p){ctx.strokeStyle=palette.replay.bomb;ctx.lineWidth=3;ctx.strokeRect(p.x-8,p.y-8,16,16);}}
-    for(const event of currentChunk?.events??[]){
-      if(event.type!=='utility'||!event.position||Math.floor(at)!==event.tick||resolveMapLayer(map,event.position[2])!==view.layerId)continue;
-      const p=worldToRadar(map,{x:event.position[0],y:event.position[1]});if(p){ctx.strokeStyle=palette.utility.smoke;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(p.x-5,p.y);ctx.lineTo(p.x+5,p.y);ctx.moveTo(p.x,p.y-5);ctx.lineTo(p.x,p.y+5);ctx.stroke();}
-    }
+    // Layer 6: real blind/burn status above all player points; layer 7: selection label.
+    for(const mark of statusMarks)drawStatusIcon(ctx,mark.x,mark.y,mark.kind);
+    if(selectedPoint){ctx.textAlign='center';ctx.fillStyle=palette.replay.selection;ctx.font='14px Segoe UI';ctx.fillText(metadata.players.find(player=>player.id===view.selectedPlayerId)?.nickname.slice(0,22)??'',selectedPoint.x,selectedPoint.y-16);}
     const times=drawTimes.current;times.push(performance.now()-started);if(times.length>120)times.shift();
     target.dataset.playerCount=String(drawnPlayers);
     target.dataset.drawP95=String([...times].sort((a,b)=>a-b)[Math.floor(times.length*.95)]??0);
@@ -354,7 +510,8 @@ export function ReplayPlayer({ metadata, initialPlayerId, active, jump }: {
           <MapInfoTip content={<div className={s.tipContent}>
             <span>全局比赛观察视角 · 朝向仅为记录方向，不表示看到了敌人。位置插值仅用于显示。</span>
             <span>CT 蓝方块 / T 橙圆点；白框为选中玩家。</span>
-            <span>炸弹标记为事件关联位置；道具十字仅标示已记录生效点，不表示飞行轨迹或烟火范围。</span>
+            <span>炸弹标记为事件关联位置；道具图标沿回放记录的真实垂直投影轨迹移动。</span>
+            <span>烟雾/火焰按真实生效与结束记录显示；闪光/手雷为短促展示动画。拖尾只覆盖最近一段飞行；没有可靠轨迹时只显示效果，不伪造路径。</span>
             {map&&map.layers.length>1?<span>{layer?`当前${layer.label}；其他层点位隐藏。`:'选中玩家楼层未知，请手动选层。'}未知 Z 与共享高度边界不自动归层。</span>:null}
             {info.coverage==='partial'?<span>该回合存在缺失或歧义状态；断点不连接，未知状态不补齐。</span>:null}
           </div>} />

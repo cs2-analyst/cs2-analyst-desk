@@ -59,3 +59,51 @@ test('player count and total requested player samples are bounded before native 
   assert.throws(()=>planReplay(m),/player budget/);m.players.pop();m.rounds[0].endTick=100000;
   assert.throws(()=>planReplay(m),/sample budget/);m.players=[];assert.throws(()=>planReplay(m),/player budget/);
 });
+test('utility effects use real projectile runs and real expiry/blind/burn windows',()=>{
+  const m=fixture();m.rounds[0].endTick=400;
+  m.rounds[0].events=[
+    {tick:10,type:'weapon_fire',shooter:A,shooterSide:'T',weapon:'weapon_smokegrenade'},
+    {tick:60,type:'utility',utility:'smoke',action:'detonate',thrower:A,throwerSide:'T',entityId:7,position:{x:100,y:0,z:0}},
+    {tick:100,type:'weapon_fire',shooter:A,shooterSide:'T',weapon:'weapon_molotov'},
+    {tick:140,type:'utility',utility:'fire',action:'start_burn',thrower:A,throwerSide:'T',entityId:9,position:{x:200,y:0,z:0}},
+    {tick:150,type:'weapon_fire',shooter:A,shooterSide:'T',weapon:'weapon_flashbang'},
+    {tick:160,type:'utility',utility:'flashbang',action:'detonate',thrower:A,throwerSide:'T',entityId:15,position:{x:300,y:0,z:0}},
+    {tick:160,type:'flash',attacker:A,victim:B,attackerSide:'T',victimSide:'CT',blindDurationSeconds:2,entityId:15},
+    {tick:200,type:'damage',attacker:A,victim:B,attackerSide:'T',victimSide:'CT',healthDamage:5,armorDamage:0,healthRemaining:95,armorRemaining:0,weapon:'inferno'},
+    {tick:213,type:'damage',attacker:A,victim:B,attackerSide:'T',victimSide:'CT',healthDamage:3,armorDamage:0,healthRemaining:92,armorRemaining:0,weapon:'inferno'},
+    {tick:295,type:'weapon_fire',shooter:A,shooterSide:'T',weapon:'weapon_smokegrenade'},
+    {tick:300,type:'utility',utility:'hegrenade',action:'detonate',thrower:A,throwerSide:'T',entityId:11,position:{x:400,y:0,z:0}},
+    {tick:310,type:'utility',utility:'smoke',action:'detonate',thrower:A,throwerSide:'T',entityId:7,position:{x:500,y:0,z:0}},
+    {tick:350,type:'utility',utility:'decoy',action:'start_decoy',thrower:A,throwerSide:'T',entityId:13,position:{x:600,y:0,z:0}},
+    {tick:380,type:'utility',utility:'smoke',action:'detonate',thrower:A,throwerSide:'T',entityId:999,position:{x:700,y:0,z:0}},
+  ];
+  const p=planReplay(m);
+  const projectile=(tick,id,type)=>({tick,grenade_entity_id:id,grenade_type:type,steamid:A,name:'',x:tick,y:0,z:tick});
+  const projectiles=[];
+  for(let tick=20;tick<=70;tick++)projectiles.push(projectile(tick,7,'CSmokeGrenadeProjectile'));
+  for(let tick=110;tick<=139;tick++)projectiles.push(projectile(tick,99,'CMolotovProjectile'));
+  for(let tick=150;tick<=159;tick++)projectiles.push(projectile(tick,15,'CFlashbangProjectile'));
+  for(let tick=290;tick<=299;tick++)projectiles.push(projectile(tick,11,'CHEGrenadeProjectile'));
+  for(let tick=300;tick<=309;tick++)projectiles.push(projectile(tick,7,'CSmokeGrenadeProjectile'));
+  for(let tick=330;tick<=349;tick++)projectiles.push(projectile(tick,13,'CDecoyProjectile'));
+  const out=buildReplay(m,p,all(p),{projectiles,expiries:[
+    {event_name:'smokegrenade_expired',tick:250,entityid:7},
+    {event_name:'smokegrenade_expired',tick:350,entityid:7},
+    {event_name:'inferno_expire',tick:210,entityid:9},
+  ]});
+  const effects=out.rounds[0].utilities,at=tick=>effects.find(effect=>effect.tick===tick);
+  assert.equal(effects.length,7);
+  const smoke=at(60);assert.equal(smoke.flight.startTick,10);assert.equal(smoke.flight.endTick,60);
+  assert.ok(!smoke.flight.points.some(point=>point[0]>60),'post-detonation projectile rows never join the flight');
+  assert.deepEqual(smoke.flight.points[0],[10,10,0,0]);
+  assert.equal(smoke.endTick,250);assert.equal(smoke.endSource,'observed');
+  const fire=at(140);assert.equal(fire.variant,'molotov');assert.equal(fire.flight.startTick,100);
+  assert.equal(fire.flight.endTick,140);assert.equal(fire.endTick,210);assert.equal(fire.endSource,'observed');
+  const flash=at(160);assert.equal(flash.flight.startTick,150);assert.equal(flash.endTick,192);assert.equal(flash.endSource,'nominal');
+  const he=at(300);assert.equal(he.flight.startTick,290);assert.equal(he.endTick,364);assert.equal(he.endSource,'nominal');
+  const secondSmoke=at(310);assert.equal(secondSmoke.flight.startTick,295,'reused entity ids resolve to the nearest run');
+  const decoy=at(350);assert.equal(decoy.endTick,350);assert.equal(decoy.endSource,'observed');
+  const unmatched=at(380);assert.equal(unmatched.flight,null,'no run is fabricated');assert.equal(unmatched.endSource,'round-end');
+  assert.deepEqual(out.rounds[0].blinds,[{victimId:B,attackerId:A,startTick:160,endTick:288}]);
+  assert.deepEqual(out.rounds[0].burns,[{victimId:B,startTick:200,endTick:226}]);
+});

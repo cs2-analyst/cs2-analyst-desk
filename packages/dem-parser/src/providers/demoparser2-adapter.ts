@@ -30,7 +30,8 @@ export class Demoparser2Adapter implements ParserAdapter {
   private async parseEvidence(filePath: string, options: SpatialSamplingOptions, includeReplay: boolean): Promise<ReplayParseResult> {
     const started = performance.now();
     const { bytes, native } = await this.readInput(filePath);
-    const match = convertToMatch(this.parseInput(bytes, native));
+    const input = this.parseInput(bytes, native);
+    const match = convertToMatch(input);
     const parsed = performance.now();
     const plan = planSpatialSampling(match, options);
     const ticks = [...plan.coreTicks, ...plan.optionalTicks].sort((a, b) => a - b);
@@ -50,8 +51,17 @@ export class Demoparser2Adapter implements ParserAdapter {
     if (includeReplay) {
       try {
         const replayPlan = planReplay(match);
+        // Projectile rows are optional additive evidence. A native failure degrades flights to
+        // effect-only; it never rejects the accepted replay frames or the match report.
+        let projectiles: unknown = [];
+        if (replayPlan.ticks.length) {
+          try { projectiles = native.parseGrenades(bytes, [], false) as unknown; } catch { projectiles = []; }
+        }
         replay = buildReplay(match, replayPlan, replayPlan.ticks.length ? native.parseTicks(bytes, replayFields, replayPlan.ticks,
-          [...new Set(match.players.map(player=>player.steamId))]) : []);
+          [...new Set(match.players.map(player=>player.steamId))]) : [], {
+          projectiles,
+          expiries: (input as { effectEvents?: unknown }).effectEvents,
+        });
         if (!replay.rounds.length) { replay = null; replayUnavailableReason = '没有可靠的正式回合窗口。'; }
       } catch { replayUnavailableReason = '回放采样失败或超出本机会话预算；比赛报告仍可用。'; }
     }
@@ -81,9 +91,11 @@ export class Demoparser2Adapter implements ParserAdapter {
         "player_hurt",
         "weapon_fire",
         "smokegrenade_detonate",
+        "smokegrenade_expired",
         "hegrenade_detonate",
         "flashbang_detonate",
         "inferno_startburn",
+        "inferno_expire",
         "decoy_started",
         "player_blind",
         "bomb_pickup",
@@ -106,11 +118,17 @@ export class Demoparser2Adapter implements ParserAdapter {
         && typeof event.tick === "number" && Number.isSafeInteger(event.tick) && event.tick >= 0)
       .map(event => event.tick as number))].sort((a, b) => a - b);
 
+    // Replay-only expiry evidence. Remove these rows from the Match input so the frozen
+    // Match/Analytics player roster and event list are bit-for-bit unchanged.
+    const expiryNames = new Set(["smokegrenade_expired", "inferno_expire"]);
+    const effectEvents = (events as Record<string, unknown>[]).filter(event => expiryNames.has(String(event.event_name)));
+    const matchEvents = (events as Record<string, unknown>[]).filter(event => !expiryNames.has(String(event.event_name)));
     return {
       id: createHash("sha256").update(bytes).digest("hex"),
       header: native.parseHeader(bytes) as unknown,
       players: native.parsePlayerInfo(bytes) as unknown,
-      events,
+      events: matchEvents,
+      effectEvents,
       stateRows: boundaryTicks.length > 0
         ? native.parseTicks(bytes, ["team_num", "is_alive"], boundaryTicks) as unknown
         : [],
