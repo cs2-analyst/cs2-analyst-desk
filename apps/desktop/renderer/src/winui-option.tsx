@@ -10,7 +10,7 @@ const useStyles = makeStyles({
   option: {
     position: 'relative',
     // Reserve identical space for every row, selected or not.
-    paddingLeft: '24px',
+    paddingLeft: '24px !important',
     '::before': {
       content: '""',
       position: 'absolute',
