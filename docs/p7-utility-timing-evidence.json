@@ -1,0 +1,1166 @@
+{
+  "fixture": ".demo/dust2.dem",
+  "sha256": "db90fe85aab023a1d2c8a5996182e6120d98ef494f02a070b17982b235e4958c",
+  "tickRate": 64,
+  "sourceSha": "c247469102196e474e7162e2536ee815fd5c0abb",
+  "baselineSha": "c247469102196e474e7162e2536ee815fd5c0abb",
+  "baselineDescriptionProvenance": "immutable baseline ReplaySession executed with the same current native-parsed MatchReplay; all event fields except description compared for equality",
+  "nativeBinarySha256": "132d664125b60542dc80dc8bc270e2c8e181a0a55433fdac5be285ef4d9b0de1",
+  "verdict": "CONFIRMED BUG FIXED",
+  "conclusion": "Utility effect and list ticks are correctly preserved detonation/start ticks. Calling the effect-timed list entry a throw is a display-copy semantic error; preserve ticks and label the observed effect action.",
+  "counts": {
+    "smoke": 182,
+    "flashbang": 229,
+    "hegrenade": 82,
+    "fire": 138,
+    "decoy": 1
+  },
+  "nativeRows": 367840,
+  "continuousRuns": 633,
+  "auditedEffects": 632,
+  "highConfidenceAssociations": 632,
+  "insufficientAssociations": 0,
+  "nativeGrenadeThrownRecords": 0,
+  "allMatchReplayDesktopTicksEqualNativeEffect": true,
+  "firstObservationMinusWeaponFireTicks": [
+    6,
+    7,
+    13,
+    14
+  ],
+  "ambiguous": [],
+  "samples": [
+    {
+      "round": 1,
+      "roundStartTick": 1016,
+      "player": "karrigan",
+      "steamId": "76561197989430253",
+      "kind": "smoke",
+      "variant": null,
+      "weaponFireTick": 3514,
+      "projectileFirstTick": 3527,
+      "projectileLastTick": 5270,
+      "nativeEffectTick": 3859,
+      "matchEventTick": 3859,
+      "replayEffectTick": 3859,
+      "desktopListTick": 3859,
+      "beforeDescription": "karrigan 投掷了 smoke",
+      "desktopListDescription": "karrigan 的 smoke 爆开",
+      "expectedDescription": "karrigan 的 smoke 爆开",
+      "relativeListSeconds": 44.42188,
+      "flightStartTick": 3514,
+      "throwToFirstSeconds": 0.203125,
+      "throwToEffectSeconds": 5.390625,
+      "effectEntityId": 141,
+      "projectileEntityId": 141,
+      "runCandidates": 1,
+      "throwCandidates": 1,
+      "entityReuseRuns": 2,
+      "simultaneousOtherThrowers": 0,
+      "simultaneousOtherThrowRecords": [],
+      "sameOwnerSameKindNearbyThrows": [],
+      "endpointDistanceWorldUnits": 0.014247035826695498,
+      "association": "effect entity + projectile class + unique continuous run containing effect tick (or ending within 2 ticks) + matching native owner",
+      "confidence": "high",
+      "nativeEffect": {
+        "entityid": 141,
+        "event_name": "smokegrenade_detonate",
+        "is_warmup_period": false,
+        "tick": 3859,
+        "total_rounds_played": 0,
+        "user_name": " karrigan",
+        "user_steamid": "76561197989430253",
+        "user_team_num": 2,
+        "x": -439.9175720214844,
+        "y": 1640.2835693359375,
+        "z": -123.85208129882812
+      },
+      "nativeThrow": {
+        "event_name": "weapon_fire",
+        "is_warmup_period": false,
+        "silenced": false,
+        "tick": 3514,
+        "total_rounds_played": 0,
+        "user_name": " karrigan",
+        "user_steamid": "76561197989430253",
+        "user_team_num": 2,
+        "weapon": "weapon_smokegrenade"
+      },
+      "nativeProjectileFirstRows": [
+        {
+          "grenade_entity_id": 141,
+          "grenade_type": "CSmokeGrenadeProjectile",
+          "name": " karrigan",
+          "steamid": "76561197989430253",
+          "tick": 3527,
+          "x": -452.65625,
+          "y": -634.875,
+          "z": 217.625
+        },
+        {
+          "grenade_entity_id": 141,
+          "grenade_type": "CSmokeGrenadeProjectile",
+          "name": " karrigan",
+          "steamid": "76561197989430253",
+          "tick": 3528,
+          "x": -452.375,
+          "y": -624.875,
+          "z": 225.15625
+        }
+      ],
+      "nativeProjectileLastRows": [
+        {
+          "grenade_entity_id": 141,
+          "grenade_type": "CSmokeGrenadeProjectile",
+          "name": " karrigan",
+          "steamid": "76561197989430253",
+          "tick": 5269,
+          "x": -439.90625,
+          "y": 1640.28125,
+          "z": -123.84375
+        },
+        {
+          "grenade_entity_id": 141,
+          "grenade_type": "CSmokeGrenadeProjectile",
+          "name": " karrigan",
+          "steamid": "76561197989430253",
+          "tick": 5270,
+          "x": -439.90625,
+          "y": 1640.28125,
+          "z": -123.84375
+        }
+      ],
+      "nativeProjectileEffectRows": [
+        {
+          "grenade_entity_id": 141,
+          "grenade_type": "CSmokeGrenadeProjectile",
+          "name": " karrigan",
+          "steamid": "76561197989430253",
+          "tick": 3858,
+          "x": -439.90625,
+          "y": 1640.28125,
+          "z": -123.84375
+        },
+        {
+          "grenade_entity_id": 141,
+          "grenade_type": "CSmokeGrenadeProjectile",
+          "name": " karrigan",
+          "steamid": "76561197989430253",
+          "tick": 3859,
+          "x": -439.90625,
+          "y": 1640.28125,
+          "z": -123.84375
+        },
+        {
+          "grenade_entity_id": 141,
+          "grenade_type": "CSmokeGrenadeProjectile",
+          "name": " karrigan",
+          "steamid": "76561197989430253",
+          "tick": 3860,
+          "x": -439.90625,
+          "y": 1640.28125,
+          "z": -123.84375
+        }
+      ],
+      "sampleReason": "representative smoke"
+    },
+    {
+      "round": 1,
+      "roundStartTick": 1016,
+      "player": "karrigan",
+      "steamId": "76561197989430253",
+      "kind": "flashbang",
+      "variant": null,
+      "weaponFireTick": 4584,
+      "projectileFirstTick": 4591,
+      "projectileLastTick": 4694,
+      "nativeEffectTick": 4695,
+      "matchEventTick": 4695,
+      "replayEffectTick": 4695,
+      "desktopListTick": 4695,
+      "beforeDescription": "karrigan 投掷了 flashbang",
+      "desktopListDescription": "karrigan 的 flashbang 爆开",
+      "expectedDescription": "karrigan 的 flashbang 爆开",
+      "relativeListSeconds": 57.48438,
+      "flightStartTick": 4584,
+      "throwToFirstSeconds": 0.109375,
+      "throwToEffectSeconds": 1.734375,
+      "effectEntityId": 145,
+      "projectileEntityId": 145,
+      "runCandidates": 1,
+      "throwCandidates": 1,
+      "entityReuseRuns": 2,
+      "simultaneousOtherThrowers": 0,
+      "simultaneousOtherThrowRecords": [],
+      "sameOwnerSameKindNearbyThrows": [],
+      "endpointDistanceWorldUnits": 0.018466261922026418,
+      "association": "effect entity + projectile class + unique continuous run containing effect tick (or ending within 2 ticks) + matching native owner",
+      "confidence": "high",
+      "nativeEffect": {
+        "entityid": 145,
+        "event_name": "flashbang_detonate",
+        "is_warmup_period": false,
+        "tick": 4695,
+        "total_rounds_played": 0,
+        "user_name": " karrigan",
+        "user_steamid": "76561197989430253",
+        "user_team_num": 2,
+        "x": -419.78607177734375,
+        "y": 1764.264892578125,
+        "z": -121.99020385742188
+      },
+      "nativeThrow": {
+        "event_name": "weapon_fire",
+        "is_warmup_period": false,
+        "silenced": false,
+        "tick": 4584,
+        "total_rounds_played": 0,
+        "user_name": " karrigan",
+        "user_steamid": "76561197989430253",
+        "user_team_num": 2,
+        "weapon": "weapon_flashbang"
+      },
+      "nativeProjectileFirstRows": [
+        {
+          "grenade_entity_id": 145,
+          "grenade_type": "CFlashbangProjectile",
+          "name": " karrigan",
+          "steamid": "76561197989430253",
+          "tick": 4591,
+          "x": -398.875,
+          "y": 370.625,
+          "z": 65.90625
+        },
+        {
+          "grenade_entity_id": 145,
+          "grenade_type": "CFlashbangProjectile",
+          "name": " karrigan",
+          "steamid": "76561197989430253",
+          "tick": 4592,
+          "x": -399.09375,
+          "y": 384.21875,
+          "z": 67.96875
+        }
+      ],
+      "nativeProjectileLastRows": [
+        {
+          "grenade_entity_id": 145,
+          "grenade_type": "CFlashbangProjectile",
+          "name": " karrigan",
+          "steamid": "76561197989430253",
+          "tick": 4693,
+          "x": -419.78125,
+          "y": 1758.3125,
+          "z": -124.9375
+        },
+        {
+          "grenade_entity_id": 145,
+          "grenade_type": "CFlashbangProjectile",
+          "name": " karrigan",
+          "steamid": "76561197989430253",
+          "tick": 4694,
+          "x": -419.78125,
+          "y": 1764.25,
+          "z": -122
+        }
+      ],
+      "nativeProjectileEffectRows": [
+        {
+          "grenade_entity_id": 145,
+          "grenade_type": "CFlashbangProjectile",
+          "name": " karrigan",
+          "steamid": "76561197989430253",
+          "tick": 4694,
+          "x": -419.78125,
+          "y": 1764.25,
+          "z": -122
+        }
+      ],
+      "sampleReason": "representative flashbang"
+    },
+    {
+      "round": 1,
+      "roundStartTick": 1016,
+      "player": "sh1ro",
+      "steamId": "76561198081484775",
+      "kind": "hegrenade",
+      "variant": null,
+      "weaponFireTick": 3998,
+      "projectileFirstTick": 4004,
+      "projectileLastTick": 4427,
+      "nativeEffectTick": 4108,
+      "matchEventTick": 4108,
+      "replayEffectTick": 4108,
+      "desktopListTick": 4108,
+      "beforeDescription": "sh1ro 投掷了 hegrenade",
+      "desktopListDescription": "sh1ro 的 hegrenade 爆开",
+      "expectedDescription": "sh1ro 的 hegrenade 爆开",
+      "relativeListSeconds": 48.3125,
+      "flightStartTick": 3998,
+      "throwToFirstSeconds": 0.09375,
+      "throwToEffectSeconds": 1.71875,
+      "effectEntityId": 143,
+      "projectileEntityId": 143,
+      "runCandidates": 1,
+      "throwCandidates": 1,
+      "entityReuseRuns": 3,
+      "simultaneousOtherThrowers": 0,
+      "simultaneousOtherThrowRecords": [],
+      "sameOwnerSameKindNearbyThrows": [],
+      "endpointDistanceWorldUnits": 0.0072333902889683225,
+      "association": "effect entity + projectile class + unique continuous run containing effect tick (or ending within 2 ticks) + matching native owner",
+      "confidence": "high",
+      "nativeEffect": {
+        "entityid": 143,
+        "event_name": "hegrenade_detonate",
+        "is_warmup_period": false,
+        "tick": 4108,
+        "total_rounds_played": 0,
+        "user_name": "sh1ro",
+        "user_steamid": "76561198081484775",
+        "user_team_num": 3,
+        "x": -928.4723510742188,
+        "y": 1409.068603515625,
+        "z": -84.24855041503906
+      },
+      "nativeThrow": {
+        "event_name": "weapon_fire",
+        "is_warmup_period": false,
+        "silenced": false,
+        "tick": 3998,
+        "total_rounds_played": 0,
+        "user_name": "sh1ro",
+        "user_steamid": "76561198081484775",
+        "user_team_num": 3,
+        "weapon": "weapon_hegrenade"
+      },
+      "nativeProjectileFirstRows": [
+        {
+          "grenade_entity_id": 143,
+          "grenade_type": "CHEGrenadeProjectile",
+          "name": "sh1ro",
+          "steamid": "76561198081484775",
+          "tick": 4004,
+          "x": 342.3125,
+          "y": 1502.5,
+          "z": 69.1875
+        },
+        {
+          "grenade_entity_id": 143,
+          "grenade_type": "CHEGrenadeProjectile",
+          "name": "sh1ro",
+          "steamid": "76561198081484775",
+          "tick": 4005,
+          "x": 329.03125,
+          "y": 1501.53125,
+          "z": 70.65625
+        }
+      ],
+      "nativeProjectileLastRows": [
+        {
+          "grenade_entity_id": 143,
+          "grenade_type": "CHEGrenadeProjectile",
+          "name": "sh1ro",
+          "steamid": "76561198081484775",
+          "tick": 4426,
+          "x": -928.46875,
+          "y": 1409.0625,
+          "z": -84.25
+        },
+        {
+          "grenade_entity_id": 143,
+          "grenade_type": "CHEGrenadeProjectile",
+          "name": "sh1ro",
+          "steamid": "76561198081484775",
+          "tick": 4427,
+          "x": -928.46875,
+          "y": 1409.0625,
+          "z": -84.25
+        }
+      ],
+      "nativeProjectileEffectRows": [
+        {
+          "grenade_entity_id": 143,
+          "grenade_type": "CHEGrenadeProjectile",
+          "name": "sh1ro",
+          "steamid": "76561198081484775",
+          "tick": 4107,
+          "x": -928.46875,
+          "y": 1409.0625,
+          "z": -84.25
+        },
+        {
+          "grenade_entity_id": 143,
+          "grenade_type": "CHEGrenadeProjectile",
+          "name": "sh1ro",
+          "steamid": "76561198081484775",
+          "tick": 4108,
+          "x": -928.46875,
+          "y": 1409.0625,
+          "z": -84.25
+        },
+        {
+          "grenade_entity_id": 143,
+          "grenade_type": "CHEGrenadeProjectile",
+          "name": "sh1ro",
+          "steamid": "76561198081484775",
+          "tick": 4109,
+          "x": -928.46875,
+          "y": 1409.0625,
+          "z": -84.25
+        }
+      ],
+      "sampleReason": "representative hegrenade"
+    },
+    {
+      "round": 2,
+      "roundStartTick": 7216,
+      "player": "zont1x",
+      "steamId": "76561198995880877",
+      "kind": "fire",
+      "variant": "incendiary",
+      "weaponFireTick": 8877,
+      "projectileFirstTick": 8884,
+      "projectileLastTick": 9012,
+      "nativeEffectTick": 9013,
+      "matchEventTick": 9013,
+      "replayEffectTick": 9013,
+      "desktopListTick": 9013,
+      "beforeDescription": "zont1x 投掷了 incendiary",
+      "desktopListDescription": "zont1x 的 incendiary 开始燃烧",
+      "expectedDescription": "zont1x 的 incendiary 开始燃烧",
+      "relativeListSeconds": 28.07813,
+      "flightStartTick": 8877,
+      "throwToFirstSeconds": 0.109375,
+      "throwToEffectSeconds": 2.125,
+      "effectEntityId": 100,
+      "projectileEntityId": 199,
+      "runCandidates": 1,
+      "throwCandidates": 1,
+      "entityReuseRuns": 3,
+      "simultaneousOtherThrowers": 0,
+      "simultaneousOtherThrowRecords": [],
+      "sameOwnerSameKindNearbyThrows": [],
+      "endpointDistanceWorldUnits": 4.507110536150946,
+      "association": "owner + projectile class + unique terminal run within 2 ticks; inferno entity deliberately not equated with projectile entity",
+      "confidence": "high",
+      "nativeEffect": {
+        "entityid": 100,
+        "event_name": "inferno_startburn",
+        "is_warmup_period": false,
+        "tick": 9013,
+        "total_rounds_played": 1,
+        "user_name": "zont1x",
+        "user_steamid": "76561198995880877",
+        "user_team_num": 3,
+        "x": -2004.517333984375,
+        "y": 1621.4788818359375,
+        "z": 31.1929988861084
+      },
+      "nativeThrow": {
+        "event_name": "weapon_fire",
+        "is_warmup_period": false,
+        "silenced": false,
+        "tick": 8877,
+        "total_rounds_played": 1,
+        "user_name": "zont1x",
+        "user_steamid": "76561198995880877",
+        "user_team_num": 3,
+        "weapon": "weapon_incgrenade"
+      },
+      "nativeProjectileFirstRows": [
+        {
+          "grenade_entity_id": 199,
+          "grenade_type": "CMolotovProjectile",
+          "name": "zont1x",
+          "steamid": "76561198995880877",
+          "tick": 8884,
+          "x": -1162.59375,
+          "y": 2301.78125,
+          "z": 73.9375
+        },
+        {
+          "grenade_entity_id": 199,
+          "grenade_type": "CMolotovProjectile",
+          "name": "zont1x",
+          "steamid": "76561198995880877",
+          "tick": 8885,
+          "x": -1174.84375,
+          "y": 2294.125,
+          "z": 77.8125
+        }
+      ],
+      "nativeProjectileLastRows": [
+        {
+          "grenade_entity_id": 199,
+          "grenade_type": "CMolotovProjectile",
+          "name": "zont1x",
+          "steamid": "76561198995880877",
+          "tick": 9011,
+          "x": -2002.375,
+          "y": 1623.125,
+          "z": 39.375
+        },
+        {
+          "grenade_entity_id": 199,
+          "grenade_type": "CMolotovProjectile",
+          "name": "zont1x",
+          "steamid": "76561198995880877",
+          "tick": 9012,
+          "x": -2004.84375,
+          "y": 1621.5625,
+          "z": 35.687496185302734
+        }
+      ],
+      "nativeProjectileEffectRows": [
+        {
+          "grenade_entity_id": 199,
+          "grenade_type": "CMolotovProjectile",
+          "name": "zont1x",
+          "steamid": "76561198995880877",
+          "tick": 9012,
+          "x": -2004.84375,
+          "y": 1621.5625,
+          "z": 35.687496185302734
+        }
+      ],
+      "sampleReason": "representative fire"
+    },
+    {
+      "round": 2,
+      "roundStartTick": 7216,
+      "player": "donk",
+      "steamId": "76561198386265483",
+      "kind": "decoy",
+      "variant": null,
+      "weaponFireTick": 8591,
+      "projectileFirstTick": 8597,
+      "projectileLastTick": 9726,
+      "nativeEffectTick": 8738,
+      "matchEventTick": 8738,
+      "replayEffectTick": 8738,
+      "desktopListTick": 8738,
+      "beforeDescription": "donk 投掷了 decoy",
+      "desktopListDescription": "donk 的 decoy 开始生效",
+      "expectedDescription": "donk 的 decoy 开始生效",
+      "relativeListSeconds": 23.78125,
+      "flightStartTick": 8591,
+      "throwToFirstSeconds": 0.09375,
+      "throwToEffectSeconds": 2.296875,
+      "effectEntityId": 226,
+      "projectileEntityId": 226,
+      "runCandidates": 1,
+      "throwCandidates": 1,
+      "entityReuseRuns": 3,
+      "simultaneousOtherThrowers": 0,
+      "simultaneousOtherThrowRecords": [],
+      "sameOwnerSameKindNearbyThrows": [],
+      "endpointDistanceWorldUnits": 0.01786400206100275,
+      "association": "effect entity + projectile class + unique continuous run containing effect tick (or ending within 2 ticks) + matching native owner",
+      "confidence": "high",
+      "nativeEffect": {
+        "entityid": 226,
+        "event_name": "decoy_started",
+        "is_warmup_period": false,
+        "tick": 8738,
+        "total_rounds_played": 1,
+        "user_name": "donk",
+        "user_steamid": "76561198386265483",
+        "user_team_num": 3,
+        "x": -363.6997985839844,
+        "y": 1928.587158203125,
+        "z": -124.51115417480469
+      },
+      "nativeThrow": {
+        "event_name": "weapon_fire",
+        "is_warmup_period": false,
+        "silenced": false,
+        "tick": 8591,
+        "total_rounds_played": 1,
+        "user_name": "donk",
+        "user_steamid": "76561198386265483",
+        "user_team_num": 3,
+        "weapon": "weapon_decoy"
+      },
+      "nativeProjectileFirstRows": [
+        {
+          "grenade_entity_id": 226,
+          "grenade_type": "CDecoyProjectile",
+          "name": "donk",
+          "steamid": "76561198386265483",
+          "tick": 8597,
+          "x": 82.28125,
+          "y": 2194.5,
+          "z": -55.21875
+        },
+        {
+          "grenade_entity_id": 226,
+          "grenade_type": "CDecoyProjectile",
+          "name": "donk",
+          "steamid": "76561198386265483",
+          "tick": 8598,
+          "x": 67.75,
+          "y": 2190.5,
+          "z": -53.00006103515625
+        }
+      ],
+      "nativeProjectileLastRows": [
+        {
+          "grenade_entity_id": 226,
+          "grenade_type": "CDecoyProjectile",
+          "name": "donk",
+          "steamid": "76561198386265483",
+          "tick": 9725,
+          "x": -363.6875,
+          "y": 1928.59375,
+          "z": -124.5
+        },
+        {
+          "grenade_entity_id": 226,
+          "grenade_type": "CDecoyProjectile",
+          "name": "donk",
+          "steamid": "76561198386265483",
+          "tick": 9726,
+          "x": -363.6875,
+          "y": 1928.59375,
+          "z": -124.5
+        }
+      ],
+      "nativeProjectileEffectRows": [
+        {
+          "grenade_entity_id": 226,
+          "grenade_type": "CDecoyProjectile",
+          "name": "donk",
+          "steamid": "76561198386265483",
+          "tick": 8737,
+          "x": -363.6875,
+          "y": 1928.59375,
+          "z": -124.5
+        },
+        {
+          "grenade_entity_id": 226,
+          "grenade_type": "CDecoyProjectile",
+          "name": "donk",
+          "steamid": "76561198386265483",
+          "tick": 8738,
+          "x": -363.6875,
+          "y": 1928.59375,
+          "z": -124.5
+        },
+        {
+          "grenade_entity_id": 226,
+          "grenade_type": "CDecoyProjectile",
+          "name": "donk",
+          "steamid": "76561198386265483",
+          "tick": 8739,
+          "x": -363.6875,
+          "y": 1928.59375,
+          "z": -124.5
+        }
+      ],
+      "sampleReason": "representative decoy"
+    },
+    {
+      "round": 3,
+      "roundStartTick": 14525,
+      "player": "ropz",
+      "steamId": "76561197991272318",
+      "kind": "fire",
+      "variant": "molotov",
+      "weaponFireTick": 16306,
+      "projectileFirstTick": 16313,
+      "projectileLastTick": 16434,
+      "nativeEffectTick": 16435,
+      "matchEventTick": 16435,
+      "replayEffectTick": 16435,
+      "desktopListTick": 16435,
+      "beforeDescription": "ropz 投掷了 molotov",
+      "desktopListDescription": "ropz 的 molotov 开始燃烧",
+      "expectedDescription": "ropz 的 molotov 开始燃烧",
+      "relativeListSeconds": 29.84375,
+      "flightStartTick": 16306,
+      "throwToFirstSeconds": 0.109375,
+      "throwToEffectSeconds": 2.015625,
+      "effectEntityId": 216,
+      "projectileEntityId": 300,
+      "runCandidates": 1,
+      "throwCandidates": 1,
+      "entityReuseRuns": 2,
+      "simultaneousOtherThrowers": 0,
+      "simultaneousOtherThrowRecords": [],
+      "sameOwnerSameKindNearbyThrows": [],
+      "endpointDistanceWorldUnits": 12.44406362320065,
+      "association": "owner + projectile class + unique terminal run within 2 ticks; inferno entity deliberately not equated with projectile entity",
+      "confidence": "high",
+      "nativeEffect": {
+        "entityid": 216,
+        "event_name": "inferno_startburn",
+        "is_warmup_period": false,
+        "tick": 16435,
+        "total_rounds_played": 2,
+        "user_name": "ropz",
+        "user_steamid": "76561197991272318",
+        "user_team_num": 2,
+        "x": -151.21311950683594,
+        "y": 1482.3079833984375,
+        "z": 2.0227038860321045
+      },
+      "nativeThrow": {
+        "event_name": "weapon_fire",
+        "is_warmup_period": false,
+        "silenced": false,
+        "tick": 16306,
+        "total_rounds_played": 2,
+        "user_name": "ropz",
+        "user_steamid": "76561197991272318",
+        "user_team_num": 2,
+        "weapon": "weapon_molotov"
+      },
+      "nativeProjectileFirstRows": [
+        {
+          "grenade_entity_id": 300,
+          "grenade_type": "CMolotovProjectile",
+          "name": "ropz",
+          "steamid": "76561197991272318",
+          "tick": 16313,
+          "x": -473.90625,
+          "y": -217.0625,
+          "z": 74.71875
+        },
+        {
+          "grenade_entity_id": 300,
+          "grenade_type": "CMolotovProjectile",
+          "name": "ropz",
+          "steamid": "76561197991272318",
+          "tick": 16314,
+          "x": -471.25,
+          "y": -203.09375,
+          "z": 78.84375
+        }
+      ],
+      "nativeProjectileLastRows": [
+        {
+          "grenade_entity_id": 300,
+          "grenade_type": "CMolotovProjectile",
+          "name": "ropz",
+          "steamid": "76561197991272318",
+          "tick": 16433,
+          "x": -156.09375,
+          "y": 1456.9375,
+          "z": 11.71875
+        },
+        {
+          "grenade_entity_id": 300,
+          "grenade_type": "CMolotovProjectile",
+          "name": "ropz",
+          "steamid": "76561197991272318",
+          "tick": 16434,
+          "x": -153.46875,
+          "y": 1470.90625,
+          "z": 6.46875
+        }
+      ],
+      "nativeProjectileEffectRows": [
+        {
+          "grenade_entity_id": 300,
+          "grenade_type": "CMolotovProjectile",
+          "name": "ropz",
+          "steamid": "76561197991272318",
+          "tick": 16434,
+          "x": -153.46875,
+          "y": 1470.90625,
+          "z": 6.46875
+        }
+      ],
+      "sampleReason": "molotov variant"
+    },
+    {
+      "round": 3,
+      "roundStartTick": 14525,
+      "player": "magixx",
+      "steamId": "76561199063238565",
+      "kind": "flashbang",
+      "variant": null,
+      "weaponFireTick": 16163,
+      "projectileFirstTick": 16170,
+      "projectileLastTick": 16273,
+      "nativeEffectTick": 16274,
+      "matchEventTick": 16274,
+      "replayEffectTick": 16274,
+      "desktopListTick": 16274,
+      "beforeDescription": "magixx 投掷了 flashbang",
+      "desktopListDescription": "magixx 的 flashbang 爆开",
+      "expectedDescription": "magixx 的 flashbang 爆开",
+      "relativeListSeconds": 27.32813,
+      "flightStartTick": 16163,
+      "throwToFirstSeconds": 0.109375,
+      "throwToEffectSeconds": 1.734375,
+      "effectEntityId": 101,
+      "projectileEntityId": 101,
+      "runCandidates": 1,
+      "throwCandidates": 1,
+      "entityReuseRuns": 5,
+      "simultaneousOtherThrowers": 1,
+      "simultaneousOtherThrowRecords": [
+        {
+          "event_name": "weapon_fire",
+          "is_warmup_period": false,
+          "silenced": false,
+          "tick": 16163,
+          "total_rounds_played": 2,
+          "user_name": " karrigan",
+          "user_steamid": "76561197989430253",
+          "user_team_num": 2,
+          "weapon": "weapon_flashbang"
+        }
+      ],
+      "sameOwnerSameKindNearbyThrows": [],
+      "endpointDistanceWorldUnits": 0.02494665952367475,
+      "association": "effect entity + projectile class + unique continuous run containing effect tick (or ending within 2 ticks) + matching native owner",
+      "confidence": "high",
+      "nativeEffect": {
+        "entityid": 101,
+        "event_name": "flashbang_detonate",
+        "is_warmup_period": false,
+        "tick": 16274,
+        "total_rounds_played": 2,
+        "user_name": "magixx",
+        "user_steamid": "76561199063238565",
+        "user_team_num": 3,
+        "x": 1195.2655029296875,
+        "y": 1195.1717529296875,
+        "z": 372.33184814453125
+      },
+      "nativeThrow": {
+        "event_name": "weapon_fire",
+        "is_warmup_period": false,
+        "silenced": false,
+        "tick": 16163,
+        "total_rounds_played": 2,
+        "user_name": "magixx",
+        "user_steamid": "76561199063238565",
+        "user_team_num": 3,
+        "weapon": "weapon_flashbang"
+      },
+      "nativeProjectileFirstRows": [
+        {
+          "grenade_entity_id": 101,
+          "grenade_type": "CFlashbangProjectile",
+          "name": "magixx",
+          "steamid": "76561199063238565",
+          "tick": 16170,
+          "x": 1415.96875,
+          "y": 1975.28125,
+          "z": 71.6875
+        },
+        {
+          "grenade_entity_id": 101,
+          "grenade_type": "CFlashbangProjectile",
+          "name": "magixx",
+          "steamid": "76561199063238565",
+          "tick": 16171,
+          "x": 1413.84375,
+          "y": 1967.6875,
+          "z": 78.59375
+        }
+      ],
+      "nativeProjectileLastRows": [
+        {
+          "grenade_entity_id": 101,
+          "grenade_type": "CFlashbangProjectile",
+          "name": "magixx",
+          "steamid": "76561199063238565",
+          "tick": 16272,
+          "x": 1197.40625,
+          "y": 1202.75,
+          "z": 373.40625
+        },
+        {
+          "grenade_entity_id": 101,
+          "grenade_type": "CFlashbangProjectile",
+          "name": "magixx",
+          "steamid": "76561199063238565",
+          "tick": 16273,
+          "x": 1195.25,
+          "y": 1195.15625,
+          "z": 372.34375
+        }
+      ],
+      "nativeProjectileEffectRows": [
+        {
+          "grenade_entity_id": 101,
+          "grenade_type": "CFlashbangProjectile",
+          "name": "magixx",
+          "steamid": "76561199063238565",
+          "tick": 16273,
+          "x": 1195.25,
+          "y": 1195.15625,
+          "z": 372.34375
+        }
+      ],
+      "sampleReason": "same-tick throws by distinct owners"
+    },
+    {
+      "round": 3,
+      "roundStartTick": 14525,
+      "player": "karrigan",
+      "steamId": "76561197989430253",
+      "kind": "flashbang",
+      "variant": null,
+      "weaponFireTick": 16060,
+      "projectileFirstTick": 16074,
+      "projectileLastTick": 16177,
+      "nativeEffectTick": 16178,
+      "matchEventTick": 16178,
+      "replayEffectTick": 16178,
+      "desktopListTick": 16178,
+      "beforeDescription": "karrigan 投掷了 flashbang",
+      "desktopListDescription": "karrigan 的 flashbang 爆开",
+      "expectedDescription": "karrigan 的 flashbang 爆开",
+      "relativeListSeconds": 25.82813,
+      "flightStartTick": 16060,
+      "throwToFirstSeconds": 0.21875,
+      "throwToEffectSeconds": 1.84375,
+      "effectEntityId": 77,
+      "projectileEntityId": 77,
+      "runCandidates": 1,
+      "throwCandidates": 1,
+      "entityReuseRuns": 2,
+      "simultaneousOtherThrowers": 0,
+      "simultaneousOtherThrowRecords": [],
+      "sameOwnerSameKindNearbyThrows": [
+        {
+          "tick": 16163,
+          "weapon": "weapon_flashbang"
+        }
+      ],
+      "endpointDistanceWorldUnits": 0.017255255057650364,
+      "association": "effect entity + projectile class + unique continuous run containing effect tick (or ending within 2 ticks) + matching native owner",
+      "confidence": "high",
+      "nativeEffect": {
+        "entityid": 77,
+        "event_name": "flashbang_detonate",
+        "is_warmup_period": false,
+        "tick": 16178,
+        "total_rounds_played": 2,
+        "user_name": " karrigan",
+        "user_steamid": "76561197989430253",
+        "user_team_num": 2,
+        "x": 1016.4791259765625,
+        "y": 822.0448608398438,
+        "z": 710.814697265625
+      },
+      "nativeThrow": {
+        "event_name": "weapon_fire",
+        "is_warmup_period": false,
+        "silenced": false,
+        "tick": 16060,
+        "total_rounds_played": 2,
+        "user_name": " karrigan",
+        "user_steamid": "76561197989430253",
+        "user_team_num": 2,
+        "weapon": "weapon_flashbang"
+      },
+      "nativeProjectileFirstRows": [
+        {
+          "grenade_entity_id": 77,
+          "grenade_type": "CFlashbangProjectile",
+          "name": " karrigan",
+          "steamid": "76561197989430253",
+          "tick": 16074,
+          "x": 276.9375,
+          "y": -312.6875,
+          "z": 108.34375
+        },
+        {
+          "grenade_entity_id": 77,
+          "grenade_type": "CFlashbangProjectile",
+          "name": " karrigan",
+          "steamid": "76561197989430253",
+          "tick": 16075,
+          "x": 284.125,
+          "y": -301.65625,
+          "z": 118.1875
+        }
+      ],
+      "nativeProjectileLastRows": [
+        {
+          "grenade_entity_id": 77,
+          "grenade_type": "CFlashbangProjectile",
+          "name": " karrigan",
+          "steamid": "76561197989430253",
+          "tick": 16176,
+          "x": 1009.3125,
+          "y": 811.03125,
+          "z": 708.9375
+        },
+        {
+          "grenade_entity_id": 77,
+          "grenade_type": "CFlashbangProjectile",
+          "name": " karrigan",
+          "steamid": "76561197989430253",
+          "tick": 16177,
+          "x": 1016.46875,
+          "y": 822.03125,
+          "z": 710.8125
+        }
+      ],
+      "nativeProjectileEffectRows": [
+        {
+          "grenade_entity_id": 77,
+          "grenade_type": "CFlashbangProjectile",
+          "name": " karrigan",
+          "steamid": "76561197989430253",
+          "tick": 16177,
+          "x": 1016.46875,
+          "y": 822.03125,
+          "z": 710.8125
+        }
+      ],
+      "sampleReason": "same-owner consecutive flash throws"
+    },
+    {
+      "round": 3,
+      "roundStartTick": 14525,
+      "player": "karrigan",
+      "steamId": "76561197989430253",
+      "kind": "flashbang",
+      "variant": null,
+      "weaponFireTick": 16163,
+      "projectileFirstTick": 16176,
+      "projectileLastTick": 16279,
+      "nativeEffectTick": 16280,
+      "matchEventTick": 16280,
+      "replayEffectTick": 16280,
+      "desktopListTick": 16280,
+      "beforeDescription": "karrigan 投掷了 flashbang",
+      "desktopListDescription": "karrigan 的 flashbang 爆开",
+      "expectedDescription": "karrigan 的 flashbang 爆开",
+      "relativeListSeconds": 27.42188,
+      "flightStartTick": 16163,
+      "throwToFirstSeconds": 0.203125,
+      "throwToEffectSeconds": 1.828125,
+      "effectEntityId": 286,
+      "projectileEntityId": 286,
+      "runCandidates": 1,
+      "throwCandidates": 1,
+      "entityReuseRuns": 4,
+      "simultaneousOtherThrowers": 1,
+      "simultaneousOtherThrowRecords": [
+        {
+          "event_name": "weapon_fire",
+          "is_warmup_period": false,
+          "silenced": false,
+          "tick": 16163,
+          "total_rounds_played": 2,
+          "user_name": "magixx",
+          "user_steamid": "76561199063238565",
+          "user_team_num": 3,
+          "weapon": "weapon_flashbang"
+        }
+      ],
+      "sameOwnerSameKindNearbyThrows": [
+        {
+          "tick": 16060,
+          "weapon": "weapon_flashbang"
+        }
+      ],
+      "endpointDistanceWorldUnits": 0.008410679965228334,
+      "association": "effect entity + projectile class + unique continuous run containing effect tick (or ending within 2 ticks) + matching native owner",
+      "confidence": "high",
+      "nativeEffect": {
+        "entityid": 286,
+        "event_name": "flashbang_detonate",
+        "is_warmup_period": false,
+        "tick": 16280,
+        "total_rounds_played": 2,
+        "user_name": " karrigan",
+        "user_steamid": "76561197989430253",
+        "user_team_num": 2,
+        "x": 1181.869384765625,
+        "y": 898.7144775390625,
+        "z": 816.4016723632812
+      },
+      "nativeThrow": {
+        "event_name": "weapon_fire",
+        "is_warmup_period": false,
+        "silenced": false,
+        "tick": 16163,
+        "total_rounds_played": 2,
+        "user_name": " karrigan",
+        "user_steamid": "76561197989430253",
+        "user_team_num": 2,
+        "weapon": "weapon_flashbang"
+      },
+      "nativeProjectileFirstRows": [
+        {
+          "grenade_entity_id": 286,
+          "grenade_type": "CFlashbangProjectile",
+          "name": " karrigan",
+          "steamid": "76561197989430253",
+          "tick": 16176,
+          "x": 449.34375,
+          "y": -189.09375,
+          "z": 108.4375
+        },
+        {
+          "grenade_entity_id": 286,
+          "grenade_type": "CFlashbangProjectile",
+          "name": " karrigan",
+          "steamid": "76561197989430253",
+          "tick": 16177,
+          "x": 456.46875,
+          "y": -178.53125,
+          "z": 119.3125
+        }
+      ],
+      "nativeProjectileLastRows": [
+        {
+          "grenade_entity_id": 286,
+          "grenade_type": "CFlashbangProjectile",
+          "name": " karrigan",
+          "steamid": "76561197989430253",
+          "tick": 16278,
+          "x": 1174.75,
+          "y": 888.15625,
+          "z": 813.5
+        },
+        {
+          "grenade_entity_id": 286,
+          "grenade_type": "CFlashbangProjectile",
+          "name": " karrigan",
+          "steamid": "76561197989430253",
+          "tick": 16279,
+          "x": 1181.875,
+          "y": 898.71875,
+          "z": 816.40625
+        }
+      ],
+      "nativeProjectileEffectRows": [
+        {
+          "grenade_entity_id": 286,
+          "grenade_type": "CFlashbangProjectile",
+          "name": " karrigan",
+          "steamid": "76561197989430253",
+          "tick": 16279,
+          "x": 1181.875,
+          "y": 898.71875,
+          "z": 816.40625
+        }
+      ],
+      "sampleReason": "consecutive flash second effect, distinct entity"
+    }
+  ],
+  "limits": [
+    "weapon_fire is an independently observed native grenade-use event; it does not claim a sub-tick hand-release animation timestamp.",
+    "projectile first tick is the first recorded native projectile position, not proof of the precise physical creation/release instant.",
+    "fire owner/time association is weaker than a shared serialised entity handle; only unique candidates are marked high, and inferno entity is not a projectile ID.",
+    "audit covers this exact local Dust2 only, not every engine/demo version."
+  ],
+  "sourceState": "sourceSha is HEAD at audit time; tested working-tree sources are identified by sourceFileSha256",
+  "sourceFileSha256": {
+    "apps/desktop/electron/replay-session.ts": "92152f82e8b5c4959fa5040ec5a013de15683049396d50496320351e79a2ee46",
+    "packages/dem-parser/src/providers/converters.ts": "8e1176e310345a941656de7142986ad770836b691bbe0b5d6a898ba8b86492ea",
+    "packages/dem-parser/src/providers/replay.ts": "4dbd01f2567aa2fbbd14ef2090000f6a13f634f691ab3e052fa826c2f53e51e5"
+  }
+}

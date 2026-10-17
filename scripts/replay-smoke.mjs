@@ -201,7 +201,7 @@ try{
     const utilities=chunks.flatMap(c=>c.utilities??[]),events=chunks.flatMap(c=>c.events);
     const withFlight=kind=>utilities.find(u=>u.kind===kind&&u.trajectory&&u.trajectory.points.length>=2);
     return {smoke:withFlight('smoke'),flash:withFlight('flashbang'),he:withFlight('hegrenade'),
-      utilityEvent:events.find(e=>e.type==='utility'&&e.description.includes('投掷了')&&!e.description.includes('decoy')),
+      utilityEvent:events.find(e=>e.type==='utility'&&e.description.includes('爆开')&&!e.description.includes('decoy')),
       killEvent:events.find(e=>e.type==='kill')??events.find(e=>e.type==='bomb')};
   })()`);
   assert.ok(effectProbe.smoke,'real smoke trajectory required');assert.ok(effectProbe.flash,'real flash trajectory required');
@@ -232,7 +232,7 @@ try{
   await waitFor(()=>evaluate(`Boolean(document.querySelector('[data-replay-event="${effectProbe.utilityEvent.id}"]'))`),'utility key event row');
   const utilityText=await evaluate(`document.querySelector('[data-replay-event="${effectProbe.utilityEvent.id}"]').textContent`);
   assert.ok(utilityText.includes(effectProbe.utilityEvent.description),'key event row uses the real thrower copy');
-  assert.ok(utilityText.includes('投掷了'));
+  assert.ok(utilityText.includes('爆开'));
   await evaluate(`document.querySelector('[data-replay-event="${effectProbe.utilityEvent.id}"]').click()`);
   await waitFor(()=>evaluate(`Math.abs(Number(document.querySelector('${canvasSelector}').dataset.tick)-${effectProbe.utilityEvent.tick})<.01`),'key event click seek');
   await waitFor(()=>evaluate(`Number(document.querySelector('${canvasSelector}').dataset.effects)>0`),'effect state after event click');

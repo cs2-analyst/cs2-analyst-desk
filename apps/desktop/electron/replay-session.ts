@@ -67,7 +67,10 @@ export class ReplaySession {
           const throwerId=e.thrower??effect?.throwerId??null;
           actorId=throwerId;
           const nickname=throwerId&&names.has(throwerId)?names.get(throwerId)!.trim():'';
-          description=`${nickname||'未知玩家'} 投掷了 ${effect?.variant??effect?.kind??e.utility}`;
+          // Utility ticks are native detonation/start observations, not weapon_fire ticks.
+          // Name that observed action without moving events or any effect/flight window.
+          const action=e.action==='start_burn'?'开始燃烧':e.action==='start_decoy'?'开始生效':'爆开';
+          description=`${nickname||'未知玩家'} 的 ${effect?.variant??effect?.kind??e.utility} ${action}`;
           if(e.position)position=[e.position.x,e.position.y,e.position.z];
         }
         else if(e.type==='flash'){actorId=e.attacker;targetId=e.victim;description=`${names.get(e.victim)??'未知玩家'} 受闪事件`;}

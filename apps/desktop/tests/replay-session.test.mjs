@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { ReplaySession } from '../electron/replay-session.ts';
+import { appendReplayEvents, replayBlockAt } from '../renderer/src/replay-state.ts';
 const make=()=>{
   const match={id:'match',map:'de_dust2',players:[{steamId:'1',nickname:'p'}],rounds:[]};
   const frames=Array.from({length:401},(_,tick)=>({requestedTick:tick,players:[{playerId:'1',actualTick:tick,position:[tick,0,0],yaw:0,health:100,alive:true,side:'T',segment:1,stateAmbiguous:false}]}));
@@ -53,9 +54,9 @@ test('utility key-event copy uses the real thrower and chunks carry only overlap
   const s=new ReplaySession(match,replay,'session'),first=s.get({sessionId:'session',round:1,block:0});
   const second=s.get({sessionId:'session',round:1,block:1}),third=s.get({sessionId:'session',round:1,block:2});
   const text=id=>[...first.events,...second.events].find(event=>event.id===id)?.description;
-  assert.equal(text('r1-e0'),'ropz 投掷了 smoke');
-  assert.equal(text('r1-e1'),'ropz 投掷了 incendiary');
-  assert.equal(text('r1-e2'),'未知玩家 投掷了 flashbang');
+  assert.equal(text('r1-e0'),'ropz 的 smoke 爆开');
+  assert.equal(text('r1-e1'),'ropz 的 incendiary 开始燃烧');
+  assert.equal(text('r1-e2'),'未知玩家 的 flashbang 爆开');
   assert.equal(text('r1-e3'),' ropz  击杀 donk','non-utility copy is untouched');
   assert.equal(text('r1-e4'),'炸弹安放完成');
   assert.deepEqual(first.utilities.map(utility=>utility.kind),['smoke','fire']);
@@ -65,4 +66,37 @@ test('utility key-event copy uses the real thrower and chunks carry only overlap
   assert.deepEqual(first.blinds,[{victimId:'2',attackerId:'1',startTick:90,endTick:180}]);
   assert.equal(first.burns,undefined);assert.deepEqual(second.burns,[{victimId:'2',startTick:200,endTick:260}]);
   assert.equal(first.utilities[0].id,'r1-u0');
+});
+
+test('effect action labels preserve boundary ticks, same-tick order, seek visibility and chunk identity',()=>{
+  const {match,replay}=make(),round=replay.rounds[0];
+  const utility=(eventIndex,tick,kind,action)=>({eventIndex,event:{type:'utility',tick,utility:kind,action,thrower:'1',throwerSide:'T'}});
+  round.events=[
+    {eventIndex:0,event:{type:'weapon_fire',tick:140,shooter:'1',shooterSide:'T',weapon:'weapon_smokegrenade'}},
+    utility(1,159,'smoke','detonate'),
+    utility(2,160,'hegrenade','detonate'),
+    utility(3,160,'decoy','start_decoy'),
+    utility(4,161,'fire','start_burn'),
+  ];
+  round.utilities=[{eventIndex:1,kind:'smoke',variant:null,throwerId:'1',entityId:7,tick:159,endTick:300,endSource:'observed',position:null,
+    flight:{startTick:140,endTick:159,points:[[140,0,0,0],[159,10,20,0]]}}];
+  const original=structuredClone(round),session=new ReplaySession(match,replay,'session');
+  assert.deepEqual(round,original,'presentation does not mutate business events or effect evidence');
+  const info=session.metadata.rounds[0],get=block=>session.get({sessionId:'session',round:1,block});
+  const first=get(0),second=get(1),seen=new Set();
+  assert.deepEqual(first.events.map(e=>[e.id,e.tick]),[['r1-e0',140],['r1-e1',159]]);
+  assert.deepEqual(second.events.map(e=>[e.id,e.tick]),[['r1-e2',160],['r1-e3',160],['r1-e4',161]]);
+  assert.deepEqual(second.events.map(e=>e.description),['p 的 hegrenade 爆开','p 的 decoy 开始生效','p 的 fire 开始燃烧']);
+  assert.equal(first.utilities[0].tick,159);assert.equal(first.utilities[0].trajectory.startTick,140);
+  assert.deepEqual(second.utilities[0],first.utilities[0],'the same long effect spans the boundary without moving its event');
+  assert.deepEqual(appendReplayEvents([],new Set(),first.events,158).events,[],'a throw or flight must not pre-show the effect event');
+  const at159=appendReplayEvents([],seen,first.events,159);
+  assert.deepEqual(at159.events.map(e=>e.id),['r1-e1']);
+  const at160=appendReplayEvents(at159.events,seen,second.events,160);
+  assert.deepEqual(at160.events.map(e=>e.id),['r1-e1','r1-e2','r1-e3'],'same-tick source order remains intact');
+  assert.equal(appendReplayEvents(at160.events,seen,second.events,160).appended,0,'chunk reload does not duplicate same-tick entries');
+  for(const event of second.events)assert.equal(replayBlockAt(info,event.tick).index,1,'event click keeps the observed effect seek tick');
+  assert.equal(replayBlockAt(info,159.99).index,0);assert.equal(replayBlockAt(info,160).index,1);
+  assert.deepEqual(appendReplayEvents([],new Set(),get(0).events,158).events,[],'backward seek reconstruction contains no future effect');
+  assert.deepEqual(get(1),second,'random repeated chunk access is deterministic');
 });
