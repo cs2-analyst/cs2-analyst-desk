@@ -527,9 +527,13 @@ try {
     assert.ok(compact.playerBottom <= compact.eventsTop + 1);
     assert.ok(Math.abs(compact.map[0] - compact.transport[0]) <= 1 && Math.abs(compact.map[1] - compact.transport[1]) <= 1, 'transport aligns with the map container at ' + width + 'x' + height);
     assert.ok(compact.page <= 1);
-    await evaluate('(() => { const list = document.querySelector("[aria-label=回放事件浏览]"); const ids = ' + JSON.stringify(sameTickIds) + '; const buttons = [...list.querySelectorAll("[data-replay-event]")]; const row = buttons.find(button => button.dataset.replayEvent === ids[0]); if (!row) throw new Error("same-tick row missing"); list.scrollTop = Math.max(0, row.getBoundingClientRect().top - list.getBoundingClientRect().top + list.scrollTop); })()');
+    // Appending more native throw rows can leave the normal smooth auto-scroll in flight.
+    // Finish it before positioning evidence; geometry-only settleUi does not observe this list.
+    await wait(()=>evaluate('(()=>{const l=document.querySelector("[aria-label=回放事件浏览]");return l.scrollTop>=l.scrollHeight-l.clientHeight-1;})()'),'event append scroll completes '+width,5000);
+    await evaluate('(() => { const list = document.querySelector("[aria-label=回放事件浏览]"); const ids = ' + JSON.stringify(sameTickIds) + '; const buttons = [...list.querySelectorAll("[data-replay-event]")]; const row = buttons.find(button => button.dataset.replayEvent === ids[0]); if (!row) throw new Error("same-tick row missing"); list.scrollTo({top:Math.max(0, row.getBoundingClientRect().top - list.getBoundingClientRect().top + list.scrollTop),behavior:"instant"}); })()');
     await settleUi(evaluate, 'event list same-tick scroll ' + width);
     const sameTickVisible = await evaluate('(() => { const list = document.querySelector("[aria-label=回放事件浏览]"); const lr = list.getBoundingClientRect(); const ids = ' + JSON.stringify(sameTickIds) + '; const buttons = [...list.querySelectorAll("[data-replay-event]")]; return ids.map(id => { const row = buttons.find(button => button.dataset.replayEvent === id); const r = row.getBoundingClientRect(); return r.top >= lr.top - 1 && r.bottom <= lr.bottom + 1; }); })()');
+    metrics['sameTickLayout'+width]=await evaluate('(()=>{const l=document.querySelector("[aria-label=回放事件浏览]"),r=l.getBoundingClientRect();return {top:r.top,bottom:r.bottom,scrollTop:l.scrollTop,rows:'+JSON.stringify(sameTickIds)+'.map(id=>{const e=document.querySelector(`[data-replay-event="${id}"]`),r=e.getBoundingClientRect();return {id,text:e.textContent,top:r.top,bottom:r.bottom};})};})()');
     assert.deepEqual(sameTickVisible, sameTickIds.map(() => true), 'same-tick rows are visible in the saved screenshot at ' + width);
     await shot('p7-replay-events-' + width + 'x' + height);
     await shot('p7-replay-' + width + 'x' + height);

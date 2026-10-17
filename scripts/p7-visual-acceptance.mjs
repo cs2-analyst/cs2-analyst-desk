@@ -67,8 +67,20 @@ try {
   const utilities = rounds.map(chunks => [...new Map(chunks.flatMap(c => c.utilities ?? []).map(u => [u.id, u])).values()]);
   const smoke = utilities[0].find(u => u.kind === 'smoke' && u.endTick - u.tick > 500);
   const fire = utilities[1].find(u => u.kind === 'fire' && u.endTick - u.tick > 200);
+  const he = utilities[1].find(u => u.kind === 'hegrenade');
   assert.ok(smoke && fire);
   metrics.scenes.smoke = smoke; metrics.scenes.fire = fire;
+  const roundTwo = process.env.P7_ROUND_TWO === '1';
+  if(roundTwo){
+    await wait(()=>evaluate(`Number(${canvas}.dataset.effectAssets)===8`),'all local sprites and official icons decoded');
+    metrics.page=await evaluate('({url:location.href,title:document.title,text:document.getElementById("replay-panel").innerText})');
+    assert.match(metrics.page.url,/index\.html$/);assert.ok(metrics.page.title);
+    assert.ok(metrics.page.text.includes('比赛回放')&&!/vite-error-overlay/.test(metrics.page.text));
+    for(const c of rounds.flat())for(const e of c.events.filter(e=>['utility','utility_throw'].includes(e.type)))assert.ok(!/smoke|flashbang|hegrenade|molotov|incendiary|decoy|fire/.test(e.description));
+    const state=await evaluate('([...document.querySelectorAll("#replay-panel [role=switch]")].map(s=>({label:s.parentElement.innerText,checked:s.checked})))');
+    assert.equal(state[0].checked,true);assert.match(state[0].label,/连续播放/);
+    assert.equal(state[1].checked,false);assert.match(state[1].label,/显示昵称/);
+  }
   const choose = async (name, value) => {
     await evaluate(`document.querySelector('[aria-label=${name}]').click()`);
     await wait(() => evaluate(`[...document.querySelectorAll('[role=option]')].some(o=>o.textContent.trim()===${JSON.stringify(value)})`), name + ' option');
@@ -89,6 +101,8 @@ try {
     return 'data:image/png;base64,' + (await page.send('Page.captureScreenshot', { format: 'png', clip, captureBeyondViewport: false })).data;
   };
   const shot = async name => {
+    await settleUi(evaluate, 'screenshot ' + name);
+    await evaluate('new Promise(ok=>requestAnimationFrame(()=>requestAnimationFrame(ok)))');
     const result = await page.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
     const path = join(qa, name + '.png'); writeFileSync(path, Buffer.from(result.data, 'base64')); metrics.screenshots.push(path);
   };
@@ -97,13 +111,18 @@ try {
   for (let ri = 0; ri < utilities.length; ri++) for (const u of utilities[ri]) if (u.trajectory) {
     for (let tick = u.trajectory.startTick + 52; tick < u.tick; tick += 4) {
       const sample = replayTrajectorySample(u.trajectory, tick, 64);
-      if (sample && sample.speed > 50) candidates.push({ round: ri + 1, utility: u.id, tick, speed: sample.speed, trail: length(replayTrajectoryTrail(u.trajectory, tick, 64, label==='before'?.34:undefined)), fixed34: length(replayTrajectoryTrail(u.trajectory, tick, 64, .34)), fixed65: length(replayTrajectoryTrail(u.trajectory, tick, 64, .65)) });
+      if (sample && sample.speed > 50) {
+        const amount=Math.min(1,Math.max(0,(sample.speed-100)/900));
+        candidates.push({ round: ri + 1, utility: u.id, tick, speed: sample.speed, trail: length(replayTrajectoryTrail(u.trajectory, tick, 64, label==='before'?.34:undefined)), baseline: length(replayTrajectoryTrail(u.trajectory,tick,64,.30+.48*amount*amount*(3-2*amount))), previousRoundTwo: length(replayTrajectoryTrail(u.trajectory,tick,64,.30+1.05*amount*amount*(3-2*amount))), fixed34: length(replayTrajectoryTrail(u.trajectory, tick, 64, .34)), fixed65: length(replayTrajectoryTrail(u.trajectory, tick, 64, .65)) });
+      }
     }
   }
   // Stable fixture/ticks across before/after; local current speed also lengthens the history.
   const fast = candidates.filter(c => c.speed > 900).sort((a,b) => b.speed - a.speed)[0];
   const slow = candidates.filter(c => c.speed < 160).sort((a,b) => a.speed - b.speed)[0];
   assert.ok(fast && slow); metrics.scenes.trails = { fast, slow };
+  const trimmed=roundTwo?candidates.filter(c=>c.speed>700&&c.previousRoundTwo>c.trail*1.1).sort((a,b)=>b.speed-a.speed)[0]:null;
+  if(roundTwo){assert.ok(trimmed,'a fast real flight demonstrates the reduced coefficient');metrics.scenes.trails.trimmed=trimmed;}
   for (const [width, height] of [[1024,640],[1920,1032]]) {
     const bounds = await mainInspector.evaluate(`(()=>{const w=${nativeWindow};w.unmaximize();w.setBounds({x:0,y:0,width:${width},height:${height}});return w.getBounds();})()`);
     assert.equal(bounds.width,width); assert.equal(bounds.height,height);
@@ -114,8 +133,43 @@ try {
       await seek(tick); await shot(`smoke-${phase}-${width}`);
     }
     for (const [name, scene] of Object.entries({ fast, slow })) { await round(scene.round); await seek(scene.tick); await shot(`trail-${name}-${width}`); }
+    if(trimmed){await round(trimmed.round);await seek(trimmed.tick);await shot(`trail-trimmed-${width}`);}
     await round(2);
     for (let i=0;i<5;i++) { await seek(fire.tick+64+i*11); await shot(`fire-${i}-${width}`); }
+    if(roundTwo){
+      await seek(fire.tick+64);
+      await wait(()=>evaluate(`Number(${canvas}.dataset.nicknameCount)<=1`),'nicknames default off');
+      await shot(`nicknames-off-${width}`);
+      await evaluate('document.querySelectorAll("#replay-panel [role=switch]")[1].click()');
+      await wait(()=>evaluate(`document.querySelectorAll("#replay-panel [role=switch]")[1].checked&&Number(${canvas}.dataset.nicknameCount)>1&&Number(${canvas}.dataset.nicknameCount)===Number(${canvas}.dataset.playerCount)`),'all player nicknames');
+      await shot(`nicknames-on-${width}`);
+      await evaluate('document.getElementById("report-tab").click()');
+      assert.equal(await evaluate('[...document.querySelectorAll("[role=switch]")].some(s=>s.checkVisibility()&&s.parentElement.innerText.includes("显示昵称"))'),false);
+      await evaluate('document.getElementById("replay-tab").click()');
+      await wait(()=>evaluate('document.querySelectorAll("#replay-panel [role=switch]")[1].checked'),'nickname view state survives tab switch');
+      await evaluate('document.querySelectorAll("#replay-panel [role=switch]")[1].click()');
+      assert.ok(he);metrics.scenes.he=he;
+      for(const delta of [0,4,8,16,24,33]){await seek(he.tick+delta);await shot(`he-${delta}-${width}`);}
+      await seek(he.tick+8);const shards=await bitmap();await delay(180);assert.equal(await bitmap(),shards,'HE pause');
+      await seek(he.tick+20);assert.notEqual(await bitmap(),shards,'HE fragments move');
+      await seek(he.tick+8);assert.equal(await bitmap(),shards,'HE reverse seek repeats');
+      await seek(he.tick+32);
+      assert.equal(await evaluate(`Number(${canvas}.dataset.explosions)`),utilities[1].filter(u=>u.kind==='hegrenade'&&he.tick+32>=u.tick&&he.tick+32<u.tick+Math.min(u.endTick-u.tick,32)).length,'HE clears at half a second');
+      await round(1);
+      const events=[...new Map(rounds[0].flatMap(c=>c.events).map(e=>[e.id,e])).values()];
+      const release=events.find(e=>e.type==='utility_throw'&&e.description.includes('烟雾弹'));
+      assert.ok(release);metrics.scenes.release=release;
+      await seek(release.tick);
+      await wait(()=>evaluate(`Boolean(document.querySelector('[data-replay-event="${release.id}"]'))`),'real release visible at native tick');
+      await shot(`throw-chinese-${width}`);
+      await evaluate(`document.querySelector('[data-replay-event="${release.id}"]').click()`);
+      assert.equal(await evaluate(`Number(${canvas}.dataset.tick)`),release.tick);
+      await seek(smoke.tick);
+      await shot(`effect-chinese-${width}`);
+      await seek(release.tick-1);
+      assert.equal(await evaluate(`Boolean(document.querySelector('[data-replay-event="${release.id}"]'))`),false,'backward hides future throw');
+      metrics.checks.push(`native ${width}x${height}: nickname on/off/tab isolation; HE motion/pause/reverse; Chinese release/effect; exact release seek`);
+    }
     assert.ok(await evaluate('document.documentElement.scrollHeight-innerHeight<=1'));
   }
   if (process.env.P7_CAPTURE_FIRE === '1') {
@@ -183,6 +237,16 @@ try {
   await round(2); assert.equal(await evaluate('Number('+canvas+'.dataset.effects)'),0);
   metrics.checks.push('multi smoke; cross chunk reverse seek; round reset');
   metrics.pixelFingerprints={smoke:fingerprint(before),fire:fingerprint(firePixels)};
+  if(roundTwo){
+    await evaluate('document.querySelectorAll("#replay-panel [role=switch]")[1].click()');
+    await wait(()=>evaluate('document.querySelectorAll("#replay-panel [role=switch]")[1].checked'),'nickname before reimport');
+    await evaluate('document.querySelector("[data-sidebar-import]").click()');
+    await wait(()=>evaluate('document.querySelector("main").dataset.status==="success"&&document.querySelector("[data-replay-session]")?.dataset.replaySession!=='+JSON.stringify(sessionId)),'new real import resets replay',120000);
+    await evaluate('document.getElementById("replay-tab").click()');
+    await wait(()=>evaluate('document.querySelectorAll("#replay-panel [role=switch]").length===2'),'new replay ready');
+    assert.equal(await evaluate('document.querySelectorAll("#replay-panel [role=switch]")[1].checked'),false);
+    metrics.checks.push('new DEM session resets nickname switch to off');
+  }
   assert.deepEqual(exceptions,[]); metrics.status='PASS';
 } catch(error) { failure=error; metrics.status='FAIL'; metrics.error=String(error.stack||error); }
 finally {

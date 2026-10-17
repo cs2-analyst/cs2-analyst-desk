@@ -20,7 +20,7 @@ registerHooks({ resolve(specifier, context, nextResolve) {
   return nextResolve(specifier, context);
 }, load(url, context, nextLoad) {
   if (url.endsWith('/replay-map-assets.ts')) return { format: 'module', shortCircuit: true, source: 'export const replayMapAssets={};' };
-  if (url.endsWith('.svg')) return { format: 'module', shortCircuit: true, source: 'export default ' + JSON.stringify(new URL(url).pathname) + ';' };
+  if (/\.(svg|png)$/.test(url)) return { format: 'module', shortCircuit: true, source: 'export default ' + JSON.stringify(new URL(url).pathname) + ';' };
   if (url.endsWith('.tsx')) return { format: 'module', shortCircuit: true,
     source: transformSync(readFileSync(new URL(url), 'utf8'), { loader: 'tsx', jsx: 'automatic', format: 'esm' }).code };
   return nextLoad(url, context);

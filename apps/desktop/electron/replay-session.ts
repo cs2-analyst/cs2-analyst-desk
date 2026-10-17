@@ -3,6 +3,7 @@ import type { DesktopReplayBlind, DesktopReplayBomb, DesktopReplayBurn, DesktopR
   DesktopReplayPlayer, DesktopReplayRequest, DesktopReplayRoundInfo, DesktopReplayUtility } from '@cs2-analyst/report-contract';
 import { displayPlayerName } from './player-name.ts';
 import { replayResourceId } from '../shared/replay-resource.ts';
+import { replayThrownUtility, replayUtilityLabel } from '../shared/replay-presentation.ts';
 
 export const REPLAY_CHUNK_BYTES = 1024 * 1024;
 export const REPLAY_CACHE_BYTES = 64 * 1024 * 1024;
@@ -57,10 +58,17 @@ export class ReplaySession {
       const blinds:DesktopReplayBlind[]=(round.blinds??[]).map(window=>({...window}));
       const burns:DesktopReplayBurn[]=(round.burns??[]).map(window=>({...window}));
       const events: DesktopReplayEvent[]=round.events.map(({event:e,eventIndex})=>{
-        let actorId:string|null=null,targetId:string|null=null,description:string=e.type,position:[number,number,number]|null=null;
+        let actorId:string|null=null,targetId:string|null=null,description:string=e.type,position:[number,number,number]|null=null,type:string=e.type;
         if(e.type==='kill'){actorId=names.has(e.killer)?e.killer:null;targetId=e.victim;description=`${actorId?names.get(actorId):'无已知攻击者'} 击杀 ${names.get(e.victim)??'未知玩家'}`;}
         else if(e.type==='damage'){actorId=e.attacker;targetId=e.victim;description=`伤害事件 · 报告 HP 伤害 ${e.healthDamage}`;}
-        else if(e.type==='weapon_fire'){actorId=e.shooter;description=`${names.get(e.shooter)??'未知玩家'} 开火 · ${e.weapon}`;}
+        else if(e.type==='weapon_fire'){
+          actorId=e.shooter;
+          const utility=replayThrownUtility(e.weapon);
+          // Native release tick and shooter are direct evidence. Do not derive either
+          // from flight/effect entities (which can be reused or absent altogether).
+          if(utility){type='utility_throw';description=`${names.get(e.shooter)?.trim()||'未知玩家'} 投掷了 ${replayUtilityLabel(utility)}`;}
+          else description=`${names.get(e.shooter)??'未知玩家'} 开火 · ${e.weapon}`;
+        }
         else if(e.type==='utility'){
           const effect=effectByEvent.get(eventIndex);
           // Event thrower first, then the native projectile owner; both are real data.
@@ -70,12 +78,12 @@ export class ReplaySession {
           // Utility ticks are native detonation/start observations, not weapon_fire ticks.
           // Name that observed action without moving events or any effect/flight window.
           const action=e.action==='start_burn'?'开始燃烧':e.action==='start_decoy'?'开始生效':'爆开';
-          description=`${nickname||'未知玩家'} 的 ${effect?.variant??effect?.kind??e.utility} ${action}`;
+          description=`${nickname||'未知玩家'} 的 ${replayUtilityLabel(effect?.variant??effect?.kind??e.utility)} ${action}`;
           if(e.position)position=[e.position.x,e.position.y,e.position.z];
         }
         else if(e.type==='flash'){actorId=e.attacker;targetId=e.victim;description=`${names.get(e.victim)??'未知玩家'} 受闪事件`;}
         else if(e.type==='bomb'){actorId=e.player;description=bombLabels[e.action];}
-        return {id:`r${round.round}-e${eventIndex}`,tick:e.tick,type:e.type,description,actorId,targetId,position};
+        return {id:`r${round.round}-e${eventIndex}`,tick:e.tick,type,description,actorId,targetId,position};
       });
       const info:DesktopReplayRoundInfo={round:round.round,startTick:round.startTick,endTick:round.endTick,freezeEndTick:round.freezeEndTick,coverage:round.coverage.status,blocks:[]};
       const add=(startTick:number,endTick:number)=>{

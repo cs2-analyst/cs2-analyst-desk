@@ -223,11 +223,11 @@ try{
   await waitFor(()=>evaluate(`Number(document.querySelector('${canvasSelector}').dataset.flashes)>0`),'flash burst');
   await waitFor(()=>evaluate(`Number(document.querySelector('${canvasSelector}').dataset.blind)>0`),'real blind victim window');
   await capture('p7-utility-flash-blind.png');
-  await seekReplay(effectProbe.he.tick+32);
+  await seekReplay(effectProbe.he.tick+8);
   await waitFor(()=>evaluate(`Number(document.querySelector('${canvasSelector}').dataset.explosions)>0`),'HE burst');
   await capture('p7-utility-he.png');
-  await seekReplay(effectProbe.he.tick+Math.round(meta.tickRate)+2);
-  await waitFor(()=>evaluate(`Number(document.querySelector('${canvasSelector}').dataset.explosions)===0`),'HE burst ends after one second');
+  await seekReplay(effectProbe.he.tick+Math.round(meta.tickRate*.5));
+  await waitFor(()=>evaluate(`Number(document.querySelector('${canvasSelector}').dataset.explosions)===0`),'HE burst ends after half a second');
   await seekReplay(effectProbe.utilityEvent.tick);
   await waitFor(()=>evaluate(`Boolean(document.querySelector('[data-replay-event="${effectProbe.utilityEvent.id}"]'))`),'utility key event row');
   const utilityText=await evaluate(`document.querySelector('[data-replay-event="${effectProbe.utilityEvent.id}"]').textContent`);

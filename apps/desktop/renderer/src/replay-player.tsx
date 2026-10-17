@@ -6,11 +6,13 @@ import { mapResourceState, radarHeading, resolveMapLayer, worldToRadar } from '.
 import type { ReplayMapDefinition } from './replay-map';
 import { replayMapAssets } from './replay-map-assets';
 import { appendReplayEvents, nextReplayRound, replayBlockAt, replayDisplayFrame, ReplayChunkCache, ReplayClock, resolveReplayPlayerId } from './replay-state';
-import { paintReplayArea, replayEffectsAt } from './replay-effects';
+import { paintReplayArea, paintReplayHEBurst, replayEffectsAt } from './replay-effects';
 import type { ReplayEffectFrame } from './replay-effects';
 import { QuestionCircleIcon, PauseIcon, PlayIcon } from './icons';
 import { useRoundMenu } from './round-menu';
 import { palette } from './theme';
+import { replayEffectAssetUrls } from './replay-effect-assets';
+import type { ReplayEffectImages } from './replay-effect-assets';
 
 /**
  * Desktop analysis layout: the panel owns the full height and nothing here scrolls as a page.
@@ -154,11 +156,11 @@ function radial(ctx: CanvasRenderingContext2D, x: number, y: number, radius: num
 }
 /** Layer 2: persistent smoke/fire areas. Both fade in/out from real ticks and never hide players. */
 function drawArea(ctx: CanvasRenderingContext2D, map: ReplayMapDefinition, layerId: string,
-  utility: DesktopReplayUtility, tick: number, rate: number | null) {
+  utility: DesktopReplayUtility, tick: number, rate: number | null, atlas?: CanvasImageSource) {
   if (!utility.position || resolveMapLayer(map, utility.position[2]) !== layerId) return;
   const point = worldToRadar(map, { x: utility.position[0], y: utility.position[1] });
   if (!point) return;
-  paintReplayArea(ctx, utility, tick, rate, point.x, point.y, mapRadius(map, utility.kind === 'smoke' ? 184 : 158));
+  paintReplayArea(ctx, utility, tick, rate, point.x, point.y, mapRadius(map, utility.kind === 'smoke' ? 184 : 158), atlas);
 }
 /** Layer 3: only the most recent flight, thinning and fading towards the tail. */
 function drawTrail(ctx: CanvasRenderingContext2D, map: ReplayMapDefinition, layerId: string,
@@ -184,29 +186,17 @@ function drawTrail(ctx: CanvasRenderingContext2D, map: ReplayMapDefinition, laye
 }
 /** Layer 4: small projectile glyphs, deliberately compact so they never mask the map. */
 function drawProjectile(ctx: CanvasRenderingContext2D, map: ReplayMapDefinition, layerId: string,
-  utility: DesktopReplayUtility, x: number, y: number, z: number) {
+  utility: DesktopReplayUtility, x: number, y: number, z: number, images: ReplayEffectImages) {
   if (resolveMapLayer(map, z) !== layerId) return;
   const point = worldToRadar(map, { x, y });
   if (!point) return;
-  const color = effectColor(utility.kind), size = 7.2;
-  ctx.save(); ctx.translate(point.x, point.y); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-  ctx.fillStyle = 'rgba(17,24,33,0.80)'; ctx.beginPath(); ctx.arc(0, 0, size + 2.2, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 1.35;
-  if (utility.kind === 'smoke') {
-    ctx.beginPath(); ctx.arc(-1.9, 0.5, 2.2, 0, Math.PI * 2); ctx.arc(1.2, -0.8, 2.7, 0, Math.PI * 2); ctx.arc(2.1, 1.6, 1.8, 0, Math.PI * 2); ctx.fill();
-  } else if (utility.kind === 'flashbang') {
-    ctx.beginPath(); for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; ctx.moveTo(Math.cos(a) * 2.1, Math.sin(a) * 2.1); ctx.lineTo(Math.cos(a) * size, Math.sin(a) * size); } ctx.stroke();
-    ctx.beginPath(); ctx.arc(0, 0, 1.9, 0, Math.PI * 2); ctx.fill();
-  } else if (utility.kind === 'hegrenade') {
-    ctx.beginPath(); ctx.arc(0, 0, 3.5, 0, Math.PI * 2); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(-2.4, 0); ctx.lineTo(2.4, 0); ctx.moveTo(0, -2.4); ctx.lineTo(0, 2.4); ctx.stroke();
-  } else if (utility.kind === 'fire') {
-    ctx.beginPath(); ctx.moveTo(0, 4.6); ctx.bezierCurveTo(-4.6, 1.4, -2.2, -1.8, -0.6, -4.8); ctx.bezierCurveTo(1.6, -1.2, 3.8, 0.4, 3.0, 2.6); ctx.bezierCurveTo(2.6, 3.8, 1.6, 4.6, 0, 4.6); ctx.fill();
-  } else {
-    ctx.beginPath(); ctx.arc(0, 0, 3.1, 0, Math.PI * 2); ctx.stroke();
-    ctx.beginPath(); ctx.arc(0, 0, 1.3, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(2.2, -2.2); ctx.lineTo(4.4, -4.4); ctx.stroke();
-  }
+  const icon = images[utility.variant ?? utility.kind];
+  if (!icon) return;
+  const height = 23, width = Math.min(27, height * icon.naturalWidth / icon.naturalHeight);
+  ctx.save(); ctx.translate(point.x, point.y);
+  ctx.fillStyle = 'rgba(17,24,33,0.88)';
+  ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI * 2); ctx.fill();
+  ctx.drawImage(icon, -width / 2, -height / 2, width, height);
   ctx.restore();
 }
 /** Layer 4: short, bright-but-bounded bursts. Players are painted later. */
@@ -220,10 +210,7 @@ function drawBurst(ctx: CanvasRenderingContext2D, map: ReplayMapDefinition, laye
     radial(ctx, point.x, point.y, radius, '#ffffff', Math.pow(1 - progress, 1.7) * 0.58, 0.02);
     return;
   }
-  const radius = mapRadius(map, 55 + 170 * progress), alpha = (1 - progress) * 0.55;
-  radial(ctx, point.x, point.y, radius, palette.utility.he, alpha, 0.02);
-  ctx.globalAlpha = (1 - progress) * 0.75; ctx.strokeStyle = palette.utility.he; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.arc(point.x, point.y, radius * 0.86, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1;
+  paintReplayHEBurst(ctx, utility, progress, point.x, point.y, mapRadius(map, 1));
 }
 /** Layer 6: player status overlays above every player point. */
 function drawStatusIcon(ctx: CanvasRenderingContext2D, x: number, y: number, kind: 'blind' | 'burn') {
@@ -250,6 +237,10 @@ export function ReplayPlayer({ metadata, initialPlayerId, active, jump }: {
   const [roundNumber,setRoundNumber]=useState(first?.round??0),[tick,setTick]=useState(first?.startTick??0);
   const [playing,setPlaying]=useState(false),[speed,setSpeed]=useState(1),[floor,setFloor]=useState('auto');
   const [continuous,setContinuous]=useState(true);
+  // Session identity makes reset immediate, even if the component survives a new import.
+  const [nicknames,setNicknames]=useState({sessionId:metadata.sessionId,visible:false});
+  const showNicknames=nicknames.sessionId===metadata.sessionId&&nicknames.visible;
+  const effectImages=useRef<ReplayEffectImages>({});
   const [loading,setLoading]=useState(false),[error,setError]=useState<string|null>(null),[revision,setRevision]=useState(0);
   const [imageReady,setImageReady]=useState(false),[imageFailed,setImageFailed]=useState(false);
   const [selectedReplayPlayerId,setSelectedReplayPlayerId]=useState(()=>resolveReplayPlayerId(metadata.players,initialPlayerId));
@@ -272,8 +263,8 @@ export function ReplayPlayer({ metadata, initialPlayerId, active, jump }: {
   const layerId=map?(floor==='auto'?resolveMapLayer(map,selected?.[4]??null):floor):null;
   const layer=map?.layers.find(l=>l.id===layerId),url=layer?replayMapAssets[layer.image]:undefined;
   const availableMap=mapState.status!=='unavailable'&&!imageFailed;
-  const live=useRef({info,selectedPlayerId:selectedReplayPlayerId,active,map,layerId,imageReady});
-  live.current={info,selectedPlayerId:selectedReplayPlayerId,active,map,layerId,imageReady};
+  const live=useRef({info,selectedPlayerId:selectedReplayPlayerId,active,map,layerId,imageReady,showNicknames});
+  live.current={info,selectedPlayerId:selectedReplayPlayerId,active,map,layerId,imageReady,showNicknames};
 
   useEffect(()=>{setSelectedReplayPlayerId(current=>metadata.players.some(p=>p.id===current)?current:resolveReplayPlayerId(metadata.players,initialPlayerId));},[metadata.sessionId]);
 
@@ -343,7 +334,8 @@ export function ReplayPlayer({ metadata, initialPlayerId, active, jump }: {
     const target=canvas.current,view=live.current;if(!target)return;
     const ctx=target.getContext('2d');if(!ctx)return;
     const started=performance.now();ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,target.width,target.height);
-    target.dataset.tick=String(at);target.dataset.playerCount='0';
+    target.dataset.tick=String(at);target.dataset.playerCount='0';target.dataset.nicknameCount='0';
+    target.dataset.effectAssets=String(Object.keys(effectImages.current).length);
     // Effects are a pure function of the chunk and the current tick: no accumulation, so
     // seek/pause/round changes cannot leave a stale area or reveal a future one.
     const effects=current&&currentChunk?replayEffectsAt(currentChunk,at,metadata.tickRate):emptyEffects();
@@ -354,39 +346,73 @@ export function ReplayPlayer({ metadata, initialPlayerId, active, jump }: {
     if(!view.map||!current||!view.imageReady||!view.layerId)return;
     const map=view.map,layerId=view.layerId;ctx.setTransform(target.width/map.width,0,0,target.height/map.height,0,0);
     // Layer 2: persistent areas. They are translucent and painted before every player mark.
-    for(const utility of effects.smoke)drawArea(ctx,map,layerId,utility,at,metadata.tickRate);
-    for(const utility of effects.fire)drawArea(ctx,map,layerId,utility,at,metadata.tickRate);
+    for(const utility of effects.smoke)drawArea(ctx,map,layerId,utility,at,metadata.tickRate,effectImages.current.fireAtlas);
+    for(const utility of effects.fire)drawArea(ctx,map,layerId,utility,at,metadata.tickRate,effectImages.current.fireAtlas);
     // Layer 3: recent trails only, then layer 4 projectile icons/bursts.
     for(const flying of effects.flying)drawTrail(ctx,map,layerId,flying.trail,effectColor(flying.utility.kind));
-    for(const flying of effects.flying)drawProjectile(ctx,map,layerId,flying.utility,flying.sample.x,flying.sample.y,flying.sample.z);
+    for(const flying of effects.flying)drawProjectile(ctx,map,layerId,flying.utility,flying.sample.x,flying.sample.y,flying.sample.z,effectImages.current);
     for(const burst of effects.flashes)drawBurst(ctx,map,layerId,burst.utility,burst.progress);
     for(const burst of effects.explosions)drawBurst(ctx,map,layerId,burst.utility,burst.progress);
     // Layer 5: players and their existing discrete markers.
-    let drawnPlayers=0,selectedPoint:{x:number;y:number}|null=null;
+    let drawnPlayers=0;
     const statusMarks:{x:number;y:number;kind:'blind'|'burn'}[]=[];
+    const labels:{x:number;y:number;text:string;chosen:boolean}[]=[];
     for(const p of current.players){
       if(p[7]!==true||p[2]===null||p[3]===null||resolveMapLayer(map,p[4])!==view.layerId)continue;
       const point=worldToRadar(map,{x:p[2],y:p[3]});if(!point||point.x<0||point.y<0||point.x>map.width||point.y>map.height)continue;
       drawnPlayers++;
       const chosen=metadata.players[p[0]]?.id===view.selectedPlayerId,color=p[8]==='CT'?palette.replay.ct:p[8]==='T'?palette.replay.t:palette.replay.unknown;
       ctx.fillStyle=color;ctx.strokeStyle=chosen?palette.replay.selection:palette.replay.surface;ctx.lineWidth=chosen?3:2;
-      ctx.beginPath();if(p[8]==='CT')ctx.rect(point.x-7,point.y-7,14,14);else ctx.arc(point.x,point.y,chosen?9:7,0,Math.PI*2);ctx.fill();ctx.stroke();
-      if(p[5]!==null){const heading=radarHeading(p[5]);if(heading){ctx.strokeStyle=color;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(point.x+heading.x*10,point.y+heading.y*10);ctx.lineTo(point.x+heading.x*22,point.y+heading.y*22);ctx.stroke();}}
-      ctx.font='bold 12px Segoe UI';ctx.textAlign='center';ctx.fillStyle=palette.replay.surface;ctx.fillText(String(p[0]+1),point.x,point.y+4);
+      ctx.beginPath();if(p[8]==='CT')ctx.rect(point.x-14,point.y-14,28,28);else ctx.arc(point.x,point.y,chosen?18:14,0,Math.PI*2);ctx.fill();ctx.stroke();
+      if(p[5]!==null){const heading=radarHeading(p[5]);if(heading){ctx.strokeStyle=color;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(point.x+heading.x*20,point.y+heading.y*20);ctx.lineTo(point.x+heading.x*32,point.y+heading.y*32);ctx.stroke();}}
+      ctx.font='bold 15px Segoe UI';ctx.textAlign='center';ctx.fillStyle=palette.replay.surface;ctx.fillText(String(p[0]+1),point.x,point.y+4);
       const playerId=metadata.players[p[0]]?.id;
-      if(playerId&&effects.blinds.has(playerId))statusMarks.push({x:point.x+13,y:point.y-10,kind:'blind'});
-      if(playerId&&effects.burns.has(playerId))statusMarks.push({x:point.x+13,y:point.y+10,kind:'burn'});
-      if(chosen)selectedPoint={x:point.x,y:point.y};
+      if(playerId&&effects.blinds.has(playerId))statusMarks.push({x:point.x+22,y:point.y-14,kind:'blind'});
+      if(playerId&&effects.burns.has(playerId))statusMarks.push({x:point.x+22,y:point.y+14,kind:'burn'});
+      if(view.showNicknames||chosen)labels.push({x:point.x,y:point.y,text:metadata.players[p[0]]?.nickname.slice(0,22)??'',chosen});
     }
     const bomb=current.bomb;
     if(bomb.position&&resolveMapLayer(map,bomb.position[2])===view.layerId){const p=worldToRadar(map,{x:bomb.position[0],y:bomb.position[1]});if(p){ctx.strokeStyle=palette.replay.bomb;ctx.lineWidth=3;ctx.strokeRect(p.x-8,p.y-8,16,16);}}
     // Layer 6: real blind/burn status above all player points; layer 7: selection label.
     for(const mark of statusMarks)drawStatusIcon(ctx,mark.x,mark.y,mark.kind);
-    if(selectedPoint){ctx.textAlign='center';ctx.fillStyle=palette.replay.selection;ctx.font='14px Segoe UI';ctx.fillText(metadata.players.find(player=>player.id===view.selectedPlayerId)?.nickname.slice(0,22)??'',selectedPoint.x,selectedPoint.y-16);}
+    // Keep names readable in CSS pixels even when the radar is small. Try four nearby
+    // offsets, avoiding prior labels/player centres where possible; no persistent layout state.
+    const labelScale=Math.max(1,map.width/Math.max(1,target.clientWidth));
+    const fontSize=Math.max(14,10*labelScale),padding=3*labelScale;
+    const placed:{left:number;top:number;right:number;bottom:number}[]=[];
+    for(const label of labels){
+      ctx.font=`${fontSize}px Segoe UI`;ctx.textAlign='center';
+      const width=ctx.measureText(label.text).width+padding*2,height=fontSize+padding*2;
+      const gap=20+padding;
+      const candidates=[[label.x,label.y-gap-height],[label.x,label.y+gap],
+        [label.x+gap+width/2,label.y-height/2],[label.x-gap-width/2,label.y-height/2]].map(([cx,top])=>{
+          const left=Math.max(2,Math.min(map.width-width-2,cx-width/2));
+          top=Math.max(2,Math.min(map.height-height-2,top));
+          const right=left+width,bottom=top+height;
+          const collisions=placed.filter(r=>left<r.right&&right>r.left&&top<r.bottom&&bottom>r.top).length
+            +labels.filter(p=>p.x+18>left&&p.x-18<right&&p.y+18>top&&p.y-18<bottom).length;
+          return {left,top,right,bottom,collisions};
+        });
+      const rect=candidates.reduce((best,r)=>r.collisions<best.collisions?r:best);
+      placed.push(rect);
+      ctx.fillStyle='rgba(17,24,33,.86)';ctx.fillRect(rect.left,rect.top,width,height);
+      ctx.fillStyle=label.chosen?palette.replay.selection:'#f5f7fa';
+      ctx.fillText(label.text,rect.left+width/2,rect.top+padding+fontSize*.80);
+    }
+    target.dataset.nicknameCount=String(labels.length);
     const times=drawTimes.current;times.push(performance.now()-started);if(times.length>120)times.shift();
     target.dataset.playerCount=String(drawnPlayers);
     target.dataset.drawP95=String([...times].sort((a,b)=>a-b)[Math.floor(times.length*.95)]??0);
   }
+  useEffect(()=>{
+    let disposed=false;
+    const images=Object.entries(replayEffectAssetUrls).map(([key,url])=>{
+      const img=new Image();
+      img.onload=()=>{if(!disposed)effectImages.current[key as keyof ReplayEffectImages]=img;};
+      img.src=url;return img;
+    });
+    return()=>{disposed=true;for(const img of images)img.onload=null;effectImages.current={};};
+  },[]);
   useEffect(()=>()=>{generation.current++;cache.current.clear();resume.current=false;},[metadata.sessionId]);
   useEffect(()=>{if(jump)selectRound(jump.round,jump.tick);},[jump?.sequence]);
   useEffect(()=>{
@@ -470,7 +496,7 @@ export function ReplayPlayer({ metadata, initialPlayerId, active, jump }: {
   },[availableMap]);
   if(!metadata.available||!info)return <section className={s.root} aria-label="比赛回放"><div className={s.group}><Title2>比赛回放</Title2><Body1>{metadata.unavailableReason??'本场缺少可靠回放窗口，比赛报告仍可用。'}</Body1></div></section>;
   const eventsHelp=`仅显示当前播放进度已到达的事件。同 tick 不推断先后顺序。${metadata.excludedRounds.length?` ${metadata.excludedRounds.length} 个回合窗口不可靠，未开放回放。`:''}`;
-  return <section className={s.root} aria-label="比赛回放" data-replay-session={metadata.sessionId} data-replay-match={metadata.matchId} data-replay-round={roundNumber} data-replay-tick={tick} data-replay-cache={cache.current.size} data-replay-block={block?.index} data-replay-revision={revision} data-replay-map-ready={imageReady} data-replay-visible-events={visibleEvents.length} data-replay-continuous={continuous?'on':'off'}>
+  return <section className={s.root} aria-label="比赛回放" data-replay-session={metadata.sessionId} data-replay-match={metadata.matchId} data-replay-round={roundNumber} data-replay-tick={tick} data-replay-cache={cache.current.size} data-replay-block={block?.index} data-replay-revision={revision} data-replay-map-ready={imageReady} data-replay-visible-events={visibleEvents.length} data-replay-continuous={continuous?'on':'off'} data-replay-nicknames={showNicknames?'on':'off'}>
     <div className={s.bar}>
       <div className={s.barTitle}><Title2>比赛回放</Title2><Caption1 className={s.muted}>R{roundNumber}</Caption1></div>
       <div className={s.controls}>
@@ -478,6 +504,7 @@ export function ReplayPlayer({ metadata, initialPlayerId, active, jump }: {
         <Dropdown className={s.dropdown} aria-label="回放倍速" value={`${speed}×`} selectedOptions={[String(speed)]} disabled={metadata.tickRate===null} onOptionSelect={(_,d)=>{if(!d.optionValue)return;const value=Number(d.optionValue);clock.current.setSpeed(value,performance.now(),metadata.tickRate);setSpeed(value);}}>{[.25,.5,1,2,4].map(v=><Option key={v} value={String(v)}>{`${v}×`}</Option>)}</Dropdown>
         <Dropdown ref={roundMenu.triggerRef} className={s.dropdown} aria-label="回放回合" value={`R${roundNumber}`} selectedOptions={[String(roundNumber)]} listbox={{className:roundMenu.listboxClassName}} positioning={roundMenu.positioning} onOpenChange={roundMenu.onOpenChange} onOptionSelect={(_,d)=>d.optionValue&&selectRound(Number(d.optionValue))}>{metadata.rounds.map(r=><Option key={r.round} value={String(r.round)}>{`R${r.round}`}</Option>)}</Dropdown>
         <Switch className={s.switch} checked={continuous} onChange={(_,d)=>setContinuous(d.checked)} label="连续播放" />
+        <Switch className={s.switch} checked={showNicknames} onChange={(_,d)=>setNicknames({sessionId:metadata.sessionId,visible:d.checked})} label="显示昵称" />
         {map&&map.layers.length>1?<Dropdown className={s.dropdown} aria-label="回放楼层" value={floor==='auto'?'跟随玩家':map.layers.find(l=>l.id===floor)?.label} selectedOptions={[floor]} onOptionSelect={(_,d)=>d.optionValue&&setFloor(d.optionValue)}><Option value="auto">跟随玩家</Option>{map.layers.map(l=><Option key={l.id} value={l.id}>{l.label}</Option>)}</Dropdown>:null}
       </div>
       <span className={s.spacer} />

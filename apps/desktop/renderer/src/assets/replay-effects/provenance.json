@@ -1,0 +1,53 @@
+{
+  "source": "User-provided fire sprite reference, 2026-10-18",
+  "referenceSha256": "485dbf0ad79c584920fc2b1689cbff946c610dca3194896cd0e43bc90888f100",
+  "cropBoxes": [
+    [
+      202,
+      76,
+      279,
+      181
+    ],
+    [
+      305,
+      78,
+      392,
+      181
+    ],
+    [
+      419,
+      73,
+      499,
+      182
+    ],
+    [
+      305,
+      188,
+      393,
+      287
+    ],
+    [
+      303,
+      290,
+      393,
+      388
+    ],
+    [
+      201,
+      287,
+      281,
+      388
+    ],
+    [
+      202,
+      187,
+      281,
+      286
+    ]
+  ],
+  "frameWidth": 80,
+  "frameHeight": 112,
+  "frames": 7,
+  "processing": "Upper clean grid; saturation alpha mask; white-edge unmatting; common baseline; no checkerboard or watermark region",
+  "atlasSha256": "48a437e8dca23087101549bf30741d50280ab3498ae5abbd07b061118242be05"
+}

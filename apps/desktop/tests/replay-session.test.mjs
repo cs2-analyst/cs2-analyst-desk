@@ -54,9 +54,9 @@ test('utility key-event copy uses the real thrower and chunks carry only overlap
   const s=new ReplaySession(match,replay,'session'),first=s.get({sessionId:'session',round:1,block:0});
   const second=s.get({sessionId:'session',round:1,block:1}),third=s.get({sessionId:'session',round:1,block:2});
   const text=id=>[...first.events,...second.events].find(event=>event.id===id)?.description;
-  assert.equal(text('r1-e0'),'ropz 的 smoke 爆开');
-  assert.equal(text('r1-e1'),'ropz 的 incendiary 开始燃烧');
-  assert.equal(text('r1-e2'),'未知玩家 的 flashbang 爆开');
+  assert.equal(text('r1-e0'),'ropz 的 烟雾弹 爆开');
+  assert.equal(text('r1-e1'),'ropz 的 燃烧弹 开始燃烧');
+  assert.equal(text('r1-e2'),'未知玩家 的 闪光弹 爆开');
   assert.equal(text('r1-e3'),' ropz  击杀 donk','non-utility copy is untouched');
   assert.equal(text('r1-e4'),'炸弹安放完成');
   assert.deepEqual(first.utilities.map(utility=>utility.kind),['smoke','fire']);
@@ -86,17 +86,35 @@ test('effect action labels preserve boundary ticks, same-tick order, seek visibi
   const first=get(0),second=get(1),seen=new Set();
   assert.deepEqual(first.events.map(e=>[e.id,e.tick]),[['r1-e0',140],['r1-e1',159]]);
   assert.deepEqual(second.events.map(e=>[e.id,e.tick]),[['r1-e2',160],['r1-e3',160],['r1-e4',161]]);
-  assert.deepEqual(second.events.map(e=>e.description),['p 的 hegrenade 爆开','p 的 decoy 开始生效','p 的 fire 开始燃烧']);
+  assert.deepEqual(second.events.map(e=>e.description),['p 的 手雷 爆开','p 的 诱饵弹 开始生效','p 的 火焰 开始燃烧']);
   assert.equal(first.utilities[0].tick,159);assert.equal(first.utilities[0].trajectory.startTick,140);
   assert.deepEqual(second.utilities[0],first.utilities[0],'the same long effect spans the boundary without moving its event');
-  assert.deepEqual(appendReplayEvents([],new Set(),first.events,158).events,[],'a throw or flight must not pre-show the effect event');
+  assert.deepEqual(appendReplayEvents([],new Set(),first.events,158).events.map(e=>e.id),['r1-e0'],'only the observed release appears before the effect');
   const at159=appendReplayEvents([],seen,first.events,159);
-  assert.deepEqual(at159.events.map(e=>e.id),['r1-e1']);
+  assert.deepEqual(at159.events.map(e=>e.id),['r1-e0','r1-e1']);
   const at160=appendReplayEvents(at159.events,seen,second.events,160);
-  assert.deepEqual(at160.events.map(e=>e.id),['r1-e1','r1-e2','r1-e3'],'same-tick source order remains intact');
+  assert.deepEqual(at160.events.map(e=>e.id),['r1-e0','r1-e1','r1-e2','r1-e3'],'same-tick source order remains intact');
   assert.equal(appendReplayEvents(at160.events,seen,second.events,160).appended,0,'chunk reload does not duplicate same-tick entries');
   for(const event of second.events)assert.equal(replayBlockAt(info,event.tick).index,1,'event click keeps the observed effect seek tick');
   assert.equal(replayBlockAt(info,159.99).index,0);assert.equal(replayBlockAt(info,160).index,1);
-  assert.deepEqual(appendReplayEvents([],new Set(),get(0).events,158).events,[],'backward seek reconstruction contains no future effect');
+  assert.deepEqual(appendReplayEvents([],new Set(),get(0).events,158).events.map(e=>e.id),['r1-e0'],'backward seek reconstruction contains no future effect');
   assert.deepEqual(get(1),second,'random repeated chunk access is deterministic');
+});
+
+test('native grenade releases need no effect/flight, preserve source identity and do not expose gunfire',()=>{
+  const {match,replay}=make(),r=replay.rounds[0];
+  match.players.push({steamId:'2',nickname:'q'});replay.players.push('2');
+  const weapons=['smokegrenade','flashbang','hegrenade','molotov','incgrenade','decoy','flashbang','ak47','unknown'];
+  r.events=weapons.map((weapon,eventIndex)=>({eventIndex,event:{type:'weapon_fire',tick:eventIndex<2?159:160+eventIndex,shooter:eventIndex===1?'2':'1',shooterSide:'T',weapon:'weapon_'+weapon}}));
+  const original=structuredClone(r.events),s=new ReplaySession(match,replay,'s');
+  const a=s.get({sessionId:'s',round:1,block:0}),b=s.get({sessionId:'s',round:1,block:1});
+  assert.deepEqual(r.events,original);
+  assert.deepEqual(a.events.map(e=>[e.id,e.tick,e.actorId]),[['r1-e0',159,'1'],['r1-e1',159,'2']]);
+  assert.deepEqual([...a.events,...b.events].filter(e=>e.type==='utility_throw').map(e=>e.description),[
+    'p 投掷了 烟雾弹','q 投掷了 闪光弹','p 投掷了 手雷','p 投掷了 燃烧瓶','p 投掷了 燃烧弹','p 投掷了 诱饵弹','p 投掷了 闪光弹']);
+  const seen=new Set(),first=appendReplayEvents([],seen,a.events,159),next=appendReplayEvents(first.events,seen,b.events,170);
+  assert.equal(next.events.length,7);assert.equal(appendReplayEvents(next.events,seen,b.events,170).appended,0);
+  assert.equal(appendReplayEvents([],new Set(),a.events,158).events.length,0);
+  assert.equal(b.events.filter(e=>e.type==='weapon_fire').length,2,'unknown and firearm events stay hidden');
+  assert.deepEqual(s.get({sessionId:'s',round:1,block:1}),b);
 });

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { paintReplayArea, replayTrailSeconds, REPLAY_EFFECT_LAYER_ORDER, replayEffectsAt, replayTrajectorySample, replayTrajectoryTrail } from '../renderer/src/replay-effects.ts';
+import { paintReplayArea, paintReplayHEBurst, replayHEProgress, replayFireFrame, replayHEFragments, replayTrailSeconds, REPLAY_EFFECT_LAYER_ORDER, replayEffectsAt, replayTrajectorySample, replayTrajectoryTrail } from '../renderer/src/replay-effects.ts';
 
 const trajectory=(points)=>({startTick:points[0][0],endTick:points.at(-1)[0],points});
 const utility=(kind,tick,endTick,path=null)=>({id:`u-${kind}-${tick}`,eventIndex:1,kind,variant:null,throwerId:null,entityId:1,
@@ -24,13 +24,13 @@ test('trail covers only the recent window and grows with speed at the same tick 
   assert.ok(slowTrail.length>=2&&fastTrail.length>=2);
   const long=trajectory([[0,0,0,0],[100,0,1000,0]]);
   const recent=replayTrajectoryTrail(long,100,64);
-  assert.ok(recent[0].tick>=100-50,'tail never exceeds the bounded .78s window');
+  assert.ok(recent[0].tick>=100-70,'tail never exceeds the bounded 1.10s window');
   assert.ok(recent.at(-1).tick<=100);
 });
 
 test('speed window is bounded and trails retain every bounce, level barrier and missing span',()=>{
   assert.equal(replayTrailSeconds(0,64),.30);
-  assert.equal(replayTrailSeconds(2000,64),.78);
+  assert.equal(replayTrailSeconds(2000,64),1.10);
   assert.equal(replayTrailSeconds(2000,null),.34);
   assert.ok(replayTrailSeconds(700,64)>replayTrailSeconds(300,64));
   const path=trajectory([[0,0,0,0],[4,100,0,0],[8,0,0,0],[12,0,100,0],[16,0,0,0],[20,0,0,1000]]);
@@ -52,7 +52,7 @@ const paintTrace=(kind,tick,rate=64,eventIndex=1)=>{
     trace.push([key,...args]);
     if(key==='createRadialGradient'||key==='createLinearGradient')return {addColorStop:(...stops)=>trace.push(['stop',...stops])};
   },set:(_,key,value)=>{trace.push([key,typeof value==='object'?'gradient':value]);return true;}});
-  paintReplayArea(ctx,{...utility(kind,100,1500),eventIndex},tick,rate,0,0,40);
+  paintReplayArea(ctx,{...utility(kind,100,1500),eventIndex},tick,rate,0,0,40,'decoded-atlas');
   return trace;
 };
 test('smoke/fire paint has reproducible local deformation, stable plateau alpha and real lifecycle limits',()=>{
@@ -71,8 +71,41 @@ test('smoke/fire paint has reproducible local deformation, stable plateau alpha 
   }
   assert.equal(paintTrace('smoke',300).filter(c=>c[0]==='createRadialGradient').length,9);
   const fire=paintTrace('fire',300);
-  assert.equal(fire.filter(c=>c[0]==='createLinearGradient').length,21,'seven groups each have three distinct flames');
+  assert.equal(fire.filter(c=>c[0]==='drawImage').length,3,'exactly three sprite instances');
+  assert.equal(fire.filter(c=>c[0]==='createLinearGradient').length,0,'no procedural flame replacement');
   assert.equal(fire.filter(c=>c[0]==='createRadialGradient'||c[0]==='arc').length,0,'flame bodies never revert to circular hotspots');
+});
+
+test('sprite phases and HE fragments are bounded pure functions, including reverse seek and expiration',()=>{
+  const fire=utility('fire',100,1500),he=utility('hegrenade',100,164);
+  const frames=seconds=>[0,1,2].map(i=>replayFireFrame(fire,seconds,i));
+  assert.ok(new Set(frames(0)).size>1,'instances start out of phase');
+  assert.notDeepEqual(frames(0),frames(.12));assert.deepEqual(frames(0),frames(1),'12 steps at 12fps loop exactly');
+  for(let s=0;s<100;s+=.13)assert.ok(frames(s).every(f=>f>=0&&f<7));
+  const initial=replayHEFragments(he,0),middle=replayHEFragments(he,.3),late=replayHEFragments(he,.9);
+  assert.equal(middle.length,9);assert.deepEqual(replayHEFragments(he,.3),middle);
+  assert.ok(initial.every(s=>s.x===0&&s.y===0));
+  assert.ok(middle.every(s=>Math.hypot(s.x,s.y)<=1.2));
+  assert.ok(late.every((s,i)=>s.alpha<middle[i].alpha));
+  for(const p of [-1,1,2,NaN])assert.deepEqual(replayHEFragments(he,p),[]);
+  assert.deepEqual(replayHEFragments(fire,.3),[]);
+  assert.notDeepEqual(replayHEFragments({...he,eventIndex:2},.3),middle);
+});
+
+test('HE compresses its complete visual lifecycle into half a second without changing native endTick',()=>{
+  const he=utility('hegrenade',100,164),original=structuredClone(he);
+  assert.equal(replayHEProgress(he,99,64),null);assert.equal(replayHEProgress(he,100,64),0);
+  assert.equal(replayHEProgress(he,116,64),.5);assert.equal(replayHEProgress(he,132,64),null);
+  assert.equal(replayHEProgress(he,163,64),null);assert.equal(replayHEProgress(he,116,128),.25);
+  assert.equal(replayHEProgress(he,116,null),.5);assert.deepEqual(he,original);
+  assert.equal(replayEffectsAt(chunk([he]),131.9,64).explosions.length,1);
+  assert.equal(replayEffectsAt(chunk([he]),132,64).explosions.length,0);
+  const trace=p=>{
+    const calls=[],ctx=new Proxy({}, {get:(_,key)=>(...args)=>{calls.push([key,...args]);if(key==='createRadialGradient')return {addColorStop:(...s)=>calls.push(['stop',...s])};},set:(_,key,v)=>{calls.push([key,typeof v==='object'?'gradient':v]);return true;}});
+    paintReplayHEBurst(ctx,he,p,0,0,.25);return calls;
+  };
+  assert.deepEqual(trace(.25),trace(.25));assert.notDeepEqual(trace(.25),trace(.5));
+  assert.deepEqual(trace(1),[]);assert.ok(trace(0).some(c=>c[0]==='createRadialGradient'));
 });
 
 test('areas, bursts, blind and burn state are exact functions of the displayed tick',()=>{
@@ -94,8 +127,8 @@ test('areas, bursts, blind and burn state are exact functions of the displayed t
   const middle=replayEffectsAt(data,50,64);
   assert.equal(middle.fire.length,0,'ended fire never lingers');assert.equal(middle.flashes.length,0,'flash burst is short');
   assert.equal(middle.explosions.length,1);assert.equal(middle.burns.size,0,'burn icon follows the real damaged window');
-  assert.equal(replayEffectsAt(data,103,64).explosions.length,1);
-  assert.equal(replayEffectsAt(data,105,64).explosions.length,0,'HE visual is exactly one second at 64 tick');
+  assert.equal(replayEffectsAt(data,71,64).explosions.length,1);
+  assert.equal(replayEffectsAt(data,72,64).explosions.length,0,'HE visual is exactly half a second at 64 tick');
   assert.equal(replayEffectsAt(data,101,64).smoke.length,0);
   const decoyFlying=replayEffectsAt(data,45,64);
   assert.deepEqual(decoyFlying.flying.map(item=>item.utility.kind),['decoy']);

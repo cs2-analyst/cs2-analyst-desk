@@ -65,7 +65,7 @@ export function replayTrajectorySample(trajectory: DesktopReplayTrajectory, tick
 export function replayTrailSeconds(speed: number, tickRate: number | null): number {
   if (!(tickRate && tickRate > 0) || !Number.isFinite(speed)) return 0.34;
   const amount = Math.min(1, Math.max(0, (speed - 100) / 900));
-  return 0.30 + 0.48 * amount * amount * (3 - 2 * amount);
+  return 0.30 + 0.80 * amount * amount * (3 - 2 * amount);
 }
 
 /** Recent observed path, including EVERY vertex (bounces must not be shortcut by resampling).
@@ -106,35 +106,89 @@ const smokeLobes = [
   [-0.19, -0.43, 0.65, 0.36], [0.42, -0.30, 0.59, 0.34], [-0.36, 0.40, 0.56, 0.32],
   [0.03, 0.54, 0.51, 0.31], [0.05, -0.10, 0.50, 0.29], [-0.15, 0.16, 0.42, 0.26],
 ] as const;
-// Back-to-front groups on the ground, each containing three separate pointed flames.
-const fireGroups = [
-  [-.27, -.43, .78], [.25, -.37, .89], [-.52, -.06, .86], [.01, -.02, 1],
-  [.51, .06, .83], [-.28, .34, .93], [.24, .40, .85],
-] as const;
+const fireInstances = [[-.38, .08, .90], [.35, .14, .82], [0, .36, 1.02]] as const;
+// Ping-pong avoids an abrupt final-to-first silhouette jump. Three independent phases.
+const fireSequence = [0, 1, 2, 3, 4, 5, 6, 5, 4, 3, 2, 1] as const;
+const effectSeed = (utility: DesktopReplayUtility) =>
+  ((utility.eventIndex * 2654435761 + utility.tick * 97 + (utility.entityId ?? 0) * 17) >>> 0) / 4294967296;
+export function replayFireFrame(utility: DesktopReplayUtility, seconds: number, instance: number): number {
+  const step = Math.floor(Math.max(0, seconds) * 12) + Math.floor(effectSeed(utility) * 12) + instance * 4;
+  return fireSequence[step % fireSequence.length];
+}
 
-/** A narrow flame silhouette with a side notch and a curved pointed tip, rooted at (0,0). */
-function flameTongue(ctx: CanvasRenderingContext2D, width: number, height: number, lean: number): void {
-  ctx.beginPath(); ctx.moveTo(0, 0);
-  ctx.bezierCurveTo(-width * .70, -height * .01, -width * .82, -height * .20, -width * .55, -height * .43);
-  ctx.bezierCurveTo(-width * .48, -height * .27, -width * .20, -height * .32, -width * .26, -height * .65);
-  ctx.bezierCurveTo(-width * .04, -height * .48, width * .11, -height * .78, width * lean, -height);
-  ctx.bezierCurveTo(width * .38, -height * .82, width * .84, -height * .39, width * .58, -height * .18);
-  ctx.bezierCurveTo(width * .50, -height * .04, width * .26, height * .02, 0, 0);
-  ctx.closePath(); ctx.fill();
+/** Purely illustrative fragments, not observed damage directions or simulated ballistics. */
+export function replayHEFragments(utility: DesktopReplayUtility, progress: number) {
+  if (utility.kind !== 'hegrenade' || !Number.isFinite(progress) || progress < 0 || progress >= 1) return [];
+  const seed = effectSeed(utility), travel = 1 - Math.pow(1 - progress, 2);
+  return Array.from({ length: 9 }, (_, i) => {
+    const phase = (seed * 17 + i * .61803398875) % 1;
+    const angle = (i + seed) * Math.PI * 2 / 9 + Math.sin(i * 7 + seed) * .18;
+    const distance = (.45 + phase * .55) * travel;
+    return { x: Math.cos(angle) * distance, y: Math.sin(angle) * distance + .16 * progress * progress,
+      angle: angle + progress * (i % 2 ? 2 : -2), length: 4 + phase * 5,
+      alpha: Math.pow(1 - progress, 1.5) };
+  });
+}
+export function paintReplayHEFragments(ctx: CanvasRenderingContext2D, utility: DesktopReplayUtility,
+  progress: number, x: number, y: number, radius: number): void {
+  for (const shard of replayHEFragments(utility, progress)) {
+    ctx.save(); ctx.translate(x + shard.x * radius, y + shard.y * radius); ctx.rotate(shard.angle);
+    ctx.globalAlpha = shard.alpha; ctx.lineCap = 'round';
+    ctx.strokeStyle = '#17202a'; ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.moveTo(-shard.length / 2, 0); ctx.lineTo(shard.length / 2, 0); ctx.stroke();
+    ctx.strokeStyle = '#ffdf9a'; ctx.lineWidth = 2.3; ctx.stroke(); ctx.restore();
+  }
+}
+
+/** HE's visual burst lasts at most half a Replay second. Domain endTick is untouched. */
+export function replayHEProgress(utility: DesktopReplayUtility, tick: number, tickRate: number | null): number | null {
+  const duration = Math.min(utility.endTick - utility.tick, (tickRate && tickRate > 0 ? tickRate : 64) * .5);
+  if (!(duration > 0) || tick < utility.tick || tick >= utility.tick + duration) return null;
+  return (tick - utility.tick) / duration;
+}
+
+/** Bright impact core, irregular flare and a fast shock ring. All geometry is illustrative. */
+export function paintReplayHEBurst(ctx: CanvasRenderingContext2D, utility: DesktopReplayUtility,
+  progress: number, x: number, y: number, unit: number): void {
+  if (progress < 0 || progress >= 1 || !(unit > 0)) return;
+  const seed = effectSeed(utility), ease = 1 - Math.pow(1 - progress, 3), fade = 1 - progress;
+  ctx.save(); ctx.translate(x, y);
+  const radius = (95 + 210 * ease) * unit;
+  // The very short white/yellow core gives the onset a visible punch, then yields to orange.
+  const core = ctx.createRadialGradient(0, 0, 0, 0, 0, radius * .83);
+  core.addColorStop(0, `rgba(255,255,231,${Math.pow(fade,2)*.98})`);
+  core.addColorStop(.23, `rgba(255,224,133,${Math.pow(fade,2)*.92})`);
+  core.addColorStop(.54, `rgba(255,121,30,${Math.pow(fade,1.6)*.76})`);
+  core.addColorStop(1, 'rgba(198,51,12,0)');
+  ctx.fillStyle=core;ctx.beginPath();ctx.arc(0,0,radius*.83,0,Math.PI*2);ctx.fill();
+  ctx.globalAlpha=Math.pow(fade,2.4)*.85;ctx.fillStyle='#ffdf97';ctx.beginPath();
+  for(let i=0;i<24;i++){
+    const angle=i*Math.PI/12+seed*6.28;
+    const spike=(i%2===0? .80+.22*Math.sin(i*7+seed*13):.24)*radius;
+    const px=Math.cos(angle)*spike,py=Math.sin(angle)*spike;
+    if(i===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
+  }
+  ctx.closePath();ctx.fill();
+  ctx.globalAlpha=Math.pow(fade,1.3)*.9;ctx.strokeStyle='#ffc26b';ctx.lineWidth=(5-3*progress);
+  ctx.beginPath();ctx.arc(0,0,radius,0,Math.PI*2);ctx.stroke();
+  ctx.globalAlpha=Math.pow(fade,2)*.85;ctx.strokeStyle='#fff4c6';ctx.lineWidth=2.2;
+  ctx.beginPath();ctx.arc(0,0,radius*.72,0,Math.PI*2);ctx.stroke();
+  ctx.restore();
+  paintReplayHEFragments(ctx,utility,progress,x,y,330*unit);
 }
 
 /** Canvas 2D ground area; pure tick/evidence input, unchanged 0.35s/1.4s lifecycle envelope.
  * radius is a DISPLAY radius, not observed smoke/fire geometry or visibility evidence.
  */
 export function paintReplayArea(ctx: CanvasRenderingContext2D, utility: DesktopReplayUtility,
-  tick: number, tickRate: number | null, x: number, y: number, radius: number): void {
+  tick: number, tickRate: number | null, x: number, y: number, radius: number, fireAtlas?: CanvasImageSource): void {
   if (tick < utility.tick || tick > utility.endTick || !(radius > 0)) return;
   const rate = tickRate && tickRate > 0 ? tickRate : 64;
   const life = Math.min(1, Math.max(0, (tick - utility.tick + 1) / (rate * .35)),
     Math.max(0, (utility.endTick - tick + 1) / (rate * 1.4)));
   if (!(life > 0)) return;
   const seconds = (tick - utility.tick) / rate;
-  const seed = ((utility.eventIndex * 2654435761 + utility.tick * 97 + (utility.entityId ?? 0) * 17) >>> 0) / 4294967296;
+  const seed = effectSeed(utility);
   const rotation = seed * Math.PI * 2;
   ctx.save(); ctx.translate(x, y); ctx.rotate(utility.kind === 'smoke' ? rotation : 0); ctx.globalAlpha = life;
   if (utility.kind === 'smoke') {
@@ -154,41 +208,15 @@ export function paintReplayArea(ctx: CanvasRenderingContext2D, utility: DesktopR
       gradient.addColorStop(1, 'rgba(104,119,135,0)');
       ctx.fillStyle = gradient; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill(); ctx.restore();
     }
-  } else if (utility.kind === 'fire') {
-    // A subdued, connected ground bed anchors the flames without bright circular hotspots.
-    ctx.fillStyle = 'rgba(168,43,8,.22)'; ctx.beginPath();
-    ctx.moveTo(-radius * .86, -radius * .04);
-    ctx.bezierCurveTo(-radius * .72, -radius * .52, -radius * .17, -radius * .63, radius * .14, -radius * .51);
-    ctx.bezierCurveTo(radius * .55, -radius * .57, radius * .92, -radius * .20, radius * .84, radius * .18);
-    ctx.bezierCurveTo(radius * .74, radius * .56, radius * .22, radius * .65, -radius * .10, radius * .57);
-    ctx.bezierCurveTo(-radius * .52, radius * .66, -radius * .92, radius * .35, -radius * .86, -radius * .04);
-    ctx.closePath(); ctx.fill();
-    const mirror = seed < .5 ? -1 : 1;
-    for (let i = 0; i < fireGroups.length; i++) {
-      const [gx, gy, size] = fireGroups[i], r = radius * size;
-      ctx.save(); ctx.translate(gx * radius * mirror, gy * radius);
-      ctx.fillStyle = 'rgba(230,75,10,.20)'; ctx.beginPath();
-      ctx.ellipse(0, 0, r * .38, r * .11, 0, 0, Math.PI * 2); ctx.fill();
-      for (let flame = 0; flame < 3; flame++) {
-        const phase = seed * 17 + i * 2.399 + flame * 1.71;
-        const sway = Math.sin(seconds * (3.1 + i * .19 + flame * .37) + phase);
-        const stretch = 1 + .09 * Math.sin(seconds * (4.3 + i * .17 + flame * .29) + phase * 1.7)
-          + .035 * Math.sin(seconds * 6.1 + phase * 2.3);
-        const height = r * (flame === 1 ? .69 : flame === 0 ? .43 : .51) * stretch;
-        const width = r * (flame === 1 ? .16 : .135);
-        ctx.save(); ctx.translate((flame - 1) * r * .19, flame === 1 ? 0 : r * .025);
-        ctx.rotate((flame - 1) * .10 + sway * .055);
-        const body = ctx.createLinearGradient(0, 0, 0, -height);
-        body.addColorStop(0, 'rgba(210,49,7,.78)');
-        body.addColorStop(.28, 'rgba(255,103,9,.94)');
-        body.addColorStop(.68, 'rgba(255,163,28,.96)');
-        body.addColorStop(1, 'rgba(255,205,75,.88)');
-        ctx.fillStyle = body; flameTongue(ctx, width, height, sway * .45);
-        ctx.fillStyle = 'rgba(255,234,139,.94)';
-        flameTongue(ctx, width * .48, height * .65, sway * .30);
-        ctx.restore();
-      }
-      ctx.restore();
+  } else if (utility.kind === 'fire' && fireAtlas) {
+    // Exactly three local sprites, sharing the observed life window but not their phase.
+    // Images are decoded once by the view; paint never allocates a bitmap or clock.
+    for (let i = 0; i < fireInstances.length; i++) {
+      const [dx, dy, scale] = fireInstances[i];
+      const width = radius * 1.10 * scale, height = radius * 1.54 * scale;
+      const frame = replayFireFrame(utility, seconds, i);
+      ctx.drawImage(fireAtlas, frame * 80, 0, 80, 112,
+        dx * radius - width / 2, dy * radius - height, width, height);
     }
   }
   ctx.restore();
@@ -214,7 +242,8 @@ export function replayEffectsAt(chunk: Pick<DesktopReplayChunk, 'utilities' | 'b
     else if (utility.kind === 'flashbang' && utility.endTick > utility.tick) {
       frame.flashes.push({ utility, progress: burstProgress(utility, tick) });
     } else if (utility.kind === 'hegrenade' && utility.endTick > utility.tick) {
-      frame.explosions.push({ utility, progress: burstProgress(utility, tick) });
+      const progress = replayHEProgress(utility, tick, tickRate);
+      if (progress !== null) frame.explosions.push({ utility, progress });
     }
   }
   for (const window of chunk.blinds ?? []) if (tick >= window.startTick && tick <= window.endTick) frame.blinds.add(window.victimId);

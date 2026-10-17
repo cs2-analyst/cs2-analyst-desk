@@ -9,6 +9,7 @@ import { stripTypeScriptTypes } from 'node:module';
 import native from '../packages/demoparser-native/index.cjs';
 import { Demoparser2Provider } from '../packages/dem-parser/dist/index.js';
 import { ReplaySession } from '../apps/desktop/electron/replay-session.ts';
+import { replayUtilityLabel } from '../apps/desktop/shared/replay-presentation.ts';
 
 const root = new URL('../', import.meta.url), fixture = new URL('.demo/dust2.dem', root);
 const bytes = await readFile(fixture);
@@ -64,7 +65,7 @@ for (const round of replay.rounds) for (const effect of round.utilities ?? []) {
   const shot = throwCandidates.length === 1 ? throwCandidates[0] : null;
   const desktop = listEvents.get(`r${round.round}-e${effect.eventIndex}`);
   const before = beforeEvents.get(desktop.id);
-  const kindText = effect.variant ?? effect.kind;
+  const kindText = replayUtilityLabel(effect.variant ?? effect.kind);
   const actionText = { detonate: '爆开', start_burn: '开始燃烧', start_decoy: '开始生效' }[event.action];
   assert.ok(actionText, 'known observed effect action');
   const expectedDescription = `${names.get(owner) || '未知玩家'} 的 ${kindText} ${actionText}`;
