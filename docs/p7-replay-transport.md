@@ -78,3 +78,13 @@
 真实专项仅使用 Dust2；其他速率为单元测试，未将其声称为非 64 tick 真实 DEM 验收。
 多楼层数据逻辑和楼层选择器未改，本轮没有新增其他地图真实截图。
 历史 Replay 查询 5 秒预算仍是独立技术债，本轮未修改解析器。完成后等待人工验收，不进入 P8。
+
+## 2026-10-18：Dropdown 对比度模式适配
+
+- 在 `ui/win11-dropdown-selection` 分支、基线 `04488cbe02381e8945ff64dd726cae42a260636d` 上适配共享 `WinOption`。
+- 普通配色保留品牌色背景竖条；`forced-colors: active` 下改为 `currentColor` 实线边框，继续由系统控制配色，不禁用强制颜色调整。`border-box` 保持标识外形为 3×16px；未选中项保持隐藏，Fluent 的选择、键盘、焦点和 ARIA 行为不变。
+- 仅改 Desktop 展示和既有 Electron 验收脚本，不涉及领域包、DEM、分析规则或数据契约。
+- `pnpm typecheck` 15/15、`pnpm build` 8/8、Desktop tests 150/150、`p7-transport-acceptance.mjs` 均 PASS。
+- `p7-ui-acceptance.mjs` 首次与另一 Electron 验收并行运行时在合成事件行滚动可见性断言失败；单独完整复跑全部 10 组检查 PASS，未修改该脚本或放宽断言，首次失败原因未确定。
+- 真实 Electron + 原有 `.demo/dust2.dem`，在 1024×640 / 1920×1032 下验证普通配色和 CDP 模拟的深浅强制颜色模式：白底黑条 / 黑底白条、前景色一致、背景色不同、3×16px、未选中项隐藏。控制台与异常检查通过，原有键盘焦点、Escape 和选择流程通过。
+- 新截图和颜色/几何记录：本机 `%TEMP%/cs2-p7-transport-evidence/round-menu-{normal,contrast-light,contrast-dark}-{1024,1920}.png` 及 `metrics.json`，不提交图片或 DEM。未在本轮切换真实 Windows 对比度主题；截图使用 Chromium 媒体模拟，不能代表所有自定义系统配色组合。

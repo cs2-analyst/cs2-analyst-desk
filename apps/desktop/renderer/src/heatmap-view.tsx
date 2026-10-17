@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Badge, Body1, Button, Caption1, Checkbox, Dropdown, Field, Option, Select, Spinner, Title2, makeStyles, tokens } from '@fluentui/react-components';
+import { Badge, Body1, Button, Caption1, Checkbox, Dropdown, Field, Select, Spinner, Title2, makeStyles, tokens } from '@fluentui/react-components';
 import type { DesktopHeatmapMetadata, DesktopHeatmapScope, HeatmapLayer, HeatmapResolution, MapHeatmapProjection } from '@cs2-analyst/report-contract';
 import { replayMapDefinitions } from '../../shared/replay-map-geometry.ts';
 import { replayMapAssets } from './replay-map-assets';
@@ -7,6 +7,7 @@ import { defaultHeatmapLayers, defaultHeatmapScope, heatmapLayers, heatmapReason
 import type { HeatmapLayerState } from './heatmap-state';
 import { mountHeatmapCanvas } from './heatmap-canvas';
 import { useRoundMenu } from './round-menu';
+import { WinOption as Option } from './winui-option';
 import type { HeatmapPaintLayer } from './heatmap-canvas';
 import { palette } from './theme';
 
