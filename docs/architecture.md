@@ -113,13 +113,19 @@ offline knowledge mode is planned by this route.
 Internal administration and client analysis must be isolated by deployment/routing and authorization.
 Before public exposure, define and validate authentication, authorization, request limits, quotas,
 and evidence/log retention. Do not embed a permanent shared backend secret in the desktop installer.
-This service-access prerequisite does not start the separate future account/history product.
+This service-access prerequisite is independent of the **planned local-only match library**, which has no account service or history backend. See [Match Library Plan](./match-library-plan.md).
 Client-side schema consistency does not prove source-DEM authenticity; the API's advice is based on
 submitted evidence, with unknown information preserved. Network/model failure leaves local reports usable.
 
 ## Future boundary (not implemented)
 
-Auto DEM discovery / directory scanning is **not planned**: the user always selects personal DEMs explicitly, and no code scans Steam / CS2 directories. A future `apps/api` may add account / session and match-history summary storage; it is separate from the two P8 backend applications above and is not started here. Personal DEM parsing, Analytics and Findings stay local to Desktop; the history service does not receive or parse personal DEMs. Internal professional DEM ingestion is confined to the planned knowledge pipeline.
+Auto DEM discovery / directory scanning is **not planned**: the user always selects personal DEMs explicitly, and no code scans Steam / CS2 directories. The prior future `apps/api` + account/session + remotely stored match-history-summary concept has been **superseded** by the user-approved **Windows Local-first Match Library**. No public personal match history backend, client login, or personal DEM upload is planned.
+
+The match library will store the completed, versioned local analysis report plus replay chunks and sufficient heatmap evidence for all existing filters in a local SQLite-indexed, per-match compressed archive; it **will not retain the source DEM**. Import/export and deletion are user-controlled. On reopen without the DEM, Main/Utility constructs fresh trusted Replay/Heatmap sessions from saved data. The installed app assets remain shared. Full rules and evidence-before-implementation gates: [Local Match Library Plan](./match-library-plan.md), [Titlebar + Navigation](./match-library-navigation.md), and [Storage + Archive](./match-library-storage.md).
+
+The 40px Electron titlebar will have left-aligned back/forward navigation icons and the existing app mark/name centered on the **entire window's geometric center** (not between unequal action groups), retaining the existing right-hand window controls and drag/keyboard/accessibility behavior. Match-detail sidebar keeps its six existing per-match features; the rejected global/subsection sidebar restructuring is not planned.
+
+This independent future work does **not** start P8, which retains its private professional-demo knowledge pipeline and optional AI coaching API; those backends store their own controlled knowledge assets, not the end user's match history.
 
 `findings` consumes only frozen `MatchAnalytics` via the Analytics public package. `generateFindings` runs pure deterministic rules and returns ranked evidence with per-player caps (3 issues, 2 highlights). It does not parse DEMs or recompute Analytics; parser is a devDependency only for real-demo golden tests. Policy and gaps: [Findings Engine](./findings-engine.md).
 

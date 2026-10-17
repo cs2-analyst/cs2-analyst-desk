@@ -132,31 +132,21 @@ Current: **v0.1 Final Acceptance FINAL PASS; P5 COMPLETE; P5.7 FINAL PASS.** 验
 - 首批范围：Dust2 的 1v1 残局，研究个人操作与决策；手动补充已知信息后续再做。
 - 应用划分：同一 monorepo 内规划独立构建部署的 `apps/knowledge-pipeline`（内部知识管线）与 `apps/coach-api`（AI 分析服务）；目录与服务尚未创建。
 - 技术路线：Desktop 本地个人 DEM/确定性分析 → 最小结构化证据请求 → 后端私有知识快照/模型编排 → 校验后的教练结果；职业知识库、系统 Prompt 与模型凭据不下发客户端。
-- 内部知识管线可复用领域包解析职业 DEM；后端 SQLite、native 部署、鉴权和只读快照发布需在 P8.1 验证。个人 DEM 不上传，不启动未来账号/比赛历史产品。
+- 内部知识管线可复用领域包解析职业 DEM；后端 SQLite、native 部署、鉴权和只读快照发布需在 P8.1 验证。个人 DEM 不上传；P8 不包含独立规划的客户端本地比赛库与历史归档。
 - 职业案例库作为 P8 的一部分；候选规律须经人工审核与验证后发布，不能仅凭职业比赛结果认定正确。
 - 子阶段：P8.1 基础与可行性验证 → P8.2 知识积累 → P8.3 独立评测 → P8.4 教练复盘 → P8.5 持续积累。
 - 完整设计及空间能力门槛见 [P8 AI Coach 技术路线](./ai-coach-technical-route.md)。当前仅完成路线设计，未开始实现。
 
-## Future — Account & Match History（未开始）
+## Future — Local Match Library & History（独立规划，未开始）
 
-明确的产品边界：
+> **2026-10-18 决策更新：旧的“账号 + apps/api + 服务端比赛摘要”路径已废止，不作为后续实施依据。** 产品已明确选择 **Windows 客户端 Local-first**：保存解析/分析完成的本机比赛归档，原 DEM 不保存、个人比赛不上传服务器。**不做账号/公共比赛历史后端**；这与 P8 内部职业知识管线及 AI Coach 后端是不同能力，不冲突。
 
-- **不做自动扫描 / 自动寻找 DEM。** Auto DEM discovery / directory scanning: **NOT PLANNED**。DEM 始终由用户主动选择。
-- 历史记录未来再做，并建立在登录机制之上。
-- 个人 DEM 的解析、Analytics 与 Findings 仍由 Desktop 本地完成；不上传个人 DEM。未来历史服务只存摘要；P8 内部知识管线独立处理维护者导入的职业 DEM，AI 分析服务仅接收必要个人结构化证据。
-
-```text
-apps/api
-├── Auth / Session
-├── 保存比赛历史摘要
-├── 查询比赛历史
-└── 不上传个人 DEM，不做服务端个人 DEM 分析
-
-Desktop
-├── 本地解析 DEM
-├── 本地 Analytics
-├── 本地 Findings
-└── 分析完成后未来可同步摘要
-```
-
-登录 / Session、`apps/api`、历史比赛数据库均不在本轮或当前 P5 范围内。
+- 现有单份 `report` + 临时 Replay/Heatmap Session 不具备历史恢复能力；新增比赛库必须在不依赖原 DEM、不依赖旧 Utility Process 的情况下离线打开已有六个功能。
+- **导航已确定**：参考 Codex 桌面端，在现有 40px 自绘标题栏左侧放**后退/前进**图标按钮，**现有 mark + CS2 Analyst 名称严格以整个窗口几何中心居中**；保留当前比赛六项侧栏导航，比赛库独立为历史入口。**不采用此前提议的全局/当前比赛两级侧栏树**。
+- 数据建议：LocalAppData 专用目录；SQLite 维护轻量索引，压缩归档保存 report、所有 Replay Chunk，以及可重新投影任意现有 Heatmap 筛选的规范性证据。重开时创建新的临时 sessionId，不复用已结束的会话；严格保留 IPC/内存约束。
+- 数据规模：真实 Dust2 `557,650,967` 字节 DEM 对应过一次 `36,495,839` 字节 Replay 未压缩 JSON 缓存；“单场归档 10–30 MB”**只是待验证压缩容量假设**。必须先实测 report + replay + heatmap 证据及冷启动/随机读取/压缩成本，不能凭 DEM 大小判断云端不可行，也不能将估计当结论。
+- 用户可删除/批量删除本地比赛，查询占用空间，以单文件 `.cs2a`（暂定）导出/导入；内容不含 DEM、绝对文件路径、临时 sessionId 或重复静态资源。导入必须限制解压大小、验证版本、摘要、防 zip bomb/路径穿越，支持重复记录识别。
+- **阶段采用独立代号 L0–L5，并非 P8 或自动确认的新版本**：L0 容量/完整恢复可行性 → L1 本地库索引/原子写入 → L2 六视图无 DEM 恢复 → L3 删除/导出/导入 → L4 标题栏导航/库 UI → L5 安装版/多样本最终验收。**所有阶段均未启动，须用户另行授权**。
+- DEM 始终由用户主动选择；不做自动目录扫描、自动云上传、客户端账号或公共服务端。
+- 详细实施门槛：[本地比赛库阶段计划](./match-library-plan.md)；UI 权威规范：[窗口标题栏与历史导航](./match-library-navigation.md)；存储权威规范：[容量、SQLite 与可移植归档](./match-library-storage.md)。
+- P8 AI Coach 技术路线仍独立保留且**未开始**。历史 Replay 查询/解析 ≤5s 性能技术债继续独立跟踪，不作为本次文档规划的已解决事项。
