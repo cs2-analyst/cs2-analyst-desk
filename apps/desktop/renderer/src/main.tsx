@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
-  Badge, Body1, Button, Card, Caption1, Divider, Dropdown, FluentProvider,
+  Badge, Body1, Button, Card, Caption1, Dropdown, FluentProvider,
   MessageBar, MessageBarBody, Spinner, Subtitle1, Tab, TabList, Title1, Title2,
   Tooltip, makeStyles, tokens,
 } from '@fluentui/react-components';
@@ -47,6 +47,26 @@ const useStyles = makeStyles({
   reportFrame: { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' },
   viewHeader: { flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', padding: '14px 24px', borderBottom: `1px solid ${palette.rowDivider}` },
   tabPanel: { flex: 1, minHeight: 0, overflowY: 'auto', padding: '20px 24px 32px', '&[hidden]': { display: 'none' } },
+  // Layout A: the report panel never scrolls as a page; only the two content columns do.
+  reportPanel: {
+    flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: '8px',
+    overflow: 'hidden', padding: '10px 16px 12px', '&[hidden]': { display: 'none' },
+  },
+  reportKpiGrid: { flexShrink: 0, display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '8px' },
+  reportWarning: { flexShrink: 0 },
+  reportColumns: {
+    flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 3fr) minmax(0, 2fr)',
+    gridTemplateRows: 'minmax(0, 1fr)', gap: '16px',
+  },
+  reportColumn: { minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', gap: '6px' },
+  reportColumnHeader: { flexShrink: 0, display: 'flex', alignItems: 'center', gap: '2px', padding: '0 2px' },
+  reportColumnScroll: {
+    flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', overscrollBehavior: 'contain',
+    padding: '2px 6px 8px 2px', borderRadius: tokens.borderRadiusMedium,
+    ':focus-visible': { outline: `2px solid ${tokens.colorBrandStroke1}`, outlineOffset: '2px' },
+  },
+  reportHeaderInfo: { minWidth: 0 },
+  statValueCompact: { fontVariantNumeric: 'tabular-nums' },
   // Timeline owns no view-level scroll: only the round card's inner list scrolls.
   timelinePanel: { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '20px 24px 32px', '&[hidden]': { display: 'none' } },
   timelineSection: { flex: 1, minHeight: 0 },
@@ -57,9 +77,7 @@ const useStyles = makeStyles({
   headerRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' },
   section: { display: 'flex', flexDirection: 'column', gap: '16px' },
   muted: { color: tokens.colorNeutralForeground3 },
-  grid: { display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '12px', '@media (max-width: 900px)': { gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' } },
-  split: { display: 'grid', gridTemplateColumns: 'minmax(0, 3fr) minmax(0, 2fr)', gap: '20px', '@media (max-width: 900px)': { gridTemplateColumns: '1fr' } },
-  stat: { ...cardSurface, padding: '16px', display: 'flex', flexDirection: 'column', gap: '6px' },
+  stat: { ...cardSurface, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '3px' },
   statHeader: { display: 'flex', alignItems: 'center', gap: '2px' },
   panel: { ...cardSurface, padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px' },
   panelHeader: { display: 'flex', alignItems: 'center', gap: '2px' },
@@ -189,21 +207,21 @@ function InfoTip({ label, content }: { label: string; content: React.ReactElemen
 
 function Stat({ label, value, hint, tip }: { label: string; value: string; hint?: React.ReactNode; tip: React.ReactElement | string }) {
   const s = useStyles();
-  return <Card className={s.stat}>
+  return <Card className={s.stat} data-report-kpi={label}>
     <div className={s.statHeader}><Caption1 className={s.muted}>{label}</Caption1><InfoTip label={label} content={tip} /></div>
-    <Title2>{value}</Title2>
+    <Subtitle1 className={s.statValueCompact}>{value}</Subtitle1>
     {hint ? <Caption1>{hint}</Caption1> : null}
   </Card>;
 }
 
-function Findings({ report, playerId, onShowRounds, onReplay }: {
+function Findings({ report, playerId, onShowRounds, onReplay, heading = true }: {
   report: DesktopMatchReport; playerId: string; onShowRounds: (rounds: number[]) => void;
-  onReplay?: (round:number,tick?:number)=>void;
+  onReplay?: (round:number,tick?:number)=>void; heading?: boolean;
 }) {
   const s = useStyles();
   const rows = report.findings.filter(f => f.playerId === playerId);
-  return <section className={s.section} aria-label="简要分析">
-    <div className={s.panelHeader}><Title2>简要分析</Title2><InfoTip label="简要分析" content="来自基础指标规则 · 深度交火与团队证据请查看「深度复盘」" /></div>
+  const content = <>
+    {heading ? <div className={s.panelHeader}><Title2>简要分析</Title2><InfoTip label="简要分析" content="来自基础指标规则 · 深度交火与团队证据请查看「深度复盘」" /></div> : null}
     {rows.length ? rows.map(f => <Card key={f.id} className={s.finding} data-rule={f.ruleId}>
       <div className={s.headerRow}><Subtitle1>{f.title}</Subtitle1><Badge appearance="tint" color={f.severity === 'positive' ? 'success' : f.severity === 'high' ? 'danger' : 'warning'}>{severityText[f.severity] ?? f.severity}</Badge></div>
       <Body1>{f.summary}</Body1>
@@ -224,7 +242,10 @@ function Findings({ report, playerId, onShowRounds, onReplay }: {
         })}
       </details>
     </Card>) : <Body1>本场没有达到规则阈值且证据充分的复盘结论。</Body1>}
-  </section>;
+  </>;
+  return heading
+    ? <section className={s.section} aria-label="简要分析">{content}</section>
+    : <div className={s.section}>{content}</div>;
 }
 
 /** One utility card with two tabs; the numbers come straight from the DTO. */
@@ -347,7 +368,7 @@ function Report({ report, playerId, replayActive, activeTab, onSelectView }: {
   useEffect(() => () => { if (highlightTimer.current !== undefined) window.clearTimeout(highlightTimer.current); }, []);
   return <div className={s.reportFrame}>
     <div className={s.viewHeader}>
-      <div className={s.column}><Title1>{report.match.map}</Title1><Body1>{report.match.score ? `${report.match.score.initialCT} : ${report.match.score.initialT}` : '比分不可用'} · 开局 CT 队 / 开局 T 队 · {report.match.rounds} 回合</Body1><Caption1 className={s.muted}>{report.match.fileName}</Caption1></div>
+      <div className={`${s.column} ${s.reportHeaderInfo}`}><Title1>{report.match.map}</Title1><Body1>{report.match.score ? `${report.match.score.initialCT} : ${report.match.score.initialT}` : '比分不可用'} · 开局 CT 队 / 开局 T 队 · {report.match.rounds} 回合</Body1><Caption1 className={s.muted} style={{ overflowWrap: 'anywhere', minWidth: 0 }}>{report.match.fileName}</Caption1></div>
       <div className={s.column}><Caption1>目标玩家</Caption1><Tooltip content={player.nickname} relationship="description"><Dropdown className={s.playerDropdown} listbox={{ style: { maxWidth: '250px' } }} aria-label="目标玩家" value={player.nickname} selectedOptions={[playerId]} onOptionSelect={(_, data) => data.optionValue && selectPlayer(data.optionValue)}>
         {report.players.map(p => <Option key={p.id} value={p.id} text={p.nickname}><Tooltip content={p.nickname} relationship="description"><span className={s.playerName}>{p.nickname}</span></Tooltip></Option>)}
       </Dropdown></Tooltip></div>
@@ -355,10 +376,9 @@ function Report({ report, playerId, replayActive, activeTab, onSelectView }: {
     <div id="deep-review-panel" role="tabpanel" aria-labelledby="deep-review-tab" className={s.tabPanel} hidden={activeTab !== 'deep-review'}>
       <DeepReview key={playerId} player={report.deepReview.players.find(p => p.playerId === playerId)!} onShowRounds={showRounds} onReplayRound={report.replay?.available?showReplay:undefined} />
     </div>
-    <div id="report-panel" role="tabpanel" aria-labelledby="report-tab" className={s.tabPanel} hidden={activeTab !== 'report'}>
-      <div className={s.section}>
-      {p.coverage.notes.length ? <MessageBar intent="warning"><MessageBarBody>{p.coverage.notes.join(' ')}</MessageBarBody></MessageBar> : null}
-      <div className={s.grid} aria-label="玩家指标">
+    <div id="report-panel" role="tabpanel" aria-labelledby="report-tab" className={s.reportPanel} hidden={activeTab !== 'report'}>
+      {p.coverage.notes.length ? <div className={s.reportWarning}><MessageBar intent="warning"><MessageBarBody>{p.coverage.notes.join(' ')}</MessageBarBody></MessageBar></div> : null}
+      <div className={s.reportKpiGrid} role="group" aria-label="玩家指标">
         <Stat label="K / D / A" value={`${p.kills} / ${p.deaths} / ${p.assists}`} tip={help.kda} />
         <Stat label="ADR" value={decimal(p.adr, 2)} hint="每回合平均有效伤害" tip={help.adr} />
         <Stat label="HS%（爆头率）" value={percent(p.headshotPercentage, 1)} tip={help.hs} />
@@ -370,34 +390,41 @@ function Report({ report, playerId, replayActive, activeTab, onSelectView }: {
         <Stat label="Opening（首杀对决）" value={`${p.opening.kills} 首杀 / ${p.opening.deaths} 首死`} hint={p.opening.winRate === null ? undefined : `首杀对决胜率 ${percent(p.opening.winRate * 100, 1)}`} tip={help.opening} />
         <Stat label="Clutch（残局）" value={`${p.clutch.wins} 胜 / ${p.clutch.opportunities} 次`} hint={p.clutch.complete ? '已证明的 1vN 机会' : '仅已证明的部分机会'} tip={help.clutch} />
       </div>
-      <Divider />
-      <div className={s.split}>
-        <Findings report={report} playerId={playerId} onShowRounds={showRounds} onReplay={report.replay?.available?showReplay:undefined} />
-        <div className={s.section}>
-          <Title2>道具与残局</Title2>
-          <UtilityPanel utility={p.utility} />
-          <Card className={s.panel}>
-            <Subtitle1>残局</Subtitle1>
-            {p.clutch.list.length ? <>
-              <div className={s.clutchHead}>
-                <Caption1 className={s.muted}>回合</Caption1>
-                <Caption1 className={s.muted}>局面</Caption1>
-                <Caption1 className={s.muted}>结果</Caption1>
-              </div>
-              <div className={s.list}>
-                {p.clutch.list.map(c => {
-                  const result = clutchResult(c.won);
-                  return <div key={c.round} className={`${s.row} ${s.clutchRow}`}>
-                    <span className={s.numberCell}>R{c.round}</span>
-                    <span className={s.numberCell}>1v{c.opponents}</span>
-                    <span className={s.clutchResult}><Badge appearance="tint" color={result.color}>{result.label}</Badge></span>
-                  </div>;
-                })}
-              </div>
-            </> : <Body1>没有可证明的残局机会。</Body1>}
-          </Card>
+      <div className={s.reportColumns}>
+        <div className={s.reportColumn}>
+          <div className={s.reportColumnHeader}><Title2 id="report-findings-heading">简要分析</Title2><InfoTip label="简要分析" content="来自基础指标规则 · 深度交火与团队证据请查看「深度复盘」" /></div>
+          <div className={s.reportColumnScroll} role="region" aria-labelledby="report-findings-heading" tabIndex={0} data-report-column="findings">
+            <Findings heading={false} report={report} playerId={playerId} onShowRounds={showRounds} onReplay={report.replay?.available?showReplay:undefined} />
+          </div>
         </div>
-      </div>
+        <div className={s.reportColumn}>
+          <div className={s.reportColumnHeader}><Title2 id="report-utility-heading">道具与残局</Title2></div>
+          <div className={s.reportColumnScroll} role="region" aria-labelledby="report-utility-heading" tabIndex={0} data-report-column="utility">
+            <div className={s.section}>
+              <UtilityPanel utility={p.utility} />
+              <Card className={s.panel} style={{ overflowX: 'auto' }}>
+                <Subtitle1>残局</Subtitle1>
+                {p.clutch.list.length ? <>
+                  <div className={s.clutchHead}>
+                    <Caption1 className={s.muted}>回合</Caption1>
+                    <Caption1 className={s.muted}>局面</Caption1>
+                    <Caption1 className={s.muted}>结果</Caption1>
+                  </div>
+                  <div className={s.list}>
+                    {p.clutch.list.map(c => {
+                      const result = clutchResult(c.won);
+                      return <div key={c.round} className={`${s.row} ${s.clutchRow}`}>
+                        <span className={s.numberCell}>R{c.round}</span>
+                        <span className={s.numberCell}>1v{c.opponents}</span>
+                        <span className={s.clutchResult}><Badge appearance="tint" color={result.color}>{result.label}</Badge></span>
+                      </div>;
+                    })}
+                  </div>
+                </> : <Body1>没有可证明的残局机会。</Body1>}
+              </Card>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
     <div id="timeline-panel" role="tabpanel" aria-labelledby="timeline-tab" className={s.timelinePanel} hidden={activeTab !== 'timeline'}>

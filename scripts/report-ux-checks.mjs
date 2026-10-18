@@ -4,6 +4,125 @@ import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { withCleanup } from './smoke-runtime.mjs';
 
+const KPI_LABELS = ['K / D / A', 'ADR', 'HS%（爆头率）', 'KAST（回合贡献率）',
+  'Trade rate（死亡后队友补枪率）', 'Trade kills（补枪击杀）', 'Opening（首杀对决）', 'Clutch（残局）'];
+
+/**
+ * Layout A acceptance: eight simultaneously visible KPIs above two independently
+ * scrollable columns, with no report-view page scroll and no clipped column content.
+ */
+export async function checkReportLayout(evaluate, label) {
+  const layout = await evaluate(`(() => {
+    const panel = document.getElementById('report-panel');
+    const grid = panel?.querySelector('[aria-label="玩家指标"]');
+    const rect = el => { const r = el.getBoundingClientRect(); return { top: r.top, right: r.right, bottom: r.bottom, left: r.left, width: r.width, height: r.height }; };
+    const describeColumn = el => {
+      if (!el) return null;
+      const heading = el.getAttribute('aria-labelledby');
+      const title = heading ? document.getElementById(heading) : null;
+      return { rect: rect(el), overflowY: getComputedStyle(el).overflowY, scrollHeight: el.scrollHeight, clientHeight: el.clientHeight,
+        scrollWidth: el.scrollWidth, clientWidth: el.clientWidth, scrollTop: el.scrollTop, tabIndex: el.tabIndex,
+        role: el.getAttribute('role'), labelledby: heading, headingText: title?.textContent ?? '',
+        headingVisible: Boolean(title && title.checkVisibility() && title.getBoundingClientRect().height > 0),
+        visible: el.checkVisibility() };
+    };
+    return {
+      panel: panel ? { rect: rect(panel), overflowY: getComputedStyle(panel).overflowY, overflow: panel.scrollHeight - panel.clientHeight } : null,
+      grid: grid ? { columns: getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length,
+        rows: getComputedStyle(grid).gridTemplateRows.split(' ').filter(Boolean).length,
+        bottom: grid.getBoundingClientRect().bottom } : null,
+      kpis: [...(panel?.querySelectorAll('[data-report-kpi]') ?? [])].map(el => ({ name: el.dataset.reportKpi,
+        text: el.innerText, rect: rect(el), scrollHeight: el.scrollHeight, clientHeight: el.clientHeight,
+        scrollWidth: el.scrollWidth, clientWidth: el.clientWidth, visible: el.checkVisibility() })),
+      left: describeColumn(panel?.querySelector('[data-report-column="findings"]')),
+      right: describeColumn(panel?.querySelector('[data-report-column="utility"]')),
+      documentHorizontal: document.documentElement.scrollWidth - innerWidth,
+      viewport: [innerWidth, innerHeight],
+    };
+  })()`);
+  assert.ok(layout.panel, label + ': missing report panel');
+  assert.equal(layout.panel.overflowY, 'hidden', label + ': report panel must never scroll');
+  assert.ok(layout.panel.overflow <= 1, label + ': report panel content overflows by ' + layout.panel.overflow + 'px');
+  assert.equal(layout.kpis.length, 8, label + ': eight KPIs must stay visible');
+  assert.deepEqual(layout.kpis.map(kpi => kpi.name), KPI_LABELS, label + ': KPI labels');
+  assert.equal(layout.grid.columns, 4, label + ': KPI grid must be 4 columns by 2 rows');
+  assert.equal(layout.grid.rows, 2, label + ': KPI grid must be 4 columns by 2 rows');
+  for (const kpi of layout.kpis) {
+    assert.equal(kpi.visible, true, label + ': hidden KPI ' + kpi.name);
+    assert.ok(kpi.rect.width > 0 && kpi.rect.height > 0, label + ': collapsed KPI ' + kpi.name);
+    assert.ok(kpi.scrollHeight <= kpi.clientHeight + 1, label + ': clipped KPI content ' + kpi.name);
+    assert.ok(kpi.rect.right <= layout.panel.rect.right + 1, label + ': KPI outside report panel horizontally ' + kpi.name);
+    assert.ok(kpi.scrollWidth <= kpi.clientWidth + 1, label + ': KPI content is horizontally clipped ' + kpi.name);
+    assert.ok(kpi.rect.top >= layout.panel.rect.top - 1 && kpi.rect.bottom <= layout.panel.rect.bottom + 1,
+      label + ': KPI outside report panel ' + kpi.name);
+    assert.ok(kpi.rect.bottom <= layout.viewport[1] + 1, label + ': KPI below viewport ' + kpi.name);
+  }
+  assert.ok(layout.documentHorizontal <= 1, label + ': horizontal page overflow ' + layout.documentHorizontal + 'px');
+  assert.ok(layout.grid.bottom <= layout.left.rect.top + 1, label + ': KPI grid overlaps the content columns');
+  assert.ok(layout.grid.bottom <= layout.right.rect.top + 1, label + ': KPI grid overlaps the content columns');
+  for (const [name, column] of [['left', layout.left], ['right', layout.right]]) {
+    assert.ok(column, label + ': missing ' + name + ' report column');
+    assert.equal(column.visible, true, label + ': hidden ' + name + ' column');
+    assert.equal(column.role, 'region', label + ': ' + name + ' column must be a labelled region');
+    assert.equal(column.tabIndex, 0, label + ': ' + name + ' column must be keyboard focusable');
+    assert.equal(column.overflowY, 'auto', label + ': ' + name + ' column owns vertical scrolling');
+    assert.ok(column.headingText && column.headingVisible, label + ': ' + name + ' column heading must stay visible');
+    assert.ok(column.rect.top >= layout.panel.rect.top - 1 && column.rect.bottom <= layout.panel.rect.bottom + 1,
+      label + ': ' + name + ' column outside report panel');
+    assert.ok(column.rect.height > 40, label + ': ' + name + ' column lost its usable height (' + column.rect.height + 'px)');
+    assert.ok(column.scrollWidth <= column.clientWidth + 1, label + ': ' + name + ' column clips horizontally');
+  }
+  const scrollCheck = await evaluate(`(() => {
+    const check = selector => {
+      const el = document.querySelector(selector);
+      const overflow = el.scrollHeight - el.clientHeight;
+      if (overflow <= 1) return { overflow, ok: true };
+      const before = el.scrollTop;
+      el.scrollTop = el.scrollHeight;
+      const reached = Math.abs(el.scrollTop - overflow) <= 1;
+      const last = el.lastElementChild?.getBoundingClientRect();
+      const bottom = el.getBoundingClientRect().top + el.clientTop + el.clientHeight;
+      const lastReachable = !last || last.bottom <= bottom + 1;
+      el.scrollTop = before;
+      return { overflow, reached, lastReachable, ok: reached && lastReachable };
+    };
+    return { left: check('[data-report-column="findings"]'), right: check('[data-report-column="utility"]') };
+  })()`);
+  for (const name of ['left', 'right']) assert.equal(scrollCheck[name].ok, true, label + ': inaccessible ' + name + ' column content ' + JSON.stringify(scrollCheck[name]));
+  // On sub-1024 widths the utility/clutch cards may need horizontal scrolling; that is
+  // acceptable only when the card itself is scrollable instead of clipping content.
+  const cardScroll = await evaluate(`(() => [...document.querySelectorAll('[data-report-column="utility"] .fui-Card')].map(card => ({
+    kind: card.hasAttribute('data-utility-panel') ? 'utility' : 'clutch',
+    overflow: card.scrollWidth - card.clientWidth,
+    overflowX: getComputedStyle(card).overflowX,
+  })))()`);
+  assert.ok(cardScroll.length >= 2, label + ': expected utility and clutch cards');
+  for (const card of cardScroll) {
+    if (card.overflow > 1) assert.equal(card.overflowX, 'auto', label + ': ' + card.kind + ' card hides horizontally clipped content');
+  }
+
+  // Both columns own their scroll offset: moving one must not move the other.
+  if (layout.right.scrollHeight > layout.right.clientHeight) {
+    const independent = await evaluate(`(() => {
+      const left = document.querySelector('[data-report-column="findings"]');
+      const right = document.querySelector('[data-report-column="utility"]');
+      left.scrollTop = 0; right.scrollTop = 0;
+      left.scrollTop = Math.min(24, left.scrollHeight - left.clientHeight);
+      const afterLeft = { left: left.scrollTop, right: right.scrollTop };
+      right.scrollTop = Math.min(18, right.scrollHeight - right.clientHeight);
+      const afterRight = { left: left.scrollTop, right: right.scrollTop };
+      left.scrollTop = 0; right.scrollTop = 0;
+      return { afterLeft, afterRight };
+    })()`);
+    assert.ok(independent.afterLeft.left > 0, label + ': left column did not scroll');
+    assert.equal(independent.afterLeft.right, 0, label + ': left scroll moved the right column');
+    assert.ok(independent.afterRight.right > 0, label + ': right column did not scroll');
+    assert.equal(independent.afterRight.left, independent.afterLeft.left, label + ': right scroll moved the left column');
+  }
+  await evaluate('document.querySelector("[data-report-column=findings]").scrollTop = 0; document.querySelector("[data-report-column=utility]").scrollTop = 0');
+  return layout;
+}
+
 /** Shared CDP assertions for built and installed renderers, after demo1 import. */
 export async function checkReportUx(evaluate, send, qaDir) {
   // Settle the previous Finding → Timeline scroll and CDP viewport restoration,
@@ -27,11 +146,11 @@ export async function checkReportUx(evaluate, send, qaDir) {
   await assertNoPageScroll(evaluate, '报告折叠导航');
   await evaluate(`document.querySelector('[data-sidebar-toggle]').click()`);
   await waitForUi(evaluate, `document.querySelector('[data-app-sidebar]').dataset.collapsed === 'false' && document.getAnimations().every(a => a.playState !== 'running')`, 'expanded report sidebar');
-  // Prove these checks reject clipping and hidden-panel false positives on the actual report DOM.
-  assert.ok(await evaluate(`document.getElementById('report-panel').scrollHeight > document.getElementById('report-panel').clientHeight`));
-  await evaluate(`document.getElementById('report-panel').style.overflowY = 'hidden'`);
+  await checkReportLayout(evaluate, '比赛报告初始布局');
+  // Prove the checks reject a scrollable column whose content is clipped by a fixed height.
+  await evaluate(`document.querySelector('[data-report-column="findings"]').style.overflowY = 'hidden'`);
   await withCleanup(() => assert.rejects(() => assertNoPageScroll(evaluate, 'intentional clipping probe'), /inaccessible content/),
-    [() => evaluate(`document.getElementById('report-panel').style.removeProperty('overflow-y')`)]);
+    [() => evaluate(`document.querySelector('[data-report-column="findings"]').style.removeProperty('overflow-y')`)]);
   await evaluate(`document.getElementById('report-panel').hidden = true`);
   await withCleanup(() => assert.rejects(() => assertNoPageScroll(evaluate, 'intentional hidden panel probe'), /selected Tab/),
     [() => evaluate(`document.getElementById('report-panel').hidden = false`)]);
@@ -135,6 +254,7 @@ export async function checkReportUx(evaluate, send, qaDir) {
     await evaluate(`document.getElementById('report-tab').click(); document.querySelector('[data-app-content]').scrollTo(0, 0)`);
     await settle();
     await assertNoPageScroll(evaluate, `比赛报告 ${width}×${height}`);
+    await checkReportLayout(evaluate, `比赛报告 ${width}×${height}`);
     await screenshot(`report-tabs-${width}`);
     await evaluate(`document.querySelector('#report-panel summary').scrollIntoView({ block: 'center' }); document.querySelector('#report-panel summary').focus()`);
     await screenshot(`finding-evidence-${width}`);
