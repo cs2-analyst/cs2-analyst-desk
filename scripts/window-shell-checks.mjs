@@ -67,15 +67,19 @@ export async function settleUi(evaluate, label = 'rendered layout and scroll sta
 }
 
 // Exercise the actual scroll range, and restore it so acceptance does not change navigation state.
-export async function assertLocalScroll(evaluate, selector, label, { descendantsOnly = false } = {}) {
+export async function assertLocalScroll(evaluate, selector, label) {
   const results = await evaluate(`(() => {
     const roots = [...document.querySelectorAll(${JSON.stringify(selector)})].filter(e => e.checkVisibility() && e.clientHeight > 0);
     return roots.map(e => {
       const overflow = e.scrollHeight - e.clientHeight, style = getComputedStyle(e).overflowY;
       if (overflow <= 1) return { overflow, ok: true };
-      if (${descendantsOnly} && !['auto', 'scroll'].includes(style)) return { overflow, ok: true };
-      if (!['auto', 'scroll'].includes(style)) return { overflow, style, ok: false,
-        tag: e.tagName, id: e.id, className: String(e.className).slice(0, 160), text: e.textContent?.slice(0, 120) };
+      if (!['auto', 'scroll'].includes(style)) {
+        // Visible overflow is not clipped or unreachable (for example a Fluent Badge with
+        // line-height rounding). hidden/clip must still fail the accessibility probe.
+        if (style === 'visible') return { overflow, style, ok: true };
+        return { overflow, style, ok: false,
+          tag: e.tagName, id: e.id, className: String(e.className).slice(0, 160), text: e.textContent?.slice(0, 120) };
+      }
       const original = e.scrollTop;
       e.scrollTo({ top: e.scrollHeight, behavior: 'instant' });
       const reached = Math.abs(e.scrollTop - overflow) <= 1;
@@ -108,7 +112,7 @@ export async function assertNoPageScroll(evaluate, label) {
     if (panel === 'replay-panel') continue;
     await assertLocalScroll(evaluate, '#' + panel, label);
     // Nested Timeline/Analysis/Deep Review scroll surfaces also need usable local scrolling.
-    await assertLocalScroll(evaluate, '#' + panel + ' *', label, { descendantsOnly: true });
+    await assertLocalScroll(evaluate, '#' + panel + ' *', label);
   }
   if (!scroll.selected.length) {
     await assertLocalScroll(evaluate, '[data-import-card] > button, [data-import-card]', label);

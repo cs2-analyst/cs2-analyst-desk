@@ -96,11 +96,14 @@ export async function checkReportUx(evaluate, send, qaDir) {
   await evaluate(`[...document.querySelectorAll('[role="option"]')].find(o => o.textContent.trim() === 'K/D').click()`);
   await settle();
   const player = await evaluate(`document.querySelector('[aria-label="目标玩家"]').textContent`);
+  await evaluate(`document.querySelector('[data-analysis-tab="sides"]').click()`);
+  await settle();
   await evaluate(`document.getElementById('timeline-tab').click()`);
   await settle();
   assert.equal(await evaluate(`document.querySelector('[data-round-summary="24"]').getAttribute('aria-expanded')`), 'true');
   await evaluate(`document.getElementById('analysis-tab').click()`);
   await settle();
+  assert.equal(await evaluate(`document.querySelector('[data-analysis-tab="sides"]').getAttribute('aria-selected')`), 'true', 'analysis tab state survives first-level navigation');
   assert.equal(await evaluate(`document.querySelector('[aria-label="对比指标"]').textContent`), 'K/D');
   assert.equal(await evaluate(`document.querySelector('[aria-label="目标玩家"]').textContent`), player);
   const screenshot = async name => {
@@ -109,6 +112,7 @@ export async function checkReportUx(evaluate, send, qaDir) {
     const shot = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
     writeFileSync(join(qaDir, name + '.png'), Buffer.from(shot.data, 'base64'));
   };
+  const tooltipVisible = text => `[...document.querySelectorAll('[role="tooltip"]')].some(t => t.checkVisibility() && t.getBoundingClientRect().width > 0 && t.textContent.includes(${JSON.stringify(text)}))`;
   const selectAnalysisTab = async key => {
     await evaluate(`document.querySelector('[data-analysis-tab="${key}"]').click()`);
     await settle();
@@ -147,10 +151,14 @@ export async function checkReportUx(evaluate, send, qaDir) {
   await evaluate('document.activeElement?.blur()');
   const playerPoint = await evaluate(`(() => { const r = document.querySelector('[data-comparison-player]').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`);
   await send('Input.dispatchMouseEvent', { type: 'mouseMoved', ...playerPoint });
-  await waitForUi(evaluate, `[...document.querySelectorAll('[role="tooltip"]')].some(t => t.textContent.includes('twinkle') && t.textContent.includes('K/D'))`, 'analysis player tooltip hover');
+  await waitForUi(evaluate, tooltipVisible('K/D'), 'analysis player tooltip hover');
   await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 1, y: 1 });
-  await evaluate(`document.querySelector('[data-comparison-player]').focus()`);
-  await waitForUi(evaluate, `[...document.querySelectorAll('[role="tooltip"]')].some(t => t.textContent.includes('twinkle') && t.textContent.includes('K/D'))`, 'analysis player tooltip focus');
+  await waitForUi(evaluate, `!(${tooltipVisible('K/D')})`, 'analysis player tooltip hover closed');
+  // Use real keyboard traversal so Fluent treats the focus as keyboard navigation.
+  await evaluate(`document.querySelector('[aria-label="对比指标"]').focus()`);
+  await pressKey('Tab', 'Tab', 9);
+  assert.ok(await evaluate(`Boolean(document.activeElement?.dataset.comparisonPlayer)`), 'Tab reaches a comparison row');
+  await waitForUi(evaluate, tooltipVisible('K/D'), 'analysis player tooltip focus');
   for (const [width, height] of [[1920, 1032], [1280, 900], [1024, 640], [900, 760], [800, 600], [650, 760]]) {
     await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false });
     await evaluate(`document.getElementById('analysis-tab').click()`);

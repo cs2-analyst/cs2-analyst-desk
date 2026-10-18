@@ -50,7 +50,7 @@
 | `pnpm --filter @cs2-analyst/desktop test:report`（真实 Electron，demo1） | PASS — 真实报告、损坏 DEM、非 .dem 三个场景 |
 | `git diff --check` | PASS |
 
-专项 SSR 测试覆盖：三选项卡结构、默认选中、panel 挂载/hidden、分析缺数据空状态、Tooltip 文案常量、partial 警告、三类空状态、unavailable 可见错误。
+专项 SSR 测试覆盖：三选项卡结构、默认选中、panel 挂载/hidden、分析缺数据空状态、Tooltip 文案常量、partial 警告、三类空状态、unavailable 可见错误。Electron 检查用 `checkVisibility()` + 实际包围盒确认 Tooltip 已显示，避免只读到隐藏 portal 文本的假通过。
 
 ### 真实 Electron
 

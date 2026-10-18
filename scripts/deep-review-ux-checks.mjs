@@ -9,6 +9,7 @@ const INTERNAL_TERMS = ['Engagement', 'direct contact', 'evidence', 'partial', '
 
 /** Runtime-only fixtures through React's existing report props; no shipped test seam. */
 export async function checkDeepReviewUx(evaluate, send, qaDir) {
+  await send('Emulation.setFocusEmulationEnabled', { enabled: true });
   const settle = () => settleUi(evaluate);
   const screenshot = async name => {
     if (!qaDir) return;
@@ -16,6 +17,7 @@ export async function checkDeepReviewUx(evaluate, send, qaDir) {
     const shot = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
     writeFileSync(join(qaDir, name + '.png'), Buffer.from(shot.data, 'base64'));
   };
+  const tooltipVisible = text => `[...document.querySelectorAll('[role="tooltip"]')].some(t => t.checkVisibility() && t.getBoundingClientRect().width > 0 && t.textContent.includes(${JSON.stringify(text)}))`;
   // 比赛报告 is the default entry; Deep Review must be explicitly reachable from it.
   await evaluate(`document.getElementById('deep-review-tab').click()`);
   await settle();
@@ -103,10 +105,15 @@ export async function checkDeepReviewUx(evaluate, send, qaDir) {
   await evaluate('document.activeElement?.blur()');
   const helpPoint = await evaluate(`(() => { const r = document.querySelector('[data-deep-help]').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`);
   await send('Input.dispatchMouseEvent', { type: 'mouseMoved', ...helpPoint });
-  await waitForUi(evaluate, `[...document.querySelectorAll('[role="tooltip"]')].some(t => t.textContent.includes('根据 DEM 中能够明确记录的交火'))`, 'Deep Review help tooltip hover');
+  await waitForUi(evaluate, tooltipVisible('根据 DEM 中能够明确记录的交火'), 'Deep Review help tooltip hover');
   await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 1, y: 1 });
-  await evaluate(`document.querySelector('[data-deep-help]').focus()`);
-  await waitForUi(evaluate, `[...document.querySelectorAll('[role="tooltip"]')].some(t => t.textContent.includes('根据 DEM 中能够明确记录的交火'))`, 'Deep Review help tooltip focus');
+  await waitForUi(evaluate, `!(${tooltipVisible('根据 DEM 中能够明确记录的交火')})`, 'Deep Review help tooltip hover closed');
+  // Keyboard navigation, not programmatic focus: Fluent ignores programmatic focus
+  // for description tooltips unless the user is navigating with the keyboard.
+  await evaluate(`document.querySelector('[aria-label="目标玩家"]').focus()`);
+  await pressKey('Tab', 'Tab', 9);
+  assert.equal(await evaluate(`document.activeElement?.hasAttribute('data-deep-help')`), true, 'Tab reaches the Deep Review help button');
+  await waitForUi(evaluate, tooltipVisible('根据 DEM 中能够明确记录的交火'), 'Deep Review help tooltip focus');
   await screenshot('deep-review-real-default');
   if (real) assert.deepEqual(await evaluate(`[...document.querySelectorAll('#deep-review-panel [data-deep-kind]')].map(c => c.dataset.deepKind).filter((kind, index, all) => all.indexOf(kind) === index)`), ['review', 'highlight', 'context']);
   const realText = await evaluate(`document.getElementById('deep-review-panel').textContent`);
@@ -121,6 +128,11 @@ export async function checkDeepReviewUx(evaluate, send, qaDir) {
     await screenshot(name);
   }
   await send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 1400, deviceScaleFactor: 1, mobile: false });
+  // Switching first-level views must preserve the selected Deep Review tab and panel content.
+  await showTab('contexts');
+  await evaluate(`document.getElementById('report-tab').click()`); await settle();
+  await evaluate(`document.getElementById('deep-review-tab').click()`); await settle();
+  await checkTabs('contexts');
   await showTab('reviews');
   const partial = await evaluate(`Boolean(document.querySelector('[data-deep-panel="reviews"] [data-deep-kind] details'))`);
   if (partial) {
@@ -147,8 +159,13 @@ export async function checkDeepReviewUx(evaluate, send, qaDir) {
   await refresh();
   await checkTabs('reviews');
   await evaluate(`document.querySelector('[data-app-content]').scrollTo(0, 0)`);
+  const warningPoint = await evaluate(`(() => { const r = document.querySelector('[data-deep-partial-help]').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`);
+  await send('Input.dispatchMouseEvent', { type: 'mouseMoved', ...warningPoint });
+  await waitForUi(evaluate, tooltipVisible('具体限制可在每张卡片的「说明与限制」中查看'), 'Deep Review partial tooltip hover');
+  await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 1, y: 1 });
+  await waitForUi(evaluate, `!(${tooltipVisible('具体限制可在每张卡片的「说明与限制」中查看')})`, 'Deep Review partial tooltip hover closed');
   await evaluate(`document.querySelector('[data-deep-partial-help]').focus()`);
-  await waitForUi(evaluate, `[...document.querySelectorAll('[role="tooltip"]')].some(t => t.textContent.includes('具体限制可在每张卡片的「说明与限制」中查看'))`, 'Deep Review partial tooltip');
+  await waitForUi(evaluate, tooltipVisible('具体限制可在每张卡片的「说明与限制」中查看'), 'Deep Review partial tooltip focus');
   const text = await evaluate(`document.getElementById('deep-review-panel').textContent`);
   for (const expected of ['复盘重点', '亮点', '补充观察', '说明与限制', '符合此情况：6 / 10 次']) assert.ok(text.includes(expected), expected);
   for (const raw of ['SECRET-ENGAGEMENT', '987654', '876543', '76561198099999999', 'eventIndex']) assert.ok(!text.includes(raw), raw);
@@ -187,10 +204,12 @@ export async function checkDeepReviewUx(evaluate, send, qaDir) {
   assert.equal(await evaluate(`document.getElementById('round-r7').dataset.highlighted`), 'true');
   await screenshot('deep-review-synthetic-timeline-occurrences');
   await evaluate(`window.__qaRestoreScroll(); delete window.__qaRestoreScroll; delete window.__qaScroll`);
+  await showTab('contexts');
   await select('tarkz');
   assert.notEqual(await evaluate(`document.querySelector('[data-deep-player]').dataset.deepPlayer`), id);
   assert.ok(await evaluate(`!document.getElementById('deep-review-panel').textContent.includes('合成 UX 场景')`));
   await checkTabs('reviews');
+  await showTab('contexts');
   await select('twinkle');
   await checkTabs('reviews');
   // A genuinely long list must scroll only inside the active tab; the view stays fixed.
