@@ -18,7 +18,7 @@ export async function checkReportUx(evaluate, send, qaDir) {
   await evaluate(`document.getElementById('report-tab').click()`);
   await settle();
   assert.deepEqual(await evaluate(`[...document.querySelectorAll('[data-app-sidebar] [role="tab"]')].map(t => t.querySelector('.fui-Tab__content').textContent)`), ['比赛报告', '深度复盘', '回合时间线', '分析', '比赛回放', '热力图']);
-  assert.equal(await evaluate(`document.querySelectorAll('[role="tabpanel"]').length`), 6);
+  assert.equal(await evaluate(`[...document.querySelectorAll('[role="tabpanel"]')].filter(p => !p.parentElement.closest('[role="tabpanel"]')).length`), 6);
   assert.equal(await evaluate(`document.getElementById('report-panel').hidden`), false);
   await checkSidebarImport(evaluate, send, '重新选择 DEM');
   await evaluate(`document.querySelector('[data-sidebar-toggle]').click()`);
@@ -109,17 +109,70 @@ export async function checkReportUx(evaluate, send, qaDir) {
     const shot = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
     writeFileSync(join(qaDir, name + '.png'), Buffer.from(shot.data, 'base64'));
   };
-  for (const [width, height] of [[1280, 900], [1024, 640], [900, 760], [800, 600], [650, 760]]) {
+  const selectAnalysisTab = async key => {
+    await evaluate(`document.querySelector('[data-analysis-tab="${key}"]').click()`);
+    await settle();
+    assert.equal(await evaluate(`document.querySelector('[data-analysis-panel="${key}"]').hidden`), false, 'analysis panel ' + key);
+    assert.equal(await evaluate(`document.querySelector('[data-analysis-tab="${key}"]').getAttribute('aria-selected')`), 'true', 'analysis selected ' + key);
+  };
+  const mouseClick = async selector => {
+    const point = await evaluate(`(() => { const r = document.querySelector(${JSON.stringify(selector)}).getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`);
+    await send('Input.dispatchMouseEvent', { type: 'mouseMoved', ...point });
+    await send('Input.dispatchMouseEvent', { type: 'mousePressed', button: 'left', clickCount: 1, ...point });
+    await send('Input.dispatchMouseEvent', { type: 'mouseReleased', button: 'left', clickCount: 1, ...point });
+    await settle();
+  };
+  const pressKey = async (key, code, windowsVirtualKeyCode, text) => {
+    await send('Input.dispatchKeyEvent', { type: 'keyDown', key, code, windowsVirtualKeyCode, nativeVirtualKeyCode: windowsVirtualKeyCode, ...(text ? { text } : {}) });
+    await send('Input.dispatchKeyEvent', { type: 'keyUp', key, code, windowsVirtualKeyCode, nativeVirtualKeyCode: windowsVirtualKeyCode });
+    await settle();
+  };
+  // Keyboard and real pointer activation both operate the controlled TabList.
+  await evaluate(`document.querySelector('[data-analysis-tab="comparison"]').focus()`);
+  await pressKey('ArrowRight', 'ArrowRight', 39);
+  assert.equal(await evaluate(`document.activeElement?.dataset.analysisTab`), 'trend', 'analysis arrow focus');
+  await pressKey('Enter', 'Enter', 13, '\r');
+  assert.equal(await evaluate(`document.querySelector('[data-analysis-tab="trend"]').getAttribute('aria-selected')`), 'true');
+  await pressKey('ArrowRight', 'ArrowRight', 39);
+  assert.equal(await evaluate(`document.activeElement?.dataset.analysisTab`), 'sides', 'analysis arrow focus again');
+  await pressKey('Enter', 'Enter', 13, '\r');
+  assert.equal(await evaluate(`document.querySelector('[data-analysis-tab="sides"]').getAttribute('aria-selected')`), 'true');
+  await pressKey('ArrowLeft', 'ArrowLeft', 37);
+  assert.equal(await evaluate(`document.activeElement?.dataset.analysisTab`), 'trend', 'analysis left focus');
+  await pressKey('Enter', 'Enter', 13, '\r');
+  assert.equal(await evaluate(`document.querySelector('[data-analysis-tab="trend"]').getAttribute('aria-selected')`), 'true');
+  await mouseClick('[data-analysis-tab="comparison"]');
+  await selectAnalysisTab('comparison');
+  // Hover and focus both expose the player comparison Tooltip.
+  await evaluate('document.activeElement?.blur()');
+  const playerPoint = await evaluate(`(() => { const r = document.querySelector('[data-comparison-player]').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`);
+  await send('Input.dispatchMouseEvent', { type: 'mouseMoved', ...playerPoint });
+  await waitForUi(evaluate, `[...document.querySelectorAll('[role="tooltip"]')].some(t => t.textContent.includes('twinkle') && t.textContent.includes('K/D'))`, 'analysis player tooltip hover');
+  await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 1, y: 1 });
+  await evaluate(`document.querySelector('[data-comparison-player]').focus()`);
+  await waitForUi(evaluate, `[...document.querySelectorAll('[role="tooltip"]')].some(t => t.textContent.includes('twinkle') && t.textContent.includes('K/D'))`, 'analysis player tooltip focus');
+  for (const [width, height] of [[1920, 1032], [1280, 900], [1024, 640], [900, 760], [800, 600], [650, 760]]) {
     await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false });
     await evaluate(`document.getElementById('analysis-tab').click()`);
     await waitForUi(evaluate, `document.getElementById('analysis-panel').checkVisibility() && document.getElementById('analysis-panel').clientHeight > 0`, 'visible Analysis layout');
+    await selectAnalysisTab('comparison');
+    await evaluate("document.querySelector('[data-app-content]').scrollTo(0, 0)");
+    const analysisOuter = await evaluate(`(() => { const p = document.getElementById('analysis-panel'); return { width: p.scrollWidth - p.clientWidth, height: p.scrollHeight - p.clientHeight }; })()`);
+    assert.ok(analysisOuter.width <= 1, width + ' analysis outer horizontal overflow');
+    assert.ok(analysisOuter.height <= 1, width + ' analysis outer vertical overflow');
+    const comparisonPanel = await evaluate(`(() => { const p = document.querySelector('[data-analysis-panel="comparison"]'); const r = p.getBoundingClientRect(); return { clientHeight: p.clientHeight, scrollHeight: p.scrollHeight, overflowY: getComputedStyle(p).overflowY, bottom: r.bottom }; })()`);
+    assert.equal(comparisonPanel.overflowY, 'auto');
+    assert.ok(comparisonPanel.clientHeight > 120);
+    assert.ok(comparisonPanel.bottom <= height + 1);
+    if (width === 1024) assert.ok(comparisonPanel.scrollHeight > comparisonPanel.clientHeight, 'long comparison must scroll inside the tab');
+    await screenshot(`comparison-${width}`);
+    await selectAnalysisTab('sides');
     const divider = await evaluate(`(() => { const s = getComputedStyle(document.querySelector('[data-side-divider]')); return { display: s.display, top: s.marginTop, bottom: s.marginBottom, width: s.width }; })()`);
     if (width <= 650) assert.equal(divider.display, 'none');
     else { assert.notEqual(divider.display, 'none'); assert.equal(divider.top, '16px'); assert.equal(divider.bottom, '16px'); assert.equal(divider.width, '1px'); }
-    await evaluate("document.querySelector('[data-app-content]').scrollTo(0, 0)");
-    await screenshot(`comparison-${width}`);
-    await evaluate(`document.querySelector('[aria-label="回合表现趋势"]').scrollIntoView({ block: 'start' })`);
-    await screenshot(`trend-sides-${width}`);
+    await screenshot(`sides-${width}`);
+    await selectAnalysisTab('trend');
+    await screenshot(`trend-${width}`);
     await evaluate(`document.getElementById('timeline-tab').click()`);
     await settle();
     await assertNoPageScroll(evaluate, `回合时间线 ${width}×${height}`);

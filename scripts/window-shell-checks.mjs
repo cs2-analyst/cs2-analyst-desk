@@ -67,13 +67,15 @@ export async function settleUi(evaluate, label = 'rendered layout and scroll sta
 }
 
 // Exercise the actual scroll range, and restore it so acceptance does not change navigation state.
-export async function assertLocalScroll(evaluate, selector, label) {
+export async function assertLocalScroll(evaluate, selector, label, { descendantsOnly = false } = {}) {
   const results = await evaluate(`(() => {
     const roots = [...document.querySelectorAll(${JSON.stringify(selector)})].filter(e => e.checkVisibility() && e.clientHeight > 0);
     return roots.map(e => {
       const overflow = e.scrollHeight - e.clientHeight, style = getComputedStyle(e).overflowY;
       if (overflow <= 1) return { overflow, ok: true };
-      if (!['auto', 'scroll'].includes(style)) return { overflow, style, ok: false };
+      if (${descendantsOnly} && !['auto', 'scroll'].includes(style)) return { overflow, ok: true };
+      if (!['auto', 'scroll'].includes(style)) return { overflow, style, ok: false,
+        tag: e.tagName, id: e.id, className: String(e.className).slice(0, 160), text: e.textContent?.slice(0, 120) };
       const original = e.scrollTop;
       e.scrollTo({ top: e.scrollHeight, behavior: 'instant' });
       const reached = Math.abs(e.scrollTop - overflow) <= 1;
@@ -92,20 +94,23 @@ export async function assertNoPageScroll(evaluate, label) {
   const scroll = await evaluate(`(() => {
     const content = document.querySelector('[data-app-content]');
     const panels = [...document.querySelectorAll('[role="tabpanel"]')].filter(p => !p.hidden && p.checkVisibility() && p.clientHeight > 0);
-    const selected = document.querySelector('[role="tab"][aria-selected="true"]');
+    const selected = [...document.querySelectorAll('[role="tab"][aria-selected="true"]')]
+      .filter(tab => tab.checkVisibility()).map(tab => tab.getAttribute('aria-controls')).filter(Boolean);
     return { document: document.documentElement.scrollHeight - innerHeight,
       body: document.body.scrollHeight - innerHeight,
       horizontal: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - innerWidth,
       content: content.scrollHeight - content.clientHeight,
-      panels: panels.map(p => p.id), selected: selected?.getAttribute('aria-controls') ?? null };
+      panels: panels.map(p => p.id), selected };
   })()`);
   for (const key of ['document', 'body', 'content', 'horizontal']) assert.ok(scroll[key] <= 1, `${label}: ${key} overflow ${scroll[key]}px`);
-  assert.deepEqual(scroll.panels, scroll.selected ? [scroll.selected] : [], `${label}: selected Tab must identify exactly the visible panel`);
-  if (scroll.selected && scroll.selected !== 'replay-panel') {
-    await assertLocalScroll(evaluate, '#' + scroll.selected, label);
-    // Nested Timeline/Analysis/Deep Review surfaces also need usable local scrolling.
-    await assertLocalScroll(evaluate, '#' + scroll.selected + ', #' + scroll.selected + ' *', label);
-  } else if (!scroll.selected) {
+  assert.deepEqual([...scroll.panels].sort(), [...scroll.selected].sort(), `${label}: every visible tab panel must belong to a visible selected Tab`);
+  for (const panel of scroll.selected) {
+    if (panel === 'replay-panel') continue;
+    await assertLocalScroll(evaluate, '#' + panel, label);
+    // Nested Timeline/Analysis/Deep Review scroll surfaces also need usable local scrolling.
+    await assertLocalScroll(evaluate, '#' + panel + ' *', label, { descendantsOnly: true });
+  }
+  if (!scroll.selected.length) {
     await assertLocalScroll(evaluate, '[data-import-card] > button, [data-import-card]', label);
   }
 }

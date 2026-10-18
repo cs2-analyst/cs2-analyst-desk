@@ -20,7 +20,7 @@ export async function checkDeepReviewUx(evaluate, send, qaDir) {
   await evaluate(`document.getElementById('deep-review-tab').click()`);
   await settle();
   assert.deepEqual(await evaluate(`[...document.querySelectorAll('[data-app-sidebar] [role="tab"]')].map(t => t.querySelector('.fui-Tab__content').textContent)`), ['比赛报告', '深度复盘', '回合时间线', '分析', '比赛回放', '热力图']);
-  assert.equal(await evaluate(`document.querySelectorAll('[role="tabpanel"]').length`), 6);
+  assert.equal(await evaluate(`[...document.querySelectorAll('[role="tabpanel"]')].filter(p => !p.parentElement.closest('[role="tabpanel"]')).length`), 6);
   await assertNoPageScroll(evaluate, '深度复盘初始导航');
   // Find the actual report consumed by this Renderer. Fixtures mutate only this QA process.
   assert.equal(await evaluate(`(() => {
@@ -36,6 +36,36 @@ export async function checkDeepReviewUx(evaluate, send, qaDir) {
     await evaluate(`document.getElementById('report-tab').click()`); await settle();
     await evaluate(`document.getElementById('deep-review-tab').click()`); await settle();
   };
+  const checkTabs = async active => {
+    const tabs = await evaluate(`[...document.querySelectorAll('#deep-review-panel [data-deep-tab]')].map(t => ({
+      key: t.dataset.deepTab,
+      label: t.querySelector('.fui-Tab__content')?.textContent ?? t.textContent,
+      selected: t.getAttribute('aria-selected'),
+      panelHidden: document.querySelector('[data-deep-panel="' + t.dataset.deepTab + '"]').hidden,
+    }))`);
+    assert.deepEqual(tabs.map(t => t.label), ['优先复盘', '亮点', '补充观察']);
+    assert.deepEqual(tabs.map(t => t.key), ['reviews', 'highlights', 'contexts']);
+    for (const t of tabs) {
+      assert.equal(t.selected, String(t.key === active), 'selected tab: ' + t.key);
+      assert.equal(t.panelHidden, t.key !== active, 'panel visibility: ' + t.key);
+    }
+  };
+  const showTab = async key => {
+    await evaluate(`document.querySelector('[data-deep-tab="${key}"]').click()`); await settle();
+    await checkTabs(key);
+  };
+  const mouseClick = async selector => {
+    const point = await evaluate(`(() => { const r = document.querySelector(${JSON.stringify(selector)}).getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`);
+    await send('Input.dispatchMouseEvent', { type: 'mouseMoved', ...point });
+    await send('Input.dispatchMouseEvent', { type: 'mousePressed', button: 'left', clickCount: 1, ...point });
+    await send('Input.dispatchMouseEvent', { type: 'mouseReleased', button: 'left', clickCount: 1, ...point });
+    await settle();
+  };
+  const pressKey = async (key, code, windowsVirtualKeyCode, text) => {
+    await send('Input.dispatchKeyEvent', { type: 'keyDown', key, code, windowsVirtualKeyCode, nativeVirtualKeyCode: windowsVirtualKeyCode, ...(text ? { text } : {}) });
+    await send('Input.dispatchKeyEvent', { type: 'keyUp', key, code, windowsVirtualKeyCode, nativeVirtualKeyCode: windowsVirtualKeyCode });
+    await settle();
+  };
   const select = async name => {
     await evaluate(`document.querySelector('[aria-label="目标玩家"]').click()`);
     await waitForUi(evaluate, `document.querySelectorAll('[role=option]').length > 0`, 'player options');
@@ -46,25 +76,55 @@ export async function checkDeepReviewUx(evaluate, send, qaDir) {
   // Prefer a real player with all three kinds for the default screenshot.
   const real = await evaluate(`(() => { const p = window.__qaReport.deepReview.players.find(p => p.reviews.length && p.highlights.length && p.contexts.length); return p ? window.__qaReport.players.find(x => x.id === p.playerId).nickname : null; })()`);
   if (real) await select(real);
-  await evaluate(`document.querySelector('[data-app-content]').scrollTo(0, 0)`);
+  await showTab('reviews');
+  assert.equal(await evaluate(`document.querySelectorAll('#deep-review-panel [data-deep-tab]').length`), 3, 'Deep Review must always show three tabs');
+  // Keyboard: arrows move focus, Enter activates the focused Tab.
+  await evaluate(`document.querySelector('[data-deep-tab="reviews"]').focus()`);
+  await pressKey('ArrowRight', 'ArrowRight', 39);
+  assert.equal(await evaluate(`document.activeElement?.dataset.deepTab`), 'highlights', 'ArrowRight moves tab focus');
+  await pressKey('Enter', 'Enter', 13, '\r');
+  await checkTabs('highlights');
+  await pressKey('ArrowRight', 'ArrowRight', 39);
+  assert.equal(await evaluate(`document.activeElement?.dataset.deepTab`), 'contexts', 'ArrowRight moves tab focus again');
+  await pressKey('Enter', 'Enter', 13, '\r');
+  await checkTabs('contexts');
+  await pressKey('ArrowLeft', 'ArrowLeft', 37);
+  assert.equal(await evaluate(`document.activeElement?.dataset.deepTab`), 'highlights', 'ArrowLeft moves tab focus');
+  await pressKey('Enter', 'Enter', 13, '\r');
+  await checkTabs('highlights');
+  // Real pointer activation, not programmatic .click().
+  await mouseClick('[data-deep-tab="reviews"]');
+  await checkTabs('reviews');
+  await mouseClick('[data-deep-tab="contexts"]');
+  await checkTabs('contexts');
+  await mouseClick('[data-deep-tab="reviews"]');
+  await checkTabs('reviews');
+  // Help is reachable by pointer hover and by keyboard focus.
+  await evaluate('document.activeElement?.blur()');
+  const helpPoint = await evaluate(`(() => { const r = document.querySelector('[data-deep-help]').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`);
+  await send('Input.dispatchMouseEvent', { type: 'mouseMoved', ...helpPoint });
+  await waitForUi(evaluate, `[...document.querySelectorAll('[role="tooltip"]')].some(t => t.textContent.includes('根据 DEM 中能够明确记录的交火'))`, 'Deep Review help tooltip hover');
+  await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 1, y: 1 });
+  await evaluate(`document.querySelector('[data-deep-help]').focus()`);
+  await waitForUi(evaluate, `[...document.querySelectorAll('[role="tooltip"]')].some(t => t.textContent.includes('根据 DEM 中能够明确记录的交火'))`, 'Deep Review help tooltip focus');
   await screenshot('deep-review-real-default');
   if (real) assert.deepEqual(await evaluate(`[...document.querySelectorAll('#deep-review-panel [data-deep-kind]')].map(c => c.dataset.deepKind).filter((kind, index, all) => all.indexOf(kind) === index)`), ['review', 'highlight', 'context']);
   const realText = await evaluate(`document.getElementById('deep-review-panel').textContent`);
   for (const token of INTERNAL_TERMS) assert.ok(!realText.includes(token), '真实复盘文案泄漏内部术语：' + token);
   for (const stale of ['部分证据', '证据边界', '上下文', '可判定场景']) assert.ok(!realText.includes(stale), '旧文案仍出现：' + stale);
-  // QA-only spacer so the last sections can scroll to the top for a focused capture.
-  await evaluate(`(() => { const spacer = document.createElement('div'); spacer.id = 'qa-deep-spacer'; spacer.style.height = '700px'; document.getElementById('deep-review-panel').appendChild(spacer); })()`);
   await send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 620, deviceScaleFactor: 1, mobile: false });
-  for (const [kind, name] of [['highlight', 'deep-review-real-highlight'], ['context', 'deep-review-real-context']]) {
-    const found = await evaluate(`(() => { const card = document.querySelector('#deep-review-panel [data-deep-kind="${kind}"]'); if (!card) return false; card.scrollIntoView({ block: 'start' }); return true; })()`);
-    if (found) await screenshot(name);
+  for (const [tab, kind, name] of [['highlights', 'highlight', 'deep-review-real-highlight'], ['contexts', 'context', 'deep-review-real-context']]) {
+    const found = await evaluate(`Boolean(document.querySelector('#deep-review-panel [data-deep-kind="${kind}"]'))`);
+    if (!found) continue;
+    await showTab(tab);
+    await evaluate(`document.querySelector('[data-deep-panel="${tab}"]').scrollTo(0, 0)`);
+    await screenshot(name);
   }
-  await evaluate(`document.getElementById('qa-deep-spacer')?.remove()`);
   await send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 1400, deviceScaleFactor: 1, mobile: false });
-  await evaluate(`document.querySelector('[data-app-content]').scrollTo(0, 0)`);
-  const partial = await evaluate(`Boolean(document.querySelector('#deep-review-panel [data-deep-kind] details'))`);
+  await showTab('reviews');
+  const partial = await evaluate(`Boolean(document.querySelector('[data-deep-panel="reviews"] [data-deep-kind] details'))`);
   if (partial) {
-    await evaluate(`const d = document.querySelector('#deep-review-panel [data-deep-kind] details'); d.open = true; d.scrollIntoView({ block: 'center' })`);
+    await evaluate(`const d = document.querySelector('[data-deep-panel="reviews"] [data-deep-kind] details'); d.open = true; d.scrollIntoView({ block: 'center' })`);
     await screenshot('deep-review-real-caveat');
   }
   await evaluate(`document.querySelector('#deep-review-panel [data-deep-rounds]')?.click()`);
@@ -85,7 +145,10 @@ export async function checkDeepReviewUx(evaluate, send, qaDir) {
       ? { playerId: p.playerId, coverage: { status: 'partial' }, reviews: [f('review')], highlights: [f('highlight')], contexts: [f('context')] } : p) };
   })()`);
   await refresh();
+  await checkTabs('reviews');
   await evaluate(`document.querySelector('[data-app-content]').scrollTo(0, 0)`);
+  await evaluate(`document.querySelector('[data-deep-partial-help]').focus()`);
+  await waitForUi(evaluate, `[...document.querySelectorAll('[role="tooltip"]')].some(t => t.textContent.includes('具体限制可在每张卡片的「说明与限制」中查看'))`, 'Deep Review partial tooltip');
   const text = await evaluate(`document.getElementById('deep-review-panel').textContent`);
   for (const expected of ['复盘重点', '亮点', '补充观察', '说明与限制', '符合此情况：6 / 10 次']) assert.ok(text.includes(expected), expected);
   for (const raw of ['SECRET-ENGAGEMENT', '987654', '876543', '76561198099999999', 'eventIndex']) assert.ok(!text.includes(raw), raw);
@@ -95,9 +158,20 @@ export async function checkDeepReviewUx(evaluate, send, qaDir) {
   assert.equal(new Set(colors.map(b => b.color)).size, 3);
   assert.equal(colors.find(b => b.kind === 'context').color, 'rgb(143, 157, 176)', 'context uses neutral foreground');
   assert.ok(await evaluate(`![...document.querySelectorAll('#deep-review-panel details')].some(d => d.open)`));
-  await screenshot('deep-review-synthetic-three-kinds');
-  await evaluate(`document.querySelector('#deep-review-panel details').open = true`);
+  for (const [tab, name] of [['reviews', 'deep-review-synthetic-review'], ['highlights', 'deep-review-synthetic-highlight'], ['contexts', 'deep-review-synthetic-context']]) {
+    await showTab(tab);
+    await evaluate(`document.querySelector('[data-deep-panel="${tab}"]').scrollTo(0, 0)`);
+    await screenshot(name);
+  }
+  await showTab('reviews');
+  await evaluate(`document.querySelector('[data-deep-panel="reviews"] details').open = true`);
   await screenshot('deep-review-synthetic-partial-caveat');
+  // 比赛回放 starts from the existing related round and remains a separate view.
+  assert.equal(await evaluate(`(() => { const b = [...document.querySelectorAll('[data-deep-panel="reviews"] button')].find(b => b.textContent.trim() === '比赛回放 R7'); b?.click(); return Boolean(b); })()`), true);
+  await waitForUi(evaluate, `!document.getElementById('replay-panel').hidden && Boolean(document.querySelector('[data-replay-round="7"]'))`, 'Deep Review replay round');
+  await evaluate(`document.getElementById('deep-review-tab').click()`);
+  await settle();
+  await checkTabs('reviews');
   await evaluate(`(() => {
     const original = Element.prototype.scrollIntoView;
     window.__qaScroll = null; window.__qaRestoreScroll = () => { Element.prototype.scrollIntoView = original; };
@@ -116,21 +190,50 @@ export async function checkDeepReviewUx(evaluate, send, qaDir) {
   await select('tarkz');
   assert.notEqual(await evaluate(`document.querySelector('[data-deep-player]').dataset.deepPlayer`), id);
   assert.ok(await evaluate(`!document.getElementById('deep-review-panel').textContent.includes('合成 UX 场景')`));
+  await checkTabs('reviews');
   await select('twinkle');
+  await checkTabs('reviews');
   await evaluate(`(() => { const p = window.__qaReport.deepReview.players.find(p => p.playerId === ${JSON.stringify(id)}); p.reviews = []; p.highlights = []; p.contexts = []; p.coverage.status = 'complete'; })()`);
   await refresh();
-  assert.ok(await evaluate(`document.getElementById('deep-review-panel').textContent.includes('本场没有生成深度复盘结论。')`));
+  await checkTabs('reviews');
+  const emptyText = await evaluate(`document.getElementById('deep-review-panel').textContent`);
+  for (const copy of ['这场暂时没有需要重点复盘的地方，先把好状态保持住。', '高光可能在路上，这场还没有足够证据点亮它。', '观察哨今天很安静，没有额外值得补充的记录。']) {
+    assert.ok(emptyText.includes(copy), copy);
+  }
+  assert.equal(await evaluate(`document.querySelectorAll('#deep-review-panel [data-deep-empty]').length`), 3);
   assert.equal(await evaluate(`document.querySelectorAll('#deep-review-panel [data-deep-kind]').length`), 0);
+  // Unavailable is a visible data error, not a playful empty state.
+  await evaluate(`(() => { const p = window.__qaReport.deepReview.players.find(p => p.playerId === ${JSON.stringify(id)}); p.reviews = []; p.highlights = []; p.contexts = []; p.coverage.status = 'unavailable'; })()`);
+  await refresh();
+  await checkTabs('reviews');
+  assert.ok(await evaluate(`document.getElementById('deep-review-panel').textContent.includes('本场录像无法用于深度复盘，基础比赛报告仍可查看。')`));
+  assert.equal(await evaluate(`document.querySelectorAll('#deep-review-panel [data-deep-unavailable-panel]').length`), 3);
+  assert.equal(await evaluate(`document.querySelectorAll('#deep-review-panel [data-deep-empty]').length`), 0);
+  assert.equal(await evaluate(`document.querySelectorAll('#deep-review-panel [data-deep-kind]').length`), 0);
+  await assertNoPageScroll(evaluate, '深度复盘不可用');
+  await screenshot('deep-review-unavailable');
   // Restore real data and collapsed rounds for the historical checks following this test.
   await evaluate(`window.__qaReport.deepReview = window.__qaDeepOriginal; delete window.__qaDeepOriginal; delete window.__qaReport`);
   await refresh();
-  for (const [width, height] of [[900, 760], [800, 600], [650, 760]]) {
+  await checkTabs('reviews');
+  for (const [width, height] of [[1920, 1032], [1024, 640], [900, 760], [800, 600], [650, 760]]) {
     await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false });
     await settle();
     assert.equal(await evaluate(`document.documentElement.scrollWidth <= window.innerWidth`), true);
-    assert.equal(await evaluate(`document.getElementById('deep-review-panel').scrollWidth <= document.getElementById('deep-review-panel').clientWidth`), true);
-    await evaluate(`document.querySelector('[data-app-content]').scrollTo(0, 0)`);
-    await screenshot('deep-review-real-' + width);
+    const outer = await evaluate(`(() => { const p = document.getElementById('deep-review-panel'); return { width: p.scrollWidth - p.clientWidth, height: p.scrollHeight - p.clientHeight }; })()`);
+    assert.ok(outer.width <= 1, width + ' deep review horizontal overflow');
+    assert.ok(outer.height <= 1, width + ' deep review outer vertical overflow');
+    await assertNoPageScroll(evaluate, '深度复盘 ' + width);
+    for (const tab of ['reviews', 'highlights', 'contexts']) {
+      await showTab(tab);
+      const panel = await evaluate(`(() => { const p = document.querySelector('[data-deep-panel="${tab}"]'); const r = p.getBoundingClientRect(); return { clientHeight: p.clientHeight, scrollHeight: p.scrollHeight, widthOverflow: p.scrollWidth - p.clientWidth, top: r.top, bottom: r.bottom, overflowY: getComputedStyle(p).overflowY }; })()`);
+      assert.equal(panel.overflowY, 'auto', tab + ' must own its vertical scrolling');
+      assert.ok(panel.widthOverflow <= 1, tab + ' horizontal overflow');
+      assert.ok(panel.clientHeight > 120, tab + ' lost usable height');
+      assert.ok(panel.bottom <= height + 1, tab + ' extends below viewport');
+      assert.ok(panel.scrollHeight >= panel.clientHeight, tab + ' invalid scroll height');
+      await screenshot('deep-review-real-' + width + '-' + tab);
+    }
   }
   await evaluate(`[...document.querySelectorAll('[data-round-summary][aria-expanded="true"]')].forEach(b => b.click())`);
   await send('Emulation.clearDeviceMetricsOverride');

@@ -251,12 +251,22 @@ test('Deep Review renders adapted copy, plain-language limits and no internal ev
   assert.equal(new Set(labels.map(m => m[2])).size, 3, 'three distinct Fluent badge styles');
 });
 test('Deep Review permits empty and unavailable evidence without fallback cards', () => {
-  for (const status of ['complete', 'partial', 'unavailable']) {
+  const emptyCopy = [
+    '这场暂时没有需要重点复盘的地方，先把好状态保持住。',
+    '高光可能在路上，这场还没有足够证据点亮它。',
+    '观察哨今天很安静，没有额外值得补充的记录。',
+  ];
+  for (const status of ['complete', 'partial']) {
     const html = render(createElement(DeepReview, { player: { playerId: '1', coverage: { status }, reviews: [], highlights: [], contexts: [] }, onShowRounds: () => {} }));
-    assert.ok(html.includes('本场没有生成深度复盘结论。'));
-    assert.ok(html.includes('本场没有生成优先复盘结论。'));
-    assert.ok(!html.includes('本场没有需要优先复盘的问题。'));
+    for (const copy of emptyCopy) assert.ok(html.includes(copy), copy);
+    assert.equal([...html.matchAll(/data-deep-tab="/g)].length, 3);
+    assert.ok(!html.includes('本场没有生成深度复盘结论。'));
     assert.ok(!html.includes('data-deep-kind='));
-    assert.equal(html.includes('基础比赛报告仍可查看'), status === 'unavailable');
+    assert.equal(html.includes('基础比赛报告仍可查看'), false);
   }
+  const unavailable = render(createElement(DeepReview, { player: { playerId: '1', coverage: { status: 'unavailable' }, reviews: [], highlights: [], contexts: [] }, onShowRounds: () => {} }));
+  for (const copy of emptyCopy) assert.equal(unavailable.includes(copy), false, copy);
+  assert.equal([...unavailable.matchAll(/data-deep-tab="/g)].length, 3);
+  assert.equal([...unavailable.matchAll(/data-deep-unavailable-panel=/g)].length, 3);
+  assert.ok(unavailable.includes('本场录像无法用于深度复盘，基础比赛报告仍可查看。'));
 });
