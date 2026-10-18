@@ -24,6 +24,7 @@ import { ReplayPlayer } from './replay-player';
 import { WinOption as Option } from './winui-option';
 import { HeatmapView } from './heatmap-view';
 import type { ReplayJump } from './replay-player';
+import './collapse-motion.css';
 
 /** One surface for every card on the page: same background, same weak border, same radius, no shadows. */
 const cardSurface = {
@@ -256,6 +257,76 @@ function UtilityPanel({ utility }: { utility: DesktopPlayerAnalytics['utility'] 
   </Card>;
 }
 
+/**
+ * Height-animated disclosure for round details. The collapsed content is absent from
+ * the DOM, so a closed round keeps the original tab order. While closing, the wrapper
+ * is inert and the node is unmounted after the CSS transition (reduced motion closes
+ * immediately), which prevents stale focus or invisible rows from lingering.
+ */
+function TimelineCollapse({ open, children }: { open: boolean; children: React.ReactNode }) {
+  const [mounted, setMounted] = useState(open);
+  const [visible, setVisible] = useState(open);
+  const closeTimer = useRef<number | undefined>(undefined);
+  const expandFrame = useRef<number | undefined>(undefined);
+
+  const cancelExpand = () => {
+    if (expandFrame.current !== undefined) {
+      cancelAnimationFrame(expandFrame.current);
+      expandFrame.current = undefined;
+    }
+  };
+  const cancelClose = () => {
+    if (closeTimer.current !== undefined) {
+      window.clearTimeout(closeTimer.current);
+      closeTimer.current = undefined;
+    }
+  };
+
+  useEffect(() => {
+    if (open) {
+      cancelClose();
+      if (!mounted) { setMounted(true); return; }
+      if (visible) return;
+      // Reduced motion has no transition to wait for; expand on the next commit.
+      if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+        setVisible(true);
+        return;
+      }
+      // Commit the 0fr start state first so a freshly mounted row can animate open.
+      cancelExpand();
+      expandFrame.current = requestAnimationFrame(() => {
+        expandFrame.current = requestAnimationFrame(() => setVisible(true));
+      });
+      return;
+    }
+    cancelExpand();
+    if (!mounted) return;
+    setVisible(false);
+    if (closeTimer.current !== undefined) return;
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+      setMounted(false);
+      return;
+    }
+    // Fallback when the transition does not run (hidden panel) or cannot finish.
+    closeTimer.current = window.setTimeout(() => {
+      closeTimer.current = undefined;
+      setMounted(false);
+    }, 300);
+  }, [open, mounted, visible]);
+
+  useEffect(() => () => { cancelExpand(); cancelClose(); }, []);
+
+  if (!mounted) return null;
+  return <div className="timeline-collapse" data-expanded={visible ? 'true' : 'false'}
+    data-timeline-collapse={open ? 'open' : 'closing'} inert={!open || !visible}
+    onTransitionEnd={event => {
+      if (event.target !== event.currentTarget || event.propertyName !== 'grid-template-rows') return;
+      if (!open) { cancelClose(); setMounted(false); }
+    }}>
+    <div className="timeline-collapse-inner">{children}</div>
+  </div>;
+}
+
 /** Round-by-round summary with click-to-expand key events; all rounds start collapsed. */
 function RoundTimeline({ rounds, expanded, highlighted, onToggle, onReplay }: {
   rounds: DesktopRoundTimeline[];
@@ -283,14 +354,16 @@ function RoundTimeline({ rounds, expanded, highlighted, onToggle, onReplay }: {
               <span className={s.numberCell}>{scoreAfterText(r.scoreAfter)}</span>
               <span className={s.timelineToggle}>{open ? '收起' : '查看详情'}</span>
             </button>
-            {open ? <div className={s.timelineDetail} data-round-detail={r.round}>
-              {onReplay?<Button appearance="subtle" size="small" onClick={()=>onReplay(r.round,r.startTick??undefined)}>回放本回合</Button>:null}
-              {r.events.length ? r.events.map(e => e.type === 'kill' || e.type === 'death' ? <KillFeedEvent key={e.id} event={e} round={r.round} onReplay={onReplay?()=>onReplay(r.round,e.tick):undefined} /> : <div key={e.id} className={`${s.timelineEvent}${onReplay?` ${s.replayEventRow}`:''}`}>
-                <span className={s.timelineTime}>{eventTime(e)}</span>
-                <Tooltip content={e.description} relationship="description"><span className={s.playerName} tabIndex={0}>{e.description}</span></Tooltip>
-                {onReplay?<Button appearance="subtle" size="small" data-timeline-replay-tick={e.tick} onClick={()=>onReplay(r.round,e.tick)}>回放</Button>:null}
-              </div>) : <Caption1 className={s.muted}>本回合没有可展示的关键事件。</Caption1>}
-            </div> : null}
+            <TimelineCollapse open={open}>
+              <div className={s.timelineDetail} data-round-detail={r.round}>
+                {onReplay?<Button appearance="subtle" size="small" onClick={()=>onReplay(r.round,r.startTick??undefined)}>回放本回合</Button>:null}
+                {r.events.length ? r.events.map(e => e.type === 'kill' || e.type === 'death' ? <KillFeedEvent key={e.id} event={e} round={r.round} onReplay={onReplay?()=>onReplay(r.round,e.tick):undefined} /> : <div key={e.id} className={`${s.timelineEvent}${onReplay?` ${s.replayEventRow}`:''}`}>
+                  <span className={s.timelineTime}>{eventTime(e)}</span>
+                  <Tooltip content={e.description} relationship="description"><span className={s.playerName} tabIndex={0}>{e.description}</span></Tooltip>
+                  {onReplay?<Button appearance="subtle" size="small" data-timeline-replay-tick={e.tick} onClick={()=>onReplay(r.round,e.tick)}>回放</Button>:null}
+                </div>) : <Caption1 className={s.muted}>本回合没有可展示的关键事件。</Caption1>}
+              </div>
+            </TimelineCollapse>
           </div>;
         })}
       </div>

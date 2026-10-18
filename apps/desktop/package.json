@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit",
     "test": "pnpm --filter @cs2-analyst/match-model build && pnpm --filter @cs2-analyst/dem-parser build && pnpm --filter @cs2-analyst/analytics build && pnpm --filter @cs2-analyst/findings build && pnpm --filter @cs2-analyst/deep-review build && node --test tests/*.test.mjs",
     "test:report": "pnpm typecheck && install-electron && electron-vite build && node ../../scripts/desktop-report-smoke.mjs",
+    "test:collapse": "pnpm typecheck && install-electron && electron-vite build && node ../../scripts/collapse-motion-smoke.mjs",
     "test:smoke": "pnpm typecheck && install-electron && node ../../scripts/desktop-smoke.mjs",
     "build": "node ../../scripts/check-replay-map-assets.mjs && pnpm typecheck && electron-vite build",
     "pack:win": "pnpm typecheck && node scripts/build-installer.mjs production",
