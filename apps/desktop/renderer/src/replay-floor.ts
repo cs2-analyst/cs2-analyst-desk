@@ -21,6 +21,8 @@ export interface ReplayFloorInput {
   tick: number;
   map: ReplayMapDefinition;
   selected: DesktopReplayPlayer | undefined;
+  /** Only for confirmed all-dead: an earlier reliable observation, never a player position. */
+  allDeadBackground?: string | null;
 }
 
 /** Only background context is retained. This function never stores or returns XYZ. */
@@ -41,7 +43,8 @@ export function replayFloorAt(previous: ReplayFloorState | null, input: ReplayFl
     && [selected[2], selected[3], selected[4]].every(value => value !== null && Number.isFinite(value));
   const confirmed = single ? map.layers[0].id : reliable ? resolveMapLayer(map, selected![4]) : null;
   const history = continuous ? previous.confirmedLayer : null;
-  const layerId = confirmed ?? history;
+  const background = map.layers.some(layer => layer.id === input.allDeadBackground) ? input.allDeadBackground! : null;
+  const layerId = confirmed ?? history ?? background;
   return { context, tick, confirmedLayer: layerId, layerId,
     status: confirmed ? 'known' : layerId ? 'retained' : 'unknown' };
 }
