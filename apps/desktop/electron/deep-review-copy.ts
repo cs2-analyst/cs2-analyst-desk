@@ -90,7 +90,7 @@ const RESULT_NOTE: Record<string, string> = {
   'deep.execution.no-confirmed-return-pattern': '这项结果只表示录像中是否记录到后续伤害或击杀，不能据此判断你的反应速度或枪法。',
   'deep.execution.return-contact-consistent': '这项结果只表示录像中是否记录到后续伤害或击杀，不能据此判断你的反应速度或枪法。',
   'deep.teamplay.lone-contact-death-pattern': '这不代表你的站位一定孤立，也不能说明队友当时看得到、来得及或具备支援条件。',
-  'deep.teamplay.no-followup-pattern': '这不等同于补枪失败，也不能证明你当时看得到、来得及或具备支援条件。这里不是正式的补枪统计。',
+  'deep.teamplay.no-followup-pattern': '交火参与记录也包括受到伤害或被击杀，且可能发生在队友阵亡之后，不能证明你在阵亡前已经参与。这不等同于补枪失败，也不能证明你当时看得到、来得及或具备支援条件。这里不是正式的补枪统计。',
   'deep.utility.teamflash-repeated': '游戏记录的受闪时长是原始事件数据，不等于持续致盲时间，也不能单独用来评价闪光弹质量。',
 };
 

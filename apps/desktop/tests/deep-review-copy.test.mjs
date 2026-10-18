@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { adaptDeepReviewFinding } from '../electron/deep-review-copy.ts';
+import { analyzeDeepReviewFindings } from '@cs2-analyst/deep-review';
+import { match as syntheticMatch, inputs as findingsInputs, damage, kill } from '../../../packages/deep-review/tests/findings-fixture.mjs';
 
 /** Internal domain vocabulary that must never reach user-visible Deep Review text. */
 const INTERNAL_TERMS = ['Engagement', 'direct contact', 'evidence', 'partial', 'coverage', 'linkage',
@@ -101,6 +103,35 @@ test('pattern copy keeps the required negative/positive framing and the follow-u
     { teamFlashEffects: 3, teammateEffects: 6 }, { occurrences: 3, eligibleOccurrences: 6 }));
   assert.equal(flash.title, '多次闪光弹影响到队友');
   assert.equal(flash.summary, '有 3 颗可以明确归属到你的闪光弹影响了队友，共记录到 6 次队友受闪。');
+});
+
+test('production no-followup rule copy preserves received-only participation after teammate death', () => {
+  // Synthetic event evidence: the teammate dies at tick 100; the player first
+  // participates by receiving damage at tick 140 and never deals damage or kills.
+  const match = syntheticMatch(Array.from({ length: 5 }, () => [kill(100, '6', '2'), damage(140, '6', '1')]));
+  const inputs = findingsInputs(match);
+  const contexts = inputs.teamplay.playerEngagementContexts.filter(c => c.playerId === '1');
+  assert.equal(contexts.length, 5);
+  for (const context of contexts) {
+    const death = inputs.teamplay.teammateDeathResponses.find(r => r.playerId === '1' && r.deathRef.round === context.round);
+    assert.ok(context.firstContactTick > death.deathRef.tick);
+    assert.equal(context.damageContactsReceived, 1);
+    assert.equal(context.damageContactsDealt, 0);
+    assert.equal(context.kills, 0);
+    assert.equal(death.outcome, 'none-observed');
+  }
+  const finding = analyzeDeepReviewFindings(match, '1', inputs).contexts
+    .find(f => f.ruleId === 'deep.teamplay.no-followup-pattern');
+  assert.ok(finding, 'late received-only contact remains eligible under the existing domain rule');
+  assert.equal(finding.occurrences, 5);
+  assert.equal(finding.eligibleOccurrences, 5);
+  const copy = adaptDeepReviewFinding(finding);
+  const limitations = copy.caveats.join('\n');
+  assert.match(limitations, /受到伤害或被击杀/);
+  assert.match(limitations, /可能发生在队友阵亡之后/);
+  assert.match(limitations, /不能证明你在阵亡前已经参与/);
+  assert.match(limitations, /不等同于补枪失败/);
+  audit(copy);
 });
 
 test('coverage caveat closing text matches the finding family and never leaks codes', () => {
