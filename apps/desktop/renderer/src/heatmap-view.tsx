@@ -153,7 +153,8 @@ export function HeatmapLayerDetails({ layer, projection: p, cellIndex }: { layer
               <Caption1>采样机会分母：{p.positions.observations.expectedOpportunities}；已确认死亡 {p.positions.observations.confirmedDeadObservations}；观测但不可用 {p.positions.observations.observedButUnusable}；缺位置 {p.positions.observations.missingPositionObservations}；未知阵营 {p.positions.sideUnknownObservations}；其他阵营 {p.positions.otherSideValidSamples}</Caption1>
               <Caption1>覆盖率 = 有效位置 / 采样机会；完整度 = 已观测 / 采样机会；筛选后覆盖率沿用同一机会分母。位置覆盖率表示获得有效位置的采样机会比例，不代表玩家在场上的时间比例。</Caption1>
             </> : (() => { const events = layer === 'kills' ? p.kills! : p.deaths!; return <>
-              <Caption1>成功定位 / 当前事件：{events.locatableEvents} / {events.scopeEvents}</Caption1><Caption1>事件位置覆盖率：{ratio(events.eventPositionCoverage)}</Caption1>
+              <Caption1>成功定位 / 楼层筛选前事件：{events.locatableEvents} / {events.scopeEvents}</Caption1><Caption1>事件位置覆盖率（楼层筛选前）：{ratio(events.eventPositionCoverage)}</Caption1>
+              <Caption1>楼层只筛选网格，以上事件数与覆盖率保留楼层筛选前范围。所选楼层的聚合结果见网格计数及楼层排除计数。</Caption1>
               {events.scopeEvents === 0 ? <Caption1>当前筛选范围内没有可统计事件</Caption1> : null}
               {Object.entries(events.unlocatableReasons).filter(([, n]) => n > 0).map(([reason, n]) => <Caption1 key={reason}>{failureLabels[reason]}：{n}</Caption1>)}
               <Caption1>窗口外 {events.outsideWindowEvents}；未知阵营 {events.unknownSideEvents}；其他阵营 {events.otherSideEvents}；玩家筛选排除未知主体 {events.unknownSubjectExcludedByPlayerFilter}</Caption1>

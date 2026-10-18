@@ -35,6 +35,7 @@ const { ReplayPlayer } = await import('../renderer/src/replay-player.tsx');
 const { WinOption } = await import('../renderer/src/winui-option.tsx');
 const { fixture: heatmapFixture, map: heatmapMap } = await import('./heatmap-fixture.mjs');
 const { projectMapHeatmap } = await import('../shared/heatmap.ts');
+const { replayMapDefinitions } = await import('../shared/replay-map-geometry.ts');
 const { utilityDamageRows, utilityThrowRows } = await import('../renderer/src/utility-display.ts');
 const render = element => renderToStaticMarkup(createElement(SSRProvider, null, element));
 
@@ -138,7 +139,7 @@ test('heatmap details distinguish zero events, undefined ratios, source loss and
   const empty = projectMapHeatmap(f.match, f.replay, f.spatial, { rounds: [] }, heatmapMap);
   const html = render(createElement(HeatmapLayerDetails, { layer: 'kills', projection: empty, cellIndex: 0 }));
   assert.ok(html.includes('当前筛选范围内没有可统计事件'));
-  assert.ok(html.includes('事件位置覆盖率：—')); assert.ok(html.includes('相对强度：—')); assert.ok(html.includes('无可聚合数据'));
+  assert.ok(html.includes('事件位置覆盖率（楼层筛选前）：—')); assert.ok(html.includes('相对强度：—')); assert.ok(html.includes('无可聚合数据'));
   const positions = projectMapHeatmap(f.match, f.replay, f.spatial, { side: 'CT' }, heatmapMap);
   const selected = render(createElement(HeatmapLayerDetails, { layer: 'positions', projection: positions, cellIndex: 0 }));
   for (const text of ['当前所选有效位置采样：1', '阵营与楼层筛选前有效采样：2', '位置覆盖率：100.0%', '位置完整度：100.0%', '筛选后位置覆盖率：50.0%', '采样机会分母：2', '不代表玩家在场上的时间比例']) assert.ok(selected.includes(text), text);
@@ -147,6 +148,32 @@ test('heatmap details distinguish zero events, undefined ratios, source loss and
   f.replay.hz = 16;
   const noUniform = projectMapHeatmap(f.match, f.replay, f.spatial, { samplingSet: 'uniform-8hz' }, heatmapMap);
   assert.ok(render(createElement(HeatmapLayerDetails, { layer: 'positions', projection: noUniform, cellIndex: null })).includes('采样集不适用于此回放'));
+});
+
+test('Nuke and Vertigo event labels distinguish source coverage from other-floor and boundary grid exclusions', () => {
+  for (const [id, boundary] of [['de_nuke', -495], ['de_vertigo', 11700]]) {
+    const definition = replayMapDefinitions.find(map => map.id === id);
+    for (const layer of ['kills', 'deaths']) for (const z of [boundary - 1, boundary]) {
+      const f = heatmapFixture(); f.match.map = id;
+      for (const binding of f.spatial.events[0].samples) binding.sample.position = {
+        x: definition.posX + definition.scale * 512, y: definition.posY - definition.scale * 512, z,
+      };
+      const all = projectMapHeatmap(f.match, null, f.spatial, { layers: [layer] }, definition);
+      const selected = projectMapHeatmap(f.match, null, f.spatial, { floor: 'default', layers: [layer] }, definition);
+      const events = selected[layer], unknown = z === boundary ? 1 : 0, other = 1 - unknown;
+      assert.equal(all[layer].grid.aggregatedSamples, 1);
+      assert.equal(events.scopeEvents, 1); assert.equal(events.locatableEvents, 1);
+      assert.equal(events.eventPositionCoverage, 1);
+      assert.equal(events.grid.validPositionSamples, 0); assert.equal(events.grid.aggregatedSamples, 0);
+      assert.equal(events.grid.unknownLayer, unknown); assert.equal(events.grid.otherFloor, other);
+      const html = render(createElement(HeatmapLayerDetails, { layer, projection: selected, cellIndex: 0 }));
+      for (const text of ['成功定位 / 楼层筛选前事件：1 / 1', '事件位置覆盖率（楼层筛选前）：100.0%',
+        '楼层只筛选网格，以上事件数与覆盖率保留楼层筛选前范围', '所选楼层的聚合结果见网格计数及楼层排除计数',
+        '网格计数：0', '无可聚合数据', `未知或歧义楼层 ${unknown}；其他楼层 ${other}`]) assert.ok(html.includes(text), `${id}/${layer}/${z}: ${text}`);
+      assert.equal(html.includes('成功定位 / 当前事件'), false);
+      assert.equal(html.includes('当前筛选范围内没有可统计事件'), false);
+    }
+  }
 });
 
 test('kill feed renders flags only when true, fallback weapon and complete accessible text', () => {
