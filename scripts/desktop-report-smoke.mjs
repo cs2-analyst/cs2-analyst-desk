@@ -1,6 +1,6 @@
 import { checkDeepReviewUx } from './deep-review-ux-checks.mjs';
 import { checkReportUx } from './report-ux-checks.mjs';
-import { settleUi } from './window-shell-checks.mjs';
+import { assertNoPageScroll, settleUi } from './window-shell-checks.mjs';
 import { closeApp, connectCdp, waitFor, withCleanup } from './smoke-runtime.mjs';
 import { ProcessScope } from './installed-smoke-lifecycle.mjs';
 import { checkWindowShell } from './window-shell-checks.mjs';
@@ -146,7 +146,7 @@ await scenario({
     assert.equal(await evaluate(`document.getElementById('report-panel').hidden`), false);
     assert.equal(await evaluate(`document.getElementById('report-tab').getAttribute('aria-selected')`), 'true');
     assert.deepEqual(await evaluate(`[...document.querySelectorAll('[data-app-sidebar] [role="tab"]')].map(t => t.querySelector('.fui-Tab__content').textContent)`), ['比赛报告', '深度复盘', '回合时间线', '分析', '比赛回放', '热力图']);
-    assert.equal(await evaluate(`document.querySelectorAll('[role="tabpanel"]').length`), 6);
+    assert.equal(await evaluate(`[...document.querySelectorAll('[role="tabpanel"]')].filter(p => !p.parentElement.closest('[role="tabpanel"]')).length`), 6);
     await checkDeepReviewUx(evaluate, send, process.env.CS2_ANALYST_QA_DIR);
     await evaluate(`document.getElementById('report-tab').click()`);
     await settleUi(evaluate, 'report Tab render');
@@ -235,6 +235,23 @@ await scenario({
     await evaluate(`document.getElementById('analysis-tab').click()`);
     await waitFor(async () => evaluate(`!document.getElementById('analysis-panel').hidden`), 10_000, '分析 Tab');
     assert.equal(await evaluate(`document.getElementById('report-panel').hidden`), true);
+    const showAnalysisTab = async active => {
+      await evaluate(`document.querySelector('[data-analysis-tab="${active}"]').click()`);
+      await settleUi(evaluate, 'analysis tab ' + active);
+      const tabs = await evaluate(`[...document.querySelectorAll('#analysis-panel [data-analysis-tab]')].map(t => ({
+        key: t.dataset.analysisTab, label: t.querySelector('.fui-Tab__content')?.textContent ?? t.textContent, selected: t.getAttribute('aria-selected'),
+        panelHidden: document.querySelector('[data-analysis-panel="' + t.dataset.analysisTab + '"]').hidden,
+      }))`);
+      assert.deepEqual(tabs.map(t => t.key), ['comparison', 'trend', 'sides']);
+      assert.deepEqual(tabs.map(t => t.label), ['全场玩家对比', '回合表现趋势', 'CT / T 表现对比']);
+      for (const t of tabs) {
+        assert.equal(t.selected, String(t.key === active), 'analysis selected: ' + t.key);
+        assert.equal(t.panelHidden, t.key !== active, 'analysis panel: ' + t.key);
+      }
+    };
+    await showAnalysisTab('comparison');
+    await assertNoPageScroll(evaluate, '分析初始视图');
+    assert.equal(await evaluate(`document.querySelectorAll('#analysis-panel [data-analysis-tab]').length`), 3, '分析应始终显示三个选项卡');
     const analysis = await evaluate(`(() => {
       const rows = [...document.querySelectorAll('[data-comparison-player]')];
       return { count: rows.length, values: rows.map(r => Number(r.dataset.metricValue)),
@@ -267,8 +284,13 @@ await scenario({
     for (const text of ['12', '15 / 10 / 1', '114.50']) assert.ok(analysis.t.includes(text));
 
     // Tooltip opens on keyboard focus; labels give an accessible non-colour description.
+    await showAnalysisTab('trend');
+    await assertNoPageScroll(evaluate, '回合表现趋势');
     await evaluate(`document.querySelector('[data-trend-round="24"]').focus()`);
     await waitFor(async () => evaluate(`[...document.querySelectorAll('[role="tooltip"]')].some(t => t.textContent.includes('4 击杀') && t.textContent.includes('未阵亡'))`), 10_000, '回合 Tooltip');
+    await showAnalysisTab('sides');
+    await assertNoPageScroll(evaluate, 'CT / T 对比');
+    await showAnalysisTab('comparison');
     await evaluate(`document.querySelector('[data-comparison-player][aria-label^="twinkle"]').focus()`);
     await waitFor(async () => evaluate(`[...document.querySelectorAll('[role="tooltip"]')].some(t => t.textContent.includes('twinkle') && t.textContent.includes('91.38'))`), 10_000, '玩家对比 Tooltip');
 
@@ -294,10 +316,11 @@ await scenario({
       }
     }
 
-    // Screenshot artifacts outside the checkout; cover desktop and a narrow laptop viewport.
+    // Screenshot artifacts outside the checkout; each tab owns its own scroll surface.
     if (process.env.CS2_ANALYST_QA_DIR) {
       await send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
       await evaluate(`document.querySelector('[data-app-content]').scrollTo(0, 0)`);
+      await showAnalysisTab('comparison');
       await settleUi(evaluate, 'desktop screenshot');
       const shot = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
       writeFileSync(join(process.env.CS2_ANALYST_QA_DIR, 'analysis-desktop.png'), Buffer.from(shot.data, 'base64'));
@@ -307,10 +330,15 @@ await scenario({
       const narrow = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
       writeFileSync(join(process.env.CS2_ANALYST_QA_DIR, 'analysis-narrow.png'), Buffer.from(narrow.data, 'base64'));
       await send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
-      await evaluate(`document.querySelector('[aria-label="回合表现趋势"]').scrollIntoView({ block: 'start' })`);
-      await settleUi(evaluate, 'scrolled screenshot');
-      const detail = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
-      writeFileSync(join(process.env.CS2_ANALYST_QA_DIR, 'analysis-trend-sides.png'), Buffer.from(detail.data, 'base64'));
+      await showAnalysisTab('trend');
+      await evaluate(`document.querySelector('[data-analysis-panel="trend"]').scrollTo(0, 0)`);
+      await settleUi(evaluate, 'trend screenshot');
+      const trendShot = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
+      writeFileSync(join(process.env.CS2_ANALYST_QA_DIR, 'analysis-trend.png'), Buffer.from(trendShot.data, 'base64'));
+      await showAnalysisTab('sides');
+      await settleUi(evaluate, 'sides screenshot');
+      const sidesShot = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
+      writeFileSync(join(process.env.CS2_ANALYST_QA_DIR, 'analysis-sides.png'), Buffer.from(sidesShot.data, 'base64'));
       await send('Emulation.clearDeviceMetricsOverride');
     }
     await evaluate(`document.getElementById('report-tab').click()`);
@@ -342,12 +370,37 @@ await scenario({
     assert.ok(r24AfterSwitch.includes('13 : 11'), '比分不随目标玩家变化');
     await evaluate(`document.getElementById('analysis-tab').click()`);
     await waitFor(async () => evaluate(`!document.getElementById('analysis-panel').hidden`), 10_000, '其他玩家分析');
+    await showAnalysisTab('comparison');
     const other = await evaluate(`({
       current: [...document.querySelectorAll('[data-comparison-player]')].find(r => r.textContent.includes('· 当前'))?.textContent,
-      r24: document.querySelector('[data-trend-round="24"]').getAttribute('aria-label'),
     })`);
     assert.ok(other.current.includes('tarkz'));
-    assert.ok(other.r24.includes('CT') && other.r24.includes('失败'));
+    await showAnalysisTab('trend');
+    const otherR24 = await evaluate(`document.querySelector('[data-trend-round="24"]').getAttribute('aria-label')`);
+    assert.ok(otherR24.includes('CT') && otherR24.includes('失败'));
+
+    // A fresh match import remounts the report and resets every local tab default.
+    await evaluate(`document.querySelector('[data-sidebar-import]').click()`);
+    await waitFor(async () => {
+      const status = await evaluate(`document.querySelector('main')?.dataset.status`);
+      return status && status !== 'success' ? status : null;
+    }, 15_000, '重新导入开始');
+    await waitFor(async () => {
+      const state = await evaluate(`({ status: document.querySelector('main')?.dataset.status,
+        report: !document.getElementById('report-panel')?.hidden,
+        selected: document.getElementById('report-tab')?.getAttribute('aria-selected') })`);
+      return state.status === 'success' && state.report && state.selected === 'true' ? state : null;
+    }, 120_000, '重新导入完成');
+    await evaluate(`document.getElementById('deep-review-tab').click()`);
+    await settleUi(evaluate, '重新导入后的深度复盘');
+    assert.equal(await evaluate(`document.querySelectorAll('#deep-review-panel [data-deep-tab]').length`), 3);
+    assert.equal(await evaluate(`document.querySelector('[data-deep-tab="reviews"]').getAttribute('aria-selected')`), 'true', '新比赛默认优先复盘');
+    await evaluate(`document.getElementById('analysis-tab').click()`);
+    await settleUi(evaluate, '重新导入后的分析');
+    assert.equal(await evaluate(`document.querySelector('[data-analysis-tab="comparison"]').getAttribute('aria-selected')`), 'true', '新比赛默认全场玩家对比');
+    assert.equal(await evaluate(`document.querySelector('[aria-label="对比指标"]').textContent`), 'ADR', '新比赛使用默认指标');
+    assert.ok(await evaluate(`[...document.querySelectorAll('[data-comparison-player]')].some(r => r.textContent.includes('· 当前'))`));
+    await assertNoPageScroll(evaluate, '重新导入后的分析视图');
 
   },
 });
