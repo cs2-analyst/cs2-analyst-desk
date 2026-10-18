@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { jsonHash } from '../apps/desktop/tests/heatmap-real-fixture.mjs';
 import { waitFor, withCleanup } from './smoke-runtime.mjs';
@@ -19,10 +20,76 @@ export const heatmapSnapshotExpression = `(() => {
   const fiber = visit(root.stateNode.current);
   if (!fiber) return null;
   const hooks = []; for (let hook = fiber.memoizedState; hook; hook = hook.next) if (hook.queue?.dispatch) hooks.push(hook.memoizedState);
-  return { metadata: fiber.memoizedProps.metadata, scope: hooks.find(s=>s?.samplingSet), resolution: hooks.find(s=>[16,32,64].includes(s)), enabled: hooks.find(s=>Array.isArray(s)&&s.every(l=>['positions','kills','deaths'].includes(l))), results: hooks.find(s=>s&&typeof s.key==='string'&&s.layers) };
+  return { active: fiber.memoizedProps.active, metadata: fiber.memoizedProps.metadata, scope: hooks.find(s=>s?.samplingSet), resolution: hooks.find(s=>[16,32,64].includes(s)), enabled: hooks.find(s=>Array.isArray(s)&&s.every(l=>['positions','kills','deaths'].includes(l))), results: hooks.find(s=>s&&typeof s.key==='string'&&s.layers) };
 })()`;
 const readReport = `(() => {let f=document.getElementById('heatmap-panel')[Object.keys(document.getElementById('heatmap-panel')).find(k=>k.startsWith('__reactFiber$'))];while(f&&!f.memoizedProps?.report)f=f.return;return f?.memoizedProps.report;})()`;
 const pixelExpression = `(() => {const c=document.querySelector('#heatmap-panel canvas'),d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;let h=2166136261,opaque=0;for(let i=0;i<d.length;i++){h=Math.imul(h^d[i],16777619);if(i%4===3&&d[i])opaque++;}return {hash:h>>>0,opaque,width:c.width,height:c.height};})()`;
+const radarMapAsset = new URL('../apps/desktop/renderer/src/assets/replay-maps/de_dust2.png', import.meta.url);
+const radarMapBytes = readFileSync(radarMapAsset);
+const radarMapSha256 = createHash('sha256').update(radarMapBytes).digest('hex');
+const radarMapDataUrl = `data:image/png;base64,${radarMapBytes.toString('base64')}`;
+const radarReferenceExpression = source => `(async() => {
+  const canvas = document.querySelector('#heatmap-panel canvas');
+  const image = new Image(); image.src = ${JSON.stringify(source)}; await image.decode();
+  const reference = document.createElement('canvas'); reference.width = canvas.width; reference.height = canvas.height;
+  const context = reference.getContext('2d');
+  context.drawImage(image, 0, 0, reference.width, reference.height);
+  const data = context.getImageData(0, 0, reference.width, reference.height).data;
+  let hash = 2166136261, opaque = 0;
+  for (let i = 0; i < data.length; i++) { hash = Math.imul(hash ^ data[i], 16777619); if (i % 4 === 3 && data[i]) opaque++; }
+  window.__qaRadarBaseData = data;
+  window.__qaRadarBaseOpaque = opaque;
+  return { asset: 'renderer/src/assets/replay-maps/de_dust2.png', sha256: ${JSON.stringify(radarMapSha256)}, naturalSize: [image.naturalWidth, image.naturalHeight], width: reference.width, height: reference.height, hash: hash >>> 0, opaque };
+})()`;
+const baseComparisonExpression = `(() => {
+  const canvas = document.querySelector('#heatmap-panel canvas'), actual = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+  const expected = window.__qaRadarBaseData;
+  if (!expected || expected.length !== actual.length) throw new Error('Independent radar baseline dimensions changed');
+  const width = canvas.width, height = canvas.height, step = 4, navigationStep = 24;
+  let hash = 2166136261, opaque = 0, differentBytes = 0, differentPixels = 0;
+  let alphaSamples = 0, alphaMatches = 0, interiorColorSamples = 0, interiorColorMatches = 0;
+  let navigationAlphaSamples = 0, navigationAlphaMatches = 0, navigationInteriorColorSamples = 0, navigationInteriorColorMatches = 0;
+  for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+    const i = (y * width + x) * 4;
+    let changed = false;
+    for (let k = 0; k < 4; k++) { hash = Math.imul(hash ^ actual[i + k], 16777619); if (actual[i + k] !== expected[i + k]) { differentBytes++; changed = true; } }
+    if (changed) differentPixels++;
+    if (actual[i + 3]) opaque++;
+    if (x % step === 0 && y % step === 0) {
+      alphaSamples++;
+      if ((actual[i + 3] > 0) === (expected[i + 3] > 0)) alphaMatches++;
+      if (x >= 2 && y >= 2 && x < width - 2 && y < height - 2) {
+        let stableInterior = true;
+        for (let dy = -2; dy <= 2 && stableInterior; dy++) for (let dx = -2; dx <= 2; dx++) {
+          if (expected[((y + dy) * width + x + dx) * 4 + 3] !== 255) { stableInterior = false; break; }
+        }
+        if (stableInterior) {
+          interiorColorSamples++;
+          if (actual[i + 3] === 255 && [0, 1, 2].every(k => Math.abs(actual[i + k] - expected[i + k]) <= 3)) interiorColorMatches++;
+        }
+      }
+    }
+    if (x % navigationStep === 0 && y % navigationStep === 0) {
+      navigationAlphaSamples++;
+      if ((actual[i + 3] > 0) === (expected[i + 3] > 0)) navigationAlphaMatches++;
+      if (x >= 2 && y >= 2 && x < width - 2 && y < height - 2) {
+        let stableInterior = true;
+        for (let dy = -2; dy <= 2 && stableInterior; dy++) for (let dx = -2; dx <= 2; dx++) {
+          if (expected[((y + dy) * width + x + dx) * 4 + 3] !== 255) { stableInterior = false; break; }
+        }
+        if (stableInterior) {
+          navigationInteriorColorSamples++;
+          if (actual[i + 3] === 255 && [0, 1, 2].every(k => Math.abs(actual[i + k] - expected[i + k]) <= 3)) navigationInteriorColorMatches++;
+        }
+      }
+    }
+  }
+  return { hash: hash >>> 0, width, height, opaque, opaqueRatio: opaque / window.__qaRadarBaseOpaque,
+    differentBytes, differentPixels, alphaSamples, alphaMatches, alphaMaskMatchRate: alphaMatches / alphaSamples,
+    interiorColorSamples, interiorColorMatches, interiorColorMatchRate: interiorColorMatches / interiorColorSamples,
+    navigationAlphaSamples, navigationAlphaMatches, navigationAlphaMaskMatchRate: navigationAlphaMatches / navigationAlphaSamples,
+    navigationInteriorColorSamples, navigationInteriorColorMatches, navigationInteriorColorMatchRate: navigationInteriorColorMatches / navigationInteriorColorSamples };
+})()`;
 
 export async function checkHeatmapUx(evaluate, send, { qaDir, direct, memory = async () => {}, full = false, expectedDust2 = false } = {}) {
   const metrics = { cases: [], layouts: [], draws: [], method: 'Real Renderer/preload/Main/Utility; React current-tree read only for DTO parity. Pixel FNV over actual Canvas RGBA. Draw timing wraps native Canvas context, no product telemetry.' };
@@ -55,6 +122,10 @@ export async function checkHeatmapUx(evaluate, send, { qaDir, direct, memory = a
     }
     return s;
   }, 'current heatmap DTOs');
+  const matchesRadarBaseline = pixels => Math.abs(pixels.opaqueRatio - 1) <= .01
+    && pixels.alphaMaskMatchRate >= .999 && pixels.interiorColorMatchRate >= .99;
+  const matchesNavigationRadar = pixels => pixels.opaqueRatio >= .97
+    && pixels.navigationAlphaMaskMatchRate >= .99 && pixels.navigationInteriorColorMatchRate >= .95;
   const verify = async label => {
     const s = await ready();
     for (const layer of s.enabled) {
@@ -70,6 +141,17 @@ export async function checkHeatmapUx(evaluate, send, { qaDir, direct, memory = a
     return s;
   };
   const shot = async name => { if (qaDir) { const result = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false }); writeFileSync(join(qaDir, name + '.png'), Buffer.from(result.data, 'base64')); } };
+  const radarComparisonImages = async name => {
+    if (!qaDir) return;
+    const images = await evaluate(`(() => {
+      const canvas = document.querySelector('#heatmap-panel canvas'), reference = document.createElement('canvas');
+      reference.width = canvas.width; reference.height = canvas.height;
+      const context = reference.getContext('2d'), data = context.createImageData(reference.width, reference.height);
+      data.data.set(window.__qaRadarBaseData); context.putImageData(data, 0, 0);
+      return { actual: canvas.toDataURL('image/png'), reference: reference.toDataURL('image/png') };
+    })()`);
+    for (const [suffix, dataUrl] of Object.entries(images)) writeFileSync(join(qaDir, name + '-' + suffix + '.png'), Buffer.from(dataUrl.split(',')[1], 'base64'));
+  };
   assert.equal(await evaluate(`document.querySelectorAll('[data-app-sidebar] [role=tab]').length`), 6);
   const panels = await evaluate(`(() => {
     const top = [...document.querySelectorAll('[role=tabpanel]')].filter(p => !p.parentElement.closest('[role=tabpanel]'));
@@ -190,31 +272,83 @@ export async function checkHeatmapUx(evaluate, send, { qaDir, direct, memory = a
   }
   await evaluate(`document.querySelector('#heatmap-panel button[aria-label="玩家位置密度"]').click()`); await ready();
   await memory('after-tab-returns');
-  // All layers off: clean base map remains visible, no placeholder overlay.
+  // All layers off: compare stable full-map samples to an independent image and observe overlay draw calls.
+  await settleUi(evaluate, 'settle before all-off draw observation'); await painted();
   await evaluate(`document.querySelectorAll('#heatmap-panel button[aria-pressed=true]').forEach(b=>b.click())`);
-  await settleUi(evaluate, 'all layers off');
+  await settleUi(evaluate, 'all layers off'); await painted();
   assert.deepEqual(await evaluate(`[...document.querySelectorAll('#heatmap-panel button[aria-pressed]')].map(b=>b.getAttribute('aria-pressed'))`), ['false', 'false', 'false']);
-  const allOffPixels = await evaluate(pixelExpression);
+  await evaluate(`(() => {const canvas=document.querySelector('#heatmap-panel canvas'),proto=CanvasRenderingContext2D.prototype,original=proto.fillRect;window.__qaHeatmapFillRects=0;window.__qaRestoreHeatmapFillRect=()=>{proto.fillRect=original;delete window.__qaRestoreHeatmapFillRect;};proto.fillRect=function(...args){if(this.canvas===canvas)window.__qaHeatmapFillRects++;return original.apply(this,args);};window.dispatchEvent(new Event('resize'));})()`);
+  await painted();
+  const radarReference = await evaluate(radarReferenceExpression(radarMapDataUrl));
+  assert.ok(radarReference.opaque > 0, 'independent base map reference must contain painted radar pixels');
+  const allOffPixels = await wait(async () => {
+    const pixels = await evaluate(baseComparisonExpression);
+    return matchesRadarBaseline(pixels) ? pixels : null;
+  }, 'all-off base map paint');
+  const allOffOverlayFillRects = await evaluate(`(() => {const count=window.__qaHeatmapFillRects;window.__qaRestoreHeatmapFillRect();delete window.__qaHeatmapFillRects;return count;})()`);
+  await shot('heatmap-all-layers-off');
+  const baseMapSampleFailure = allOffPixels.alphaMaskMatchRate < .999 || allOffPixels.interiorColorMatchRate < .99 || Math.abs(allOffPixels.opaqueRatio - 1) > .01;
+  if (baseMapSampleFailure) await radarComparisonImages('heatmap-all-off-canvas-diagnostic');
   assert.ok(allOffPixels.opaque > 0, 'base map must remain visible when all layers are off');
+  assert.equal(allOffOverlayFillRects, 0, 'all-off canvas performs no overlay cell fillRect draws');
+  assert.ok(Math.abs(allOffPixels.opaqueRatio - 1) <= .01, `all-off map coverage must match the independent radar within 1% ${JSON.stringify({ radarReference, allOffPixels })}`);
+  assert.ok(allOffPixels.alphaMaskMatchRate >= .999, `all-off map silhouette must match at 99.9% of whole-map samples ${JSON.stringify({ radarReference, allOffPixels })}`);
+  assert.ok(allOffPixels.interiorColorMatchRate >= .99, `all-off stable map interior samples must match within three RGB levels at 99% ${JSON.stringify({ radarReference, allOffPixels })}`);
+  assert.deepEqual(await evaluate(`[...document.querySelectorAll('#heatmap-panel [data-heatmap-stats]')].map(node=>node.getAttribute('data-heatmap-stats'))`), [], 'no position-density or event statistics are rendered with all layers off');
   assert.equal(await evaluate(`document.querySelector('#heatmap-panel canvas').isConnected`), true);
   assert.equal(await evaluate(`getComputedStyle(document.querySelector('#heatmap-panel canvas')).display`), 'block');
   const noticeVisible = await evaluate(`(() => {const notice = document.querySelector('[data-heatmap-map] [role=status]'); return notice ? getComputedStyle(notice).display !== 'none' : false;})()`);
   assert.equal(noticeVisible, false, 'no overlay placeholder when all layers off');
-  await shot('heatmap-all-layers-off');
-  // Re-enable one layer: data overlay resumes.
-  await evaluate(`document.querySelector('#heatmap-panel button[aria-label="击杀位置"]').click()`);
-  await ready();
-  const killsOnPixels = await evaluate(pixelExpression);
-  assert.notEqual(killsOnPixels.hash, allOffPixels.hash, 're-enabling a layer must change pixels');
-  await evaluate(`document.querySelector('#heatmap-panel button[aria-label="击杀位置"]').click()`);
-  await settleUi(evaluate, 'back to all off');
-  assert.deepEqual((await snapshot()).enabled, []);
+  metrics.baseMap = { reference: radarReference, allOff: { ...allOffPixels, overlayFillRects: allOffOverlayFillRects }, singleLayer: [], afterTabReturn: null };
+  // Re-enable each layer on its own. Only its matching projection/statistics may return.
+  for (const [layer, label] of [['positions', '玩家位置密度'], ['kills', '击杀位置'], ['deaths', '死亡位置']]) {
+    await evaluate(`document.querySelector('#heatmap-panel button[aria-label=${JSON.stringify(label)}]').click()`);
+    await ready(); await painted();
+    const single = await verify('all-off-single-' + layer);
+    assert.deepEqual(single.enabled, [layer], `${layer}: only the selected layer is enabled`);
+    assert.deepEqual(await evaluate(`[...document.querySelectorAll('#heatmap-panel [data-heatmap-stats]')].map(node=>node.getAttribute('data-heatmap-stats'))`), [layer], `${layer}: only its statistics are rendered`);
+    const visiblePixels = await evaluate(pixelExpression);
+    assert.ok(visiblePixels.opaque > 0);
+    assert.notEqual(visiblePixels.hash, allOffPixels.hash, `${layer}: data overlay must change the all-off Canvas pixels`);
+    const layerCase = metrics.cases.at(-1);
+    assert.ok(layerCase.count > 0, `${layer}: projection must contain samples for the visible layer`);
+    metrics.baseMap.singleLayer.push({ layer, count: layerCase.count, pixels: visiblePixels, enabled: single.enabled });
+    await evaluate(`document.querySelector('#heatmap-panel button[aria-label=${JSON.stringify(label)}]').click()`);
+    await settleUi(evaluate, `${layer} off after all-off single-layer check`); await painted();
+    assert.deepEqual((await snapshot()).enabled, [], `${layer}: closing it returns to the all-off state`);
+    const restored = await wait(async () => {
+      const pixels = await evaluate(baseComparisonExpression);
+      return matchesRadarBaseline(pixels) ? pixels : null;
+    }, `${layer} base-map restoration`);
+    assert.ok(Math.abs(restored.opaqueRatio - 1) <= .01 && restored.alphaMaskMatchRate >= .999 && restored.interiorColorMatchRate >= .99,
+      `${layer}: closing the single layer restores the independent radar image ${JSON.stringify(restored)}`);
+    assert.deepEqual(await evaluate(`[...document.querySelectorAll('#heatmap-panel [data-heatmap-stats]')].map(node=>node.getAttribute('data-heatmap-stats'))`), []);
+    metrics.baseMap.singleLayer.at(-1).restored = restored;
+  }
   // Navigate away and return: all-off state persists.
   await evaluate(`document.getElementById('report-tab').click()`); await settleUi(evaluate, 'leave all-off');
   await evaluate(`document.getElementById('heatmap-tab').click()`); await settleUi(evaluate, 'return to all-off');
   assert.deepEqual((await snapshot()).enabled, [], 'all-off state must survive tab navigation');
-  const returnPixels = await evaluate(pixelExpression);
+  await painted();
+  const returnBeforeSettledSample = await evaluate(baseComparisonExpression);
+  let returnPixels;
+  try {
+    returnPixels = await wait(async () => {
+      const pixels = await evaluate(baseComparisonExpression);
+      return matchesNavigationRadar(pixels) ? pixels : null;
+    }, 'base-map repaint after tab return');
+  } catch (error) {
+    await radarComparisonImages('heatmap-all-off-after-tab-return-diagnostic');
+    const canvasState = await evaluate(`(() => {const c=document.querySelector('#heatmap-panel canvas'),r=c.getBoundingClientRect(),h=document.querySelector('[data-heatmap-map]').getBoundingClientRect(),p=document.getElementById('heatmap-panel');return {backing:[c.width,c.height],canvasRect:[r.x,r.y,r.width,r.height],hostRect:[h.x,h.y,h.width,h.height],panelHidden:p.hidden,panelRect:(()=>{const q=p.getBoundingClientRect();return [q.x,q.y,q.width,q.height]})(),canvasStyle:{width:c.style.width,height:c.style.height,display:getComputedStyle(c).display,visibility:getComputedStyle(c).visibility},activeTab:document.querySelector('[role=tab][aria-selected=true]')?.id,componentActive:${heatmapSnapshotExpression}.active,devicePixelRatio,notice:document.querySelector('[data-heatmap-map] [role=status]')?.innerText??null};})()`);
+    error.message += `; canvasState=${JSON.stringify({ returnBeforeSettledSample, canvasState })}`;
+    throw error;
+  }
   assert.ok(returnPixels.opaque > 0, 'base map still visible after tab return');
+  assert.ok(matchesNavigationRadar(returnPixels), `tab return must preserve the independent radar silhouette and stable interior samples ${JSON.stringify(returnPixels)}`);
+  assert.deepEqual(await evaluate(`[...document.querySelectorAll('#heatmap-panel [data-heatmap-stats]')].map(node=>node.getAttribute('data-heatmap-stats'))`), [], 'tab return must not restore data overlays');
+  metrics.baseMap.afterTabReturn = { ...returnPixels, beforeSettledSample: returnBeforeSettledSample };
+  await shot('heatmap-all-layers-off-after-tab-return');
+  await evaluate(`delete window.__qaRadarBaseData;delete window.__qaRadarBaseOpaque`);
   await evaluate(`document.querySelector('#heatmap-panel button[aria-label="玩家位置密度"]').click()`); await ready();
   await memory('after-all-layers-off-checks');
   await evaluate(`window.cs2Analyst.window.toggleMaximize()`); await settleUi(evaluate, 'native maximize heatmap');
