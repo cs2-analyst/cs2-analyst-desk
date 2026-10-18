@@ -1,0 +1,3419 @@
+{
+  "schema": "p7-s2-spatial-semantics-audit-v1",
+  "date": "2026-10-19",
+  "status": "S2_COMPLETE_WITH_EXPLICIT_UNVERIFIED_LIMITS",
+  "git": {
+    "baseline": "f1a05b8e73a1c2e7953449ab7c288d4dc58317eb",
+    "branch": "feat/p7-s2-spatial-semantics-audit",
+    "auditedImplementationCommit": "357b2aa89f7204087c08f244be4427ccf7d6f522",
+    "deliveryCommit": {
+      "source": "Git commit containing this report plus final delivery message",
+      "resolve": "git rev-parse feat/p7-s2-spatial-semantics-audit",
+      "reason": "A commit cannot embed its own SHA; audited implementation SHA is fixed above. Documentation-only delivery SHA is reported after commit."
+    },
+    "prerequisiteAncestry": {
+      "S1": "318350bab9123c7ffc475e353ef4b2ed5eafbfc1",
+      "S3": "e412c35",
+      "S4": "73e4d49",
+      "S5": "daf5196",
+      "heatmapAllOff": "c1f3630",
+      "heatmapAllOffAcceptance": "f1a05b8",
+      "allAncestorExitCodes": 0
+    }
+  },
+  "scope": {
+    "maps": [
+      "de_nuke",
+      "de_vertigo"
+    ],
+    "modules": [
+      "Spatial",
+      "Heatmap",
+      "Analytics",
+      "Findings",
+      "Deep Review",
+      "Teamplay",
+      "Utility Context"
+    ],
+    "productionChanges": "Two copy-only presenter clarifications; no calculations, contracts, thresholds, rule IDs or Replay behavior changed.",
+    "stoppedAt": "S2",
+    "notStarted": [
+      "S6",
+      "L0-L5",
+      "P8"
+    ]
+  },
+  "fixtures": [
+    {
+      "path": ".demo/nuke.dem",
+      "resolvedOriginalPath": "E:/cs2-analyst/.demo/nuke.dem",
+      "sha256": "dea9382b9cc263fed9ee4ed7e71fa6be8c176cf888868f05b26d850af6f5cb3c",
+      "bytes": 471606780,
+      "hashRecomputed": true,
+      "status": "PASS_SCHEMATIC_SPATIAL_AND_HEATMAP_AUDIT",
+      "matchedHistorical": [
+        "docs/p7-nuke-replay-diagnosis.json",
+        "docs/p7-nuke-replay-fix.json"
+      ],
+      "mapVersionAlignment": "unconfirmed"
+    },
+    {
+      "path": ".demo/vertigo.dem",
+      "sha256": null,
+      "status": "NOT RUN",
+      "reason": "No local Vertigo fixture. Allowed personal manifests list Dust2 for demo1/demo2; demo.dem absent. No sample downloaded, replaced or renamed to impersonate Vertigo."
+    }
+  ],
+  "supportingRegressionFixtures": [
+    {
+      "path": ".demo/dust2.dem",
+      "bytes": 557650967,
+      "sha256": "db90fe85aab023a1d2c8a5996182e6120d98ef494f02a070b17982b235e4958c",
+      "hashRecomputed": true,
+      "role": "Existing Desktop real Heatmap/Replay regression, not multifloor proof"
+    },
+    {
+      "path": ".demo/demo1.dem",
+      "bytes": 267275583,
+      "sha256": "f3c3173eae0cd100d15c81c3b734be792f9212256a9c99703b358d3434000852",
+      "hashRecomputed": true,
+      "role": "Existing golden regressions only, no personal match data copied into this report"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "real-projection",
+      "kind": "REAL_DEM_PRODUCTION_PROJECTION",
+      "command": "node scripts/p7-s2-spatial-audit.mjs \"E:\\cs2-analyst\\.demo\\nuke.dem\" \"E:\\cs2-analyst\\.tmp\\p7-s2\"",
+      "exitCode": 0,
+      "localArtifact": "E:/cs2-analyst/.tmp/p7-s2/real-spatial-heatmap.json",
+      "input": {
+        "map": "de_nuke",
+        "tickRate": 64,
+        "rounds": 21,
+        "players": 10,
+        "replaySource": "native-final-tick-observation",
+        "replaySamplingVersion": "native-0.42.0-backport363-replay8-v1",
+        "replayRequestedFrames": 23837,
+        "spatialProvenance": {
+          "source": "demo-entity-state",
+          "parser": "demoparser2",
+          "tickPolicy": "exact-only"
+        },
+        "spatialEventRefs": 4799,
+        "spatialCoverage": {
+          "status": "partial",
+          "reasons": [
+            "participant-unidentified",
+            "weapon-unavailable",
+            "context-outside-round",
+            "position-missing",
+            "view-missing",
+            "state-missing",
+            "requested-tick-missing"
+          ]
+        },
+        "spatialSampling": {
+          "coreTicks": 3757,
+          "optionalTicks": 5574,
+          "omittedOptionalTicks": 0,
+          "returnedTicks": 9303,
+          "rowCount": 93030
+        },
+        "immutableEvidenceHashes": {
+          "match": "6dc8b08ccf51742f06e1af91e9b065911172a9929ffd561ca73ae2b12c8604a1",
+          "spatial": "a6b17927aa4cc534e1b9db48b87816e9b348404cb19c66c319dc44b5a7c874c0",
+          "replay": "0f3aca21183fdd3ec9a1520d78ec9d5cf265d965a3dc5ca53867f22ae2164237"
+        }
+      },
+      "scope": {
+        "rounds": "all 21 retained formal rounds",
+        "playerIds": "all round roster participants",
+        "side": "all",
+        "includeFreezeTime": false,
+        "resolution": 32,
+        "layers": [
+          "positions",
+          "kills",
+          "deaths"
+        ],
+        "floors": [
+          "all",
+          "default",
+          "lower"
+        ],
+        "samplingSets": [
+          "all-valid",
+          "uniform-8hz"
+        ],
+        "precision": "schematic-position-distribution",
+        "alignment": "unconfirmed",
+        "interpolationUsedInHeatmap": false
+      },
+      "windows": {
+        "all-valid": [
+          {
+            "round": 1,
+            "startTick": 2712,
+            "endTick": 8385,
+            "requestedFrames": 819,
+            "rosterSize": 10
+          },
+          {
+            "round": 2,
+            "startTick": 15494,
+            "endTick": 19955,
+            "requestedFrames": 680,
+            "rosterSize": 10
+          },
+          {
+            "round": 3,
+            "startTick": 21683,
+            "endTick": 28135,
+            "requestedFrames": 928,
+            "rosterSize": 10
+          },
+          {
+            "round": 4,
+            "startTick": 29863,
+            "endTick": 31937,
+            "requestedFrames": 403,
+            "rosterSize": 10
+          },
+          {
+            "round": 5,
+            "startTick": 33665,
+            "endTick": 39461,
+            "requestedFrames": 940,
+            "rosterSize": 10
+          },
+          {
+            "round": 6,
+            "startTick": 43236,
+            "endTick": 50844,
+            "requestedFrames": 1148,
+            "rosterSize": 10
+          },
+          {
+            "round": 7,
+            "startTick": 55198,
+            "endTick": 60828,
+            "requestedFrames": 883,
+            "rosterSize": 10
+          },
+          {
+            "round": 8,
+            "startTick": 62556,
+            "endTick": 71961,
+            "requestedFrames": 1330,
+            "rosterSize": 10
+          },
+          {
+            "round": 9,
+            "startTick": 75852,
+            "endTick": 82434,
+            "requestedFrames": 986,
+            "rosterSize": 10
+          },
+          {
+            "round": 10,
+            "startTick": 84163,
+            "endTick": 90722,
+            "requestedFrames": 980,
+            "rosterSize": 10
+          },
+          {
+            "round": 11,
+            "startTick": 92450,
+            "endTick": 97162,
+            "requestedFrames": 711,
+            "rosterSize": 10
+          },
+          {
+            "round": 12,
+            "startTick": 98890,
+            "endTick": 101505,
+            "requestedFrames": 445,
+            "rosterSize": 10
+          },
+          {
+            "round": 13,
+            "startTick": 106689,
+            "endTick": 111588,
+            "requestedFrames": 719,
+            "rosterSize": 10
+          },
+          {
+            "round": 14,
+            "startTick": 113316,
+            "endTick": 118713,
+            "requestedFrames": 817,
+            "rosterSize": 10
+          },
+          {
+            "round": 15,
+            "startTick": 120441,
+            "endTick": 127223,
+            "requestedFrames": 988,
+            "rosterSize": 10
+          },
+          {
+            "round": 16,
+            "startTick": 128951,
+            "endTick": 134267,
+            "requestedFrames": 860,
+            "rosterSize": 10
+          },
+          {
+            "round": 17,
+            "startTick": 139060,
+            "endTick": 145955,
+            "requestedFrames": 1025,
+            "rosterSize": 10
+          },
+          {
+            "round": 18,
+            "startTick": 150004,
+            "endTick": 157364,
+            "requestedFrames": 1131,
+            "rosterSize": 10
+          },
+          {
+            "round": 19,
+            "startTick": 159092,
+            "endTick": 160581,
+            "requestedFrames": 297,
+            "rosterSize": 10
+          },
+          {
+            "round": 20,
+            "startTick": 164568,
+            "endTick": 173399,
+            "requestedFrames": 1299,
+            "rosterSize": 10
+          },
+          {
+            "round": 21,
+            "startTick": 175127,
+            "endTick": 177865,
+            "requestedFrames": 468,
+            "rosterSize": 10
+          }
+        ],
+        "uniform-8hz": [
+          {
+            "round": 1,
+            "startTick": 2712,
+            "endTick": 8385,
+            "requestedFrames": 710,
+            "rosterSize": 10
+          },
+          {
+            "round": 2,
+            "startTick": 15494,
+            "endTick": 19955,
+            "requestedFrames": 558,
+            "rosterSize": 10
+          },
+          {
+            "round": 3,
+            "startTick": 21683,
+            "endTick": 28135,
+            "requestedFrames": 807,
+            "rosterSize": 10
+          },
+          {
+            "round": 4,
+            "startTick": 29863,
+            "endTick": 31937,
+            "requestedFrames": 260,
+            "rosterSize": 10
+          },
+          {
+            "round": 5,
+            "startTick": 33665,
+            "endTick": 39461,
+            "requestedFrames": 725,
+            "rosterSize": 10
+          },
+          {
+            "round": 6,
+            "startTick": 43236,
+            "endTick": 50844,
+            "requestedFrames": 951,
+            "rosterSize": 10
+          },
+          {
+            "round": 7,
+            "startTick": 55198,
+            "endTick": 60828,
+            "requestedFrames": 704,
+            "rosterSize": 10
+          },
+          {
+            "round": 8,
+            "startTick": 62556,
+            "endTick": 71961,
+            "requestedFrames": 1176,
+            "rosterSize": 10
+          },
+          {
+            "round": 9,
+            "startTick": 75852,
+            "endTick": 82434,
+            "requestedFrames": 823,
+            "rosterSize": 10
+          },
+          {
+            "round": 10,
+            "startTick": 84163,
+            "endTick": 90722,
+            "requestedFrames": 820,
+            "rosterSize": 10
+          },
+          {
+            "round": 11,
+            "startTick": 92450,
+            "endTick": 97162,
+            "requestedFrames": 590,
+            "rosterSize": 10
+          },
+          {
+            "round": 12,
+            "startTick": 98890,
+            "endTick": 101505,
+            "requestedFrames": 327,
+            "rosterSize": 10
+          },
+          {
+            "round": 13,
+            "startTick": 106689,
+            "endTick": 111588,
+            "requestedFrames": 613,
+            "rosterSize": 10
+          },
+          {
+            "round": 14,
+            "startTick": 113316,
+            "endTick": 118713,
+            "requestedFrames": 675,
+            "rosterSize": 10
+          },
+          {
+            "round": 15,
+            "startTick": 120441,
+            "endTick": 127223,
+            "requestedFrames": 848,
+            "rosterSize": 10
+          },
+          {
+            "round": 16,
+            "startTick": 128951,
+            "endTick": 134267,
+            "requestedFrames": 665,
+            "rosterSize": 10
+          },
+          {
+            "round": 17,
+            "startTick": 139060,
+            "endTick": 145955,
+            "requestedFrames": 862,
+            "rosterSize": 10
+          },
+          {
+            "round": 18,
+            "startTick": 150004,
+            "endTick": 157364,
+            "requestedFrames": 920,
+            "rosterSize": 10
+          },
+          {
+            "round": 19,
+            "startTick": 159092,
+            "endTick": 160581,
+            "requestedFrames": 187,
+            "rosterSize": 10
+          },
+          {
+            "round": 20,
+            "startTick": 164568,
+            "endTick": 173399,
+            "requestedFrames": 1104,
+            "rosterSize": 10
+          },
+          {
+            "round": 21,
+            "startTick": 175127,
+            "endTick": 177865,
+            "requestedFrames": 343,
+            "rosterSize": 10
+          }
+        ]
+      },
+      "scopes": {
+        "all-valid": {
+          "projections": {
+            "all": {
+              "positions": {
+                "available": true,
+                "unavailableReason": null,
+                "observations": {
+                  "expectedOpportunities": 178570,
+                  "validPositionSamples": 139119,
+                  "confirmedDeadObservations": 38831,
+                  "observedButUnusable": 0,
+                  "missingPositionObservations": 620,
+                  "positionObserved": 177950,
+                  "positionCoverage": 0.7790726325810606,
+                  "positionCompleteness": 0.9965279722237778,
+                  "status": "partial"
+                },
+                "sideUnknownObservations": 620,
+                "otherSideValidSamples": 0,
+                "selectedPositionCoverage": 0.7790726325810606,
+                "grid": {
+                  "status": "data",
+                  "validPositionSamples": 139119,
+                  "aggregatedSamples": 139119,
+                  "outOfBounds": 0,
+                  "invalidMapping": 0,
+                  "unknownLayer": 0,
+                  "otherFloor": 0,
+                  "maxCellSampleCount": 5100,
+                  "maxCellSampleShare": 0.03665926293317232,
+                  "populatedCells": 180,
+                  "cellCountsSha256": "4a902f3727ab157a9dcd3cd0ab5bbd81fd718877fba1dd846eab877a123573e7"
+                }
+              },
+              "kills": {
+                "scopeEvents": 142,
+                "locatableEvents": 142,
+                "eventPositionCoverage": 1,
+                "status": "complete",
+                "unlocatableReasons": {
+                  "worldActor": 0,
+                  "unknownPlayer": 0,
+                  "missingEvidence": 0,
+                  "ambiguousEvidence": 0,
+                  "participantMismatch": 0,
+                  "missingAtEvent": 0,
+                  "missingExactSample": 0,
+                  "tickMismatch": 0,
+                  "invalidPosition": 0,
+                  "unknownSide": 0
+                },
+                "outsideWindowEvents": 3,
+                "unknownSubjectExcludedByPlayerFilter": 0,
+                "unknownSideEvents": 0,
+                "otherSideEvents": 0,
+                "grid": {
+                  "status": "data",
+                  "validPositionSamples": 142,
+                  "aggregatedSamples": 142,
+                  "outOfBounds": 0,
+                  "invalidMapping": 0,
+                  "unknownLayer": 0,
+                  "otherFloor": 0,
+                  "maxCellSampleCount": 9,
+                  "maxCellSampleShare": 0.06338028169014084,
+                  "populatedCells": 56,
+                  "cellCountsSha256": "3dbf5418d300d97d9fd15b2c4e235e225a9e5a5e7fe93cbfdd0bbe51307677ba"
+                }
+              },
+              "deaths": {
+                "scopeEvents": 142,
+                "locatableEvents": 142,
+                "eventPositionCoverage": 1,
+                "status": "complete",
+                "unlocatableReasons": {
+                  "worldActor": 0,
+                  "unknownPlayer": 0,
+                  "missingEvidence": 0,
+                  "ambiguousEvidence": 0,
+                  "participantMismatch": 0,
+                  "missingAtEvent": 0,
+                  "missingExactSample": 0,
+                  "tickMismatch": 0,
+                  "invalidPosition": 0,
+                  "unknownSide": 0
+                },
+                "outsideWindowEvents": 3,
+                "unknownSubjectExcludedByPlayerFilter": 0,
+                "unknownSideEvents": 0,
+                "otherSideEvents": 0,
+                "grid": {
+                  "status": "data",
+                  "validPositionSamples": 142,
+                  "aggregatedSamples": 142,
+                  "outOfBounds": 0,
+                  "invalidMapping": 0,
+                  "unknownLayer": 0,
+                  "otherFloor": 0,
+                  "maxCellSampleCount": 10,
+                  "maxCellSampleShare": 0.07042253521126761,
+                  "populatedCells": 59,
+                  "cellCountsSha256": "1f23144cfaf9aae3b02bd0d1d8fcba3e5a18ea28a9f4f1a6bc93bd423e45f70b"
+                }
+              }
+            },
+            "default": {
+              "positions": {
+                "available": true,
+                "unavailableReason": null,
+                "observations": {
+                  "expectedOpportunities": 178570,
+                  "validPositionSamples": 139119,
+                  "confirmedDeadObservations": 38831,
+                  "observedButUnusable": 0,
+                  "missingPositionObservations": 620,
+                  "positionObserved": 177950,
+                  "positionCoverage": 0.7790726325810606,
+                  "positionCompleteness": 0.9965279722237778,
+                  "status": "partial"
+                },
+                "sideUnknownObservations": 620,
+                "otherSideValidSamples": 0,
+                "selectedPositionCoverage": 0.6898639189113512,
+                "grid": {
+                  "status": "data",
+                  "validPositionSamples": 123189,
+                  "aggregatedSamples": 123189,
+                  "outOfBounds": 0,
+                  "invalidMapping": 0,
+                  "unknownLayer": 0,
+                  "otherFloor": 15930,
+                  "maxCellSampleCount": 4896,
+                  "maxCellSampleShare": 0.039743808294571754,
+                  "populatedCells": 180,
+                  "cellCountsSha256": "fe8039449c5c284189fd73db2602b160ceb7faad2cc305cd2228d7f7391982f7"
+                }
+              },
+              "kills": {
+                "scopeEvents": 142,
+                "locatableEvents": 142,
+                "eventPositionCoverage": 1,
+                "status": "complete",
+                "unlocatableReasons": {
+                  "worldActor": 0,
+                  "unknownPlayer": 0,
+                  "missingEvidence": 0,
+                  "ambiguousEvidence": 0,
+                  "participantMismatch": 0,
+                  "missingAtEvent": 0,
+                  "missingExactSample": 0,
+                  "tickMismatch": 0,
+                  "invalidPosition": 0,
+                  "unknownSide": 0
+                },
+                "outsideWindowEvents": 3,
+                "unknownSubjectExcludedByPlayerFilter": 0,
+                "unknownSideEvents": 0,
+                "otherSideEvents": 0,
+                "grid": {
+                  "status": "data",
+                  "validPositionSamples": 119,
+                  "aggregatedSamples": 119,
+                  "outOfBounds": 0,
+                  "invalidMapping": 0,
+                  "unknownLayer": 0,
+                  "otherFloor": 23,
+                  "maxCellSampleCount": 9,
+                  "maxCellSampleShare": 0.07563025210084033,
+                  "populatedCells": 50,
+                  "cellCountsSha256": "734c3494efe86fe19e0fb7e14540027a5073a69f36dddcef2c6f83477657dce8"
+                }
+              },
+              "deaths": {
+                "scopeEvents": 142,
+                "locatableEvents": 142,
+                "eventPositionCoverage": 1,
+                "status": "complete",
+                "unlocatableReasons": {
+                  "worldActor": 0,
+                  "unknownPlayer": 0,
+                  "missingEvidence": 0,
+                  "ambiguousEvidence": 0,
+                  "participantMismatch": 0,
+                  "missingAtEvent": 0,
+                  "missingExactSample": 0,
+                  "tickMismatch": 0,
+                  "invalidPosition": 0,
+                  "unknownSide": 0
+                },
+                "outsideWindowEvents": 3,
+                "unknownSubjectExcludedByPlayerFilter": 0,
+                "unknownSideEvents": 0,
+                "otherSideEvents": 0,
+                "grid": {
+                  "status": "data",
+                  "validPositionSamples": 119,
+                  "aggregatedSamples": 119,
+                  "outOfBounds": 0,
+                  "invalidMapping": 0,
+                  "unknownLayer": 0,
+                  "otherFloor": 23,
+                  "maxCellSampleCount": 10,
+                  "maxCellSampleShare": 0.08403361344537816,
+                  "populatedCells": 54,
+                  "cellCountsSha256": "a147edad4cd691061a5319bc12dffbcdf92d1bfb59be99fcb645d5e9f7cb5938"
+                }
+              }
+            },
+            "lower": {
+              "positions": {
+                "available": true,
+                "unavailableReason": null,
+                "observations": {
+                  "expectedOpportunities": 178570,
+                  "validPositionSamples": 139119,
+                  "confirmedDeadObservations": 38831,
+                  "observedButUnusable": 0,
+                  "missingPositionObservations": 620,
+                  "positionObserved": 177950,
+                  "positionCoverage": 0.7790726325810606,
+                  "positionCompleteness": 0.9965279722237778,
+                  "status": "partial"
+                },
+                "sideUnknownObservations": 620,
+                "otherSideValidSamples": 0,
+                "selectedPositionCoverage": 0.08920871366970935,
+                "grid": {
+                  "status": "data",
+                  "validPositionSamples": 15930,
+                  "aggregatedSamples": 15930,
+                  "outOfBounds": 0,
+                  "invalidMapping": 0,
+                  "unknownLayer": 0,
+                  "otherFloor": 123189,
+                  "maxCellSampleCount": 1126,
+                  "maxCellSampleShare": 0.07068424356559949,
+                  "populatedCells": 56,
+                  "cellCountsSha256": "2f62a3ab53c13a02c98e75b1ebc00e5794ef1fc898cc933c3f2f5c3d931dd048"
+                }
+              },
+              "kills": {
+                "scopeEvents": 142,
+                "locatableEvents": 142,
+                "eventPositionCoverage": 1,
+                "status": "complete",
+                "unlocatableReasons": {
+                  "worldActor": 0,
+                  "unknownPlayer": 0,
+                  "missingEvidence": 0,
+                  "ambiguousEvidence": 0,
+                  "participantMismatch": 0,
+                  "missingAtEvent": 0,
+                  "missingExactSample": 0,
+                  "tickMismatch": 0,
+                  "invalidPosition": 0,
+                  "unknownSide": 0
+                },
+                "outsideWindowEvents": 3,
+                "unknownSubjectExcludedByPlayerFilter": 0,
+                "unknownSideEvents": 0,
+                "otherSideEvents": 0,
+                "grid": {
+                  "status": "data",
+                  "validPositionSamples": 23,
+                  "aggregatedSamples": 23,
+                  "outOfBounds": 0,
+                  "invalidMapping": 0,
+                  "unknownLayer": 0,
+                  "otherFloor": 119,
+                  "maxCellSampleCount": 3,
+                  "maxCellSampleShare": 0.13043478260869565,
+                  "populatedCells": 17,
+                  "cellCountsSha256": "f078e42caf5d3e445d8a2c9e9907e3d4143140195b4c06ebeba2fe1e6c739966"
+                }
+              },
+              "deaths": {
+                "scopeEvents": 142,
+                "locatableEvents": 142,
+                "eventPositionCoverage": 1,
+                "status": "complete",
+                "unlocatableReasons": {
+                  "worldActor": 0,
+                  "unknownPlayer": 0,
+                  "missingEvidence": 0,
+                  "ambiguousEvidence": 0,
+                  "participantMismatch": 0,
+                  "missingAtEvent": 0,
+                  "missingExactSample": 0,
+                  "tickMismatch": 0,
+                  "invalidPosition": 0,
+                  "unknownSide": 0
+                },
+                "outsideWindowEvents": 3,
+                "unknownSubjectExcludedByPlayerFilter": 0,
+                "unknownSideEvents": 0,
+                "otherSideEvents": 0,
+                "grid": {
+                  "status": "data",
+                  "validPositionSamples": 23,
+                  "aggregatedSamples": 23,
+                  "outOfBounds": 0,
+                  "invalidMapping": 0,
+                  "unknownLayer": 0,
+                  "otherFloor": 119,
+                  "maxCellSampleCount": 3,
+                  "maxCellSampleShare": 0.13043478260869565,
+                  "populatedCells": 18,
+                  "cellCountsSha256": "fc666240d146d4130fe9a6d1dcc18253758279664c9a598badcf770f12974a52"
+                }
+              }
+            }
+          },
+          "checks": {
+            "positions": {
+              "selectedSourcePoints": 139119,
+              "categories": {
+                "default": 123189,
+                "lower": 15930,
+                "unknown": 0
+              },
+              "mergedMainLowerCells": 56,
+              "mergedBucketExample": {
+                "cell": 501,
+                "main": {
+                  "round": 17,
+                  "tick": 145035,
+                  "requestedTick": 145035,
+                  "actualTick": 145035,
+                  "position": [
+                    1322.424072265625,
+                    -478.70654296875,
+                    -127.96875
+                  ],
+                  "segment": 78,
+                  "source": "Replay exact native observation",
+                  "floor": "default",
+                  "cell": 501
+                },
+                "lower": {
+                  "round": 17,
+                  "tick": 145035,
+                  "requestedTick": 145035,
+                  "actualTick": 145035,
+                  "position": [
+                    1268.141357421875,
+                    -661.7438354492188,
+                    -639.96875
+                  ],
+                  "segment": 78,
+                  "source": "Replay exact native observation",
+                  "floor": "lower",
+                  "cell": 501
+                },
+                "productionCellCounts": {
+                  "all": 1293,
+                  "default": 1121,
+                  "lower": 172
+                }
+              },
+              "exampleSameTick": true,
+              "nearestBoundarySamples": [
+                {
+                  "round": 14,
+                  "tick": 114260,
+                  "requestedTick": 114260,
+                  "actualTick": 114260,
+                  "position": [
+                    660.6078491210938,
+                    542.3327026367188,
+                    -494.9888916015625
+                  ],
+                  "segment": 69,
+                  "source": "Replay exact native observation",
+                  "floor": "default",
+                  "cell": 338
+                },
+                {
+                  "round": 2,
+                  "tick": 18593,
+                  "requestedTick": 18593,
+                  "actualTick": 18593,
+                  "position": [
+                    1434.60546875,
+                    -2391.55712890625,
+                    -495.03271484375
+                  ],
+                  "segment": 2,
+                  "source": "Replay exact native observation",
+                  "floor": "lower",
+                  "cell": 757
+                },
+                {
+                  "round": 2,
+                  "tick": 19049,
+                  "requestedTick": 19049,
+                  "actualTick": 19049,
+                  "position": [
+                    563.739501953125,
+                    542.5043334960938,
+                    -494.9334716796875
+                  ],
+                  "segment": 2,
+                  "source": "Replay exact native observation",
+                  "floor": "default",
+                  "cell": 337
+                }
+              ],
+              "invariantStatus": "PASS: independent source selection, per-cell counts, floor rejections, event/observation and grid conservation"
+            },
+            "kills": {
+              "selectedSourcePoints": 142,
+              "categories": {
+                "default": 119,
+                "lower": 23,
+                "unknown": 0
+              },
+              "mergedMainLowerCells": 11,
+              "mergedBucketExample": {
+                "cell": 626,
+                "main": {
+                  "round": 1,
+                  "tick": 5247,
+                  "requestedTick": 5247,
+                  "actualTick": 5247,
+                  "eventIndex": 81,
+                  "role": "actor",
+                  "position": [
+                    689.1245727539062,
+                    -1576.60009765625,
+                    -415.96875
+                  ],
+                  "relation": "at-event",
+                  "alive": true,
+                  "source": "Spatial exact at-event observation",
+                  "floor": "default",
+                  "cell": 626
+                },
+                "lower": {
+                  "round": 6,
+                  "tick": 46095,
+                  "requestedTick": 46095,
+                  "actualTick": 46095,
+                  "eventIndex": 136,
+                  "role": "actor",
+                  "position": [
+                    633.2266235351562,
+                    -1465.2354736328125,
+                    -607.96875
+                  ],
+                  "relation": "at-event",
+                  "alive": true,
+                  "source": "Spatial exact at-event observation",
+                  "floor": "lower",
+                  "cell": 626
+                },
+                "productionCellCounts": {
+                  "all": 3,
+                  "default": 2,
+                  "lower": 1
+                }
+              },
+              "exampleSameTick": false,
+              "nearestBoundarySamples": [
+                {
+                  "round": 6,
+                  "tick": 47442,
+                  "requestedTick": 47442,
+                  "actualTick": 47442,
+                  "eventIndex": 149,
+                  "role": "actor",
+                  "position": [
+                    749.160888671875,
+                    554.0532836914062,
+                    -491.2080078125
+                  ],
+                  "relation": "at-event",
+                  "alive": true,
+                  "source": "Spatial exact at-event observation",
+                  "floor": "default",
+                  "cell": 338
+                },
+                {
+                  "round": 2,
+                  "tick": 18762,
+                  "requestedTick": 18762,
+                  "actualTick": 18762,
+                  "eventIndex": 109,
+                  "role": "actor",
+                  "position": [
+                    595.2808227539062,
+                    918.5994262695312,
+                    -479.96875
+                  ],
+                  "relation": "at-event",
+                  "alive": true,
+                  "source": "Spatial exact at-event observation",
+                  "floor": "default",
+                  "cell": 274
+                },
+                {
+                  "round": 1,
+                  "tick": 5247,
+                  "requestedTick": 5247,
+                  "actualTick": 5247,
+                  "eventIndex": 81,
+                  "role": "actor",
+                  "position": [
+                    689.1245727539062,
+                    -1576.60009765625,
+                    -415.96875
+                  ],
+                  "relation": "at-event",
+                  "alive": true,
+                  "source": "Spatial exact at-event observation",
+                  "floor": "default",
+                  "cell": 626
+                }
+              ],
+              "invariantStatus": "PASS: independent source selection, per-cell counts, floor rejections, event/observation and grid conservation"
+            },
+            "deaths": {
+              "selectedSourcePoints": 142,
+              "categories": {
+                "default": 119,
+                "lower": 23,
+                "unknown": 0
+              },
+              "mergedMainLowerCells": 13,
+              "mergedBucketExample": {
+                "cell": 467,
+                "main": {
+                  "round": 1,
+                  "tick": 5350,
+                  "requestedTick": 5350,
+                  "actualTick": 5350,
+                  "eventIndex": 104,
+                  "role": "target",
+                  "position": [
+                    893.9070434570312,
+                    -298.05865478515625,
+                    -127.96875
+                  ],
+                  "relation": "at-event",
+                  "alive": false,
+                  "source": "Spatial exact at-event observation",
+                  "floor": "default",
+                  "cell": 467
+                },
+                "lower": {
+                  "round": 3,
+                  "tick": 28135,
+                  "requestedTick": 28135,
+                  "actualTick": 28135,
+                  "eventIndex": 198,
+                  "role": "target",
+                  "position": [
+                    921.2941284179688,
+                    -293.14544677734375,
+                    -639.96875
+                  ],
+                  "relation": "at-event",
+                  "alive": false,
+                  "source": "Spatial exact at-event observation",
+                  "floor": "lower",
+                  "cell": 467
+                },
+                "productionCellCounts": {
+                  "all": 8,
+                  "default": 7,
+                  "lower": 1
+                }
+              },
+              "exampleSameTick": false,
+              "nearestBoundarySamples": [
+                {
+                  "round": 11,
+                  "tick": 95030,
+                  "requestedTick": 95030,
+                  "actualTick": 95030,
+                  "eventIndex": 129,
+                  "role": "target",
+                  "position": [
+                    749.46044921875,
+                    629.9820556640625,
+                    -479.96875
+                  ],
+                  "relation": "at-event",
+                  "alive": false,
+                  "source": "Spatial exact at-event observation",
+                  "floor": "default",
+                  "cell": 338
+                },
+                {
+                  "round": 1,
+                  "tick": 4356,
+                  "requestedTick": 4356,
+                  "actualTick": 4356,
+                  "eventIndex": 47,
+                  "role": "target",
+                  "position": [
+                    800.98681640625,
+                    -2349.20654296875,
+                    -415.96875
+                  ],
+                  "relation": "at-event",
+                  "alive": false,
+                  "source": "Spatial exact at-event observation",
+                  "floor": "default",
+                  "cell": 754
+                },
+                {
+                  "round": 7,
+                  "tick": 60749,
+                  "requestedTick": 60749,
+                  "actualTick": 60749,
+                  "eventIndex": 268,
+                  "role": "target",
+                  "position": [
+                    1313.127685546875,
+                    -1843.830078125,
+                    -415.46875
+                  ],
+                  "relation": "at-event",
+                  "alive": false,
+                  "source": "Spatial exact at-event observation",
+                  "floor": "default",
+                  "cell": 693
+                }
+              ],
+              "invariantStatus": "PASS: independent source selection, per-cell counts, floor rejections, event/observation and grid conservation"
+            }
+          }
+        },
+        "uniform-8hz": {
+          "projections": {
+            "all": {
+              "positions": {
+                "available": true,
+                "unavailableReason": null,
+                "observations": {
+                  "expectedOpportunities": 146680,
+                  "validPositionSamples": 113233,
+                  "confirmedDeadObservations": 32827,
+                  "observedButUnusable": 0,
+                  "missingPositionObservations": 620,
+                  "positionObserved": 146060,
+                  "positionCoverage": 0.7719730024543223,
+                  "positionCompleteness": 0.995773111535315,
+                  "status": "partial"
+                },
+                "sideUnknownObservations": 620,
+                "otherSideValidSamples": 0,
+                "selectedPositionCoverage": 0.7719730024543223,
+                "grid": {
+                  "status": "data",
+                  "validPositionSamples": 113233,
+                  "aggregatedSamples": 113233,
+                  "outOfBounds": 0,
+                  "invalidMapping": 0,
+                  "unknownLayer": 0,
+                  "otherFloor": 0,
+                  "maxCellSampleCount": 4036,
+                  "maxCellSampleShare": 0.03564331952699301,
+                  "populatedCells": 179,
+                  "cellCountsSha256": "68038bedd21db3dd19d2173725a87737fe0543a6ddb3cd3b591b7bfdcf5f6397"
+                }
+              },
+              "kills": {
+                "scopeEvents": 142,
+                "locatableEvents": 142,
+                "eventPositionCoverage": 1,
+                "status": "complete",
+                "unlocatableReasons": {
+                  "worldActor": 0,
+                  "unknownPlayer": 0,
+                  "missingEvidence": 0,
+                  "ambiguousEvidence": 0,
+                  "participantMismatch": 0,
+                  "missingAtEvent": 0,
+                  "missingExactSample": 0,
+                  "tickMismatch": 0,
+                  "invalidPosition": 0,
+                  "unknownSide": 0
+                },
+                "outsideWindowEvents": 3,
+                "unknownSubjectExcludedByPlayerFilter": 0,
+                "unknownSideEvents": 0,
+                "otherSideEvents": 0,
+                "grid": {
+                  "status": "data",
+                  "validPositionSamples": 142,
+                  "aggregatedSamples": 142,
+                  "outOfBounds": 0,
+                  "invalidMapping": 0,
+                  "unknownLayer": 0,
+                  "otherFloor": 0,
+                  "maxCellSampleCount": 9,
+                  "maxCellSampleShare": 0.06338028169014084,
+                  "populatedCells": 56,
+                  "cellCountsSha256": "3dbf5418d300d97d9fd15b2c4e235e225a9e5a5e7fe93cbfdd0bbe51307677ba"
+                }
+              },
+              "deaths": {
+                "scopeEvents": 142,
+                "locatableEvents": 142,
+                "eventPositionCoverage": 1,
+                "status": "complete",
+                "unlocatableReasons": {
+                  "worldActor": 0,
+                  "unknownPlayer": 0,
+                  "missingEvidence": 0,
+                  "ambiguousEvidence": 0,
+                  "participantMismatch": 0,
+                  "missingAtEvent": 0,
+                  "missingExactSample": 0,
+                  "tickMismatch": 0,
+                  "invalidPosition": 0,
+                  "unknownSide": 0
+                },
+                "outsideWindowEvents": 3,
+                "unknownSubjectExcludedByPlayerFilter": 0,
+                "unknownSideEvents": 0,
+                "otherSideEvents": 0,
+                "grid": {
+                  "status": "data",
+                  "validPositionSamples": 142,
+                  "aggregatedSamples": 142,
+                  "outOfBounds": 0,
+                  "invalidMapping": 0,
+                  "unknownLayer": 0,
+                  "otherFloor": 0,
+                  "maxCellSampleCount": 10,
+                  "maxCellSampleShare": 0.07042253521126761,
+                  "populatedCells": 59,
+                  "cellCountsSha256": "1f23144cfaf9aae3b02bd0d1d8fcba3e5a18ea28a9f4f1a6bc93bd423e45f70b"
+                }
+              }
+            },
+            "default": {
+              "positions": {
+                "available": true,
+                "unavailableReason": null,
+                "observations": {
+                  "expectedOpportunities": 146680,
+                  "validPositionSamples": 113233,
+                  "confirmedDeadObservations": 32827,
+                  "observedButUnusable": 0,
+                  "missingPositionObservations": 620,
+                  "positionObserved": 146060,
+                  "positionCoverage": 0.7719730024543223,
+                  "positionCompleteness": 0.995773111535315,
+                  "status": "partial"
+                },
+                "sideUnknownObservations": 620,
+                "otherSideValidSamples": 0,
+                "selectedPositionCoverage": 0.6796563948731933,
+                "grid": {
+                  "status": "data",
+                  "validPositionSamples": 99692,
+                  "aggregatedSamples": 99692,
+                  "outOfBounds": 0,
+                  "invalidMapping": 0,
+                  "unknownLayer": 0,
+                  "otherFloor": 13541,
+                  "maxCellSampleCount": 3836,
+                  "maxCellSampleShare": 0.03847851382257353,
+                  "populatedCells": 179,
+                  "cellCountsSha256": "a299df5b0e716cae004cd87adcfa39327d50bf1accd000ad62f582f431d9f91d"
+                }
+              },
+              "kills": {
+                "scopeEvents": 142,
+                "locatableEvents": 142,
+                "eventPositionCoverage": 1,
+                "status": "complete",
+                "unlocatableReasons": {
+                  "worldActor": 0,
+                  "unknownPlayer": 0,
+                  "missingEvidence": 0,
+                  "ambiguousEvidence": 0,
+                  "participantMismatch": 0,
+                  "missingAtEvent": 0,
+                  "missingExactSample": 0,
+                  "tickMismatch": 0,
+                  "invalidPosition": 0,
+                  "unknownSide": 0
+                },
+                "outsideWindowEvents": 3,
+                "unknownSubjectExcludedByPlayerFilter": 0,
+                "unknownSideEvents": 0,
+                "otherSideEvents": 0,
+                "grid": {
+                  "status": "data",
+                  "validPositionSamples": 119,
+                  "aggregatedSamples": 119,
+                  "outOfBounds": 0,
+                  "invalidMapping": 0,
+                  "unknownLayer": 0,
+                  "otherFloor": 23,
+                  "maxCellSampleCount": 9,
+                  "maxCellSampleShare": 0.07563025210084033,
+                  "populatedCells": 50,
+                  "cellCountsSha256": "734c3494efe86fe19e0fb7e14540027a5073a69f36dddcef2c6f83477657dce8"
+                }
+              },
+              "deaths": {
+                "scopeEvents": 142,
+                "locatableEvents": 142,
+                "eventPositionCoverage": 1,
+                "status": "complete",
+                "unlocatableReasons": {
+                  "worldActor": 0,
+                  "unknownPlayer": 0,
+                  "missingEvidence": 0,
+                  "ambiguousEvidence": 0,
+                  "participantMismatch": 0,
+                  "missingAtEvent": 0,
+                  "missingExactSample": 0,
+                  "tickMismatch": 0,
+                  "invalidPosition": 0,
+                  "unknownSide": 0
+                },
+                "outsideWindowEvents": 3,
+                "unknownSubjectExcludedByPlayerFilter": 0,
+                "unknownSideEvents": 0,
+                "otherSideEvents": 0,
+                "grid": {
+                  "status": "data",
+                  "validPositionSamples": 119,
+                  "aggregatedSamples": 119,
+                  "outOfBounds": 0,
+                  "invalidMapping": 0,
+                  "unknownLayer": 0,
+                  "otherFloor": 23,
+                  "maxCellSampleCount": 10,
+                  "maxCellSampleShare": 0.08403361344537816,
+                  "populatedCells": 54,
+                  "cellCountsSha256": "a147edad4cd691061a5319bc12dffbcdf92d1bfb59be99fcb645d5e9f7cb5938"
+                }
+              }
+            },
+            "lower": {
+              "positions": {
+                "available": true,
+                "unavailableReason": null,
+                "observations": {
+                  "expectedOpportunities": 146680,
+                  "validPositionSamples": 113233,
+                  "confirmedDeadObservations": 32827,
+                  "observedButUnusable": 0,
+                  "missingPositionObservations": 620,
+                  "positionObserved": 146060,
+                  "positionCoverage": 0.7719730024543223,
+                  "positionCompleteness": 0.995773111535315,
+                  "status": "partial"
+                },
+                "sideUnknownObservations": 620,
+                "otherSideValidSamples": 0,
+                "selectedPositionCoverage": 0.09231660758112899,
+                "grid": {
+                  "status": "data",
+                  "validPositionSamples": 13541,
+                  "aggregatedSamples": 13541,
+                  "outOfBounds": 0,
+                  "invalidMapping": 0,
+                  "unknownLayer": 0,
+                  "otherFloor": 99692,
+                  "maxCellSampleCount": 961,
+                  "maxCellSampleShare": 0.07096964773650395,
+                  "populatedCells": 56,
+                  "cellCountsSha256": "db6042b6478a1295bb5e04a7360ef3e77be64c0ed3188578fcac3ee8fddb8d4d"
+                }
+              },
+              "kills": {
+                "scopeEvents": 142,
+                "locatableEvents": 142,
+                "eventPositionCoverage": 1,
+                "status": "complete",
+                "unlocatableReasons": {
+                  "worldActor": 0,
+                  "unknownPlayer": 0,
+                  "missingEvidence": 0,
+                  "ambiguousEvidence": 0,
+                  "participantMismatch": 0,
+                  "missingAtEvent": 0,
+                  "missingExactSample": 0,
+                  "tickMismatch": 0,
+                  "invalidPosition": 0,
+                  "unknownSide": 0
+                },
+                "outsideWindowEvents": 3,
+                "unknownSubjectExcludedByPlayerFilter": 0,
+                "unknownSideEvents": 0,
+                "otherSideEvents": 0,
+                "grid": {
+                  "status": "data",
+                  "validPositionSamples": 23,
+                  "aggregatedSamples": 23,
+                  "outOfBounds": 0,
+                  "invalidMapping": 0,
+                  "unknownLayer": 0,
+                  "otherFloor": 119,
+                  "maxCellSampleCount": 3,
+                  "maxCellSampleShare": 0.13043478260869565,
+                  "populatedCells": 17,
+                  "cellCountsSha256": "f078e42caf5d3e445d8a2c9e9907e3d4143140195b4c06ebeba2fe1e6c739966"
+                }
+              },
+              "deaths": {
+                "scopeEvents": 142,
+                "locatableEvents": 142,
+                "eventPositionCoverage": 1,
+                "status": "complete",
+                "unlocatableReasons": {
+                  "worldActor": 0,
+                  "unknownPlayer": 0,
+                  "missingEvidence": 0,
+                  "ambiguousEvidence": 0,
+                  "participantMismatch": 0,
+                  "missingAtEvent": 0,
+                  "missingExactSample": 0,
+                  "tickMismatch": 0,
+                  "invalidPosition": 0,
+                  "unknownSide": 0
+                },
+                "outsideWindowEvents": 3,
+                "unknownSubjectExcludedByPlayerFilter": 0,
+                "unknownSideEvents": 0,
+                "otherSideEvents": 0,
+                "grid": {
+                  "status": "data",
+                  "validPositionSamples": 23,
+                  "aggregatedSamples": 23,
+                  "outOfBounds": 0,
+                  "invalidMapping": 0,
+                  "unknownLayer": 0,
+                  "otherFloor": 119,
+                  "maxCellSampleCount": 3,
+                  "maxCellSampleShare": 0.13043478260869565,
+                  "populatedCells": 18,
+                  "cellCountsSha256": "fc666240d146d4130fe9a6d1dcc18253758279664c9a598badcf770f12974a52"
+                }
+              }
+            }
+          },
+          "checks": {
+            "positions": {
+              "selectedSourcePoints": 113233,
+              "categories": {
+                "default": 99692,
+                "lower": 13541,
+                "unknown": 0
+              },
+              "mergedMainLowerCells": 56,
+              "mergedBucketExample": {
+                "cell": 501,
+                "main": {
+                  "round": 17,
+                  "tick": 145035,
+                  "requestedTick": 145035,
+                  "actualTick": 145035,
+                  "position": [
+                    1322.424072265625,
+                    -478.70654296875,
+                    -127.96875
+                  ],
+                  "segment": 78,
+                  "source": "Replay exact native observation",
+                  "floor": "default",
+                  "cell": 501
+                },
+                "lower": {
+                  "round": 17,
+                  "tick": 145035,
+                  "requestedTick": 145035,
+                  "actualTick": 145035,
+                  "position": [
+                    1268.141357421875,
+                    -661.7438354492188,
+                    -639.96875
+                  ],
+                  "segment": 78,
+                  "source": "Replay exact native observation",
+                  "floor": "lower",
+                  "cell": 501
+                },
+                "productionCellCounts": {
+                  "all": 1105,
+                  "default": 967,
+                  "lower": 138
+                }
+              },
+              "exampleSameTick": true,
+              "nearestBoundarySamples": [
+                {
+                  "round": 14,
+                  "tick": 114260,
+                  "requestedTick": 114260,
+                  "actualTick": 114260,
+                  "position": [
+                    660.6078491210938,
+                    542.3327026367188,
+                    -494.9888916015625
+                  ],
+                  "segment": 69,
+                  "source": "Replay exact native observation",
+                  "floor": "default",
+                  "cell": 338
+                },
+                {
+                  "round": 2,
+                  "tick": 18593,
+                  "requestedTick": 18593,
+                  "actualTick": 18593,
+                  "position": [
+                    1434.60546875,
+                    -2391.55712890625,
+                    -495.03271484375
+                  ],
+                  "segment": 2,
+                  "source": "Replay exact native observation",
+                  "floor": "lower",
+                  "cell": 757
+                },
+                {
+                  "round": 2,
+                  "tick": 19049,
+                  "requestedTick": 19049,
+                  "actualTick": 19049,
+                  "position": [
+                    563.739501953125,
+                    542.5043334960938,
+                    -494.9334716796875
+                  ],
+                  "segment": 2,
+                  "source": "Replay exact native observation",
+                  "floor": "default",
+                  "cell": 337
+                }
+              ],
+              "invariantStatus": "PASS: independent source selection, per-cell counts, floor rejections, event/observation and grid conservation"
+            },
+            "kills": {
+              "selectedSourcePoints": 142,
+              "categories": {
+                "default": 119,
+                "lower": 23,
+                "unknown": 0
+              },
+              "mergedMainLowerCells": 11,
+              "mergedBucketExample": {
+                "cell": 626,
+                "main": {
+                  "round": 1,
+                  "tick": 5247,
+                  "requestedTick": 5247,
+                  "actualTick": 5247,
+                  "eventIndex": 81,
+                  "role": "actor",
+                  "position": [
+                    689.1245727539062,
+                    -1576.60009765625,
+                    -415.96875
+                  ],
+                  "relation": "at-event",
+                  "alive": true,
+                  "source": "Spatial exact at-event observation",
+                  "floor": "default",
+                  "cell": 626
+                },
+                "lower": {
+                  "round": 6,
+                  "tick": 46095,
+                  "requestedTick": 46095,
+                  "actualTick": 46095,
+                  "eventIndex": 136,
+                  "role": "actor",
+                  "position": [
+                    633.2266235351562,
+                    -1465.2354736328125,
+                    -607.96875
+                  ],
+                  "relation": "at-event",
+                  "alive": true,
+                  "source": "Spatial exact at-event observation",
+                  "floor": "lower",
+                  "cell": 626
+                },
+                "productionCellCounts": {
+                  "all": 3,
+                  "default": 2,
+                  "lower": 1
+                }
+              },
+              "exampleSameTick": false,
+              "nearestBoundarySamples": [
+                {
+                  "round": 6,
+                  "tick": 47442,
+                  "requestedTick": 47442,
+                  "actualTick": 47442,
+                  "eventIndex": 149,
+                  "role": "actor",
+                  "position": [
+                    749.160888671875,
+                    554.0532836914062,
+                    -491.2080078125
+                  ],
+                  "relation": "at-event",
+                  "alive": true,
+                  "source": "Spatial exact at-event observation",
+                  "floor": "default",
+                  "cell": 338
+                },
+                {
+                  "round": 2,
+                  "tick": 18762,
+                  "requestedTick": 18762,
+                  "actualTick": 18762,
+                  "eventIndex": 109,
+                  "role": "actor",
+                  "position": [
+                    595.2808227539062,
+                    918.5994262695312,
+                    -479.96875
+                  ],
+                  "relation": "at-event",
+                  "alive": true,
+                  "source": "Spatial exact at-event observation",
+                  "floor": "default",
+                  "cell": 274
+                },
+                {
+                  "round": 1,
+                  "tick": 5247,
+                  "requestedTick": 5247,
+                  "actualTick": 5247,
+                  "eventIndex": 81,
+                  "role": "actor",
+                  "position": [
+                    689.1245727539062,
+                    -1576.60009765625,
+                    -415.96875
+                  ],
+                  "relation": "at-event",
+                  "alive": true,
+                  "source": "Spatial exact at-event observation",
+                  "floor": "default",
+                  "cell": 626
+                }
+              ],
+              "invariantStatus": "PASS: independent source selection, per-cell counts, floor rejections, event/observation and grid conservation"
+            },
+            "deaths": {
+              "selectedSourcePoints": 142,
+              "categories": {
+                "default": 119,
+                "lower": 23,
+                "unknown": 0
+              },
+              "mergedMainLowerCells": 13,
+              "mergedBucketExample": {
+                "cell": 467,
+                "main": {
+                  "round": 1,
+                  "tick": 5350,
+                  "requestedTick": 5350,
+                  "actualTick": 5350,
+                  "eventIndex": 104,
+                  "role": "target",
+                  "position": [
+                    893.9070434570312,
+                    -298.05865478515625,
+                    -127.96875
+                  ],
+                  "relation": "at-event",
+                  "alive": false,
+                  "source": "Spatial exact at-event observation",
+                  "floor": "default",
+                  "cell": 467
+                },
+                "lower": {
+                  "round": 3,
+                  "tick": 28135,
+                  "requestedTick": 28135,
+                  "actualTick": 28135,
+                  "eventIndex": 198,
+                  "role": "target",
+                  "position": [
+                    921.2941284179688,
+                    -293.14544677734375,
+                    -639.96875
+                  ],
+                  "relation": "at-event",
+                  "alive": false,
+                  "source": "Spatial exact at-event observation",
+                  "floor": "lower",
+                  "cell": 467
+                },
+                "productionCellCounts": {
+                  "all": 8,
+                  "default": 7,
+                  "lower": 1
+                }
+              },
+              "exampleSameTick": false,
+              "nearestBoundarySamples": [
+                {
+                  "round": 11,
+                  "tick": 95030,
+                  "requestedTick": 95030,
+                  "actualTick": 95030,
+                  "eventIndex": 129,
+                  "role": "target",
+                  "position": [
+                    749.46044921875,
+                    629.9820556640625,
+                    -479.96875
+                  ],
+                  "relation": "at-event",
+                  "alive": false,
+                  "source": "Spatial exact at-event observation",
+                  "floor": "default",
+                  "cell": 338
+                },
+                {
+                  "round": 1,
+                  "tick": 4356,
+                  "requestedTick": 4356,
+                  "actualTick": 4356,
+                  "eventIndex": 47,
+                  "role": "target",
+                  "position": [
+                    800.98681640625,
+                    -2349.20654296875,
+                    -415.96875
+                  ],
+                  "relation": "at-event",
+                  "alive": false,
+                  "source": "Spatial exact at-event observation",
+                  "floor": "default",
+                  "cell": 754
+                },
+                {
+                  "round": 7,
+                  "tick": 60749,
+                  "requestedTick": 60749,
+                  "actualTick": 60749,
+                  "eventIndex": 268,
+                  "role": "target",
+                  "position": [
+                    1313.127685546875,
+                    -1843.830078125,
+                    -415.46875
+                  ],
+                  "relation": "at-event",
+                  "alive": false,
+                  "source": "Spatial exact at-event observation",
+                  "floor": "default",
+                  "cell": 693
+                }
+              ],
+              "invariantStatus": "PASS: independent source selection, per-cell counts, floor rejections, event/observation and grid conservation"
+            }
+          }
+        }
+      },
+      "oracleScope": "Shares accepted production Match/Spatial/Replay domain observations only. Windows and roster are rebuilt from Match, observation categories are recounted without presenter helpers, and Nuke floor ranges (-10000,-495,10000) and radar arithmetic (-3453,2887,7,1024) are explicitly pinned constants. Every production grid cell and grid floor/mapping rejection count is independently compared. Event unlocatableReasons are checked by arithmetic conservation only, not independently classified. Does not independently establish map-version alignment or native entity freshness.",
+      "executionHistory": [
+        {
+          "attempt": 1,
+          "exitCode": -1,
+          "status": "INTERRUPTED",
+          "reason": "Collector nearest-boundary sample deduplication used quadratic findIndex; stopped the verified collector process and replaced it with Set and early stop. No product/parser assertion failure was observed."
+        },
+        {
+          "attempt": 2,
+          "status": "Completed collector; shell records final exit code separately",
+          "finalSourceSha256": "cecc06eff98a0f879aa1a95001bcb3a72ce99bd0e9a7c0fe25e22b74a0d7ea32"
+        }
+      ],
+      "metadataCorrection": {
+        "fields": [
+          "oracleScope"
+        ],
+        "reason": "Post-run wording correction distinguishes independent grid/observation checks from event-reason arithmetic conservation. No observed values, categories, counts, samples, hashes or test results were changed; no parser rerun was needed. executionHistory.finalSourceSha256 remains the collector source actually executed.",
+        "observationsChanged": false,
+        "parserRerun": false
+      },
+      "limits": [
+        "Exact native final-tick observation does not prove entity freshness or subtick state.",
+        "At-death-event target XYZ is not pre-death aim or route evidence.",
+        "Merged XY buckets do not establish a shared traversable space, LOS, cover, path reachability, intent or tactical value.",
+        "Map/radar version alignment remains unconfirmed."
+      ]
+    },
+    {
+      "id": "electron",
+      "kind": "REAL_BUILT_ELECTRON",
+      "command": "node scripts/p7-s2-spatial-electron.mjs",
+      "exitCode": 0,
+      "localArtifact": "E:/cs2-analyst/.tmp/p7-s2/p7-s2-electron.json",
+      "result": {
+        "status": "PASS",
+        "fixture": ".demo/nuke.dem",
+        "sha256": "dea9382b9cc263fed9ee4ed7e71fa6be8c176cf888868f05b26d850af6f5cb3c",
+        "bytes": 471606780,
+        "cases": [
+          {
+            "floor": null,
+            "layer": "positions",
+            "scope": {
+              "side": "all",
+              "floor": null,
+              "includeFreezeTime": false,
+              "samplingSet": "all-valid",
+              "rounds": null,
+              "playerIds": null,
+              "layers": [
+                "positions"
+              ]
+            },
+            "source": {
+              "expectedOpportunities": 178570,
+              "validPositionSamples": 139119,
+              "confirmedDeadObservations": 38831,
+              "observedButUnusable": 0,
+              "missingPositionObservations": 620,
+              "positionObserved": 177950,
+              "positionCoverage": 0.7790726325810606,
+              "positionCompleteness": 0.9965279722237778,
+              "status": "partial"
+            },
+            "grid": {
+              "valid": 139119,
+              "aggregated": 139119,
+              "outOfBounds": 0,
+              "invalidMapping": 0,
+              "unknownLayer": 0,
+              "otherFloor": 0
+            }
+          },
+          {
+            "floor": null,
+            "layer": "kills",
+            "scope": {
+              "side": "all",
+              "floor": null,
+              "includeFreezeTime": false,
+              "samplingSet": "all-valid",
+              "rounds": null,
+              "playerIds": null,
+              "layers": [
+                "kills"
+              ]
+            },
+            "source": {
+              "scopeEvents": 142,
+              "locatableEvents": 142,
+              "coverage": 1,
+              "outsideWindowEvents": 3
+            },
+            "grid": {
+              "valid": 142,
+              "aggregated": 142,
+              "outOfBounds": 0,
+              "invalidMapping": 0,
+              "unknownLayer": 0,
+              "otherFloor": 0
+            }
+          },
+          {
+            "floor": null,
+            "layer": "deaths",
+            "scope": {
+              "side": "all",
+              "floor": null,
+              "includeFreezeTime": false,
+              "samplingSet": "all-valid",
+              "rounds": null,
+              "playerIds": null,
+              "layers": [
+                "deaths"
+              ]
+            },
+            "source": {
+              "scopeEvents": 142,
+              "locatableEvents": 142,
+              "coverage": 1,
+              "outsideWindowEvents": 3
+            },
+            "grid": {
+              "valid": 142,
+              "aggregated": 142,
+              "outOfBounds": 0,
+              "invalidMapping": 0,
+              "unknownLayer": 0,
+              "otherFloor": 0
+            }
+          },
+          {
+            "floor": "default",
+            "layer": "positions",
+            "scope": {
+              "side": "all",
+              "floor": "default",
+              "includeFreezeTime": false,
+              "samplingSet": "all-valid",
+              "rounds": null,
+              "playerIds": null,
+              "layers": [
+                "positions"
+              ]
+            },
+            "source": {
+              "expectedOpportunities": 178570,
+              "validPositionSamples": 139119,
+              "confirmedDeadObservations": 38831,
+              "observedButUnusable": 0,
+              "missingPositionObservations": 620,
+              "positionObserved": 177950,
+              "positionCoverage": 0.7790726325810606,
+              "positionCompleteness": 0.9965279722237778,
+              "status": "partial"
+            },
+            "grid": {
+              "valid": 123189,
+              "aggregated": 123189,
+              "outOfBounds": 0,
+              "invalidMapping": 0,
+              "unknownLayer": 0,
+              "otherFloor": 15930
+            }
+          },
+          {
+            "floor": "default",
+            "layer": "kills",
+            "scope": {
+              "side": "all",
+              "floor": "default",
+              "includeFreezeTime": false,
+              "samplingSet": "all-valid",
+              "rounds": null,
+              "playerIds": null,
+              "layers": [
+                "kills"
+              ]
+            },
+            "source": {
+              "scopeEvents": 142,
+              "locatableEvents": 142,
+              "coverage": 1,
+              "outsideWindowEvents": 3
+            },
+            "grid": {
+              "valid": 119,
+              "aggregated": 119,
+              "outOfBounds": 0,
+              "invalidMapping": 0,
+              "unknownLayer": 0,
+              "otherFloor": 23
+            }
+          },
+          {
+            "floor": "default",
+            "layer": "deaths",
+            "scope": {
+              "side": "all",
+              "floor": "default",
+              "includeFreezeTime": false,
+              "samplingSet": "all-valid",
+              "rounds": null,
+              "playerIds": null,
+              "layers": [
+                "deaths"
+              ]
+            },
+            "source": {
+              "scopeEvents": 142,
+              "locatableEvents": 142,
+              "coverage": 1,
+              "outsideWindowEvents": 3
+            },
+            "grid": {
+              "valid": 119,
+              "aggregated": 119,
+              "outOfBounds": 0,
+              "invalidMapping": 0,
+              "unknownLayer": 0,
+              "otherFloor": 23
+            }
+          },
+          {
+            "floor": "lower",
+            "layer": "positions",
+            "scope": {
+              "side": "all",
+              "floor": "lower",
+              "includeFreezeTime": false,
+              "samplingSet": "all-valid",
+              "rounds": null,
+              "playerIds": null,
+              "layers": [
+                "positions"
+              ]
+            },
+            "source": {
+              "expectedOpportunities": 178570,
+              "validPositionSamples": 139119,
+              "confirmedDeadObservations": 38831,
+              "observedButUnusable": 0,
+              "missingPositionObservations": 620,
+              "positionObserved": 177950,
+              "positionCoverage": 0.7790726325810606,
+              "positionCompleteness": 0.9965279722237778,
+              "status": "partial"
+            },
+            "grid": {
+              "valid": 15930,
+              "aggregated": 15930,
+              "outOfBounds": 0,
+              "invalidMapping": 0,
+              "unknownLayer": 0,
+              "otherFloor": 123189
+            }
+          },
+          {
+            "floor": "lower",
+            "layer": "kills",
+            "scope": {
+              "side": "all",
+              "floor": "lower",
+              "includeFreezeTime": false,
+              "samplingSet": "all-valid",
+              "rounds": null,
+              "playerIds": null,
+              "layers": [
+                "kills"
+              ]
+            },
+            "source": {
+              "scopeEvents": 142,
+              "locatableEvents": 142,
+              "coverage": 1,
+              "outsideWindowEvents": 3
+            },
+            "grid": {
+              "valid": 23,
+              "aggregated": 23,
+              "outOfBounds": 0,
+              "invalidMapping": 0,
+              "unknownLayer": 0,
+              "otherFloor": 119
+            }
+          },
+          {
+            "floor": "lower",
+            "layer": "deaths",
+            "scope": {
+              "side": "all",
+              "floor": "lower",
+              "includeFreezeTime": false,
+              "samplingSet": "all-valid",
+              "rounds": null,
+              "playerIds": null,
+              "layers": [
+                "deaths"
+              ]
+            },
+            "source": {
+              "scopeEvents": 142,
+              "locatableEvents": 142,
+              "coverage": 1,
+              "outsideWindowEvents": 3
+            },
+            "grid": {
+              "valid": 23,
+              "aggregated": 23,
+              "outOfBounds": 0,
+              "invalidMapping": 0,
+              "unknownLayer": 0,
+              "otherFloor": 119
+            }
+          }
+        ],
+        "layouts": [
+          {
+            "viewport": [
+              1024,
+              640
+            ],
+            "canvas": [
+              257,
+              257
+            ],
+            "css": [
+              257,
+              257
+            ],
+            "overflow": false,
+            "sideOverflow": "auto"
+          },
+          {
+            "viewport": [
+              1920,
+              1032
+            ],
+            "canvas": [
+              689,
+              689
+            ],
+            "css": [
+              689,
+              689
+            ],
+            "overflow": false,
+            "sideOverflow": "auto"
+          }
+        ],
+        "exceptions": [],
+        "consoleErrors": [],
+        "method": "Uses repository Electron/CDP runtime for local desktop process and Main IPC; Browser connector not used, no browser skill listed. React current tree read only; Main traffic observer delegates original handler. Synthetic inputs are not used.",
+        "radarSha256": "21167d05292e80eebe7b068f0bba36a2e3f9116d154d96952a8366cdcc72e6b1",
+        "identity": {
+          "url": "file:///C:/Users/evanpatchouli/.codex/worktrees/p7-s2-spatial-semantics-audit/cs2-analyst/apps/desktop/dist/renderer/index.html",
+          "title": "CS2 Analyst",
+          "content": "从一场比赛开始\n选择一份 CS2 .dem 赛后录像，生成有证据的玩家表现报告与复盘重点。\n选择 DEM 文件\n也可以把 .dem 文件直接拖放到这张卡片上 · 文件只在本机处理"
+        },
+        "allOff": {
+          "width": 689,
+          "height": 689,
+          "opaque": 77812,
+          "expectedOpaque": 77812,
+          "opaqueRatio": 1,
+          "alphaSamples": 29929,
+          "alphaMatches": 29929,
+          "alphaMatch": 1,
+          "interiorSamples": 4010,
+          "interiorMatches": 4010,
+          "interiorMatch": 1,
+          "overlayFillRects": 0,
+          "newIpcCalls": 0
+        },
+        "afterTabReturn": {
+          "width": 689,
+          "height": 689,
+          "opaque": 77812,
+          "expectedOpaque": 77812,
+          "opaqueRatio": 1,
+          "alphaSamples": 841,
+          "alphaMatches": 841,
+          "alphaMatch": 1,
+          "interiorSamples": 110,
+          "interiorMatches": 110,
+          "interiorMatch": 1
+        },
+        "deepReview": {
+          "status": "PASS",
+          "ruleId": "deep.teamplay.no-followup-pattern",
+          "text": "补充观察\n队友阵亡后，同一交火中的后续跟进\n在 10 次“你在这次交火中也有伤害或击杀记录”的队友阵亡场景里，有 5 次在队友阵亡后的 5 秒内，没有记录到你对同一名击杀者造成伤害或击杀。\n符合此情况：5 / 10 次\n查看 2 个相关回合\n比赛回放 R16\n说明与限制\n交火参与记录也包括受到伤害或被击杀，且可能发生在队友阵亡之后，不能证明你在阵亡前已经参与。这不等同于补枪失败，也不能证明你当时看得到、来得及或具备支援条件。这里不是正式的补枪统计。\n部分事件发生在同一游戏刻，无法判断严格先后；这不会影响本条结论所依据的交火与阵亡记录。"
+        },
+        "pageHealth": {
+          "status": "success",
+          "content": 351,
+          "frameworkOverlay": false
+        },
+        "lifecycle": {
+          "exitCode": 0,
+          "remaining": []
+        },
+        "metadataCorrection": "Only the tooling-route description was corrected: the Browser connector was not used and no browser skill was listed. All observations, measurements, verification results, and screenshots are unchanged; no UI or DEM parsing rerun was performed for this metadata correction."
+      }
+    },
+    {
+      "id": "synthetic-boundaries",
+      "kind": "SYNTHETIC_ONLY",
+      "cases": [
+        {
+          "map": "de_nuke",
+          "input": "below",
+          "z": -495.001,
+          "expected": "lower",
+          "actual": "lower",
+          "provenance": "SYNTHETIC geometry boundary only"
+        },
+        {
+          "map": "de_nuke",
+          "input": "shared",
+          "z": -495,
+          "expected": null,
+          "actual": null,
+          "provenance": "SYNTHETIC geometry boundary only"
+        },
+        {
+          "map": "de_nuke",
+          "input": "above",
+          "z": -494.999,
+          "expected": "default",
+          "actual": "default",
+          "provenance": "SYNTHETIC geometry boundary only"
+        },
+        {
+          "map": "de_nuke",
+          "input": "missing",
+          "z": null,
+          "expected": null,
+          "actual": null,
+          "provenance": "SYNTHETIC geometry boundary only"
+        },
+        {
+          "map": "de_nuke",
+          "input": "NaN",
+          "z": "NaN",
+          "expected": null,
+          "actual": null,
+          "provenance": "SYNTHETIC geometry boundary only"
+        },
+        {
+          "map": "de_nuke",
+          "input": "below-range",
+          "z": -10001,
+          "expected": null,
+          "actual": null,
+          "provenance": "SYNTHETIC geometry boundary only"
+        },
+        {
+          "map": "de_nuke",
+          "input": "above-range",
+          "z": 10001,
+          "expected": null,
+          "actual": null,
+          "provenance": "SYNTHETIC geometry boundary only"
+        },
+        {
+          "map": "de_vertigo",
+          "input": "below",
+          "z": 11699.999,
+          "expected": "lower",
+          "actual": "lower",
+          "provenance": "SYNTHETIC geometry boundary only"
+        },
+        {
+          "map": "de_vertigo",
+          "input": "shared",
+          "z": 11700,
+          "expected": null,
+          "actual": null,
+          "provenance": "SYNTHETIC geometry boundary only"
+        },
+        {
+          "map": "de_vertigo",
+          "input": "above",
+          "z": 11700.001,
+          "expected": "default",
+          "actual": "default",
+          "provenance": "SYNTHETIC geometry boundary only"
+        },
+        {
+          "map": "de_vertigo",
+          "input": "missing",
+          "z": null,
+          "expected": null,
+          "actual": null,
+          "provenance": "SYNTHETIC geometry boundary only"
+        },
+        {
+          "map": "de_vertigo",
+          "input": "NaN",
+          "z": "NaN",
+          "expected": null,
+          "actual": null,
+          "provenance": "SYNTHETIC geometry boundary only"
+        },
+        {
+          "map": "de_vertigo",
+          "input": "below-range",
+          "z": -10001,
+          "expected": null,
+          "actual": null,
+          "provenance": "SYNTHETIC geometry boundary only"
+        },
+        {
+          "map": "de_vertigo",
+          "input": "above-range",
+          "z": 20001,
+          "expected": null,
+          "actual": null,
+          "provenance": "SYNTHETIC geometry boundary only"
+        }
+      ],
+      "realVertigoAcceptance": false
+    },
+    {
+      "id": "historical-spatial",
+      "kind": "HISTORICAL_REUSED_NOT_RERUN",
+      "path": "docs/deep-review-spatial-nuke.json",
+      "purpose": "Exact event XYZ provenance and historical coverage, not new test counts."
+    },
+    {
+      "id": "historical-teamplay",
+      "kind": "HISTORICAL_REUSED_NOT_RERUN",
+      "path": "docs/deep-review-teamplay-nuke.json",
+      "purpose": "Retained XYZ/abs Z examples; current arithmetic verified separately by synthetic tests."
+    },
+    {
+      "id": "historical-utility",
+      "kind": "HISTORICAL_REUSED_NOT_RERUN",
+      "path": "docs/deep-review-utility-nuke.json",
+      "purpose": "Effect identity/XYZ examples; no new tactical inference."
+    }
+  ],
+  "findings": [
+    {
+      "id": "A01",
+      "module": "XYZ 精确事件来源",
+      "source": {
+        "path": "packages/dem-parser/src/providers/spatial-evidence.ts",
+        "line": 100,
+        "rule": "exact-only; requestedTick/actualTick/relation"
+      },
+      "classification": "CORRECTLY CONSERVATIVE",
+      "severity": "none",
+      "status": "RETAINED",
+      "input": {
+        "description": "native entity rows、eventRef、角色与玩家身份",
+        "evidenceIds": [
+          "domain-tests"
+        ]
+      },
+      "actualBehavior": "只接受精确玩家行；无行 actualTick=null；XYZ 原子组，before/at/after 分开，死亡位置只称 at-death-event。",
+      "expectedBehavior": "只接受精确玩家行；无行 actualTick=null；XYZ 原子组，before/at/after 分开，死亡位置只称 at-death-event。",
+      "reproduction": {
+        "kind": "REAL_NUKE_PLUS_SOURCE_OR_SYNTHETIC_REGRESSION",
+        "confirmedComputationalBug": false,
+        "misleadingCopyReproduced": false,
+        "realVertigoReproduced": false
+      },
+      "impact": "限定于所述事实证据与已执行验证，不扩大成地图几何/战术验收。",
+      "minimalFix": "无生产修复；无最近邻替代或位置补造。",
+      "verification": {
+        "evidenceIds": [
+          "domain-tests"
+        ],
+        "result": "PASS_WITH_STATED_LIMITS"
+      }
+    },
+    {
+      "id": "A02",
+      "module": "Nuke / Vertigo 楼层边界",
+      "source": {
+        "path": "apps/desktop/shared/replay-map-geometry.ts",
+        "line": 32,
+        "rule": "resolveMapLayer"
+      },
+      "classification": "CORRECTLY CONSERVATIVE",
+      "severity": "none",
+      "status": "RETAINED",
+      "input": {
+        "description": "Nuke -495、Vertigo 11700，以及缺失/NaN/范围外 Z",
+        "evidenceIds": [
+          "desktop-tests",
+          "synthetic-boundaries"
+        ]
+      },
+      "actualBehavior": "共享闭区间边界双匹配返回 null；唯一层才确认。",
+      "expectedBehavior": "共享闭区间边界双匹配返回 null；唯一层才确认。",
+      "reproduction": {
+        "kind": "SOURCE_AND_EXISTING_SYNTHETIC_REGRESSION",
+        "confirmedComputationalBug": false,
+        "misleadingCopyReproduced": false,
+        "realVertigoReproduced": false
+      },
+      "impact": "限定于所述事实证据与已执行验证，不扩大成地图几何/战术验收。",
+      "minimalFix": "无生产修复；保持未知；不能从分层成功升级为地图版本配准。",
+      "verification": {
+        "evidenceIds": [
+          "desktop-tests",
+          "synthetic-boundaries"
+        ],
+        "result": "PASS_WITH_STATED_LIMITS"
+      }
+    },
+    {
+      "id": "A03",
+      "module": "缺位置 / 未知层 / 其他层",
+      "source": {
+        "path": "apps/desktop/shared/heatmap.ts",
+        "line": 16,
+        "rule": "classifyHeatmapObservation; addPoint"
+      },
+      "classification": "CORRECTLY CONSERVATIVE",
+      "severity": "none",
+      "status": "RETAINED",
+      "input": {
+        "description": "有限完整 XYZ、原生精确 tick 和有效生命周期",
+        "evidenceIds": [
+          "desktop-tests",
+          "real-projection"
+        ]
+      },
+      "actualBehavior": "缺 Z 为位置缺失/事件 invalidPosition；完整 XYZ 的歧义或范围外 Z 为 unknownLayer；已知其他层为 otherFloor。",
+      "expectedBehavior": "缺 Z 为位置缺失/事件 invalidPosition；完整 XYZ 的歧义或范围外 Z 为 unknownLayer；已知其他层为 otherFloor。",
+      "reproduction": {
+        "kind": "REAL_NUKE_PLUS_SOURCE_OR_SYNTHETIC_REGRESSION",
+        "confirmedComputationalBug": false,
+        "misleadingCopyReproduced": false,
+        "realVertigoReproduced": false
+      },
+      "impact": "限定于所述事实证据与已执行验证，不扩大成地图几何/战术验收。",
+      "minimalFix": "无生产修复；单层排除未知及其他层；全部楼层容许未知归入 XY 合并网格且独立计数。",
+      "verification": {
+        "evidenceIds": [
+          "desktop-tests",
+          "real-projection"
+        ],
+        "result": "PASS_WITH_STATED_LIMITS"
+      }
+    },
+    {
+      "id": "A04",
+      "module": "Replay 展示状态隔离",
+      "source": {
+        "path": "apps/desktop/renderer/src/replay-floor.ts",
+        "line": 27,
+        "rule": "replayFloorAt; replayDisplayFrame"
+      },
+      "classification": "CORRECTLY CONSERVATIVE",
+      "severity": "none",
+      "status": "RETAINED",
+      "input": {
+        "description": "同 tick presentation frame、segment、alive、楼层与展示上下文",
+        "evidenceIds": [
+          "desktop-tests"
+        ]
+      },
+      "actualBehavior": "S1 仅保存楼层 ID，不保存 XYZ；插值仍需同层/同段/双方存活/合法 gap；Heatmap 不读取展示层历史。",
+      "expectedBehavior": "S1 仅保存楼层 ID，不保存 XYZ；插值仍需同层/同段/双方存活/合法 gap；Heatmap 不读取展示层历史。",
+      "reproduction": {
+        "kind": "SOURCE_AND_EXISTING_SYNTHETIC_REGRESSION",
+        "confirmedComputationalBug": false,
+        "misleadingCopyReproduced": false,
+        "realVertigoReproduced": false
+      },
+      "impact": "限定于所述事实证据与已执行验证，不扩大成地图几何/战术验收。",
+      "minimalFix": "无生产修复；不延续死亡坐标、未知位置或跨层插值。",
+      "verification": {
+        "evidenceIds": [
+          "desktop-tests"
+        ],
+        "result": "PASS_WITH_STATED_LIMITS"
+      }
+    },
+    {
+      "id": "B01",
+      "module": "全部楼层的 XY 合并",
+      "source": {
+        "path": "apps/desktop/shared/heatmap.ts",
+        "line": 47,
+        "rule": "addPoint; row-major 32x32"
+      },
+      "classification": "CORRECTLY CONSERVATIVE",
+      "severity": "none",
+      "status": "RETAINED",
+      "input": {
+        "description": "真实 Nuke 两采样集；同格主/下层位置与事件",
+        "evidenceIds": [
+          "real-projection",
+          "electron"
+        ]
+      },
+      "actualBehavior": "全部楼层仅按 XY 分格，可能合并不同 Z；UI 已明示合并统计、主层底图、请选单层。",
+      "expectedBehavior": "全部楼层仅按 XY 分格，可能合并不同 Z；UI 已明示合并统计、主层底图、请选单层。",
+      "reproduction": {
+        "kind": "REAL_NUKE_PLUS_SOURCE_OR_SYNTHETIC_REGRESSION",
+        "confirmedComputationalBug": false,
+        "misleadingCopyReproduced": false,
+        "realVertigoReproduced": false
+      },
+      "impact": "限定于所述事实证据与已执行验证，不扩大成地图几何/战术验收。",
+      "minimalFix": "无生产修复；合并不证明同一可通行空间，不据此引入新算法或改统计。",
+      "verification": {
+        "evidenceIds": [
+          "real-projection",
+          "electron"
+        ],
+        "result": "PASS_WITH_STATED_LIMITS"
+      }
+    },
+    {
+      "id": "B02",
+      "module": "单层筛选与守恒",
+      "source": {
+        "path": "apps/desktop/shared/heatmap.ts",
+        "line": 48,
+        "rule": "floor filter; finishGrid"
+      },
+      "classification": "CORRECTLY CONSERVATIVE",
+      "severity": "none",
+      "status": "RETAINED",
+      "input": {
+        "description": "positions / kills / deaths 的 all/default/lower 投影",
+        "evidenceIds": [
+          "desktop-tests",
+          "real-projection",
+          "electron"
+        ]
+      },
+      "actualBehavior": "单层只改变 grid population；未知和其他层分别排除；网格、源机会和事件拒绝计数守恒。",
+      "expectedBehavior": "单层只改变 grid population；未知和其他层分别排除；网格、源机会和事件拒绝计数守恒。",
+      "reproduction": {
+        "kind": "REAL_NUKE_PLUS_SOURCE_OR_SYNTHETIC_REGRESSION",
+        "confirmedComputationalBug": false,
+        "misleadingCopyReproduced": false,
+        "realVertigoReproduced": false
+      },
+      "impact": "限定于所述事实证据与已执行验证，不扩大成地图几何/战术验收。",
+      "minimalFix": "无生产修复；保留冻结时间、窗外事件、阵营和玩家筛选语义。",
+      "verification": {
+        "evidenceIds": [
+          "desktop-tests",
+          "real-projection",
+          "electron"
+        ],
+        "result": "PASS_WITH_STATED_LIMITS"
+      }
+    },
+    {
+      "id": "B03",
+      "module": "事件覆盖率的楼层范围",
+      "source": {
+        "path": "apps/desktop/renderer/src/heatmap-view.tsx",
+        "line": 156,
+        "rule": "HeatmapLayerDetails"
+      },
+      "classification": "SEMANTIC AMBIGUITY",
+      "severity": "medium",
+      "status": "FIXED",
+      "input": {
+        "description": "其他层/边界事件的真实投影和 Nuke/Vertigo 合成 SSR",
+        "evidenceIds": [
+          "desktop-tests",
+          "real-projection",
+          "electron"
+        ]
+      },
+      "actualBehavior": "原文成功定位/当前事件可能被读成当前楼层；计算实际为楼层筛选前范围。",
+      "expectedBehavior": "明确标签与说明：事件数/覆盖率为楼层筛选前；当前层结果看网格及楼层排除计数。",
+      "reproduction": {
+        "kind": "REAL_NUKE_PLUS_SOURCE_OR_SYNTHETIC_REGRESSION",
+        "confirmedComputationalBug": false,
+        "misleadingCopyReproduced": true,
+        "realVertigoReproduced": false
+      },
+      "impact": "多楼层 kills/deaths 的统计范围理解；DTO 数值正确。",
+      "minimalFix": "明确标签与说明：事件数/覆盖率为楼层筛选前；当前层结果看网格及楼层排除计数。",
+      "verification": {
+        "evidenceIds": [
+          "desktop-tests",
+          "real-projection",
+          "electron"
+        ],
+        "result": "PASS_WITH_STATED_LIMITS"
+      }
+    },
+    {
+      "id": "B04",
+      "module": "热度与地图限制",
+      "source": {
+        "path": "apps/desktop/renderer/src/heatmap-view.tsx",
+        "line": 102,
+        "rule": "alignment=unconfirmed; scope-relative-linear"
+      },
+      "classification": "CORRECTLY CONSERVATIVE",
+      "severity": "none",
+      "status": "RETAINED",
+      "input": {
+        "description": "真实 Nuke UI、生产地图定义与图例",
+        "evidenceIds": [
+          "desktop-tests",
+          "electron"
+        ]
+      },
+      "actualBehavior": "版本警告始终可见；图例不承诺连续时间、LOS、掩体、可见性或战术收益；强度不能跨图层比较数量。",
+      "expectedBehavior": "版本警告始终可见；图例不承诺连续时间、LOS、掩体、可见性或战术收益；强度不能跨图层比较数量。",
+      "reproduction": {
+        "kind": "REAL_NUKE_PLUS_SOURCE_OR_SYNTHETIC_REGRESSION",
+        "confirmedComputationalBug": false,
+        "misleadingCopyReproduced": false,
+        "realVertigoReproduced": false
+      },
+      "impact": "限定于所述事实证据与已执行验证，不扩大成地图几何/战术验收。",
+      "minimalFix": "无生产修复；正确限制；无生产修复。",
+      "verification": {
+        "evidenceIds": [
+          "desktop-tests",
+          "electron"
+        ],
+        "result": "PASS_WITH_STATED_LIMITS"
+      }
+    },
+    {
+      "id": "B05",
+      "module": "全部图层关闭",
+      "source": {
+        "path": "apps/desktop/renderer/src/heatmap-canvas.ts",
+        "line": 5,
+        "rule": "paintHeatmap empty layers"
+      },
+      "classification": "CORRECTLY CONSERVATIVE",
+      "severity": "none",
+      "status": "RETAINED",
+      "input": {
+        "description": "真实 Nuke UI、独立本地 PNG 像素参考",
+        "evidenceIds": [
+          "desktop-tests",
+          "electron"
+        ]
+      },
+      "actualBehavior": "空图层仍画底图，Tab 返回保留关闭状态。",
+      "expectedBehavior": "空图层仍画底图，Tab 返回保留关闭状态。",
+      "reproduction": {
+        "kind": "REAL_NUKE_PLUS_SOURCE_OR_SYNTHETIC_REGRESSION",
+        "confirmedComputationalBug": false,
+        "misleadingCopyReproduced": false,
+        "realVertigoReproduced": false
+      },
+      "impact": "限定于所述事实证据与已执行验证，不扩大成地图几何/战术验收。",
+      "minimalFix": "无生产修复；仅回归既有 c1f3630/f1a05b8 修复，不重复实现。",
+      "verification": {
+        "evidenceIds": [
+          "desktop-tests",
+          "electron"
+        ],
+        "result": "PASS_WITH_STATED_LIMITS"
+      }
+    },
+    {
+      "id": "C01",
+      "module": "Engagement 空间 enrichment",
+      "source": {
+        "path": "packages/deep-review/src/engagements.ts",
+        "line": 12,
+        "rule": "shared participant + temporal grouping"
+      },
+      "classification": "CORRECTLY CONSERVATIVE",
+      "severity": "none",
+      "status": "RETAINED",
+      "input": {
+        "description": "同回合 damage/kill refs；可选精确 Spatial",
+        "evidenceIds": [
+          "domain-tests"
+        ]
+      },
+      "actualBehavior": "分组由时间与共享参与者决定；Spatial 精确四键 join，只作附加事实，不是同一可达空间或 LOS。",
+      "expectedBehavior": "分组由时间与共享参与者决定；Spatial 精确四键 join，只作附加事实，不是同一可达空间或 LOS。",
+      "reproduction": {
+        "kind": "SOURCE_AND_EXISTING_SYNTHETIC_REGRESSION",
+        "confirmedComputationalBug": false,
+        "misleadingCopyReproduced": false,
+        "realVertigoReproduced": false
+      },
+      "impact": "限定于所述事实证据与已执行验证，不扩大成地图几何/战术验收。",
+      "minimalFix": "无生产修复；不存在距离/楼层决定交火组的实现。",
+      "verification": {
+        "evidenceIds": [
+          "domain-tests"
+        ],
+        "result": "PASS_WITH_STATED_LIMITS"
+      }
+    },
+    {
+      "id": "C02",
+      "module": "水平 / 垂直 / 三维距离",
+      "source": {
+        "path": "packages/deep-review/src/execution.ts",
+        "line": 64,
+        "rule": "horizontalDistance / verticalDelta / directDistance"
+      },
+      "classification": "CORRECTLY CONSERVATIVE",
+      "severity": "none",
+      "status": "RETAINED",
+      "input": {
+        "description": "同一 contact 的精确双方 XYZ；合成 3/4/12",
+        "evidenceIds": [
+          "domain-tests"
+        ]
+      },
+      "actualBehavior": "同时保留 hypot(dx,dy)、abs(dz)、hypot(dx,dy,dz)，合成结果 5/12/13；不创建可见或可命中结论。",
+      "expectedBehavior": "同时保留 hypot(dx,dy)、abs(dz)、hypot(dx,dy,dz)，合成结果 5/12/13；不创建可见或可命中结论。",
+      "reproduction": {
+        "kind": "SOURCE_AND_EXISTING_SYNTHETIC_REGRESSION",
+        "confirmedComputationalBug": false,
+        "misleadingCopyReproduced": false,
+        "realVertigoReproduced": false
+      },
+      "impact": "限定于所述事实证据与已执行验证，不扩大成地图几何/战术验收。",
+      "minimalFix": "无生产修复；缺字段、错 tick 或冲突 join 降级，不将 XY 当 XYZ。",
+      "verification": {
+        "evidenceIds": [
+          "domain-tests"
+        ],
+        "result": "PASS_WITH_STATED_LIMITS"
+      }
+    },
+    {
+      "id": "C03",
+      "module": "最近存活队友与死亡上下文",
+      "source": {
+        "path": "packages/deep-review/src/teamplay-evidence.ts",
+        "line": 116,
+        "rule": "nearestConfirmedAliveTeammate"
+      },
+      "classification": "CORRECTLY CONSERVATIVE",
+      "severity": "none",
+      "status": "RETAINED",
+      "input": {
+        "description": "精确首 contact/death ref、可靠 RoundAliveState 和 XYZ",
+        "evidenceIds": [
+          "domain-tests",
+          "historical-teamplay"
+        ]
+      },
+      "actualBehavior": "按 XYZ 直线距离排序，保留 XY/abs Z；同 tick 死亡排除并记歧义；缺候选位置记 partial，最近仅指完整观测子集。",
+      "expectedBehavior": "按 XYZ 直线距离排序，保留 XY/abs Z；同 tick 死亡排除并记歧义；缺候选位置记 partial，最近仅指完整观测子集。",
+      "reproduction": {
+        "kind": "SOURCE_AND_EXISTING_SYNTHETIC_REGRESSION",
+        "confirmedComputationalBug": false,
+        "misleadingCopyReproduced": false,
+        "realVertigoReproduced": false
+      },
+      "impact": "限定于所述事实证据与已执行验证，不扩大成地图几何/战术验收。",
+      "minimalFix": "无生产修复；距离不证明可支援、可补枪、可互见或全名单最近。",
+      "verification": {
+        "evidenceIds": [
+          "domain-tests",
+          "historical-teamplay"
+        ],
+        "result": "PASS_WITH_STATED_LIMITS"
+      }
+    },
+    {
+      "id": "C04",
+      "module": "最近敌人 / 道具队友",
+      "source": {
+        "path": "packages/deep-review/src/utility-context.ts",
+        "line": 87,
+        "rule": "nearestEnemy / nearestTeammate"
+      },
+      "classification": "CORRECTLY CONSERVATIVE",
+      "severity": "none",
+      "status": "RETAINED",
+      "input": {
+        "description": "UtilityEvent 效果原点与同 tick 的存活玩家 XYZ",
+        "evidenceIds": [
+          "domain-tests",
+          "historical-utility"
+        ]
+      },
+      "actualBehavior": "按 XYZ 距离排序，保留 XY/Z；起点缺失不以投掷者补齐；missingPositionPlayerIds 与 partial 保留。",
+      "expectedBehavior": "按 XYZ 距离排序，保留 XY/Z；起点缺失不以投掷者补齐；missingPositionPlayerIds 与 partial 保留。",
+      "reproduction": {
+        "kind": "SOURCE_AND_EXISTING_SYNTHETIC_REGRESSION",
+        "confirmedComputationalBug": false,
+        "misleadingCopyReproduced": false,
+        "realVertigoReproduced": false
+      },
+      "impact": "限定于所述事实证据与已执行验证，不扩大成地图几何/战术验收。",
+      "minimalFix": "无生产修复；没有敌方位置不证明敌人当时不在场。",
+      "verification": {
+        "evidenceIds": [
+          "domain-tests",
+          "historical-utility"
+        ],
+        "result": "PASS_WITH_STATED_LIMITS"
+      }
+    },
+    {
+      "id": "C05",
+      "module": "冻结 P3 Trade 与 Finding",
+      "source": {
+        "path": "packages/analytics/src/trade.ts",
+        "line": 73,
+        "rule": "trade.low-rate"
+      },
+      "classification": "CORRECTLY CONSERVATIVE",
+      "severity": "none",
+      "status": "RETAINED",
+      "input": {
+        "description": "事件、同 killer 时间窗与可靠存活时间线；无 Spatial 参数",
+        "evidenceIds": [
+          "analytics-tests",
+          "findings-tests"
+        ]
+      },
+      "actualBehavior": "按已冻结时间/击杀事实计数，存活队友构成分母；Finding 明示存活不代表有补枪位置。",
+      "expectedBehavior": "按已冻结时间/击杀事实计数，存活队友构成分母；Finding 明示存活不代表有补枪位置。",
+      "reproduction": {
+        "kind": "SOURCE_AND_EXISTING_SYNTHETIC_REGRESSION",
+        "confirmedComputationalBug": false,
+        "misleadingCopyReproduced": false,
+        "realVertigoReproduced": false
+      },
+      "impact": "限定于所述事实证据与已执行验证，不扩大成地图几何/战术验收。",
+      "minimalFix": "无生产修复；不修改阈值/口径，不增加补枪距离评分。",
+      "verification": {
+        "evidenceIds": [
+          "analytics-tests",
+          "findings-tests"
+        ],
+        "result": "PASS_WITH_STATED_LIMITS"
+      }
+    },
+    {
+      "id": "C06",
+      "module": "Teamplay 后续响应",
+      "source": {
+        "path": "packages/deep-review/src/teamplay.ts",
+        "line": 103,
+        "rule": "follow-up window; sameEngagement"
+      },
+      "classification": "CORRECTLY CONSERVATIVE",
+      "severity": "none",
+      "status": "RETAINED",
+      "input": {
+        "description": "同回合死亡及严格更晚的同 killer direct damage/kill",
+        "evidenceIds": [
+          "domain-tests"
+        ]
+      },
+      "actualBehavior": "none-observed 需足够完整 feed；same tick 不排序；同组仅比较真实 Engagement ID；不用距离判失败。",
+      "expectedBehavior": "none-observed 需足够完整 feed；same tick 不排序；同组仅比较真实 Engagement ID；不用距离判失败。",
+      "reproduction": {
+        "kind": "SOURCE_AND_EXISTING_SYNTHETIC_REGRESSION",
+        "confirmedComputationalBug": false,
+        "misleadingCopyReproduced": false,
+        "realVertigoReproduced": false
+      },
+      "impact": "限定于所述事实证据与已执行验证，不扩大成地图几何/战术验收。",
+      "minimalFix": "无生产修复；没有响应记录不等于犹豫、失职或无支援。",
+      "verification": {
+        "evidenceIds": [
+          "domain-tests"
+        ],
+        "result": "PASS_WITH_STATED_LIMITS"
+      }
+    },
+    {
+      "id": "C07",
+      "module": "仅本人参与的死亡",
+      "source": {
+        "path": "packages/deep-review/src/findings.ts",
+        "line": 127,
+        "rule": "deep.teamplay.lone-contact-death-pattern"
+      },
+      "classification": "CORRECTLY CONSERVATIVE",
+      "severity": "none",
+      "status": "RETAINED",
+      "input": {
+        "description": "整组确认参与、死亡和随后 team response",
+        "evidenceIds": [
+          "domain-tests",
+          "desktop-tests"
+        ]
+      },
+      "actualBehavior": "输出确认参与事实；UI 明示不代表孤立、看得到、来得及或具备支援条件。",
+      "expectedBehavior": "输出确认参与事实；UI 明示不代表孤立、看得到、来得及或具备支援条件。",
+      "reproduction": {
+        "kind": "SOURCE_AND_EXISTING_SYNTHETIC_REGRESSION",
+        "confirmedComputationalBug": false,
+        "misleadingCopyReproduced": false,
+        "realVertigoReproduced": false
+      },
+      "impact": "限定于所述事实证据与已执行验证，不扩大成地图几何/战术验收。",
+      "minimalFix": "无生产修复；不以最近队友距离推导站位责任。",
+      "verification": {
+        "evidenceIds": [
+          "domain-tests",
+          "desktop-tests"
+        ],
+        "result": "PASS_WITH_STATED_LIMITS"
+      }
+    },
+    {
+      "id": "C08",
+      "module": "后续跟进的资格文案",
+      "source": {
+        "path": "apps/desktop/electron/deep-review-copy.ts",
+        "line": 93,
+        "rule": "deep.teamplay.no-followup-pattern"
+      },
+      "classification": "SEMANTIC AMBIGUITY",
+      "severity": "low",
+      "status": "FIXED",
+      "input": {
+        "description": "5 合成回合：队友 t100 死亡，玩家 t140 才首次受击，无主动输出",
+        "evidenceIds": [
+          "domain-tests",
+          "desktop-tests",
+          "electron"
+        ]
+      },
+      "actualBehavior": "领域仍正确输出 5/5；原翻译遗漏参与时间限制，伤害或击杀记录也可能被理解为主动输出。",
+      "expectedBehavior": "只补 caveat：参与包含受击/被击杀，可能晚于队友阵亡，不能证明阵亡前参与；保留非补枪失败/不可判断支援限制。",
+      "reproduction": {
+        "kind": "SYNTHETIC_DOMAIN_RULE_AND_UI",
+        "confirmedComputationalBug": false,
+        "misleadingCopyReproduced": true,
+        "realVertigoReproduced": false
+      },
+      "impact": "no-followup 结论的参与方向/时刻资格理解；规则结果正确。",
+      "minimalFix": "只补 caveat：参与包含受击/被击杀，可能晚于队友阵亡，不能证明阵亡前参与；保留非补枪失败/不可判断支援限制。",
+      "verification": {
+        "evidenceIds": [
+          "domain-tests",
+          "desktop-tests",
+          "electron"
+        ],
+        "result": "PASS_WITH_STATED_LIMITS"
+      }
+    },
+    {
+      "id": "C09",
+      "module": "HE 直接效果",
+      "source": {
+        "path": "packages/deep-review/src/utility-outcomes.ts",
+        "line": 27,
+        "rule": "unique same-round/actor/tick linkage"
+      },
+      "classification": "CORRECTLY CONSERVATIVE",
+      "severity": "none",
+      "status": "RETAINED",
+      "input": {
+        "description": "HE detonate 与 reported damage event refs",
+        "evidenceIds": [
+          "domain-tests",
+          "historical-utility"
+        ]
+      },
+      "actualBehavior": "仅唯一精确关联；缺 weapon、未知 actor、多候选降级；partial 数值只是观察子集。",
+      "expectedBehavior": "仅唯一精确关联；缺 weapon、未知 actor、多候选降级；partial 数值只是观察子集。",
+      "reproduction": {
+        "kind": "SOURCE_AND_EXISTING_SYNTHETIC_REGRESSION",
+        "confirmedComputationalBug": false,
+        "misleadingCopyReproduced": false,
+        "realVertigoReproduced": false
+      },
+      "impact": "限定于所述事实证据与已执行验证，不扩大成地图几何/战术验收。",
+      "minimalFix": "无生产修复；距离与零伤害不判坏雷、投掷意图或封路效果。",
+      "verification": {
+        "evidenceIds": [
+          "domain-tests",
+          "historical-utility"
+        ],
+        "result": "PASS_WITH_STATED_LIMITS"
+      }
+    },
+    {
+      "id": "C10",
+      "module": "火焰效果",
+      "source": {
+        "path": "packages/deep-review/src/utility-outcomes.ts",
+        "line": 25,
+        "rule": "fire linkage unavailable"
+      },
+      "classification": "CORRECTLY CONSERVATIVE",
+      "severity": "none",
+      "status": "RETAINED",
+      "input": {
+        "description": "start_burn 与缺少 inferno causal ID 的伤害流",
+        "evidenceIds": [
+          "domain-tests",
+          "historical-utility"
+        ]
+      },
+      "actualBehavior": "effect-level reportedEnemyDamage=null/unavailable；即使同 actor 后续伤害也不硬关联。",
+      "expectedBehavior": "effect-level reportedEnemyDamage=null/unavailable；即使同 actor 后续伤害也不硬关联。",
+      "reproduction": {
+        "kind": "SOURCE_AND_EXISTING_SYNTHETIC_REGRESSION",
+        "confirmedComputationalBug": false,
+        "misleadingCopyReproduced": false,
+        "realVertigoReproduced": false
+      },
+      "impact": "限定于所述事实证据与已执行验证，不扩大成地图几何/战术验收。",
+      "minimalFix": "无生产修复；不推断火焰封路、绕路或价值。",
+      "verification": {
+        "evidenceIds": [
+          "domain-tests",
+          "historical-utility"
+        ],
+        "result": "PASS_WITH_STATED_LIMITS"
+      }
+    },
+    {
+      "id": "C11",
+      "module": "闪光效果",
+      "source": {
+        "path": "packages/deep-review/src/utility-outcomes.ts",
+        "line": 53,
+        "rule": "unique entityId + actor linkage"
+      },
+      "classification": "CORRECTLY CONSERVATIVE",
+      "severity": "none",
+      "status": "RETAINED",
+      "input": {
+        "description": "FlashEvent 的 entityId、actor、victim、raw duration",
+        "evidenceIds": [
+          "domain-tests",
+          "historical-utility"
+        ]
+      },
+      "actualBehavior": "reuse/missing/mismatch 降级，保留零时长与敌友自身；原始时长不等于连续致盲；官方助攻不猜单颗归属。",
+      "expectedBehavior": "reuse/missing/mismatch 降级，保留零时长与敌友自身；原始时长不等于连续致盲；官方助攻不猜单颗归属。",
+      "reproduction": {
+        "kind": "SOURCE_AND_EXISTING_SYNTHETIC_REGRESSION",
+        "confirmedComputationalBug": false,
+        "misleadingCopyReproduced": false,
+        "realVertigoReproduced": false
+      },
+      "impact": "限定于所述事实证据与已执行验证，不扩大成地图几何/战术验收。",
+      "minimalFix": "无生产修复；不引入闪光质量或基于位置的效果评分。",
+      "verification": {
+        "evidenceIds": [
+          "domain-tests",
+          "historical-utility"
+        ],
+        "result": "PASS_WITH_STATED_LIMITS"
+      }
+    },
+    {
+      "id": "C12",
+      "module": "烟雾 / 诱饵与 C4 阶段",
+      "source": {
+        "path": "packages/deep-review/src/utility-outcomes.ts",
+        "line": 26,
+        "rule": "not-applicable directOutcome"
+      },
+      "classification": "CORRECTLY CONSERVATIVE",
+      "severity": "none",
+      "status": "RETAINED",
+      "input": {
+        "description": "效果 XYZ、时刻、人数、bomb lifecycle",
+        "evidenceIds": [
+          "domain-tests"
+        ]
+      },
+      "actualBehavior": "仅保留上下文；没有 blockedEnemy/cutSightline/goodSmoke 等结论；planted 不等于守包意图。",
+      "expectedBehavior": "仅保留上下文；没有 blockedEnemy/cutSightline/goodSmoke 等结论；planted 不等于守包意图。",
+      "reproduction": {
+        "kind": "SOURCE_AND_EXISTING_SYNTHETIC_REGRESSION",
+        "confirmedComputationalBug": false,
+        "misleadingCopyReproduced": false,
+        "realVertigoReproduced": false
+      },
+      "impact": "限定于所述事实证据与已执行验证，不扩大成地图几何/战术验收。",
+      "minimalFix": "无生产修复；不存在 LOS、封路效果、战术收益输出。",
+      "verification": {
+        "evidenceIds": [
+          "domain-tests"
+        ],
+        "result": "PASS_WITH_STATED_LIMITS"
+      }
+    },
+    {
+      "id": "C13",
+      "module": "V1 道具伤害 Finding",
+      "source": {
+        "path": "packages/findings/src/index.ts",
+        "line": 93,
+        "rule": "utility.damage-high / utility.damage-low"
+      },
+      "classification": "CORRECTLY CONSERVATIVE",
+      "severity": "none",
+      "status": "RETAINED",
+      "input": {
+        "description": "P3 aggregate 有效敌伤与 release counts",
+        "evidenceIds": [
+          "findings-tests"
+        ]
+      },
+      "actualBehavior": "只比较直接敌伤，低值明确不衡量封路拖延；无空间依赖。",
+      "expectedBehavior": "只比较直接敌伤，低值明确不衡量封路拖延；无空间依赖。",
+      "reproduction": {
+        "kind": "SOURCE_AND_EXISTING_SYNTHETIC_REGRESSION",
+        "confirmedComputationalBug": false,
+        "misleadingCopyReproduced": false,
+        "realVertigoReproduced": false
+      },
+      "impact": "限定于所述事实证据与已执行验证，不扩大成地图几何/战术验收。",
+      "minimalFix": "无生产修复；不评价单颗道具质量。",
+      "verification": {
+        "evidenceIds": [
+          "findings-tests"
+        ],
+        "result": "PASS_WITH_STATED_LIMITS"
+      }
+    },
+    {
+      "id": "C14",
+      "module": "V1 官方闪光助攻 / 队友受闪",
+      "source": {
+        "path": "packages/findings/src/index.ts",
+        "line": 108,
+        "rule": "utility.flash-high / team-flash.frequent-effects"
+      },
+      "classification": "CORRECTLY CONSERVATIVE",
+      "severity": "none",
+      "status": "RETAINED",
+      "input": {
+        "description": "官方 assistedFlash+assister、原始 victim effects",
+        "evidenceIds": [
+          "findings-tests"
+        ]
+      },
+      "actualBehavior": "官方助攻支持已记录击杀支援；受闪次数不等于有效闪光或持续时长；不从坐标推导损失。",
+      "expectedBehavior": "官方助攻支持已记录击杀支援；受闪次数不等于有效闪光或持续时长；不从坐标推导损失。",
+      "reproduction": {
+        "kind": "SOURCE_AND_EXISTING_SYNTHETIC_REGRESSION",
+        "confirmedComputationalBug": false,
+        "misleadingCopyReproduced": false,
+        "realVertigoReproduced": false
+      },
+      "impact": "限定于所述事实证据与已执行验证，不扩大成地图几何/战术验收。",
+      "minimalFix": "无生产修复；没有空间质量或战术意图判断。",
+      "verification": {
+        "evidenceIds": [
+          "findings-tests"
+        ],
+        "result": "PASS_WITH_STATED_LIMITS"
+      }
+    },
+    {
+      "id": "C15",
+      "module": "Execution 两条结论",
+      "source": {
+        "path": "packages/deep-review/src/findings.ts",
+        "line": 104,
+        "rule": "deep.execution.no-confirmed-return-pattern / return-contact-consistent"
+      },
+      "classification": "CORRECTLY CONSERVATIVE",
+      "severity": "none",
+      "status": "RETAINED",
+      "input": {
+        "description": "received-first exchange 及随后同对手 damage/kill",
+        "evidenceIds": [
+          "domain-tests",
+          "desktop-tests"
+        ]
+      },
+      "actualBehavior": "只述是否记录到反向伤害/击杀；空间不参与规则资格；UI 明示不是反应速度/枪法评价。",
+      "expectedBehavior": "只述是否记录到反向伤害/击杀；空间不参与规则资格；UI 明示不是反应速度/枪法评价。",
+      "reproduction": {
+        "kind": "SOURCE_AND_EXISTING_SYNTHETIC_REGRESSION",
+        "confirmedComputationalBug": false,
+        "misleadingCopyReproduced": false,
+        "realVertigoReproduced": false
+      },
+      "impact": "限定于所述事实证据与已执行验证，不扩大成地图几何/战术验收。",
+      "minimalFix": "无生产修复；不因距离近判定必可还击。",
+      "verification": {
+        "evidenceIds": [
+          "domain-tests",
+          "desktop-tests"
+        ],
+        "result": "PASS_WITH_STATED_LIMITS"
+      }
+    },
+    {
+      "id": "C16",
+      "module": "Impact 三条结论",
+      "source": {
+        "path": "packages/deep-review/src/findings.ts",
+        "line": 58,
+        "rule": "deep.impact.multikill-swing / sole-survivor-sequence / multikill-unconverted"
+      },
+      "classification": "CORRECTLY CONSERVATIVE",
+      "severity": "none",
+      "status": "RETAINED",
+      "input": {
+        "description": "确认击杀、原子人数变化和回合结果",
+        "evidenceIds": [
+          "domain-tests",
+          "desktop-tests"
+        ]
+      },
+      "actualBehavior": "只述多杀/人数/结果，无空间输入；caveat 不把单杀归因为回合胜负。",
+      "expectedBehavior": "只述多杀/人数/结果，无空间输入；caveat 不把单杀归因为回合胜负。",
+      "reproduction": {
+        "kind": "SOURCE_AND_EXISTING_SYNTHETIC_REGRESSION",
+        "confirmedComputationalBug": false,
+        "misleadingCopyReproduced": false,
+        "realVertigoReproduced": false
+      },
+      "impact": "限定于所述事实证据与已执行验证，不扩大成地图几何/战术验收。",
+      "minimalFix": "无生产修复；未引入站位、路线或战术价值结论。",
+      "verification": {
+        "evidenceIds": [
+          "domain-tests",
+          "desktop-tests"
+        ],
+        "result": "PASS_WITH_STATED_LIMITS"
+      }
+    },
+    {
+      "id": "C17",
+      "module": "Deep Review 队友闪光",
+      "source": {
+        "path": "packages/deep-review/src/findings.ts",
+        "line": 159,
+        "rule": "deep.utility.teamflash-repeated"
+      },
+      "classification": "CORRECTLY CONSERVATIVE",
+      "severity": "none",
+      "status": "RETAINED",
+      "input": {
+        "description": "可明确归属的 flash effect + teammate victim rows",
+        "evidenceIds": [
+          "domain-tests",
+          "desktop-tests"
+        ]
+      },
+      "actualBehavior": "统计颗数与受闪行；位置 coverage 不参与资格；不判断闪光质量/持续时间。",
+      "expectedBehavior": "统计颗数与受闪行；位置 coverage 不参与资格；不判断闪光质量/持续时间。",
+      "reproduction": {
+        "kind": "SOURCE_AND_EXISTING_SYNTHETIC_REGRESSION",
+        "confirmedComputationalBug": false,
+        "misleadingCopyReproduced": false,
+        "realVertigoReproduced": false
+      },
+      "impact": "限定于所述事实证据与已执行验证，不扩大成地图几何/战术验收。",
+      "minimalFix": "无生产修复；保持已观察事实。",
+      "verification": {
+        "evidenceIds": [
+          "domain-tests",
+          "desktop-tests"
+        ],
+        "result": "PASS_WITH_STATED_LIMITS"
+      }
+    },
+    {
+      "id": "C18",
+      "module": "最终 UI 投影",
+      "source": {
+        "path": "apps/desktop/electron/report.ts",
+        "line": 279,
+        "rule": "adaptDeepReviewFinding -> Desktop DTO -> renderer cards"
+      },
+      "classification": "CORRECTLY CONSERVATIVE",
+      "severity": "none",
+      "status": "RETAINED",
+      "input": {
+        "description": "domain finding、次数、回合、caveats",
+        "evidenceIds": [
+          "desktop-tests",
+          "electron"
+        ]
+      },
+      "actualBehavior": "原始 nearest/XYZ 不被投影成隐藏战术判断；卡片保留说明与限制；两个修复仅在 presenter。",
+      "expectedBehavior": "原始 nearest/XYZ 不被投影成隐藏战术判断；卡片保留说明与限制；两个修复仅在 presenter。",
+      "reproduction": {
+        "kind": "REAL_NUKE_PLUS_SOURCE_OR_SYNTHETIC_REGRESSION",
+        "confirmedComputationalBug": false,
+        "misleadingCopyReproduced": false,
+        "realVertigoReproduced": false
+      },
+      "impact": "限定于所述事实证据与已执行验证，不扩大成地图几何/战术验收。",
+      "minimalFix": "无生产修复；领域包无UI/Electron依赖，公共接口和 frozen rules 未变。",
+      "verification": {
+        "evidenceIds": [
+          "desktop-tests",
+          "electron"
+        ],
+        "result": "PASS_WITH_STATED_LIMITS"
+      }
+    }
+  ],
+  "unverified": [
+    {
+      "id": "U01",
+      "classification": "NOT VERIFIED",
+      "status": "NOT RUN",
+      "scope": "Real Vertigo DEM",
+      "expectedVerification": "Use an existing whitelisted real Vertigo fixture if one becomes available; never synthetic substitution.",
+      "severity": "unrated-unknown",
+      "source": "docs/demo-fixtures.md; local .demo listing",
+      "input": "No Vertigo DEM in allowed local fixture inventory",
+      "actualBehavior": "No real Vertigo validation performed",
+      "expectedBehavior": "Keep the unknown boundary explicit; do not infer a successful validation.",
+      "realReproduction": false,
+      "impact": "Real Vertigo DEM",
+      "minimalFix": "No production change. Preserve current limitations; do not download fixtures or add prohibited algorithms.",
+      "verification": {
+        "result": "NOT RUN",
+        "nextStep": "Use an existing whitelisted real Vertigo fixture if one becomes available; never synthetic substitution."
+      }
+    },
+    {
+      "id": "U02",
+      "classification": "NOT VERIFIED",
+      "status": "UNCONFIRMED",
+      "scope": "Radar/DEM version alignment, entity freshness, source-feed completeness",
+      "expectedVerification": "Independent version/entity/source evidence; finite XYZ or exact requested tick alone is insufficient.",
+      "severity": "unrated-unknown",
+      "source": "apps/desktop/shared/replay-map-geometry.ts:23; packages/match-model/src/spatial.ts",
+      "input": "Exact native/entity observations and unconfirmed radar metadata",
+      "actualBehavior": "Version alignment remains unconfirmed; freshness and source completeness not established",
+      "expectedBehavior": "Keep the unknown boundary explicit; do not infer a successful validation.",
+      "realReproduction": false,
+      "impact": "Radar/DEM version alignment, entity freshness, source-feed completeness",
+      "minimalFix": "No production change. Preserve current limitations; do not download fixtures or add prohibited algorithms.",
+      "verification": {
+        "result": "UNCONFIRMED",
+        "nextStep": "Independent version/entity/source evidence; finite XYZ or exact requested tick alone is insufficient."
+      }
+    },
+    {
+      "id": "U03",
+      "classification": "NOT VERIFIED",
+      "status": "NOT IMPLEMENTED",
+      "scope": "LOS, collision, cover, topology, navigable route, supportability, utility quality and intent",
+      "expectedVerification": "Outside S2; no implementation or claimed verification.",
+      "severity": "unrated-unknown",
+      "source": "Reviewed production source and contracts listed in findings",
+      "input": "XYZ / straight-line distances / schematic radar without topology or collision data",
+      "actualBehavior": "No LOS/path/supportability/utility-quality implementation or acceptance claim",
+      "expectedBehavior": "Keep the unknown boundary explicit; do not infer a successful validation.",
+      "realReproduction": false,
+      "impact": "LOS, collision, cover, topology, navigable route, supportability, utility quality and intent",
+      "minimalFix": "No production change. Preserve current limitations; do not download fixtures or add prohibited algorithms.",
+      "verification": {
+        "result": "NOT IMPLEMENTED",
+        "nextStep": "Outside S2; no implementation or claimed verification."
+      }
+    }
+  ],
+  "validation": {
+    "tests": [
+      {
+        "id": "domain-tests",
+        "command": "node --test packages/dem-parser/tests/spatial.test.mjs packages/deep-review/tests/engagements.test.mjs packages/deep-review/tests/execution.test.mjs packages/deep-review/tests/teamplay.test.mjs packages/deep-review/tests/utility.test.mjs packages/deep-review/tests/findings.test.mjs",
+        "exitCode": 0,
+        "passed": 176,
+        "failed": 0,
+        "skipped": 0,
+        "log": ".tmp/p7-s2-domain-tests.log",
+        "cancelled": 0
+      },
+      {
+        "id": "desktop-tests",
+        "command": "pnpm --filter @cs2-analyst/desktop test",
+        "exitCode": 0,
+        "passed": 178,
+        "failed": 0,
+        "skipped": 0,
+        "log": ".tmp/p7-s2-desktop-tests.log",
+        "cancelled": 0
+      },
+      {
+        "id": "analytics-tests",
+        "command": "pnpm --filter @cs2-analyst/analytics test",
+        "exitCode": 0,
+        "passed": 53,
+        "failed": 0,
+        "skipped": 0,
+        "log": ".tmp/p7-s2-analytics-tests.log",
+        "cancelled": 0
+      },
+      {
+        "id": "findings-tests",
+        "command": "pnpm --filter @cs2-analyst/findings test",
+        "exitCode": 0,
+        "passed": 17,
+        "failed": 0,
+        "skipped": 0,
+        "log": ".tmp/p7-s2-findings-tests.log",
+        "cancelled": 0
+      },
+      {
+        "id": "typecheck",
+        "command": "pnpm typecheck",
+        "exitCode": 0,
+        "tasksPassed": 15,
+        "tasksTotal": 15,
+        "cached": 12,
+        "log": ".tmp/p7-s2-typecheck.log"
+      },
+      {
+        "id": "build",
+        "command": "pnpm build",
+        "exitCode": 0,
+        "tasksPassed": 8,
+        "tasksTotal": 8,
+        "cached": 6,
+        "log": ".tmp/p7-s2-build.log"
+      }
+    ],
+    "uniqueNodeTests": {
+      "passed": 424,
+      "failed": 0,
+      "skipped": 0,
+      "overlapPolicy": "Do not add the baseline reviewer 36 or Desktop subsets again."
+    },
+    "preflightFailures": [
+      {
+        "command": "pnpm install --offline --frozen-lockfile",
+        "exitCode": 1,
+        "reason": "ERR_PNPM_NO_OFFLINE_TARBALL (turbo)"
+      },
+      {
+        "command": "pnpm install --frozen-lockfile",
+        "exitCode": 1,
+        "reason": "Stopped owned install after stalled 429/430 packages; reused existing identical-lockfile dependencies through local directory junctions."
+      },
+      {
+        "command": "node --test apps/desktop/tests/report-ux.test.mjs (before dependency links)",
+        "exitCode": 1,
+        "passed": 0,
+        "failed": 1,
+        "skipped": 0,
+        "reason": "ERR_MODULE_NOT_FOUND react at test entry; covered by later full Desktop PASS."
+      },
+      {
+        "command": "node scripts/p7-s2-spatial-audit.mjs \"E:\\cs2-analyst\\.demo\\nuke.dem\" \"E:\\cs2-analyst\\.tmp\\p7-s2\"",
+        "attempt": 1,
+        "exitCode": -1,
+        "status": "INTERRUPTED",
+        "reason": "Quadratic collector-only deduplication; fixed using Set, final behavioral script rerun exit 0. No product assertion failure observed."
+      }
+    ],
+    "notRun": [
+      "Real Vertigo",
+      "Installed package acceptance",
+      "Unrelated full Replay playback / performance / DPI acceptance",
+      "All-match/all-player rendered-frame exhaustive verification",
+      "S6 integrated or independent manual acceptance"
+    ],
+    "environment": {
+      "platform": "Windows x64",
+      "node": "v26.3.0",
+      "pnpm": "10.0.0",
+      "dependencySetup": "Ignored directory junctions reuse original checkout dependencies and DEM directory; no DEM copied. Native binary/provenance copied locally and hash verified.",
+      "nativeSha256": "132d664125b60542dc80dc8bc270e2c8e181a0a55433fdac5be285ef4d9b0de1"
+    },
+    "repositoryChecks": {
+      "diffCheckExitCode": 0,
+      "trackedDemCount": 0,
+      "productionPackageBoundaryChanges": false
+    }
+  },
+  "independentReview": {
+    "status": "PASS",
+    "method": "Independent read-only review of presenter changes, regression tests, collectors, source/claim alignment and final evidence; authored copy change separately checked by Heatmap reviewer.",
+    "corrections": [
+      "Collector independently rebuilds Match windows/roster/observation categories and pins Nuke numeric constants; shared native/domain input does not independently verify overview metadata or entity freshness.",
+      "Independent grid cell and grid rejection arithmetic distinguished from event unlocatable-reason conservation only.",
+      "Browser connector not used is distinguished from absence of a browser skill; no claim that deferred connector tools are unavailable."
+    ],
+    "blockingFindings": 0
+  },
+  "classificationSummary": {
+    "confirmedBugs": 0,
+    "semanticAmbiguities": 2,
+    "fixedSemanticAmbiguities": 2,
+    "correctlyConservative": 25,
+    "notVerified": 3
+  }
+}

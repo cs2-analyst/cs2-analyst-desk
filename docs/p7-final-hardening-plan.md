@@ -1,8 +1,8 @@
 # P7 最终补强：多楼层回放正确性 + 展示 UX（分阶段）
 
-> 最新执行状态（2026-10-18）：**S0诊断与S1修复已完成并真实Electron验收**，见 [S1报告](./p7-nuke-replay-fix.md)。本轮停在S1；S2–S4/S6未实施，S5仍仅设计获批，L0–L5/P8未启动。下文保留剩余P7规划，不表示已获实施授权。原规划基线 `56cb31ec813362cb5fe7c021285ef6e44ee3101d`；S1基线 `f44141a5aaa01d140efd8486f8f99fee288fd027`。
+> 最新执行状态（2026-10-19）：最新主分支基线 `f1a05b8e73a1c2e7953449ab7c288d4dc58317eb` 已包含 **S0/S1、S3、S4、S5 方案 A 实施与热力图全图层关闭修复**。S3–S5 的实际实施与专项验收见各自报告，不由本次 S2 代验：[S3](./p7-s3-collapse-motion.md)、[S4](./p7-s4-analysis-deep-review-ux.md)、[S5](./p7-s5-report-layout-implementation.md)。本次 S2 结果见 [空间语义审计](./p7-s2-spatial-semantics-audit.md)；S6 未执行，L0–L5/P8 未启动。下文保留原规划与历史门槛，不表示新增授权。原规划基线 `56cb31ec813362cb5fe7c021285ef6e44ee3101d`；S1基线 `f44141a5aaa01d140efd8486f8f99fee288fd027`。
 >
-> 产品目标：实现清晰、准确、可复现的双层地图回放；平滑可访问的 Collapse 展开/收起；分析/深度复盘视图内容分组选项卡并内部滚动；比赛报告只给三套布局设计，**不实施布局改造**。
+> 原规划产品目标：实现清晰、准确、可复现的双层地图回放；平滑可访问的 Collapse 展开/收起；分析/深度复盘视图内容分组选项卡并内部滚动；比赛报告最初仅作布局设计，后经独立授权实施方案 A，见 S5 报告。
 
 ## 0. 执行顺序与拆分
 
@@ -10,10 +10,10 @@
 | --- | --- | --- |
 | **S0 — Nuke Replay Diagnosis**（P0） | 用现有本地 `.demo/nuke.dem` 逐 tick 确认所谓“缺帧”原因 | 数据层/插值/楼层过滤/资源错配可区分，真实故障报告可重放 |
 | **S1 — Multi-floor Replay Fix**（P0） | 依据 S0 结论修复回放正确性，不制造假坐标 | Nuke 自动与手动楼层、跨层/死亡/未知 Z、倍速/seek/Chunk 通过真实 Electron；不回归 Dust2 |
-| **S2 — Spatial Semantics Audit**（P0 审计） | 横向审查 Nuke/Vertigo：Deep Review、Spatial Evidence、Heatmap 的 Z/楼层覆盖和限制 | 已有 XYZ 与未实现拓扑/LOS 分开记录；无证据的跨层判断不升级为“已适配” |
+| **S2 — Spatial Semantics Audit**（P0 审计） | 横向审查 Nuke/Vertigo：Deep Review、Spatial Evidence、Heatmap 的 Z/楼层覆盖和限制 | 本次结果见 S2 报告；Nuke 实证与 Vertigo 真实 NOT RUN 分开记录，不升级为拓扑/LOS 已适配 |
 | **S3 — Collapse Motion**（P2） | 统一展开/收起动画及 reduced-motion | 无状态丢失/焦点错乱、内容不裁断、动画平滑 |
 | **S4 — Analysis & Deep Review UX**（P2） | 分析三选项卡、深度复盘两个 Tooltip + 三选项卡、空状态/内部滚动 | 不改变任何指标、Findings、关联回合/回放跳转 |
-| **S5 — Report Layout Study**（设计已批准） | 方案 A「顶部 8 KPI + 下方双列独立滚动」经用户正式选定；其他两案仅保留对照 | **DESIGN APPROVED / NOT IMPLEMENTED**；此轮只更新文档，报告 UI 必须另行授权、实机验收 |
+| **S5 — Report Layout A**（已实施） | 方案 A「顶部 8 KPI + 下方双列独立滚动」已按独立授权实施并合入主分支；其他两案仅保留对照 | 专项真实 Electron 验收见 S5 报告；本次 S2 不重复该项验收 |
 | **S6 — Acceptance** | 全量回归与真实 Windows Electron 人工验收 | 本 P7 观察项关闭前，禁止启动 L 或 P8 |
 
 S0→S1 必须分离；无法取得真实 `.demo/nuke.dem` 或未能复现时只报告未验证，不应用“显示旧位置”“猜楼层”“画平滑跨层直线”之类假修复。Vertigo 如无本地真实样本，明确未验收。
@@ -96,7 +96,9 @@ S0→S1 必须分离；无法取得真实 `.demo/nuke.dem` 或未能复现时只
 - 既有 `查看相关回合`、`比赛回放 Rn`、`说明与限制` 及证据 DTO 不变；卡片内部 Collapse 动画统一由 S3 处理。
 - 响应式：1024×640 与 1920×1032，禁止外层页面滚动；滚动条只在选中 Tab 内容内部。
 
-## 5. S5 比赛报告：方案 A 已获批准，仅设计不实施
+## 5. S5 比赛报告：原设计门槛（实施结果见 S5 报告）
+
+2026-10-19 状态校正：以下为原设计授权边界；其后方案 A 已经独立授权实施，提交 `daf5196` 经 PR #8 合入主分支。此处保留设计依据，不再将阶段状态标为 NOT IMPLEMENTED。
 
 **用户已选定方案 A：顶部八项指标 + 下方 Findings / 道具与残局两列独立内部滚动。** 方案 B/C 只留作对照，不能自行切换。完整布局、内容保留、响应式风险、结构示意与门槛见 [比赛报告方案 A 冻结设计](./p7-report-layout-options.md)。仍必须保留 8 项 KPI、Findings、道具、残局、错误警告和证据/回合联动；无页面滚动不能通过裁内容实现。**本次只确认产品设计，没有授权改 Report JSX/CSS。实现应在 Nuke 核心正确性问题得到处理后单独安排。**
 
