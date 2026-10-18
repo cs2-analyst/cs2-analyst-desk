@@ -14,6 +14,9 @@ import { WinOption as Option } from './winui-option';
 import { palette } from './theme';
 import { replayEffectAssetUrls } from './replay-effect-assets';
 import type { ReplayEffectImages } from './replay-effect-assets';
+import { replayFloorAt } from './replay-floor';
+import type { ReplayFloorState, ReplayFloorStatus } from './replay-floor';
+import { ReplayMapImages } from './replay-map-images';
 
 /**
  * Desktop analysis layout: the panel owns the full height and nothing here scrolls as a page.
@@ -51,6 +54,8 @@ const useStyles = makeStyles({
   },
   map: { position: 'relative', flexShrink: 0 },
   mapInfo: { position: 'absolute', top: '8px', right: '8px', zIndex: 1 },
+  floorNotice: { position: 'absolute', top: '10px', left: '10px', zIndex: 1, maxWidth: 'calc(100% - 60px)' },
+  mapError: { position: 'absolute', top: '48px', left: '12px', right: '12px', zIndex: 1 },
   mapPhase: {
     position: 'absolute', bottom: '10px', left: '10px', zIndex: 1, width: 'fit-content',
     backgroundColor: palette.replay.surface, pointerEvents: 'none',
@@ -264,13 +269,15 @@ export function ReplayPlayer({ metadata, fileName, initialPlayerId, active, jump
   const showNicknames=nicknames.sessionId===metadata.sessionId&&nicknames.visible;
   const effectImages=useRef<ReplayEffectImages>({});
   const [loading,setLoading]=useState(false),[error,setError]=useState<string|null>(null),[revision,setRevision]=useState(0);
-  const [imageReady,setImageReady]=useState(false),[imageFailed,setImageFailed]=useState(false);
+  const [floorView,setFloorView]=useState<{layerId:string|null;status:ReplayFloorStatus;ready:boolean;failed:boolean}>({layerId:null,status:'unknown',ready:false,failed:false});
+  const floorUi=useRef(floorView),floorHistory=useRef<ReplayFloorState|null>(null),seekRevision=useRef(0);
+  const mapImages=useRef<ReplayMapImages|null>(null),backgroundKey=useRef('');
   const [selectedReplayPlayerId,setSelectedReplayPlayerId]=useState(()=>resolveReplayPlayerId(metadata.players,initialPlayerId));
   const [visibleEvents,setVisibleEvents]=useState<DesktopReplayEvent[]>([]),[appendSequence,setAppendSequence]=useState(0);
   const cache=useRef(new ReplayChunkCache()),clock=useRef(new ReplayClock(first?.startTick??0));
   const inFlight=useRef(false),generation=useRef(0),resume=useRef(false),failed=useRef(new Set<string>());
   const baseCanvas=useRef<HTMLCanvasElement>(null),canvas=useRef<HTMLCanvasElement>(null),box=useRef<HTMLDivElement>(null);
-  const image=useRef<HTMLImageElement|null>(null),drawTimes=useRef<number[]>([]);
+  const drawTimes=useRef<number[]>([]);
   const mapColumn=useRef<HTMLDivElement>(null),fit=useRef<()=>void>(()=>{});
   const roundMenu=useRoundMenu();
   const eventsList=useRef<HTMLDivElement>(null);
@@ -283,12 +290,12 @@ export function ReplayPlayer({ metadata, fileName, initialPlayerId, active, jump
   const playerIds=metadata.players.map(p=>p.id);
   const mapState=mapResourceState(metadata.map,replayMapAssets),map=mapState.definition;
   const frame=chunk?replayDisplayFrame(chunk,tick,metadata.maxInterpolationTicks,playerIds,map?z=>resolveMapLayer(map,z):undefined):null;
-  const selectedIndex=metadata.players.findIndex(p=>p.id===selectedReplayPlayerId),selected=frame?.players.find(p=>p[0]===selectedIndex);
-  const layerId=map?(floor==='auto'?resolveMapLayer(map,selected?.[4]??null):floor):null;
-  const layer=map?.layers.find(l=>l.id===layerId),url=layer?replayMapAssets[layer.image]:undefined;
-  const availableMap=mapState.status!=='unavailable'&&!imageFailed;
-  const live=useRef({info,selectedPlayerId:selectedReplayPlayerId,active,map,layerId,imageReady,showNicknames});
-  live.current={info,selectedPlayerId:selectedReplayPlayerId,active,map,layerId,imageReady,showNicknames};
+  const layer=map?.layers.find(l=>l.id===floorView.layerId);
+  const imageReady=floorView.ready;
+  const availableMap=mapState.status!=='unavailable';
+  const live=useRef({info,selectedPlayerId:selectedReplayPlayerId,active,map,floor,layerId:null as string|null,imageReady:false,showNicknames});
+  // Drawing owns layerId/imageReady; React must not overwrite them with a low-frequency tick.
+  live.current={...live.current,info,selectedPlayerId:selectedReplayPlayerId,active,map,floor,showNicknames};
 
   useEffect(()=>{setSelectedReplayPlayerId(current=>metadata.players.some(p=>p.id===current)?current:resolveReplayPlayerId(metadata.players,initialPlayerId));},[metadata.sessionId]);
 
@@ -321,6 +328,7 @@ export function ReplayPlayer({ metadata, fileName, initialPlayerId, active, jump
 
   function seek(next:number,round=live.current.info,resetEvents=false,keepPlaying=false) {
     if(!round)return;
+    seekRevision.current++;floorHistory.current=null;
     const now=performance.now(),wasPlaying=clock.current.playing||resume.current;
     clock.current.pause(now,metadata.tickRate);resume.current=false;setPlaying(false);
     const bounded=Math.max(round.startTick,Math.min(round.endTick,next));clock.current.seek(bounded,now);setTick(bounded);setError(null);
@@ -345,7 +353,7 @@ export function ReplayPlayer({ metadata, fileName, initialPlayerId, active, jump
     const round=live.current.info;if(!round||!timed)return;
     if(clock.current.playing||resume.current){clock.current.pause(performance.now(),metadata.tickRate);resume.current=false;setPlaying(false);setTick(clock.current.tick);}
     else {
-      if(clock.current.tick>=round.endTick){clock.current.seek(round.startTick,performance.now());trimVisibleEvents(round.startTick);setTick(round.startTick);}
+      if(clock.current.tick>=round.endTick){seekRevision.current++;floorHistory.current=null;clock.current.seek(round.startTick,performance.now());trimVisibleEvents(round.startTick);setTick(round.startTick);}
       const needed=blockAt(round,clock.current.tick);
       if(needed&&cache.current.get(round.round,needed.index)){clock.current.play(performance.now());setPlaying(true);}
       else if(needed)resume.current=true;
@@ -375,6 +383,27 @@ export function ReplayPlayer({ metadata, fileName, initialPlayerId, active, jump
     const target=canvas.current,view=live.current;if(!target)return;
     const ctx=target.getContext('2d');if(!ctx)return;
     const started=performance.now();ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,target.width,target.height);
+    const map=view.map;
+    const selectedIndex=metadata.players.findIndex(p=>p.id===view.selectedPlayerId);
+    const decision=map?replayFloorAt(floorHistory.current,{sessionId:metadata.sessionId,matchId:metadata.matchId,
+      round:view.info?.round??0,playerId:view.selectedPlayerId,seekRevision:seekRevision.current,mode:view.floor,
+      tick:at,map,selected:current?.players.find(p=>p[0]===selectedIndex)}):null;
+    floorHistory.current=decision;
+    const layerId=decision?.layerId??null,entry=layerId?mapImages.current?.entries.get(layerId):undefined;
+    view.layerId=layerId;view.imageReady=entry?.status==='ready';
+    const nextUi={layerId,status:decision?.status??'unknown' as ReplayFloorStatus,ready:view.imageReady,failed:entry?.status==='failed'};
+    const prior=floorUi.current;
+    if(prior.layerId!==nextUi.layerId||prior.status!==nextUi.status||prior.ready!==nextUi.ready||prior.failed!==nextUi.failed){floorUi.current=nextUi;setFloorView(nextUi);}
+    // Base and foreground are committed together, from this exact display tick.
+    const base=baseCanvas.current,key=`${layerId}:${view.imageReady}:${base?.width}:${base?.height}`;
+    if(base&&backgroundKey.current!==key){
+      const baseCtx=base.getContext('2d');baseCtx?.clearRect(0,0,base.width,base.height);
+      if(view.imageReady&&entry)baseCtx?.drawImage(entry.image,0,0,base.width,base.height);
+      backgroundKey.current=key;
+    }
+    if(base)base.dataset.layer=view.imageReady?layerId??'':'';
+    target.dataset.layer=layerId??'';target.dataset.floorStatus=decision?.status??'unknown';
+    target.dataset.imageReady=String(view.imageReady);
     target.dataset.tick=String(at);target.dataset.playerCount='0';target.dataset.nicknameCount='0';
     target.dataset.effectAssets=String(Object.keys(effectImages.current).length);
     // Effects are a pure function of the chunk and the current tick: no accumulation, so
@@ -384,8 +413,8 @@ export function ReplayPlayer({ metadata, fileName, initialPlayerId, active, jump
     target.dataset.smoke=String(effects.smoke.length);target.dataset.fire=String(effects.fire.length);
     target.dataset.flying=String(effects.flying.length);target.dataset.flashes=String(effects.flashes.length);
     target.dataset.explosions=String(effects.explosions.length);target.dataset.blind=String(effects.blinds.size);target.dataset.burn=String(effects.burns.size);
-    if(!view.map||!current||!view.imageReady||!view.layerId)return;
-    const map=view.map,layerId=view.layerId;ctx.setTransform(target.width/map.width,0,0,target.height/map.height,0,0);
+    if(!map||!current||!view.imageReady||!layerId)return;
+    ctx.setTransform(target.width/map.width,0,0,target.height/map.height,0,0);
     // Layer 2: persistent areas. They are translucent and painted before every player mark.
     for(const utility of effects.smoke)drawArea(ctx,map,layerId,utility,at,metadata.tickRate,effectImages.current.fireAtlas);
     for(const utility of effects.fire)drawArea(ctx,map,layerId,utility,at,metadata.tickRate,effectImages.current.fireAtlas);
@@ -493,18 +522,12 @@ export function ReplayPlayer({ metadata, fileName, initialPlayerId, active, jump
     return()=>{cancelAnimationFrame(raf);document.removeEventListener('visibilitychange',hidden);clock.current.pause(performance.now(),metadata.tickRate);resume.current=false;};
   },[active,metadata.sessionId]);
   useEffect(()=>{
-    image.current=null;setImageReady(false);setImageFailed(false);
-    fit.current=()=>{};
-    const base=baseCanvas.current;if(base)base.getContext('2d')?.clearRect(0,0,base.width,base.height);
-    if(!url||mapState.status==='unavailable')return;
-    const img=new Image();let disposed=false;
-    img.onload=()=>{if(!disposed){image.current=img;setImageReady(true);drawBackground();}};
-    img.onerror=()=>{if(!disposed)setImageFailed(true);};img.src=url;
-    function drawBackground(){const base=baseCanvas.current;if(!base)return;const ctx=base.getContext('2d');ctx?.clearRect(0,0,base.width,base.height);if(image.current)ctx?.drawImage(image.current,0,0,base.width,base.height);}
-    // Canvas pixel sizing lives in the layout effect below; drawing belongs to the image lifecycle.
-    fit.current=drawBackground;drawBackground();
-    return()=>{disposed=true;fit.current=()=>{};img.onload=null;img.onerror=null;};
-  },[url,active]);
+    backgroundKey.current='';floorHistory.current=null;
+    const images=availableMap&&map?new ReplayMapImages(map.layers.map(layer=>[layer.id,replayMapAssets[layer.image]])):null;
+    mapImages.current=images;
+    fit.current=()=>{backgroundKey.current='';};
+    return()=>{images?.dispose();if(mapImages.current===images)mapImages.current=null;backgroundKey.current='';fit.current=()=>{};};
+  },[metadata.sessionId,metadata.matchId,map?.id,availableMap]);
   // The radar keeps its 1:1 shape and fills the largest square the column allows; nothing here can push page height.
   useEffect(()=>{
     const host=mapColumn.current,map=box.current;
@@ -543,7 +566,7 @@ export function ReplayPlayer({ metadata, fileName, initialPlayerId, active, jump
       <div className={s.controls}>
         <Switch className={s.switch} checked={continuous} onChange={(_,d)=>setContinuous(d.checked)} label="连续播放" />
         <Switch className={s.switch} checked={showNicknames} onChange={(_,d)=>setNicknames({sessionId:metadata.sessionId,visible:d.checked})} label="显示昵称" />
-        {map&&map.layers.length>1?<Dropdown className={s.dropdown} aria-label="回放楼层" value={floor==='auto'?'跟随玩家':map.layers.find(l=>l.id===floor)?.label} selectedOptions={[floor]} onOptionSelect={(_,d)=>d.optionValue&&setFloor(d.optionValue)}><Option value="auto">跟随玩家</Option>{map.layers.map(l=><Option key={l.id} value={l.id}>{l.label}</Option>)}</Dropdown>:null}
+        {map&&map.layers.length>1?<Dropdown className={s.dropdown} aria-label="回放楼层" value={floor==='auto'?'跟随玩家':map.layers.find(l=>l.id===floor)?.label} selectedOptions={[floor]} onOptionSelect={(_,d)=>{if(d.optionValue){floorHistory.current=null;seekRevision.current++;live.current.floor=d.optionValue;setFloor(d.optionValue);}}}><Option value="auto">跟随玩家</Option>{map.layers.map(l=><Option key={l.id} value={l.id}>{l.label}</Option>)}</Dropdown>:null}
       </div>
       <span className={s.spacer} />
       <Badge appearance="tint" color="warning">地图版本未确认</Badge>
@@ -557,10 +580,12 @@ export function ReplayPlayer({ metadata, fileName, initialPlayerId, active, jump
             <span>CT 蓝方块 / T 橙圆点；白框为选中玩家。</span>
             <span>炸弹标记为事件关联位置；道具图标沿回放记录的真实垂直投影轨迹移动。</span>
             <span>烟雾/火焰按真实生效与结束记录显示；闪光/手雷为短促展示动画。拖尾只覆盖最近一段飞行；没有可靠轨迹时只显示效果，不伪造路径。</span>
-            {map&&map.layers.length>1?<span>{layer?`当前${layer.label}；其他层点位隐藏。`:'选中玩家楼层未知，请手动选层。'}未知 Z 与共享高度边界不自动归层。</span>:null}
+            {map&&map.layers.length>1?<span>{layer?`当前展示${layer.label}；其他层点位隐藏。`:'目标楼层未知，请手动选层。'}未知 Z 与共享高度边界不自动归层。</span>:null}
             {info.coverage==='partial'?<span>该回合存在缺失或歧义状态；断点不连接，未知状态不补齐。</span>:null}
           </div>} />
         </div>
+        {map&&map.layers.length>1&&floor==='auto'&&floorView.status!=='known'?<Badge className={s.floorNotice} appearance="tint" color="warning" size="small" data-replay-floor-notice>{floorView.status==='retained'?'目标楼层未知 · 沿用上一确认层':'目标楼层未知 · 请手动选层'}</Badge>:null}
+        {floorView.failed?<Body1 className={s.mapError} role="alert">本机没有配套雷达资源或图片无法装载；仍可浏览事件与玩家状态。</Body1>:null}
         {info.freezeEndTick!==null&&tick<info.freezeEndTick?<Badge className={s.mapPhase} data-replay-phase appearance="outline" size="small">冻结阶段</Badge>:null}
         <div ref={box} className={s.map}>
           <canvas ref={baseCanvas} className={s.canvas} aria-hidden="true" />
@@ -603,7 +628,7 @@ export function ReplayPlayer({ metadata, fileName, initialPlayerId, active, jump
         <div className={s.group}>
           <div className={s.groupHeader}><Caption1>玩家状态</Caption1><Caption1 className={s.muted}>{metadata.players.length} 人</Caption1></div>
           <div className={s.players} aria-label="回放玩家状态">
-            {metadata.players.map((player,index)=>{const p=frame?.players.find(p=>p[0]===index);return <Button key={player.id} className={s.player} appearance={player.id===selectedReplayPlayerId?'secondary':'subtle'} aria-pressed={player.id===selectedReplayPlayerId} onClick={()=>setSelectedReplayPlayerId(player.id)} title={player.nickname}><span className={s.name}>{index+1}. {player.nickname}</span><Caption1>{p?.[8]??'Unknown'} · {p?.[7]===false?'阵亡':p?.[7]===true?`${p[6]??'—'} HP`:'未知'}</Caption1></Button>;})}
+            {metadata.players.map((player,index)=>{const p=frame?.players.find(p=>p[0]===index);return <Button key={player.id} className={s.player} appearance={player.id===selectedReplayPlayerId?'secondary':'subtle'} aria-pressed={player.id===selectedReplayPlayerId} onClick={()=>{if(player.id!==live.current.selectedPlayerId){floorHistory.current=null;live.current.selectedPlayerId=player.id;setSelectedReplayPlayerId(player.id);}}} title={player.nickname}><span className={s.name}>{index+1}. {player.nickname}</span><Caption1>{p?.[8]??'Unknown'} · {p?.[7]===false?'阵亡':p?.[7]===true?`${p[6]??'—'} HP`:'未知'}</Caption1></Button>;})}
           </div>
         </div>
         <div className={`${s.group} ${s.eventsGroup}`}>

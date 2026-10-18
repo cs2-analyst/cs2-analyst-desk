@@ -361,3 +361,10 @@ git ls-files '*.dem'
 fire 的 molotov/incendiary 区分依赖可关联的 `weapon_fire`；burn 窗口由真实伤害 tick 聚合而非逐帧状态；
 未实现 3D 抛物线、LOS、地形遮挡或双层地图道具专项截图。以上不改变既有 Replay/Heatmap/Analytics/
 Findings/Deep Review 结论。
+
+## 2026-10-18 — P7-S1 多楼层展示上下文修复
+
+目标坐标与底图上下文分离；同一 RAF 决定全部绘制层，按会话复用有限解码底图。
+真实 Nuke 五窗/三模式/三倍速、完整1× R1/R2及生命周期、Dust2回归通过；没有补坐标或改领域统计。
+详细失效规则、性能口径、截图、失败重跑和未执行项见 [S1验收](./p7-nuke-replay-fix.md) 与
+[机器证据](./p7-nuke-replay-fix.json)。原S0证据不变；停在S1，不进入其他P7工作包、L或P8。

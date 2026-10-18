@@ -15,9 +15,14 @@ import { ProcessScope } from './installed-smoke-lifecycle.mjs';
 import { replayDisplayFrame } from '../apps/desktop/renderer/src/replay-state.ts';
 import { resolveMapLayer, worldToRadar } from '../apps/desktop/shared/replay-map-geometry.ts';
 import { explainFrame, explainPlayer, summarizeObservedFrames } from './replay-diagnosis-core.mjs';
+import { auditFloorContinuity } from './replay-floor-audit.mjs';
+import { replayMapDefinitions } from '../apps/desktop/shared/replay-map-geometry.ts';
 
+const s1 = process.argv.includes('--s1'),lifecycleOnly=process.argv.includes('--lifecycle-only');
+assert.ok(!lifecycleOnly||s1,'--lifecycle-only requires --s1');
 const input = resolve('.tmp/p7-nuke-s0'), sequencesOnly = process.argv.includes('--sequences'), fullOnly = process.argv.includes('--full-only');
-const out = sequencesOnly ? join(input, 'sequences') : input; mkdirSync(out, { recursive: true });
+const destination=s1?resolve('.tmp/p7-nuke-s1'):input;
+const out = sequencesOnly ? join(destination, 'sequences') : lifecycleOnly?join(destination,'lifecycle'):destination; mkdirSync(out, { recursive: true });
 const source = JSON.parse(readFileSync(join(input, 'source.json')));
 const fixture = resolve('.demo/nuke.dem'), digest = createHash('sha256');
 for await (const chunk of createReadStream(fixture)) digest.update(chunk);
@@ -33,12 +38,12 @@ const child = spawn(require('electron'), ['.', `--remote-debugging-port=${port}`
   '--disable-features=CalculateNativeWinOcclusion', '--disable-backgrounding-occluded-windows'],
 { cwd: resolve('apps/desktop'), env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
 scope.track(child, 'S0 Nuke Electron', start);
-let page, log = '', result = { schema: 'p7-s0-electron-v1', fixtureSha256: source.sha256,
+let page, log = '', result = { schema: s1?'p7-s1-electron-v1':'p7-s0-electron-v1', fixtureSha256: source.sha256,
   measurement: sequencesOnly ? 'Visual sequence run includes pixel readback/CDP screenshot overhead; exclude from quantitative timing aggregates'
     : 'MutationObserver after actual Canvas paint; QA React/decision reads add overhead, no uninstrumented FPS claim',
   runs: [], screenshots: [], checks: {} };
 if(fullOnly){
-  const previous=JSON.parse(readFileSync(join(input,'electron.json')));
+  const previous=JSON.parse(readFileSync(join(destination,'electron.json')));
   result={...previous,runs:previous.runs.filter(r=>r.label!=='full-r1-r2-auto-1'),status:'COLLECTING',
     attempts:[...(previous.attempts??[]),{status:'FAILED',scope:'Initial full R1/R2 trace retrieval',
       reason:'CDP connection closed on one-shot Runtime.evaluate(window.__s0.frames); successful 45 matrix and two boundary runs retained. Retry drains bounded batches.'}]};
@@ -58,16 +63,21 @@ await withCleanup(async () => {
   await waitFor(() => evaluate('Boolean(window.cs2Analyst && document.querySelector("main"))'), 30000, 'React/preload');
   await page.send('Network.enable');
   await page.send('Network.emulateNetworkConditions', { offline: true, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
+  const importStart=Date.now();
   await evaluate('[...document.querySelectorAll("button")].find(b=>b.textContent.includes("选择 DEM")).click()');
   await waitFor(() => evaluate('document.querySelector("main")?.dataset.status === "success"'), 120000, 'Nuke import');
-  result.importMs = Date.now() - start;
+  result.importMs = Date.now() - importStart;
+  result.processMemory=(await scope.live()).map(p=>({pid:p.pid,role:p.commandLine?.includes('node.mojom.NodeService')?'utility':'other',peak:p.peakWorkingSet,workingSet:p.workingSet}));
+  const opened=Date.now();
   await evaluate('document.getElementById("replay-tab").click()');
-  await waitFor(() => evaluate('Boolean(document.querySelector("#replay-panel canvas[role=img]")?.dataset.tick)'), 30000, 'Replay canvas');
+  await waitFor(() => evaluate(`Boolean(document.querySelector('#replay-panel canvas[role=img]')?.dataset.tick)&&document.querySelector('[data-replay-session]')?.dataset.replayMapReady==='true'`), 30000, 'Replay canvas');
+  result.firstFrameMs=Date.now()-opened;
   // QA reads current React tree; no state dispatch, cache access mutation, protocol or production edit.
   await evaluate(`(() => {
     const replayDisplayFrame=${replayDisplayFrame.toString()}, resolveMapLayer=${resolveMapLayer.toString()}, worldToRadar=${worldToRadar.toString()};
     const explainPlayer=${explainPlayer.toString()}, explainFrame=${explainFrame.toString()};
-    window.__s0={frames:[],requests:[],record:false};
+    window.__s0={frames:[],requests:[],record:false,ids:new WeakMap(),nextId:1};
+    const identity=o=>{if(!window.__s0.ids.has(o))window.__s0.ids.set(o,window.__s0.nextId++);return window.__s0.ids.get(o);};
     window.__s0Read=()=>{
       const node=document.querySelector('[data-replay-session]');if(!node)return null;
       let root=node[Object.keys(node).find(k=>k.startsWith('__reactFiber$'))];while(root?.return)root=root.return;
@@ -76,18 +86,22 @@ await withCleanup(async () => {
       const hooks=[];for(let h=fiber.memoizedState;h;h=h.next)hooks.push(h.memoizedState);
       const refs=hooks.filter(h=>h&&typeof h==='object'&&Object.hasOwn(h,'current'));
       const live=refs.find(r=>r.current?.selectedPlayerId!==undefined)?.current;
-      const cache=refs.find(r=>r.current?.entries instanceof Map)?.current;
+      const cache=refs.find(r=>r.current?.entries instanceof Map&&typeof r.current.put==='function')?.current;
       const clock=refs.find(r=>r.current?.anchorMs!==undefined)?.current;
       if(!live||!cache||!clock)throw new Error('Replay refs not found');
       const canvas=document.querySelector('#replay-panel canvas[role=img]'),at=Number(canvas.dataset.tick),meta=fiber.memoizedProps.metadata;
       const block=live.info.blocks.find(b=>Math.floor(at)>=b.startTick&&Math.floor(at)<=b.endTick);
       const chunk=block?cache.entries.get(live.info.round+':'+block.index):null;
       const index=meta.players.findIndex(p=>p.id===live.selectedPlayerId);
+      const base=document.querySelector('#replay-panel canvas[aria-hidden=true]');
+      const images=refs.find(r=>r.current?.entries instanceof Map&&typeof r.current.dispose==='function')?.current;
       const mode=document.querySelector('[aria-label=回放楼层]').textContent==='跟随玩家'?'auto':live.layerId;
       const explained=chunk?explainFrame(chunk,at,meta,live.map,index,mode):null;
       const eligible=chunk&&live.layerId?explainFrame(chunk,at,meta,live.map,index,live.layerId).eligible:0;
       return {ms:performance.now(),round:live.info.round,tick:at,uiTick:Number(node.dataset.replayTick),clockTick:clock.tick,
         clockRead:clock.read(performance.now(),meta.tickRate),playing:clock.playing,speed:clock.speed,
+        floorStatus:canvas.dataset.floorStatus??null,baseLayer:base.dataset.layer??null,drawP95:Number(canvas.dataset.drawP95??0),
+        imageCacheId:images?identity(images):null,imageCache:images?[...images.entries].map(([id,e])=>({id,identity:identity(e.image),status:e.status,width:e.image.naturalWidth,height:e.image.naturalHeight,src:e.image.src})):null,
         playerId:live.selectedPlayerId,mode,layerId:live.layerId,targetFloor:explained?.layerId??null,imageReady:live.imageReady,
         chunkLoaded:!!chunk,block:block?.index,cacheKeys:[...cache.entries.keys()],drawn:Number(canvas.dataset.playerCount),paintCalls:canvas.__s0PaintCalls??null,eligible,
         selected:explained?.selected??null,leftTick:explained?.leftTick,rightTick:explained?.rightTick,gap:explained?.gap,
@@ -109,9 +123,10 @@ await withCleanup(async () => {
   result.ipc=[];
   for(const round of metadata.rounds)for(const block of round.blocks){
     const request={sessionId:metadata.sessionId,round:round.round,block:block.index};
-    const actual=await evaluate(`(async()=>{const start=performance.now(),r=await window.cs2Analyst.replay.getChunk(${JSON.stringify(request)});if(r.kind!=='success')throw new Error(r.message);const text=JSON.stringify(r.chunk.frames);const fnv=${fnv.toString()};return {ms:performance.now()-start,hash:fnv(text),frames:r.chunk.frames.length,startTick:r.chunk.startTick,endTick:r.chunk.endTick};})()`);
+    const actual=await evaluate(`(async()=>{const start=performance.now(),r=await window.cs2Analyst.replay.getChunk(${JSON.stringify(request)});if(r.kind!=='success')throw new Error(r.message);const text=JSON.stringify(r.chunk.frames);const fnv=${fnv.toString()};return {ms:performance.now()-start,hash:fnv(text),contentHash:fnv(JSON.stringify({events:r.chunk.events,utilities:r.chunk.utilities??[],blinds:r.chunk.blinds??[],burns:r.chunk.burns??[]})),frames:r.chunk.frames.length,startTick:r.chunk.startTick,endTick:r.chunk.endTick};})()`);
     const expected=sourceChunks.find(c=>c.round===round.round&&c.block===block.index);
     assert.equal(actual.hash,fnv(JSON.stringify(expected.frames)),'IPC frame parity '+round.round+':'+block.index);
+    assert.equal(actual.contentHash,fnv(JSON.stringify({events:expected.events,utilities:expected.utilities??[],blinds:expected.blinds??[],burns:expected.burns??[]})),'IPC event/utility parity '+round.round+':'+block.index);
     assert.equal(actual.startTick,expected.startTick);assert.equal(actual.endTick,expected.endTick);
     result.ipc.push({round:round.round,block:block.index,...actual});
   }
@@ -121,10 +136,11 @@ await withCleanup(async () => {
     await evaluate(`document.querySelector('[aria-label="${label}"]').click()`);
     await waitFor(() => evaluate(`[...document.querySelectorAll('[role=option]')].some(o=>o.textContent.trim()===${JSON.stringify(value)})`), 10000, 'option ' + value);
     await evaluate(`[...document.querySelectorAll('[role=option]')].find(o=>o.textContent.trim()===${JSON.stringify(value)}).click()`);
+    if(s1&&label==='回放楼层')await waitFor(()=>evaluate(`(()=>{const f=window.__s0Read();return ${JSON.stringify(value)}==='跟随玩家'?f.floorStatus!=='manual':f.floorStatus==='manual'&&f.layerId===${JSON.stringify(value==='下层'?'lower':'default')};})()`),5000,'floor committed');
   };
   const pause = async () => { await evaluate('document.querySelector("[aria-label=暂停回放]")?.click()'); await delay(150); };
   const seek = async tick => {
-    await evaluate(`(()=>{const s=document.querySelector('[aria-label=回放进度]');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(s,${tick});s.dispatchEvent(new Event('input',{bubbles:true}));})()`);
+    await evaluate(`(()=>{const s=document.querySelector('[aria-label=回放进度]'),set=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;for(const v of [${tick}===Number(s.min)?${tick}+1:${tick}-1,${tick}]){set.call(s,v);s.dispatchEvent(new Event('input',{bubbles:true}));}})()`);
     await waitFor(() => evaluate(`Math.abs(Number(document.querySelector('#replay-panel canvas[role=img]').dataset.tick)-${tick})<.01`), 20000, 'seek ' + tick);
     await delay(150);
   };
@@ -156,7 +172,26 @@ await withCleanup(async () => {
     assert.ok(frames.length>0,'Actual paint observations required');
     assert.ok(frames.every(f=>f.paintCalls===f.drawn),'Canvas marker calls must agree with actual draw count');
     const filename = label + '-frames.json'; writeFileSync(join(out, filename), JSON.stringify(frames));
+    if(s1&&label.startsWith('w')&&label.includes('跟随玩家')){
+      const evidence=frames.find(f=>f.floorStatus==='retained'&&(label.startsWith('w5-')||f.drawn>0));
+      assert.ok(evidence,'Actual forward playback must retain background context');
+      if(label.startsWith('w1-'))assert.ok(frames.some(f=>f.tick>4352&&f.tick<4356&&f.drawn===9),'W1 death boundary draws nine survivors');
+    }
     const summary = summarizeObservedFrames(frames);
+    if(s1){
+      summary.floorAudit=auditFloorContinuity(frames,replayMapDefinitions.find(m=>m.id===metadata.map));
+      assert.equal(summary.floorAudit.layerMismatches,0,'Independent observed history agrees with painted floor');
+      assert.equal(summary.floorAudit.erroneousFrames,0,'Independent oracle finds no erroneous whole-map blanks');
+      const mismatches=frames.filter(f=>f.imageReady&&f.baseLayer!==f.layerId);
+      const erroneous=frames.filter(f=>f.floorStatus==='retained'&&f.eligible>0&&f.imageReady&&f.drawn===0);
+      assert.equal(mismatches.length,0,'Base/players/effects use one floor');
+      assert.equal(erroneous.length,0,'No erroneous whole-map blank with reliable history and survivors');
+      assert.equal(summary.eligibleDrawMismatchFrames,0);
+      summary.erroneousBlankFrames=erroneous.length;summary.baseLayerMismatchFrames=mismatches.length;
+      summary.targetUnknownFrames=frames.filter(f=>['unknown','retained'].includes(f.floorStatus)).length;
+      summary.retainedFrames=frames.filter(f=>f.floorStatus==='retained').length;
+      summary.drawP95=Math.max(...frames.map(f=>f.drawP95));
+    }
     // Actual unavailable-current-block intervals, as distinct from background prefetch requests.
     let waitStart = null, waitingMs = 0, waitCount = 0, maxWaitingClockAdvance = 0, waitTick = null;
     for (const f of frames) {
@@ -171,7 +206,7 @@ await withCleanup(async () => {
     console.log(JSON.stringify({ label, ...summary, waitCount, waitingMs }));
   }
   // Five deterministic source windows, three floor modes, three speeds; actual playback.
-  for (const [i, window] of (fullOnly?[]:source.windows).entries()) {
+  for (const [i, window] of (fullOnly||lifecycleOnly?[]:source.windows).entries()) {
     await selectRound(window.round);
     await evaluate(`document.querySelectorAll('[aria-label="回放玩家状态"] button')[${window.playerIndex}].click()`);
     for (const mode of ['跟随玩家', '主层', '下层']) {
@@ -183,6 +218,7 @@ await withCleanup(async () => {
         await seek(from);
         await playRun(`w${i + 1}-${mode}-${speed}`, `window.__s0Read().tick>=${to}`, 15000);
         if (speed === 1) {
+          if(s1)await screenshot(`w${i+1}-${mode}-played`);
           // Pause at both exact and inter-sample evidence, then show survivors after death.
           for (const tick of [window.startTick, window.tick, window.endTick + 0.5]) {
             // Slider intentionally accepts only integer ticks; fractional diagnostic seek is NOT used.
@@ -196,7 +232,7 @@ await withCleanup(async () => {
     }
   }
   // Pause stability, repeated seek (cold/warm block), real cross-chunk and continuous cross-round.
-  if(!fullOnly){
+  if(!fullOnly&&!lifecycleOnly){
   const stable = await evaluate('window.__s0Read().tick'); await delay(300);
   assert.equal(await evaluate('window.__s0Read().tick'), stable); result.checks.pauseStable = true;
   await selectRound(1); await dropdown('回放楼层', '跟随玩家');
@@ -209,15 +245,72 @@ await withCleanup(async () => {
   await seek(metadata.rounds[0].endTick - 32);
   await playRun('continuous-r1-r2-4', 'window.__s0Read().round===2&&window.__s0Read().tick>' + (metadata.rounds[1].startTick + 64), 15000);
   }
-  if (!process.argv.includes('--quick') && !sequencesOnly) {
+  if (!process.argv.includes('--quick') && !sequencesOnly&&!lifecycleOnly) {
     await selectRound(1); await dropdown('回放倍速', '1×'); await seek(metadata.rounds[0].startTick);
     await dropdown('回放楼层','跟随玩家');
     await evaluate('document.querySelectorAll("[aria-label=回放玩家状态] button")[0].click()');
     // Completes R1 and R2 without seek, entering R3 through the real continuous mode.
     await playRun('full-r1-r2-auto-1', 'window.__s0Read().round===3', 360000);
   }
+  result.processMemory.push(...(await scope.live()).map(p=>({pid:p.pid,role:p.commandLine?.includes('node.mojom.NodeService')?'utility':'other',peak:p.peakWorkingSet,workingSet:p.workingSet,phase:'after-playback'})));
+  if(s1&&!sequencesOnly&&!process.argv.includes('--quick')){
+    const checks=result.checks;
+    await selectRound(1);await dropdown('回放楼层','跟随玩家');
+    await evaluate(`document.querySelectorAll('[aria-label=回放玩家状态] button')[${source.windows[0].playerIndex}].click()`);
+    // Every seek is discontinuous, even when the destination chunk is already warm.
+    await seek(4352);assert.equal((await evaluate('window.__s0Read()')).floorStatus,'known');
+    const imageIdentity=await evaluate('window.__s0Read().imageCache');
+    const oldCacheId=await evaluate('window.__s0Read().imageCacheId');
+    for(const at of [4354,4358,4354]){
+      await seek(at);const f=await evaluate('window.__s0Read()');
+      assert.equal(f.floorStatus,'unknown');assert.equal(f.layerId,null);assert.equal(f.drawn,0);
+    }
+    checks.coldWarmReverseSeekNoHistory=true;
+    await screenshot('lifecycle-cold-death-unknown');
+    await dropdown('回放楼层','主层');assert.equal((await evaluate('window.__s0Read()')).drawn,9);
+    await dropdown('回放楼层','跟随玩家');assert.equal((await evaluate('window.__s0Read()')).layerId,null);
+    checks.manualAutoClearsHistory=true;
+    await seek(4352);
+    await dropdown('回放倍速','1×');
+    await evaluate('document.querySelector("[aria-label=播放回放]").click()');
+    await waitFor(()=>evaluate('window.__s0Read().tick>4356'),5000,'W1 death playback');await pause();
+    assert.equal((await evaluate('window.__s0Read()')).floorStatus,'retained');
+    await screenshot('lifecycle-w1-retained');
+    const stopped=await evaluate('window.__s0Read()');await delay(200);
+    assert.equal((await evaluate('window.__s0Read()')).tick,stopped.tick);
+    for(const speed of ['1.5×','4×','1×']){
+      await dropdown('回放倍速',speed);assert.equal((await evaluate('window.__s0Read()')).floorStatus,'retained');
+    }
+    await dropdown('回放倍速','4×');
+    await evaluate('document.querySelector("[aria-label=播放回放]").click()');
+    await evaluate('(()=>{const until=performance.now()+60;while(performance.now()<until){} })()');
+    await delay(100);await pause();
+    assert.equal((await evaluate('window.__s0Read()')).floorStatus,'retained');checks.slowFrame4xKeepsContext=true;
+    assert.equal((await evaluate('window.__s0Read()')).floorStatus,'retained');checks.pauseResumeSpeed=true;
+    // A briefly selected different target must not leave the prior target's history.
+    await evaluate(`document.querySelectorAll('[aria-label=回放玩家状态] button')[0].click();document.querySelectorAll('[aria-label=回放玩家状态] button')[${source.windows[0].playerIndex}].click()`);
+    await delay(100);assert.equal((await evaluate('window.__s0Read()')).floorStatus,'unknown');checks.rapidTargetReset=true;
+    assert.deepEqual(await evaluate('window.__s0Read().imageCache'),imageIdentity,'All floor/unknown/seek modes reuse decoded images');
+    checks.finiteDecodedImagesReused=true;
+    await evaluate('document.getElementById("report-tab").click()');await delay(100);
+    await evaluate('document.getElementById("replay-tab").click()');await delay(100);
+    assert.deepEqual(await evaluate('window.__s0Read().imageCache'),imageIdentity);checks.inactiveTabReusesImages=true;
+    await evaluate(`(()=>{let node=document.querySelector('[data-replay-session]'),f=node[Object.keys(node).find(k=>k.startsWith('__reactFiber$'))];while(f&&!f.memoizedProps?.metadata)f=f.return;for(let h=f.memoizedState;h;h=h.next){const c=h.memoizedState?.current;if(c?.entries instanceof Map&&typeof c.dispose==='function'){window.__oldS1Images=c;window.__oldS1Entries=[...c.entries.values()];}}})()`);
+    const oldSession=await evaluate('document.querySelector("[data-replay-session]").dataset.replaySession');
+    await evaluate('[...document.querySelectorAll("button")].find(b=>b.textContent.includes("选择 DEM")).click()');
+    await waitFor(()=>evaluate(`document.querySelector('main')?.dataset.status==='success'&&document.querySelector('[data-replay-session]')?.dataset.replaySession!==${JSON.stringify(oldSession)}`),120000,'new DEM session');
+    await evaluate('document.getElementById("replay-tab").click()');await delay(200);
+    assert.equal(await evaluate('window.__oldS1Images.entries.size'),0);
+    assert.equal(await evaluate('window.__oldS1Entries.every(e=>e.image.onload===null&&e.image.onerror===null&&!e.image.getAttribute("src"))'),true);
+    await selectRound(1);await evaluate(`document.querySelectorAll('[aria-label=回放玩家状态] button')[${source.windows[0].playerIndex}].click()`);await seek(4354);
+    assert.equal((await evaluate('window.__s0Read()')).floorStatus,'unknown');
+    assert.notEqual((await evaluate('window.__s0Read()')).imageCacheId,oldCacheId);
+    checks.newSessionRetiresImagesAndHistory=true;
+    await evaluate('delete window.__oldS1Images;delete window.__oldS1Entries');
+  }
+  result.processMemory.push(...(await scope.live()).map(p=>({pid:p.pid,role:p.commandLine?.includes('node.mojom.NodeService')?'utility':'other',peak:p.peakWorkingSet,workingSet:p.workingSet,phase:'after-lifecycle'})));
   result.exceptions = exceptions; assert.deepEqual(exceptions, []);
-  result.status = 'DIAGNOSED';
+  result.status = s1?'PASS':'DIAGNOSED';
   await evaluate('window.__s0Observer.disconnect();window.__s0Restore();delete window.__s0Restore;delete window.__s0Read;delete window.__s0Observer;delete window.__s0');
   await closeApp({ child, evaluate, socket: page.socket });
 }, [

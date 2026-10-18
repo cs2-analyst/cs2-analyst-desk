@@ -35,7 +35,7 @@ const child = spawn(require('electron'), ['.', '--remote-debugging-port=' + port
   cwd: desktop, env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'],
 });
 const scope = new ProcessScope(), tracked = scope.track(child, 'P7 UI acceptance', Date.now());
-let logs = '', page, failure;
+let logs = '', page, failure, shot;
 child.stdout.on('data', data => { logs += data; }); child.stderr.on('data', data => { logs += data; });
 const metrics = { fixture: '.demo/dust2.dem', screenshots: [], checks: [] };
 const wait = (probe, label, timeout = 30000) => waitFor(probe, timeout, label, { intervalMs: 50, diagnostics: () => ({ logs: logs.slice(-3000) }) });
@@ -50,7 +50,7 @@ try {
   const exceptions = [];
   page.socket.addEventListener('message', event => { const message = JSON.parse(event.data); if (message.method === 'Runtime.exceptionThrown') exceptions.push(message.params); });
   await page.send('Runtime.enable'); await page.send('Page.enable');
-  const shot = async name => {
+  shot = async name => {
     const result = await page.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
     const path = join(qa, name + '.png'); writeFileSync(path, Buffer.from(result.data, 'base64')); metrics.screenshots.push(path); return path;
   };
@@ -394,10 +394,10 @@ try {
     assert.ok(row.left >= syntheticRows.listLeft - 1 && row.right <= syntheticRows.listRight + 1, row.name + ' stays inside the list');
   }
   const scrollSyntheticIntoView = async name => {
-    await evaluate('(() => { const list = document.querySelector("[aria-label=回放事件浏览]"); const row = [...list.querySelectorAll("[data-qa-event-row]")].find(node => node.dataset.qaEventRow === "' + name + '"); list.scrollTo({top:Math.max(0, row.getBoundingClientRect().top - list.getBoundingClientRect().top + list.scrollTop),behavior:"instant"}); })()');
+    await evaluate('(() => { const list = document.querySelector("[aria-label=回放事件浏览]"); const row = [...list.querySelectorAll("[data-qa-event-row]")].find(node => node.dataset.qaEventRow === "' + name + '"); const r=row.getBoundingClientRect(),lr=list.getBoundingClientRect(); list.scrollTo({top:Math.max(0,r.top-lr.top+list.scrollTop-(list.clientHeight-r.height)/2),behavior:"instant"}); })()');
     await settleUi(evaluate, 'synthetic ' + name + ' scroll');
-    const visible = await evaluate('(() => { const list = document.querySelector("[aria-label=回放事件浏览]"); const lr = list.getBoundingClientRect(); const row = [...list.querySelectorAll("[data-qa-event-row]")].find(node => node.dataset.qaEventRow === "' + name + '"); const r = row.getBoundingClientRect(); return r.top >= lr.top - 1 && r.bottom <= lr.bottom + 1; })()');
-    assert.equal(visible, true, name + ' row is fully visible in its saved screenshot');
+    const visible = await evaluate('(() => { const list = document.querySelector("[aria-label=回放事件浏览]"); const lr = list.getBoundingClientRect(); const row = [...list.querySelectorAll("[data-qa-event-row]")].find(node => node.dataset.qaEventRow === "' + name + '"); const r = row.getBoundingClientRect(); return {ok:r.top >= lr.top - 1 && r.bottom <= lr.bottom + 1, row:[r.top,r.bottom],list:[lr.top,lr.bottom],scrollTop:list.scrollTop,scrollHeight:list.scrollHeight,clientHeight:list.clientHeight}; })()');
+    assert.equal(visible.ok, true, name + ' row is fully visible in its saved screenshot: ' + JSON.stringify(visible));
   };
   await scrollSyntheticIntoView('single');
   await shot('p7-replay-events-wrapping');
@@ -530,7 +530,7 @@ try {
     // Appending more native throw rows can leave the normal smooth auto-scroll in flight.
     // Finish it before positioning evidence; geometry-only settleUi does not observe this list.
     await wait(()=>evaluate('(()=>{const l=document.querySelector("[aria-label=回放事件浏览]");return l.scrollTop>=l.scrollHeight-l.clientHeight-1;})()'),'event append scroll completes '+width,5000);
-    await evaluate('(() => { const list = document.querySelector("[aria-label=回放事件浏览]"); const ids = ' + JSON.stringify(sameTickIds) + '; const buttons = [...list.querySelectorAll("[data-replay-event]")]; const row = buttons.find(button => button.dataset.replayEvent === ids[0]); if (!row) throw new Error("same-tick row missing"); list.scrollTo({top:Math.max(0, row.getBoundingClientRect().top - list.getBoundingClientRect().top + list.scrollTop),behavior:"instant"}); })()');
+    await evaluate('(() => { const list = document.querySelector("[aria-label=回放事件浏览]"); const ids = ' + JSON.stringify(sameTickIds) + '; const buttons = [...list.querySelectorAll("[data-replay-event]")]; const row = buttons.find(button => button.dataset.replayEvent === ids[0]); if (!row) throw new Error("same-tick row missing"); const r=row.getBoundingClientRect(),lr=list.getBoundingClientRect(); list.scrollTo({top:Math.max(0,r.top-lr.top+list.scrollTop-(list.clientHeight-r.height)/2),behavior:"instant"}); })()');
     await settleUi(evaluate, 'event list same-tick scroll ' + width);
     const sameTickVisible = await evaluate('(() => { const list = document.querySelector("[aria-label=回放事件浏览]"); const lr = list.getBoundingClientRect(); const ids = ' + JSON.stringify(sameTickIds) + '; const buttons = [...list.querySelectorAll("[data-replay-event]")]; return ids.map(id => { const row = buttons.find(button => button.dataset.replayEvent === id); const r = row.getBoundingClientRect(); return r.top >= lr.top - 1 && r.bottom <= lr.bottom + 1; }); })()');
     metrics['sameTickLayout'+width]=await evaluate('(()=>{const l=document.querySelector("[aria-label=回放事件浏览]"),r=l.getBoundingClientRect();return {top:r.top,bottom:r.bottom,scrollTop:l.scrollTop,rows:'+JSON.stringify(sameTickIds)+'.map(id=>{const e=document.querySelector(`[data-replay-event="${id}"]`),r=e.getBoundingClientRect();return {id,text:e.textContent,top:r.top,bottom:r.bottom};})};})()');
