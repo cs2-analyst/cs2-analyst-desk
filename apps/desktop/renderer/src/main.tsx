@@ -258,7 +258,7 @@ function UtilityPanel({ utility }: { utility: DesktopPlayerAnalytics['utility'] 
     <span>{help.utility}</span>
     {utility.flashEffectsComplete ? null : <span>受闪与闪光助攻证据不完整，相关数值可能偏低。</span>}
   </div>;
-  return <Card className={s.panel} data-utility-panel>
+  return <Card className={s.panel} style={{ overflowX: 'auto' }} data-utility-panel>
     <div className={s.panelHeader}><Subtitle1>道具</Subtitle1><InfoTip label="道具面板" content={helpContent} /></div>
     <TabList className={s.utilityTabs} size="small" selectedValue={tab}
       onTabSelect={(_, data) => setTab(data.value as 'throws' | 'damage')}>

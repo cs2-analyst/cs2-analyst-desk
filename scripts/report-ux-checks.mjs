@@ -100,6 +100,17 @@ export async function checkReportLayout(evaluate, label) {
   for (const card of cardScroll) {
     if (card.overflow > 1) assert.equal(card.overflowX, 'auto', label + ': ' + card.kind + ' card hides horizontally clipped content');
   }
+  const horizontalReach = await evaluate(`(() => [...document.querySelectorAll('[data-report-column="utility"] .fui-Card')].map(card => {
+    const max = card.scrollWidth - card.clientWidth;
+    const before = card.scrollLeft;
+    card.scrollTo({ left: max, behavior: 'instant' });
+    const reached = Math.abs(card.scrollLeft - max) <= 1;
+    card.scrollTo({ left: before, behavior: 'instant' });
+    return { kind: card.hasAttribute('data-utility-panel') ? 'utility' : 'clutch', max, reached };
+  }))()`);
+  for (const card of horizontalReach) {
+    assert.equal(card.reached, true, label + ': ' + card.kind + ' card horizontal content is unreachable ' + JSON.stringify(card));
+  }
 
   // Both columns own their scroll offset: moving one must not move the other.
   if (layout.right.scrollHeight > layout.right.clientHeight) {

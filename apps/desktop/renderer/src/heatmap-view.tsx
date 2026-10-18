@@ -116,7 +116,7 @@ export function HeatmapView({ metadata, players, active, sessionActive }: {
         <canvas ref={canvas} width={1} height={1} className={s.canvas} role="img" tabIndex={0} aria-label="热力图雷达；方向键选择网格，右侧查看计数与强度"
           onPointerMove={event => { const rect = event.currentTarget.getBoundingClientRect(); const x = Math.floor((event.clientX - rect.left) / rect.width * resolution), y = Math.floor((event.clientY - rect.top) / rect.height * resolution); if (x >= 0 && y >= 0 && x < resolution && y < resolution) setCellIndex(y * resolution + x); }}
           onFocus={() => setCellIndex(old => old ?? 0)} onKeyDown={event => { const delta = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -resolution, ArrowDown: resolution }[event.key]; if (delta !== undefined) { event.preventDefault(); setCellIndex(old => Math.max(0, Math.min(resolution * resolution - 1, (old ?? 0) + delta))); } }} />
-        {!url || imageState !== 'ready' || !enabled.length || !usable ? <div className={s.notice} role="status"><Body1>{!usable ? heatmapReason(metadata?.unavailableReason) : !url ? '地图映射或底图不可用；仍可查看右侧统计。' : !enabled.length ? '请开启图层，查看位置采样或事件分布。' : imageState === 'error' ? '地图图片加载失败；仍可查看右侧统计。' : '正在加载雷达底图…'}</Body1></div> : null}
+        {!url || imageState !== 'ready' || !usable ? <div className={s.notice} role="status"><Body1>{!usable ? heatmapReason(metadata?.unavailableReason) : !url ? '地图映射或底图不可用；仍可查看右侧统计。' : imageState === 'error' ? '地图图片加载失败；仍可查看右侧统计。' : '正在加载雷达底图…'}</Body1></div> : null}
       </div>
       <aside className={s.side} aria-label="热力图统计与图例">
         <div className={s.group}><Body1>图例 · 当前筛选的相对强度</Body1><Caption1>强度 = 单元格计数 / 当前图层最大单元格计数。不同图层的强度不能直接比较数量；透明度从 0 到 80%。叠加顺序：位置 → 击杀 → 死亡。</Caption1>

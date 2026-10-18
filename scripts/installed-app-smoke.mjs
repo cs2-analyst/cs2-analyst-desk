@@ -484,7 +484,10 @@ async function testSeamScenario() {
     const oldSession = await heatmap.evaluate(`document.querySelector('[data-heatmap-session]').dataset.heatmapSession`);
     await clickSelectDemo(heatmap);
     await waitFor(() => heatmap.evaluate(`document.querySelector('main').dataset.status==='success'&&document.getElementById('report-tab').getAttribute('aria-selected')==='true'&&document.querySelector('[data-heatmap-session]').dataset.heatmapSession!==${JSON.stringify(oldSession)}`), 120_000, 'installed heatmap session replacement');
-    assert.equal(await heatmap.evaluate(`document.querySelectorAll('#heatmap-panel button[aria-pressed=false]').length`), 3);
+    await heatmap.evaluate(`document.getElementById('heatmap-tab').click()`);
+    await waitFor(() => heatmap.evaluate(`document.querySelector('#heatmap-panel canvas').width>1`), 15_000, 'replacement heatmap ready');
+    // New session default state: position density ON, kill/death OFF.
+    assert.deepEqual(await heatmap.evaluate(`[...document.querySelectorAll('#heatmap-panel button[aria-pressed]')].map(b=>b.getAttribute('aria-pressed'))`), ['true', 'false', 'false'], 'new session default: position ON, kills/deaths OFF');
     assert.deepEqual(heatmap.errors, []); await closeGracefully(heatmap);
     await waitFor(async () => (await appProcesses()).length === 0, 20_000, 'test-seam heatmap worker cleanup');
     audit({ stage: 'test-seam-heatmap', status: 'PASS', cases: heatmapResult.cases.length, replacement: 'PASS' });

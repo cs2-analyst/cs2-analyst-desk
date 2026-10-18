@@ -44,7 +44,8 @@ export async function checkHeatmapUx(evaluate, send, { qaDir, direct, memory = a
   };
   const ready = async () => wait(async () => {
     const s = await snapshot();
-    if (!s || !s.enabled.length) return null;
+    if (!s) return null;
+    // All layers off is a valid state; only wait for enabled layers to be ready.
     for (const layer of s.enabled) {
       const state = s.results.layers[layer];
       if (state?.status === 'error') throw new Error(`${layer}: ${state.message}`);
@@ -70,7 +71,14 @@ export async function checkHeatmapUx(evaluate, send, { qaDir, direct, memory = a
   };
   const shot = async name => { if (qaDir) { const result = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false }); writeFileSync(join(qaDir, name + '.png'), Buffer.from(result.data, 'base64')); } };
   assert.equal(await evaluate(`document.querySelectorAll('[data-app-sidebar] [role=tab]').length`), 6);
-  assert.equal(await evaluate(`document.querySelectorAll('[role=tabpanel]').length`), 6);
+  const panels = await evaluate(`(() => {
+    const top = [...document.querySelectorAll('[role=tabpanel]')].filter(p => !p.parentElement.closest('[role=tabpanel]'));
+    return top.map(p => ({ id: p.id, tab: document.getElementById(p.getAttribute('aria-labelledby'))?.getAttribute('aria-controls') }));
+  })()`);
+  assert.deepEqual(panels.map(p => p.id).sort(),
+    ['analysis-panel', 'deep-review-panel', 'heatmap-panel', 'replay-panel', 'report-panel', 'timeline-panel'],
+    'six first-level panels remain present alongside the nested Analysis/Deep Review panels');
+  for (const panel of panels) assert.equal(panel.tab, panel.id, 'first-level Tab must control its panel');
   const start = performance.now();
   await evaluate(`document.getElementById('replay-tab').focus()`);
   await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'ArrowDown', code: 'ArrowDown', windowsVirtualKeyCode: 40 });
@@ -182,6 +190,33 @@ export async function checkHeatmapUx(evaluate, send, { qaDir, direct, memory = a
   }
   await evaluate(`document.querySelector('#heatmap-panel button[aria-label="玩家位置密度"]').click()`); await ready();
   await memory('after-tab-returns');
+  // All layers off: clean base map remains visible, no placeholder overlay.
+  await evaluate(`document.querySelectorAll('#heatmap-panel button[aria-pressed=true]').forEach(b=>b.click())`);
+  await settleUi(evaluate, 'all layers off');
+  assert.deepEqual(await evaluate(`[...document.querySelectorAll('#heatmap-panel button[aria-pressed]')].map(b=>b.getAttribute('aria-pressed'))`), ['false', 'false', 'false']);
+  const allOffPixels = await evaluate(pixelExpression);
+  assert.ok(allOffPixels.opaque > 0, 'base map must remain visible when all layers are off');
+  assert.equal(await evaluate(`document.querySelector('#heatmap-panel canvas').isConnected`), true);
+  assert.equal(await evaluate(`getComputedStyle(document.querySelector('#heatmap-panel canvas')).display`), 'block');
+  const noticeVisible = await evaluate(`(() => {const notice = document.querySelector('[data-heatmap-map] [role=status]'); return notice ? getComputedStyle(notice).display !== 'none' : false;})()`);
+  assert.equal(noticeVisible, false, 'no overlay placeholder when all layers off');
+  await shot('heatmap-all-layers-off');
+  // Re-enable one layer: data overlay resumes.
+  await evaluate(`document.querySelector('#heatmap-panel button[aria-label="击杀位置"]').click()`);
+  await ready();
+  const killsOnPixels = await evaluate(pixelExpression);
+  assert.notEqual(killsOnPixels.hash, allOffPixels.hash, 're-enabling a layer must change pixels');
+  await evaluate(`document.querySelector('#heatmap-panel button[aria-label="击杀位置"]').click()`);
+  await settleUi(evaluate, 'back to all off');
+  assert.deepEqual((await snapshot()).enabled, []);
+  // Navigate away and return: all-off state persists.
+  await evaluate(`document.getElementById('report-tab').click()`); await settleUi(evaluate, 'leave all-off');
+  await evaluate(`document.getElementById('heatmap-tab').click()`); await settleUi(evaluate, 'return to all-off');
+  assert.deepEqual((await snapshot()).enabled, [], 'all-off state must survive tab navigation');
+  const returnPixels = await evaluate(pixelExpression);
+  assert.ok(returnPixels.opaque > 0, 'base map still visible after tab return');
+  await evaluate(`document.querySelector('#heatmap-panel button[aria-label="玩家位置密度"]').click()`); await ready();
+  await memory('after-all-layers-off-checks');
   await evaluate(`window.cs2Analyst.window.toggleMaximize()`); await settleUi(evaluate, 'native maximize heatmap');
   assert.ok((await evaluate(pixelExpression)).opaque > 0);
   await evaluate(`window.cs2Analyst.window.toggleMaximize()`); await settleUi(evaluate, 'native restore heatmap');
