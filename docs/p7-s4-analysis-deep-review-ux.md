@@ -47,7 +47,7 @@
 | `pnpm typecheck` | PASS — 15/15 |
 | `pnpm build` | PASS — 8/8 |
 | `pnpm --filter @cs2-analyst/desktop test` | PASS — 170/170，0 FAIL / 0 SKIP |
-| `node scripts/desktop-report-smoke.mjs`（真实 Electron，demo1） | PASS — 真实报告、损坏 DEM、非 .dem 三个场景 |
+| `pnpm --filter @cs2-analyst/desktop test:report`（真实 Electron，demo1） | PASS — 真实报告、损坏 DEM、非 .dem 三个场景 |
 | `git diff --check` | PASS |
 
 专项 SSR 测试覆盖：三选项卡结构、默认选中、panel 挂载/hidden、分析缺数据空状态、Tooltip 文案常量、partial 警告、三类空状态、unavailable 可见错误。
@@ -59,6 +59,7 @@
 - 分析三个选项卡的鼠标点击、方向键移动焦点 + Enter 切换、指标选择往返保留。
 - 深度复盘三个选项卡始终存在；鼠标和键盘切换；切换玩家后回到优先复盘。
 - 1024×640、1920×1032 下分析/深度复盘均无外层纵向滚动，当前内容区可独立滚动，内容末端可达；无横向溢出。
+- 1024×640 下额外注入 9 张长复盘卡片：只有当前「优先复盘」panel 产生滚动，外层深度复盘视图无纵向溢出，最后一张卡片可达。
 - 问号与 partial 警告 Tooltip 的 hover 和 focus。
 - 空状态、partial、unavailable 三种状态。
 - 相关回合：展开 R7/R24、Timeline 高亮并滚动到目标回合。

@@ -193,6 +193,33 @@ export async function checkDeepReviewUx(evaluate, send, qaDir) {
   await checkTabs('reviews');
   await select('twinkle');
   await checkTabs('reviews');
+  // A genuinely long list must scroll only inside the active tab; the view stays fixed.
+  await send('Emulation.setDeviceMetricsOverride', { width: 1024, height: 640, deviceScaleFactor: 1, mobile: false });
+  await evaluate(`(() => {
+    const p = window.__qaReport.deepReview.players.find(p => p.playerId === ${JSON.stringify(id)});
+    p.coverage = { status: 'complete' };
+    p.highlights = []; p.contexts = [];
+    p.reviews = Array.from({ length: 9 }, (_, i) => ({ id: 'qa-long-' + i, ruleId: 'deep.synthetic.long', category: 'execution', kind: 'review',
+      title: '长列表复盘卡片 ' + (i + 1), summary: '合成长列表用于验证只有当前选项卡内容区滚动，页面本身不动。', occurrences: 2, eligibleOccurrences: 4,
+      relatedRounds: [7], occurrenceLabel: '符合此情况：2 / 4 次', caveats: [] }));
+  })()`);
+  await refresh();
+  await checkTabs('reviews');
+  const longScroll = await evaluate(`(() => {
+    const outer = document.getElementById('deep-review-panel');
+    const panel = document.querySelector('[data-deep-panel="reviews"]');
+    panel.scrollTop = panel.scrollHeight;
+    const last = panel.lastElementChild.lastElementChild.getBoundingClientRect();
+    const bottom = panel.getBoundingClientRect().top + panel.clientTop + panel.clientHeight;
+    return { outer: outer.scrollHeight - outer.clientHeight, panel: panel.scrollHeight - panel.clientHeight,
+      cards: panel.querySelectorAll('[data-deep-kind]').length, lastReachable: last.bottom <= bottom + 1, scrollTop: panel.scrollTop };
+  })()`);
+  assert.ok(longScroll.outer <= 1, 'long deep review list must not scroll the outer view');
+  assert.ok(longScroll.panel > 0, 'long deep review list must scroll inside the active tab');
+  assert.equal(longScroll.cards, 9);
+  assert.equal(longScroll.lastReachable, true);
+  assert.ok(longScroll.scrollTop > 0);
+  await screenshot('deep-review-long-list');
   await evaluate(`(() => { const p = window.__qaReport.deepReview.players.find(p => p.playerId === ${JSON.stringify(id)}); p.reviews = []; p.highlights = []; p.contexts = []; p.coverage.status = 'complete'; })()`);
   await refresh();
   await checkTabs('reviews');
