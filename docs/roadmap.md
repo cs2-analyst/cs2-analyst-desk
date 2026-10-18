@@ -134,7 +134,7 @@ Current: **v0.1 Final Acceptance FINAL PASS; P5 COMPLETE; P5.7 FINAL PASS.** 验
 - **P0 S2：Spatial Evidence、Deep Review、Heatmap 多楼层语义审计**。已有 Nuke XYZ 真实样本与多层 synthetic 验证，不等于具备 LOS、楼梯可达性或跨层支援结论。无依据的内容保持未知；如发现确定误导，另行最小修复/coverage 测试。
 - **P2 S3：Collapse 过渡**：统一 Findings/Deep Review 的说明/证据展开、时间线等可折叠 UI 的适当高度动画，兼容 reduced motion 与键盘。
 - **P2 S4：分析页**从三张纵排卡片改为三个选项卡；**深度复盘**标题说明与数据不完整警告收敛到可聚焦 Tooltip，三个分类改成填满高度/内部滚动的 Tab，缺内容也呈现带线条图标的轻松空状态；指标与证据仍原样。
-- **S5（仅设计，不实施）**：比赛报告“无视图级滚动”三方案比较，见 [三种结构示意与取舍](./p7-report-layout-options.md)。用户选择后才允许修改报告 JSX。
+- **S5（方案 A 设计已确认，未实施）**：用户正式选择「顶部八项 KPI + 下方 Findings / 道具与残局两列独立内部滚动」。见 [报告布局 A 的冻结约束和 B/C 备选对照](./p7-report-layout-options.md)。本次仅确认设计、**没有授权修改 Report JSX/CSS**；后续在 Nuke 回放问题得到处理后单独实施及实机验收。
 - 独立计划、具体实测数据与验收门槛见 [P7 最终补强计划](./p7-final-hardening-plan.md)；修复之前不得声明“真实 Nuke 回放完整 PASS”。历史 Replay ≤5s 性能技术债继续独立跟踪。
 
 ## P8 AI Coach（原 P6，未开始）
