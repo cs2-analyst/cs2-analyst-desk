@@ -18,7 +18,7 @@ const useStyles = makeStyles({
     flexShrink: 0, width: `${SIDEBAR_WIDTH}px`, boxSizing: 'border-box',
     display: 'flex', flexDirection: 'column', minHeight: 0,
     backgroundColor: palette.pageTop, borderRight: `1px solid ${palette.rowDivider}`,
-    transitionProperty: 'width', transitionDuration: '160ms', transitionTimingFunction: 'ease',
+    transitionProperty: 'width', transitionDuration: '200ms', transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
     overflowX: 'hidden',
   },
   sidebarCollapsed: { width: `${SIDEBAR_COLLAPSED_WIDTH}px` },
