@@ -1,0 +1,2921 @@
+{
+  "schema": "p7-replay-all-dead-acceptance-v1",
+  "date": "2026-10-20",
+  "timezone": "Asia/Shanghai",
+  "status": "PASS (controlled Electron scope); real DEM all-dead Electron NOT RUN",
+  "branch": "codex/p7-replay-death-follow",
+  "baseline": "b7002ff58048496965148e8c0fb599464224c64a",
+  "commit": "See final delivery / Git history; no self-reference",
+  "classifications": {
+    "realDemAllDeadElectron": {
+      "status": "NOT RUN",
+      "reason": "Zero confirmed all-dead native death ticks within unchanged formal Replay windows"
+    },
+    "controlledAllDeadElectron": {
+      "status": "PASS",
+      "runs": 12,
+      "screenshots": 40
+    },
+    "pureAndSyntheticTests": {
+      "status": "PASS",
+      "focused": 29,
+      "desktopTotal": 194,
+      "focusedIncludedInDesktop": true
+    },
+    "realDemOtherElectronRegressions": {
+      "status": "PASS",
+      "scope": "Dust2 Replay/Heatmap and Nuke ordinary death-follow, not all-dead"
+    }
+  },
+  "environment": {
+    "os": "Windows",
+    "viewports": [
+      [
+        1024,
+        640
+      ],
+      [
+        1920,
+        1032
+      ]
+    ],
+    "browserSkill": "absent; user explicitly requires real Electron; existing CDP harness",
+    "runtime": "Standalone test sandboxed Electron importing the existing ReplayPlayer + Fluent + map/effect assets; actual IPC DTO loading and Canvas drawing",
+    "installerBuilt": false
+  },
+  "nativeInventory": {
+    "file": ".tmp/p7-all-dead/native-inventory.json",
+    "sha256": "1128d8c02235b6500e794f2591a2917e71627b11d76083c3d82e97afd13a56cf",
+    "deathTicks": 1284,
+    "formalAllDead": 0,
+    "files": [
+      {
+        "file": ".demo/nuke.dem",
+        "status": "SCANNED",
+        "sha256": "dea9382b9cc263fed9ee4ed7e71fa6be8c176cf888868f05b26d850af6f5cb3c",
+        "fileBytes": 471606780,
+        "deathTicks": 144,
+        "exactStateCoverage": {
+          "queried": 144,
+          "complete": 144
+        },
+        "roundWindows": [
+          {
+            "round": 1,
+            "startTick": 1016,
+            "endTick": 8385
+          },
+          {
+            "round": 2,
+            "startTick": 8833,
+            "endTick": 19955
+          },
+          {
+            "round": 3,
+            "startTick": 20403,
+            "endTick": 28135
+          },
+          {
+            "round": 4,
+            "startTick": 28583,
+            "endTick": 31937
+          },
+          {
+            "round": 5,
+            "startTick": 32385,
+            "endTick": 39461
+          },
+          {
+            "round": 6,
+            "startTick": 39909,
+            "endTick": 50844
+          },
+          {
+            "round": 7,
+            "startTick": 51292,
+            "endTick": 60828
+          },
+          {
+            "round": 8,
+            "startTick": 61276,
+            "endTick": 71961
+          },
+          {
+            "round": 9,
+            "startTick": 72409,
+            "endTick": 82434
+          },
+          {
+            "round": 10,
+            "startTick": 82882,
+            "endTick": 90722
+          },
+          {
+            "round": 11,
+            "startTick": 91170,
+            "endTick": 97162
+          },
+          {
+            "round": 12,
+            "startTick": 97610,
+            "endTick": 101505
+          },
+          {
+            "round": 13,
+            "startTick": 104993,
+            "endTick": 111588
+          },
+          {
+            "round": 14,
+            "startTick": 112036,
+            "endTick": 118713
+          },
+          {
+            "round": 15,
+            "startTick": 119161,
+            "endTick": 127223
+          },
+          {
+            "round": 16,
+            "startTick": 127671,
+            "endTick": 134267
+          },
+          {
+            "round": 17,
+            "startTick": 134715,
+            "endTick": 145955
+          },
+          {
+            "round": 18,
+            "startTick": 146403,
+            "endTick": 157364
+          },
+          {
+            "round": 19,
+            "startTick": 157812,
+            "endTick": 160581
+          },
+          {
+            "round": 20,
+            "startTick": 161029,
+            "endTick": 173399
+          },
+          {
+            "round": 21,
+            "startTick": 173847,
+            "endTick": 177865
+          }
+        ],
+        "allDead": [
+          {
+            "tick": 51114,
+            "formalRound": null,
+            "previousRound": {
+              "round": 6,
+              "startTick": 39909,
+              "endTick": 50844
+            }
+          }
+        ]
+      },
+      {
+        "file": ".demo/dust2.dem",
+        "status": "SCANNED",
+        "sha256": "db90fe85aab023a1d2c8a5996182e6120d98ef494f02a070b17982b235e4958c",
+        "fileBytes": 557650967,
+        "deathTicks": 164,
+        "exactStateCoverage": {
+          "queried": 164,
+          "complete": 164
+        },
+        "roundWindows": [
+          {
+            "round": 1,
+            "startTick": 1016,
+            "endTick": 6768
+          },
+          {
+            "round": 2,
+            "startTick": 7216,
+            "endTick": 14077
+          },
+          {
+            "round": 3,
+            "startTick": 14525,
+            "endTick": 22938
+          },
+          {
+            "round": 4,
+            "startTick": 23386,
+            "endTick": 31725
+          },
+          {
+            "round": 5,
+            "startTick": 32173,
+            "endTick": 36604
+          },
+          {
+            "round": 6,
+            "startTick": 37052,
+            "endTick": 44985
+          },
+          {
+            "round": 7,
+            "startTick": 45433,
+            "endTick": 53334
+          },
+          {
+            "round": 8,
+            "startTick": 53782,
+            "endTick": 64035
+          },
+          {
+            "round": 9,
+            "startTick": 64483,
+            "endTick": 73074
+          },
+          {
+            "round": 10,
+            "startTick": 73522,
+            "endTick": 81156
+          },
+          {
+            "round": 11,
+            "startTick": 81604,
+            "endTick": 92435
+          },
+          {
+            "round": 12,
+            "startTick": 92883,
+            "endTick": 103058
+          },
+          {
+            "round": 13,
+            "startTick": 106546,
+            "endTick": 114604
+          },
+          {
+            "round": 14,
+            "startTick": 115052,
+            "endTick": 118927
+          },
+          {
+            "round": 15,
+            "startTick": 119375,
+            "endTick": 127612
+          },
+          {
+            "round": 16,
+            "startTick": 128060,
+            "endTick": 138373
+          },
+          {
+            "round": 17,
+            "startTick": 138821,
+            "endTick": 147441
+          },
+          {
+            "round": 18,
+            "startTick": 147889,
+            "endTick": 153597
+          },
+          {
+            "round": 19,
+            "startTick": 154045,
+            "endTick": 162598
+          },
+          {
+            "round": 20,
+            "startTick": 163046,
+            "endTick": 168079
+          },
+          {
+            "round": 21,
+            "startTick": 168527,
+            "endTick": 177167
+          },
+          {
+            "round": 22,
+            "startTick": 177615,
+            "endTick": 185517
+          },
+          {
+            "round": 23,
+            "startTick": 185965,
+            "endTick": 194146
+          },
+          {
+            "round": 24,
+            "startTick": 194594,
+            "endTick": 201562
+          }
+        ],
+        "allDead": [
+          {
+            "tick": 104292,
+            "formalRound": null,
+            "previousRound": {
+              "round": 12,
+              "startTick": 92883,
+              "endTick": 103058
+            }
+          },
+          {
+            "tick": 202604,
+            "formalRound": null,
+            "previousRound": {
+              "round": 24,
+              "startTick": 194594,
+              "endTick": 201562
+            }
+          }
+        ]
+      },
+      {
+        "file": ".demo/inferno.dem",
+        "status": "SCANNED",
+        "sha256": "b61c040074f84f1f2c1b683642923243dbe123c2a0c70ed3c0670b0e4cd7a265",
+        "fileBytes": 592871000,
+        "deathTicks": 153,
+        "exactStateCoverage": {
+          "queried": 153,
+          "complete": 153
+        },
+        "roundWindows": [
+          {
+            "round": 1,
+            "startTick": 1,
+            "endTick": 9257
+          },
+          {
+            "round": 2,
+            "startTick": 9577,
+            "endTick": 17585
+          },
+          {
+            "round": 3,
+            "startTick": 17905,
+            "endTick": 25739
+          },
+          {
+            "round": 4,
+            "startTick": 26059,
+            "endTick": 33851
+          },
+          {
+            "round": 5,
+            "startTick": 34171,
+            "endTick": 42426
+          },
+          {
+            "round": 6,
+            "startTick": 42746,
+            "endTick": 53445
+          },
+          {
+            "round": 7,
+            "startTick": 53765,
+            "endTick": 64831
+          },
+          {
+            "round": 8,
+            "startTick": 65151,
+            "endTick": 74699
+          },
+          {
+            "round": 9,
+            "startTick": 75019,
+            "endTick": 86613
+          },
+          {
+            "round": 10,
+            "startTick": 86933,
+            "endTick": 97593
+          },
+          {
+            "round": 11,
+            "startTick": 97913,
+            "endTick": 108473
+          },
+          {
+            "round": 12,
+            "startTick": 108793,
+            "endTick": 113224
+          },
+          {
+            "round": 13,
+            "startTick": 113768,
+            "endTick": 135017
+          },
+          {
+            "round": 14,
+            "startTick": 135337,
+            "endTick": 140305
+          },
+          {
+            "round": 15,
+            "startTick": 140625,
+            "endTick": 148249
+          },
+          {
+            "round": 16,
+            "startTick": 148569,
+            "endTick": 155021
+          },
+          {
+            "round": 17,
+            "startTick": 155341,
+            "endTick": 163981
+          },
+          {
+            "round": 18,
+            "startTick": 164301,
+            "endTick": 171734
+          },
+          {
+            "round": 19,
+            "startTick": 172054,
+            "endTick": 179681
+          },
+          {
+            "round": 20,
+            "startTick": 180001,
+            "endTick": 190200
+          },
+          {
+            "round": 21,
+            "startTick": 190520,
+            "endTick": 199160
+          },
+          {
+            "round": 22,
+            "startTick": 199480,
+            "endTick": 206282
+          },
+          {
+            "round": 23,
+            "startTick": 206602,
+            "endTick": 217060
+          },
+          {
+            "round": 24,
+            "startTick": 217380,
+            "endTick": 225834
+          }
+        ],
+        "allDead": []
+      },
+      {
+        "file": ".demo/mirage.dem",
+        "status": "SCANNED",
+        "sha256": "62cb3af35c3893a91c7dd8c9007fdb1105950ec8963a46eca6006dac96655acb",
+        "fileBytes": 296074918,
+        "deathTicks": 117,
+        "exactStateCoverage": {
+          "queried": 117,
+          "complete": 117
+        },
+        "roundWindows": [
+          {
+            "round": 1,
+            "startTick": 1,
+            "endTick": 7956
+          },
+          {
+            "round": 2,
+            "startTick": 8276,
+            "endTick": 13965
+          },
+          {
+            "round": 3,
+            "startTick": 14285,
+            "endTick": 23967
+          },
+          {
+            "round": 4,
+            "startTick": 24287,
+            "endTick": 30153
+          },
+          {
+            "round": 5,
+            "startTick": 30473,
+            "endTick": 39546
+          },
+          {
+            "round": 6,
+            "startTick": 39866,
+            "endTick": 45957
+          },
+          {
+            "round": 7,
+            "startTick": 46277,
+            "endTick": 55564
+          },
+          {
+            "round": 8,
+            "startTick": 55884,
+            "endTick": 65402
+          },
+          {
+            "round": 9,
+            "startTick": 65722,
+            "endTick": 78093
+          },
+          {
+            "round": 10,
+            "startTick": 78413,
+            "endTick": 85531
+          },
+          {
+            "round": 11,
+            "startTick": 85851,
+            "endTick": 90614
+          },
+          {
+            "round": 12,
+            "startTick": 90934,
+            "endTick": 96969
+          },
+          {
+            "round": 13,
+            "startTick": 97513,
+            "endTick": 116911
+          },
+          {
+            "round": 14,
+            "startTick": 117231,
+            "endTick": 125871
+          },
+          {
+            "round": 15,
+            "startTick": 126191,
+            "endTick": 136671
+          },
+          {
+            "round": 16,
+            "startTick": 136991,
+            "endTick": 148333
+          },
+          {
+            "round": 17,
+            "startTick": 148653,
+            "endTick": 155691
+          }
+        ],
+        "allDead": []
+      },
+      {
+        "file": ".demo/ancient.dem",
+        "status": "SCANNED",
+        "sha256": "ca7b6b7cefdde927d654ac101ea1bee4fd996efc9b86ac89dac33874a0115f4e",
+        "fileBytes": 403039766,
+        "deathTicks": 138,
+        "exactStateCoverage": {
+          "queried": 138,
+          "complete": 138
+        },
+        "roundWindows": [
+          {
+            "round": 1,
+            "startTick": 1016,
+            "endTick": 7872
+          },
+          {
+            "round": 2,
+            "startTick": 8320,
+            "endTick": 14407
+          },
+          {
+            "round": 3,
+            "startTick": 14855,
+            "endTick": 23495
+          },
+          {
+            "round": 4,
+            "startTick": 23943,
+            "endTick": 32729
+          },
+          {
+            "round": 5,
+            "startTick": 33177,
+            "endTick": 42086
+          },
+          {
+            "round": 6,
+            "startTick": 42534,
+            "endTick": 48390
+          },
+          {
+            "round": 7,
+            "startTick": 48838,
+            "endTick": 57874
+          },
+          {
+            "round": 8,
+            "startTick": 58322,
+            "endTick": 64648
+          },
+          {
+            "round": 9,
+            "startTick": 65096,
+            "endTick": 68088
+          },
+          {
+            "round": 10,
+            "startTick": 68536,
+            "endTick": 73740
+          },
+          {
+            "round": 11,
+            "startTick": 74188,
+            "endTick": 82273
+          },
+          {
+            "round": 12,
+            "startTick": 82721,
+            "endTick": 96880
+          },
+          {
+            "round": 13,
+            "startTick": 100368,
+            "endTick": 105325
+          },
+          {
+            "round": 14,
+            "startTick": 105773,
+            "endTick": 113357
+          },
+          {
+            "round": 15,
+            "startTick": 113805,
+            "endTick": 123475
+          },
+          {
+            "round": 16,
+            "startTick": 123923,
+            "endTick": 130791
+          },
+          {
+            "round": 17,
+            "startTick": 131239,
+            "endTick": 137963
+          },
+          {
+            "round": 18,
+            "startTick": 138411,
+            "endTick": 144323
+          },
+          {
+            "round": 19,
+            "startTick": 144771,
+            "endTick": 150403
+          }
+        ],
+        "allDead": [
+          {
+            "tick": 150889,
+            "formalRound": null,
+            "previousRound": {
+              "round": 19,
+              "startTick": 144771,
+              "endTick": 150403
+            }
+          }
+        ]
+      },
+      {
+        "file": ".demo/anubis.dem",
+        "status": "SCANNED",
+        "sha256": "5ee94d7f475a7723f214636e438bf33acccd8c30a85bdb192dfd1a26772b966d",
+        "fileBytes": 404813477,
+        "deathTicks": 122,
+        "exactStateCoverage": {
+          "queried": 122,
+          "complete": 122
+        },
+        "roundWindows": [
+          {
+            "round": 1,
+            "startTick": 383,
+            "endTick": 9104
+          },
+          {
+            "round": 2,
+            "startTick": 9552,
+            "endTick": 18562
+          },
+          {
+            "round": 3,
+            "startTick": 19010,
+            "endTick": 26335
+          },
+          {
+            "round": 4,
+            "startTick": 26783,
+            "endTick": 32855
+          },
+          {
+            "round": 5,
+            "startTick": 33303,
+            "endTick": 40170
+          },
+          {
+            "round": 6,
+            "startTick": 40618,
+            "endTick": 49829
+          },
+          {
+            "round": 7,
+            "startTick": 50277,
+            "endTick": 58998
+          },
+          {
+            "round": 8,
+            "startTick": 59446,
+            "endTick": 69830
+          },
+          {
+            "round": 9,
+            "startTick": 70278,
+            "endTick": 79465
+          },
+          {
+            "round": 10,
+            "startTick": 79913,
+            "endTick": 86037
+          },
+          {
+            "round": 11,
+            "startTick": 86485,
+            "endTick": 96288
+          },
+          {
+            "round": 12,
+            "startTick": 96736,
+            "endTick": 102020
+          },
+          {
+            "round": 13,
+            "startTick": 102980,
+            "endTick": 123862
+          },
+          {
+            "round": 14,
+            "startTick": 124310,
+            "endTick": 131678
+          },
+          {
+            "round": 15,
+            "startTick": 132126,
+            "endTick": 138166
+          },
+          {
+            "round": 16,
+            "startTick": 138614,
+            "endTick": 147059
+          },
+          {
+            "round": 17,
+            "startTick": 147507,
+            "endTick": 156117
+          }
+        ],
+        "allDead": []
+      },
+      {
+        "file": ".demo/overpass.dem",
+        "status": "SCANNED",
+        "sha256": "7b43fa4215d99ce767d17f9d1f36e8997b7aeeb6227fa8b2738b9d377b48f28e",
+        "fileBytes": 452014141,
+        "deathTicks": 129,
+        "exactStateCoverage": {
+          "queried": 129,
+          "complete": 129
+        },
+        "roundWindows": [
+          {
+            "round": 1,
+            "startTick": 385,
+            "endTick": 9351
+          },
+          {
+            "round": 2,
+            "startTick": 9799,
+            "endTick": 18801
+          },
+          {
+            "round": 3,
+            "startTick": 19249,
+            "endTick": 27944
+          },
+          {
+            "round": 4,
+            "startTick": 28392,
+            "endTick": 37961
+          },
+          {
+            "round": 5,
+            "startTick": 38409,
+            "endTick": 46305
+          },
+          {
+            "round": 6,
+            "startTick": 46753,
+            "endTick": 54220
+          },
+          {
+            "round": 7,
+            "startTick": 54668,
+            "endTick": 58598
+          },
+          {
+            "round": 8,
+            "startTick": 59046,
+            "endTick": 66224
+          },
+          {
+            "round": 9,
+            "startTick": 66672,
+            "endTick": 72536
+          },
+          {
+            "round": 10,
+            "startTick": 72984,
+            "endTick": 84460
+          },
+          {
+            "round": 11,
+            "startTick": 84908,
+            "endTick": 90805
+          },
+          {
+            "round": 12,
+            "startTick": 91253,
+            "endTick": 99778
+          },
+          {
+            "round": 13,
+            "startTick": 100738,
+            "endTick": 121469
+          },
+          {
+            "round": 14,
+            "startTick": 121917,
+            "endTick": 127770
+          },
+          {
+            "round": 15,
+            "startTick": 128218,
+            "endTick": 135630
+          },
+          {
+            "round": 16,
+            "startTick": 136078,
+            "endTick": 141899
+          },
+          {
+            "round": 17,
+            "startTick": 142347,
+            "endTick": 153336
+          },
+          {
+            "round": 18,
+            "startTick": 153784,
+            "endTick": 158821
+          },
+          {
+            "round": 19,
+            "startTick": 159269,
+            "endTick": 165641
+          }
+        ],
+        "allDead": [
+          {
+            "tick": 100477,
+            "formalRound": null,
+            "previousRound": {
+              "round": 12,
+              "startTick": 91253,
+              "endTick": 99778
+            }
+          }
+        ]
+      },
+      {
+        "file": ".demo/demo1.dem",
+        "status": "SCANNED",
+        "sha256": "f3c3173eae0cd100d15c81c3b734be792f9212256a9c99703b358d3434000852",
+        "fileBytes": 267275583,
+        "deathTicks": 182,
+        "exactStateCoverage": {
+          "queried": 182,
+          "complete": 182
+        },
+        "roundWindows": [
+          {
+            "round": 1,
+            "startTick": 65,
+            "endTick": 3413
+          },
+          {
+            "round": 2,
+            "startTick": 3861,
+            "endTick": 6882
+          },
+          {
+            "round": 3,
+            "startTick": 7330,
+            "endTick": 14968
+          },
+          {
+            "round": 4,
+            "startTick": 15416,
+            "endTick": 21657
+          },
+          {
+            "round": 5,
+            "startTick": 22105,
+            "endTick": 26076
+          },
+          {
+            "round": 6,
+            "startTick": 26524,
+            "endTick": 32513
+          },
+          {
+            "round": 7,
+            "startTick": 32961,
+            "endTick": 39309
+          },
+          {
+            "round": 8,
+            "startTick": 39757,
+            "endTick": 46051
+          },
+          {
+            "round": 9,
+            "startTick": 46499,
+            "endTick": 52517
+          },
+          {
+            "round": 10,
+            "startTick": 52965,
+            "endTick": 56286
+          },
+          {
+            "round": 11,
+            "startTick": 56734,
+            "endTick": 62020
+          },
+          {
+            "round": 12,
+            "startTick": 62468,
+            "endTick": 66566
+          },
+          {
+            "round": 13,
+            "startTick": 67110,
+            "endTick": 71396
+          },
+          {
+            "round": 14,
+            "startTick": 71844,
+            "endTick": 75852
+          },
+          {
+            "round": 15,
+            "startTick": 76300,
+            "endTick": 80771
+          },
+          {
+            "round": 16,
+            "startTick": 81219,
+            "endTick": 84375
+          },
+          {
+            "round": 17,
+            "startTick": 84823,
+            "endTick": 92090
+          },
+          {
+            "round": 18,
+            "startTick": 92538,
+            "endTick": 100858
+          },
+          {
+            "round": 19,
+            "startTick": 101306,
+            "endTick": 107770
+          },
+          {
+            "round": 20,
+            "startTick": 108218,
+            "endTick": 112504
+          },
+          {
+            "round": 21,
+            "startTick": 112952,
+            "endTick": 118607
+          },
+          {
+            "round": 22,
+            "startTick": 119055,
+            "endTick": 124001
+          },
+          {
+            "round": 23,
+            "startTick": 124449,
+            "endTick": 131209
+          },
+          {
+            "round": 24,
+            "startTick": 131657,
+            "endTick": 140769
+          }
+        ],
+        "allDead": [
+          {
+            "tick": 141061,
+            "formalRound": null,
+            "previousRound": {
+              "round": 24,
+              "startTick": 131657,
+              "endTick": 140769
+            }
+          }
+        ]
+      },
+      {
+        "file": ".demo/demo2.dem",
+        "status": "SCANNED",
+        "sha256": "253e5b719ac418b092ff3cdd1b5928bb0dfc8ccbf06cb9398963ea1e9fa44a25",
+        "fileBytes": 75699561,
+        "deathTicks": 135,
+        "exactStateCoverage": {
+          "queried": 135,
+          "complete": 135
+        },
+        "roundWindows": [
+          {
+            "round": 1,
+            "startTick": 0,
+            "endTick": 5851
+          },
+          {
+            "round": 2,
+            "startTick": 6299,
+            "endTick": 16273
+          },
+          {
+            "round": 3,
+            "startTick": 16721,
+            "endTick": 22998
+          },
+          {
+            "round": 4,
+            "startTick": 23446,
+            "endTick": 27409
+          },
+          {
+            "round": 5,
+            "startTick": 27857,
+            "endTick": 32817
+          },
+          {
+            "round": 6,
+            "startTick": 33265,
+            "endTick": 39480
+          },
+          {
+            "round": 7,
+            "startTick": 39928,
+            "endTick": 44397
+          },
+          {
+            "round": 8,
+            "startTick": 44845,
+            "endTick": 49485
+          },
+          {
+            "round": 9,
+            "startTick": 49933,
+            "endTick": 53591
+          },
+          {
+            "round": 10,
+            "startTick": 54039,
+            "endTick": 59974
+          },
+          {
+            "round": 11,
+            "startTick": 60422,
+            "endTick": 67086
+          },
+          {
+            "round": 12,
+            "startTick": 67534,
+            "endTick": 75670
+          },
+          {
+            "round": 13,
+            "startTick": 76214,
+            "endTick": 80311
+          },
+          {
+            "round": 14,
+            "startTick": 80759,
+            "endTick": 85755
+          },
+          {
+            "round": 15,
+            "startTick": 86203,
+            "endTick": 90308
+          },
+          {
+            "round": 16,
+            "startTick": 90756,
+            "endTick": 95527
+          },
+          {
+            "round": 17,
+            "startTick": 95975,
+            "endTick": 99948
+          },
+          {
+            "round": 18,
+            "startTick": 100396,
+            "endTick": 106551
+          }
+        ],
+        "allDead": [
+          {
+            "tick": 107030,
+            "formalRound": null,
+            "previousRound": {
+              "round": 18,
+              "startTick": 100396,
+              "endTick": 106551
+            }
+          }
+        ]
+      },
+      {
+        "file": ".demo/demo.dem",
+        "status": "ABSENT"
+      }
+    ],
+    "excluded": [
+      {
+        "file": ".demo/train.dem",
+        "reason": "docs/demo-fixtures.md explicitly says do not run it or add tests"
+      },
+      {
+        "file": ".demo/demo3.dem",
+        "reason": "Forbidden for P7+ validation"
+      }
+    ]
+  },
+  "evidence": {
+    "rawElectron": ".tmp/p7-all-dead/fixed/electron.json",
+    "rawElectronSha256": "90ad22fb39d2adb821683241f68559cadaf161ad2590a2b4de0257442058e58a",
+    "fixture": ".tmp/p7-all-dead/fixed/controlled-fixtures.json",
+    "fixtureSha256": "18530165e64a9456a8c6fcfac3ffcfd7e32b71f4975f1647ad0b7d723f26e6ef",
+    "sourceSnapshot": ".tmp/p7-all-dead/native-spatial-seed.json",
+    "sourceSnapshotSha256": "29b9723364ae6cadab23266afaf1ea8489a1b616481746f58a30099d49653615",
+    "semantics": "Native XYZ snapshot values or null; timeline/deaths/effect windows are controlled presentation DTOs, not native gameplay claims",
+    "checks": [
+      "actual non-black colored RGBA texture + stable texture hash",
+      "real numeric player-marker paint calls and foreground pixels",
+      "dead sidebar and stable followed identity at settled UI ticks",
+      "same/reverse/direct uncached Seek + natural multi-chunk play + pause/resume",
+      "smoke expiry and empty foreground",
+      "fresh unknown-floor all-dead reference and reverse to unknown living state"
+    ],
+    "visualInspection": {
+      "status": "PASS",
+      "scope": "C4 before/death/after at both sizes; missing-position, HE and manual/auto/fresh no-floor screenshots inspected by primary/independent reviewer"
+    },
+    "consoleHealth": {
+      "exceptions": [],
+      "unexpected": []
+    }
+  },
+  "productChanges": [
+    {
+      "file": "apps/desktop/renderer/src/replay-player.tsx",
+      "scope": "All-dead reference notice condition/text, and background-only fallback when no historical or previously drawn map exists",
+      "sha256": "7adbb1781747fbf897887e4f4f5cdf31fbce6f9ec93dbcd2a83097ffd8818f1e",
+      "preFixEvidence": [
+        ".tmp/p7-all-dead/product-defect-before-fix.json",
+        ".tmp/p7-all-dead/cold-background-defect-before-fix.json"
+      ],
+      "reproductionArtifacts": [
+        ".tmp/p7-all-dead/baseline-reference/electron.json",
+        ".tmp/p7-all-dead/baseline-empty-reference/electron.json"
+      ],
+      "unchanged": "follow/floor resolver, XYZ, parser, session, sampling/window budgets, IPC/security boundaries, versions/tags/releases"
+    }
+  ],
+  "packageIsolation": {
+    "status": "PASS",
+    "evidence": ".tmp/p7-all-dead/package-isolation.json",
+    "productionFiles": 93,
+    "scope": "Built production dist plus current installer whitelist; standalone test inputs/outputs excluded; no installer generated"
+  },
+  "checks": [
+    {
+      "command": "node --expose-gc scripts/replay-all-dead-scan.mjs",
+      "status": "PASS",
+      "log": ".tmp/p7-all-dead-scan.log"
+    },
+    {
+      "command": "node scripts/replay-all-dead-acceptance.mjs",
+      "status": "PASS",
+      "log": ".tmp/p7-all-dead-acceptance.log"
+    },
+    {
+      "name": "focused-tests",
+      "command": "node --test apps/desktop/tests/replay-follow.test.mjs apps/desktop/tests/replay-floor.test.mjs apps/desktop/tests/replay-session.test.mjs",
+      "log": ".tmp/p7-all-dead/focused-tests.log",
+      "exitCode": 0,
+      "status": "PASS",
+      "elapsedMs": 469
+    },
+    {
+      "name": "desktop-test",
+      "command": "pnpm --filter @cs2-analyst/desktop test",
+      "log": ".tmp/p7-all-dead/desktop-test.log",
+      "exitCode": 0,
+      "status": "PASS",
+      "elapsedMs": 28144
+    },
+    {
+      "name": "typecheck",
+      "command": "pnpm typecheck",
+      "log": ".tmp/p7-all-dead/typecheck.log",
+      "exitCode": 0,
+      "status": "PASS",
+      "elapsedMs": 3067
+    },
+    {
+      "name": "build",
+      "command": "pnpm build",
+      "log": ".tmp/p7-all-dead/build.log",
+      "exitCode": 0,
+      "status": "PASS",
+      "elapsedMs": 7986
+    },
+    {
+      "name": "package-isolation",
+      "command": "node scripts/replay-all-dead-package-audit.mjs",
+      "log": ".tmp/p7-all-dead/package-isolation.log",
+      "exitCode": 0,
+      "status": "PASS",
+      "elapsedMs": 304
+    },
+    {
+      "name": "replay-smoke",
+      "command": "node scripts/replay-smoke.mjs",
+      "log": ".tmp/p7-all-dead/replay-smoke.log",
+      "exitCode": 0,
+      "status": "PASS",
+      "elapsedMs": 48699
+    },
+    {
+      "name": "heatmap-smoke",
+      "command": "node scripts/heatmap-smoke.mjs",
+      "log": ".tmp/p7-all-dead/heatmap-smoke.log",
+      "exitCode": 0,
+      "status": "PASS",
+      "elapsedMs": 84761
+    },
+    {
+      "name": "real-nuke-death-follow",
+      "command": "node scripts/replay-death-follow-acceptance.mjs",
+      "log": ".tmp/p7-all-dead/real-nuke-death-follow.log",
+      "exitCode": 0,
+      "status": "PASS",
+      "elapsedMs": 19788
+    }
+  ],
+  "failedAttempts": {
+    "includedAsPass": false,
+    "paths": [
+      ".tmp/p7-all-dead/initial-baseline-attempt",
+      ".tmp/p7-all-dead/initial-probe-attempt",
+      ".tmp/p7-all-dead/initial-ui-cadence-attempt",
+      ".tmp/p7-all-dead/initial-notice-cadence-attempt",
+      ".tmp/p7-all-dead/baseline",
+      ".tmp/p7-all-dead/baseline-reference",
+      ".tmp/p7-all-dead/before-cold-reference-fix"
+    ],
+    "reasons": [
+      "test cache probe picked image cache",
+      "RAF paint vs asynchronous UI commit checked as if atomic",
+      "native test window decorations clamped large viewport",
+      "initial 12-run set lacked fresh no-history direct Seek; rerun after actual cold-background defect fix"
+    ],
+    "distinction": "baseline-empty-reference is a deliberate intermediate-version product defect reproduction, not a final FAIL or pristine baseline full acceptance"
+  },
+  "independentReview": {
+    "status": "PASS — no remaining P1/P2",
+    "reviewer": "/root/all_dead_review",
+    "scope": "Read-only source diff, isolation, evidence, viewport/screenshots, native scan, regression and docs",
+    "verified": "Independently checked raw/source/fixture SHA-256, 12 PASS runs, all 40 actual PNG headers/viewports/hashes, 12 traces totaling 9482 paint samples, all 10 checks PASS and git diff --check",
+    "remainingBlockers": []
+  },
+  "uncovered": [
+    "Real DEM all-dead within formal Replay UI window",
+    "Installer and manual human walkthrough",
+    "Physical multi-monitor DPI",
+    "Every map/round/target/playback-speed combination",
+    "Native C4/HE gameplay physics and kill parsing (controlled DTOs do not prove them)",
+    "Map/DEM version alignment remains unconfirmed"
+  ],
+  "runs": [
+    {
+      "id": "c4",
+      "viewport": {
+        "width": 1024,
+        "height": 640
+      },
+      "status": "PASS",
+      "provenance": {
+        "source": ".demo/nuke.dem",
+        "sha256": "dea9382b9cc263fed9ee4ed7e71fa6be8c176cf888868f05b26d850af6f5cb3c",
+        "spatialTick": 18000,
+        "lifecycle": "synthetic controlled DTO only; no native death claim",
+        "coordinates": "native snapshot values verbatim or null"
+      },
+      "trace": {
+        "file": ".tmp/p7-all-dead/fixed/1024x640-c4-frames.json",
+        "sha256": "a63c978d2120b347a70b1abb96437fe3a1c29df7912e229b197f3c938640f498",
+        "paintSamples": 1069,
+        "postDeathSamples": 881,
+        "blocks": [
+          2,
+          3,
+          4
+        ],
+        "postDeathBlackFrames": 0,
+        "postDeathLivingGlyphs": 0
+      },
+      "coldSeek": {
+        "beforeCache": [
+          "1:2",
+          "1:7",
+          "1:6"
+        ],
+        "afterTick": 18400,
+        "layer": "lower"
+      },
+      "screenshots": [
+        {
+          "label": "before",
+          "file": ".tmp/p7-all-dead/fixed/1024x640-c4-before.png",
+          "width": 1024,
+          "height": 640,
+          "sha256": "f7d7ac76e3506318e02d3cfa8cbefce81361ea841599eaf0c5986afe8214adc7",
+          "tick": 18376,
+          "layer": "lower",
+          "floorStatus": "known",
+          "basePixels": {
+            "width": 392,
+            "height": 392,
+            "opaque": 26163,
+            "color": 25997,
+            "hash": 88096094
+          },
+          "drawn": 1,
+          "markerPaints": [
+            "10"
+          ],
+          "playerId": "76561199063238565",
+          "notice": ""
+        },
+        {
+          "label": "death",
+          "file": ".tmp/p7-all-dead/fixed/1024x640-c4-death.png",
+          "width": 1024,
+          "height": 640,
+          "sha256": "2992b06563c6554c0ce5723a1f1125c3334221588a7ed4e3138ac0696966cb03",
+          "tick": 18400,
+          "layer": "lower",
+          "floorStatus": "retained",
+          "basePixels": {
+            "width": 392,
+            "height": 392,
+            "opaque": 26163,
+            "color": 25997,
+            "hash": 88096094
+          },
+          "drawn": 0,
+          "markerPaints": [],
+          "playerId": "76561199063238565",
+          "notice": "全员阵亡 · 底图仅作参考，不代表当前楼层"
+        },
+        {
+          "label": "after",
+          "file": ".tmp/p7-all-dead/fixed/1024x640-c4-after.png",
+          "width": 1024,
+          "height": 640,
+          "sha256": "19ef6c63f36242c8b8c040bc0278c5c3ac27dc104b3289aa9a7aa6acaf2dce8f",
+          "tick": 18560,
+          "layer": "lower",
+          "floorStatus": "retained",
+          "basePixels": {
+            "width": 392,
+            "height": 392,
+            "opaque": 26163,
+            "color": 25997,
+            "hash": 88096094
+          },
+          "drawn": 0,
+          "markerPaints": [],
+          "playerId": "76561199063238565",
+          "notice": "全员阵亡 · 底图仅作参考，不代表当前楼层"
+        }
+      ]
+    },
+    {
+      "id": "posthumous-he",
+      "viewport": {
+        "width": 1024,
+        "height": 640
+      },
+      "status": "PASS",
+      "provenance": {
+        "source": ".demo/nuke.dem",
+        "sha256": "dea9382b9cc263fed9ee4ed7e71fa6be8c176cf888868f05b26d850af6f5cb3c",
+        "spatialTick": 18000,
+        "lifecycle": "synthetic controlled DTO only; no native death claim",
+        "coordinates": "native snapshot values verbatim or null"
+      },
+      "trace": {
+        "file": ".tmp/p7-all-dead/fixed/1024x640-posthumous-he-frames.json",
+        "sha256": "50e026e2a5618a6ea2174942e0cd9d0d191eedb1def13b9e0e9b0e5868a0377e",
+        "paintSamples": 1082,
+        "postDeathSamples": 896,
+        "blocks": [
+          2,
+          3,
+          4
+        ],
+        "postDeathBlackFrames": 0,
+        "postDeathLivingGlyphs": 0
+      },
+      "coldSeek": {
+        "beforeCache": [
+          "1:2",
+          "1:7",
+          "1:6"
+        ],
+        "afterTick": 18400,
+        "layer": "default"
+      },
+      "screenshots": [
+        {
+          "label": "before",
+          "file": ".tmp/p7-all-dead/fixed/1024x640-posthumous-he-before.png",
+          "width": 1024,
+          "height": 640,
+          "sha256": "344bf323ddd8d86607d3d22ef210f42e1ad2348be64de7345c4f0950c66f7400",
+          "tick": 18376,
+          "layer": "default",
+          "floorStatus": "known",
+          "basePixels": {
+            "width": 392,
+            "height": 392,
+            "opaque": 26216,
+            "color": 26171,
+            "hash": 4095951623
+          },
+          "drawn": 1,
+          "markerPaints": [
+            "3"
+          ],
+          "playerId": "76561197997351207",
+          "notice": ""
+        },
+        {
+          "label": "death",
+          "file": ".tmp/p7-all-dead/fixed/1024x640-posthumous-he-death.png",
+          "width": 1024,
+          "height": 640,
+          "sha256": "55d14d01eec63bb6008247c08d7d3bf5c19986269ff5fc49aa9d135cd3f850be",
+          "tick": 18400,
+          "layer": "default",
+          "floorStatus": "retained",
+          "basePixels": {
+            "width": 392,
+            "height": 392,
+            "opaque": 26216,
+            "color": 26171,
+            "hash": 4095951623
+          },
+          "drawn": 0,
+          "markerPaints": [],
+          "playerId": "76561197997351207",
+          "notice": "全员阵亡 · 底图仅作参考，不代表当前楼层"
+        },
+        {
+          "label": "after",
+          "file": ".tmp/p7-all-dead/fixed/1024x640-posthumous-he-after.png",
+          "width": 1024,
+          "height": 640,
+          "sha256": "64abaf63d9547897ba731daacc640e90f66da4dc7a062a83356598493f3562a1",
+          "tick": 18560,
+          "layer": "default",
+          "floorStatus": "retained",
+          "basePixels": {
+            "width": 392,
+            "height": 392,
+            "opaque": 26216,
+            "color": 26171,
+            "hash": 4095951623
+          },
+          "drawn": 0,
+          "markerPaints": [],
+          "playerId": "76561197997351207",
+          "notice": "全员阵亡 · 底图仅作参考，不代表当前楼层"
+        }
+      ]
+    },
+    {
+      "id": "suicide",
+      "viewport": {
+        "width": 1024,
+        "height": 640
+      },
+      "status": "PASS",
+      "provenance": {
+        "source": ".demo/nuke.dem",
+        "sha256": "dea9382b9cc263fed9ee4ed7e71fa6be8c176cf888868f05b26d850af6f5cb3c",
+        "spatialTick": 18000,
+        "lifecycle": "synthetic controlled DTO only; no native death claim",
+        "coordinates": "native snapshot values verbatim or null"
+      },
+      "trace": {
+        "file": ".tmp/p7-all-dead/fixed/1024x640-suicide-frames.json",
+        "sha256": "5b6dafcb557e6ce7170e35ccb3ab5446bade635971e497bb688c1e1464f97f0b",
+        "paintSamples": 1080,
+        "postDeathSamples": 893,
+        "blocks": [
+          2,
+          3,
+          4
+        ],
+        "postDeathBlackFrames": 0,
+        "postDeathLivingGlyphs": 0
+      },
+      "coldSeek": {
+        "beforeCache": [
+          "1:2",
+          "1:7",
+          "1:6"
+        ],
+        "afterTick": 18400,
+        "layer": "lower"
+      },
+      "screenshots": [
+        {
+          "label": "before",
+          "file": ".tmp/p7-all-dead/fixed/1024x640-suicide-before.png",
+          "width": 1024,
+          "height": 640,
+          "sha256": "e96795221a6777ed6c22aa735866984f388ffd4efa6765983b0d2948ada28ae3",
+          "tick": 18376,
+          "layer": "lower",
+          "floorStatus": "known",
+          "basePixels": {
+            "width": 392,
+            "height": 392,
+            "opaque": 26163,
+            "color": 25997,
+            "hash": 88096094
+          },
+          "drawn": 1,
+          "markerPaints": [
+            "10"
+          ],
+          "playerId": "76561199063238565",
+          "notice": ""
+        },
+        {
+          "label": "death",
+          "file": ".tmp/p7-all-dead/fixed/1024x640-suicide-death.png",
+          "width": 1024,
+          "height": 640,
+          "sha256": "221309f6fc72f0d9db38b15643578949c952b8255ba98d5a0e6ca5fff4621501",
+          "tick": 18400,
+          "layer": "lower",
+          "floorStatus": "retained",
+          "basePixels": {
+            "width": 392,
+            "height": 392,
+            "opaque": 26163,
+            "color": 25997,
+            "hash": 88096094
+          },
+          "drawn": 0,
+          "markerPaints": [],
+          "playerId": "76561199063238565",
+          "notice": "全员阵亡 · 底图仅作参考，不代表当前楼层"
+        },
+        {
+          "label": "after",
+          "file": ".tmp/p7-all-dead/fixed/1024x640-suicide-after.png",
+          "width": 1024,
+          "height": 640,
+          "sha256": "e5f394806da7b8fbbf7b0c1da1cc8e1ad594e2d5bc254ca0360c240cc0760220",
+          "tick": 18560,
+          "layer": "lower",
+          "floorStatus": "retained",
+          "basePixels": {
+            "width": 392,
+            "height": 392,
+            "opaque": 26163,
+            "color": 25997,
+            "hash": 88096094
+          },
+          "drawn": 0,
+          "markerPaints": [],
+          "playerId": "76561199063238565",
+          "notice": "全员阵亡 · 底图仅作参考，不代表当前楼层"
+        }
+      ]
+    },
+    {
+      "id": "unknown",
+      "viewport": {
+        "width": 1024,
+        "height": 640
+      },
+      "status": "PASS",
+      "provenance": {
+        "source": ".demo/nuke.dem",
+        "sha256": "dea9382b9cc263fed9ee4ed7e71fa6be8c176cf888868f05b26d850af6f5cb3c",
+        "spatialTick": 18000,
+        "lifecycle": "synthetic controlled DTO only; no native death claim",
+        "coordinates": "native snapshot values verbatim or null"
+      },
+      "trace": {
+        "file": ".tmp/p7-all-dead/fixed/1024x640-unknown-frames.json",
+        "sha256": "b420e5864fea5dae41fe107836489cd004e0ccd98d6c7eb5bf65c007c36e0a24",
+        "paintSamples": 1072,
+        "postDeathSamples": 886,
+        "blocks": [
+          2,
+          3,
+          4
+        ],
+        "postDeathBlackFrames": 0,
+        "postDeathLivingGlyphs": 0
+      },
+      "coldSeek": {
+        "beforeCache": [
+          "1:2",
+          "1:7",
+          "1:6"
+        ],
+        "afterTick": 18400,
+        "layer": "default"
+      },
+      "screenshots": [
+        {
+          "label": "before",
+          "file": ".tmp/p7-all-dead/fixed/1024x640-unknown-before.png",
+          "width": 1024,
+          "height": 640,
+          "sha256": "bf4568f0c78537de2e4313cdd7063247c20816b3a39c9e830bcdaae4e1c3639d",
+          "tick": 18376,
+          "layer": "default",
+          "floorStatus": "known",
+          "basePixels": {
+            "width": 392,
+            "height": 392,
+            "opaque": 26216,
+            "color": 26171,
+            "hash": 4095951623
+          },
+          "drawn": 1,
+          "markerPaints": [
+            "3"
+          ],
+          "playerId": "76561197997351207",
+          "notice": ""
+        },
+        {
+          "label": "death",
+          "file": ".tmp/p7-all-dead/fixed/1024x640-unknown-death.png",
+          "width": 1024,
+          "height": 640,
+          "sha256": "d65a52f3a62b401dc19b361031e410b40c70010055fe27f46be898ee34ff812e",
+          "tick": 18400,
+          "layer": "default",
+          "floorStatus": "retained",
+          "basePixels": {
+            "width": 392,
+            "height": 392,
+            "opaque": 26216,
+            "color": 26171,
+            "hash": 4095951623
+          },
+          "drawn": 0,
+          "markerPaints": [],
+          "playerId": "76561197997351207",
+          "notice": "全员阵亡 · 底图仅作参考，不代表当前楼层"
+        },
+        {
+          "label": "after",
+          "file": ".tmp/p7-all-dead/fixed/1024x640-unknown-after.png",
+          "width": 1024,
+          "height": 640,
+          "sha256": "72a98e0ddc0231140ad2ca72a8318d79e43af373a7042cddbbe6679872235768",
+          "tick": 18560,
+          "layer": "default",
+          "floorStatus": "retained",
+          "basePixels": {
+            "width": 392,
+            "height": 392,
+            "opaque": 26216,
+            "color": 26171,
+            "hash": 4095951623
+          },
+          "drawn": 0,
+          "markerPaints": [],
+          "playerId": "76561197997351207",
+          "notice": "全员阵亡 · 底图仅作参考，不代表当前楼层"
+        }
+      ]
+    },
+    {
+      "id": "missing-final-position",
+      "viewport": {
+        "width": 1024,
+        "height": 640
+      },
+      "status": "PASS",
+      "provenance": {
+        "source": ".demo/nuke.dem",
+        "sha256": "dea9382b9cc263fed9ee4ed7e71fa6be8c176cf888868f05b26d850af6f5cb3c",
+        "spatialTick": 18000,
+        "lifecycle": "synthetic controlled DTO only; no native death claim",
+        "coordinates": "native snapshot values verbatim or null"
+      },
+      "trace": {
+        "file": ".tmp/p7-all-dead/fixed/1024x640-missing-final-position-frames.json",
+        "sha256": "10b0ae9fabd84065f6fcc184340e81336203c045f427dc72c33117204465edc5",
+        "paintSamples": 971,
+        "postDeathSamples": 799,
+        "blocks": [
+          2,
+          3,
+          4
+        ],
+        "postDeathBlackFrames": 0,
+        "postDeathLivingGlyphs": 0
+      },
+      "coldSeek": {
+        "beforeCache": [
+          "1:2",
+          "1:7",
+          "1:6"
+        ],
+        "afterTick": 18400,
+        "layer": "lower"
+      },
+      "screenshots": [
+        {
+          "label": "before",
+          "file": ".tmp/p7-all-dead/fixed/1024x640-missing-final-position-before.png",
+          "width": 1024,
+          "height": 640,
+          "sha256": "751e487006b84714b1cf0fbf16c694707a3704fefa3e7412a31cd9cb310c3ac2",
+          "tick": 18376,
+          "layer": "lower",
+          "floorStatus": "known",
+          "basePixels": {
+            "width": 392,
+            "height": 392,
+            "opaque": 26163,
+            "color": 25997,
+            "hash": 88096094
+          },
+          "drawn": 1,
+          "markerPaints": [
+            "10"
+          ],
+          "playerId": "76561199063238565",
+          "notice": ""
+        },
+        {
+          "label": "death",
+          "file": ".tmp/p7-all-dead/fixed/1024x640-missing-final-position-death.png",
+          "width": 1024,
+          "height": 640,
+          "sha256": "651a6106606fae38c6ec214fdc958a5f26c9c1720b93414eb22ec39972360e1a",
+          "tick": 18400,
+          "layer": "lower",
+          "floorStatus": "retained",
+          "basePixels": {
+            "width": 392,
+            "height": 392,
+            "opaque": 26163,
+            "color": 25997,
+            "hash": 88096094
+          },
+          "drawn": 0,
+          "markerPaints": [],
+          "playerId": "76561199063238565",
+          "notice": "全员阵亡 · 底图仅作参考，不代表当前楼层"
+        },
+        {
+          "label": "after",
+          "file": ".tmp/p7-all-dead/fixed/1024x640-missing-final-position-after.png",
+          "width": 1024,
+          "height": 640,
+          "sha256": "477aaaf6f6e726ac45148c9244b06345215c8bdea4cd5fc260b29fb6d1178e24",
+          "tick": 18560,
+          "layer": "lower",
+          "floorStatus": "retained",
+          "basePixels": {
+            "width": 392,
+            "height": 392,
+            "opaque": 26163,
+            "color": 25997,
+            "hash": 88096094
+          },
+          "drawn": 0,
+          "markerPaints": [],
+          "playerId": "76561199063238565",
+          "notice": "全员阵亡 · 底图仅作参考，不代表当前楼层"
+        }
+      ]
+    },
+    {
+      "id": "no-floor-reference",
+      "viewport": {
+        "width": 1024,
+        "height": 640
+      },
+      "status": "PASS",
+      "provenance": {
+        "source": ".demo/nuke.dem",
+        "sha256": "dea9382b9cc263fed9ee4ed7e71fa6be8c176cf888868f05b26d850af6f5cb3c",
+        "spatialTick": 18000,
+        "lifecycle": "synthetic controlled DTO only; no native death claim",
+        "coordinates": "native snapshot values verbatim or null"
+      },
+      "trace": {
+        "file": ".tmp/p7-all-dead/fixed/1024x640-no-floor-reference-frames.json",
+        "sha256": "337b6167b9106e6f8f4183191c3f5ac0484b63082c9bf6214ade5a223131a87e",
+        "paintSamples": 1026,
+        "postDeathSamples": 876,
+        "blocks": [
+          2,
+          3,
+          4
+        ],
+        "postDeathBlackFrames": 0,
+        "postDeathLivingGlyphs": 0
+      },
+      "coldSeek": {
+        "beforeCache": [
+          "1:2",
+          "1:7",
+          "1:6"
+        ],
+        "afterTick": 18400,
+        "layer": "default"
+      },
+      "noEvidenceAllDead": {
+        "tick": 18400,
+        "uiTick": 18400,
+        "block": 3,
+        "chunkLoaded": true,
+        "cacheKeys": [
+          "1:1",
+          "1:4",
+          "1:3"
+        ],
+        "playing": false,
+        "playerId": "76561197997351207",
+        "sidebarPlayerId": "76561197997351207",
+        "sidebar": [
+          "1.  karriganT · 阵亡",
+          "2. ropzT · 阵亡",
+          "3. rainT · 阵亡",
+          "4. chopperCT · 阵亡",
+          "5. frozenT · 阵亡",
+          "6. sh1roCT · 阵亡",
+          "7. brokyT · 阵亡",
+          "8. donkCT · 阵亡",
+          "9. zont1xCT · 阵亡",
+          "10. magixxCT · 阵亡"
+        ],
+        "baseLayer": "default",
+        "layer": "default",
+        "floorStatus": "retained",
+        "imageReady": true,
+        "allDead": "true",
+        "followPlayer": "76561197997351207",
+        "followDeath": "controlled-no-floor-reference-76561197997351207",
+        "followCause": "unknown",
+        "drawn": 0,
+        "markerPaints": [],
+        "effects": 1,
+        "smoke": 1,
+        "notice": "全员阵亡 · 底图仅作参考，不代表当前楼层",
+        "base": {
+          "width": 392,
+          "height": 392,
+          "opaque": 26183,
+          "color": 26107,
+          "hash": 2647152106
+        },
+        "foreground": {
+          "width": 392,
+          "height": 392,
+          "opaque": 319,
+          "color": 313,
+          "hash": 3604818906
+        },
+        "viewport": {
+          "width": 1024,
+          "height": 640,
+          "dpr": 1
+        },
+        "rect": {
+          "x": 165,
+          "y": 117,
+          "width": 392,
+          "height": 392
+        }
+      },
+      "reverseFromNoEvidenceAllDead": {
+        "tick": 18000,
+        "uiTick": 18000,
+        "block": 0,
+        "chunkLoaded": true,
+        "cacheKeys": [
+          "1:2",
+          "1:0",
+          "1:1"
+        ],
+        "playing": false,
+        "playerId": "76561197997351207",
+        "sidebarPlayerId": "76561197997351207",
+        "sidebar": [
+          "1.  karriganT · 阵亡",
+          "2. ropzT · 阵亡",
+          "3. rainT · 100 HP",
+          "4. chopperCT · 阵亡",
+          "5. frozenT · 阵亡",
+          "6. sh1roCT · 阵亡",
+          "7. brokyT · 阵亡",
+          "8. donkCT · 阵亡",
+          "9. zont1xCT · 阵亡",
+          "10. magixxCT · 阵亡"
+        ],
+        "baseLayer": "",
+        "layer": null,
+        "floorStatus": "unknown",
+        "imageReady": false,
+        "allDead": "false",
+        "followPlayer": "76561197997351207",
+        "followDeath": "",
+        "followCause": "",
+        "drawn": 0,
+        "markerPaints": [],
+        "effects": 0,
+        "smoke": 0,
+        "notice": "目标楼层未知 · 请手动选层",
+        "base": {
+          "width": 392,
+          "height": 392,
+          "opaque": 0,
+          "color": 0,
+          "hash": 1555271941
+        },
+        "foreground": {
+          "width": 392,
+          "height": 392,
+          "opaque": 0,
+          "color": 0,
+          "hash": 1555271941
+        },
+        "viewport": {
+          "width": 1024,
+          "height": 640,
+          "dpr": 1
+        },
+        "rect": {
+          "x": 165,
+          "y": 117,
+          "width": 392,
+          "height": 392
+        }
+      },
+      "screenshots": [
+        {
+          "label": "cold-all-dead",
+          "file": ".tmp/p7-all-dead/fixed/1024x640-no-floor-reference-cold-all-dead.png",
+          "width": 1024,
+          "height": 640,
+          "sha256": "dc4f3643fcd7a99055dbc4932f8d13ad467f4115a43428fa05245e1adfd8b335",
+          "tick": 18400,
+          "layer": "default",
+          "floorStatus": "retained",
+          "basePixels": {
+            "width": 392,
+            "height": 392,
+            "opaque": 26183,
+            "color": 26107,
+            "hash": 2647152106
+          },
+          "drawn": 0,
+          "markerPaints": [],
+          "playerId": "76561197997351207",
+          "notice": "全员阵亡 · 底图仅作参考，不代表当前楼层"
+        },
+        {
+          "label": "before",
+          "file": ".tmp/p7-all-dead/fixed/1024x640-no-floor-reference-before.png",
+          "width": 1024,
+          "height": 640,
+          "sha256": "6890bcb9578b014a05628219579cdc7576c57b764b13ee22d6fdf2d673583af9",
+          "tick": 18376,
+          "layer": "default",
+          "floorStatus": "manual",
+          "basePixels": {
+            "width": 392,
+            "height": 392,
+            "opaque": 26183,
+            "color": 26107,
+            "hash": 2647152106
+          },
+          "drawn": 0,
+          "markerPaints": [],
+          "playerId": "76561197997351207",
+          "notice": ""
+        },
+        {
+          "label": "manual-reference-death",
+          "file": ".tmp/p7-all-dead/fixed/1024x640-no-floor-reference-manual-reference-death.png",
+          "width": 1024,
+          "height": 640,
+          "sha256": "8d8ea04f56023d2e1c059d54d03b1b93e2f5da11df1a7ec403870e7a6520c202",
+          "tick": 18400,
+          "layer": "default",
+          "floorStatus": "manual",
+          "basePixels": {
+            "width": 392,
+            "height": 392,
+            "opaque": 26183,
+            "color": 26107,
+            "hash": 2647152106
+          },
+          "drawn": 0,
+          "markerPaints": [],
+          "playerId": "76561197997351207",
+          "notice": "全员阵亡 · 底图仅作参考，不代表当前楼层"
+        },
+        {
+          "label": "death",
+          "file": ".tmp/p7-all-dead/fixed/1024x640-no-floor-reference-death.png",
+          "width": 1024,
+          "height": 640,
+          "sha256": "89180ef10e5092213115b0a3d5cffd2a9c1a92453f53131366154f20b0da5e9e",
+          "tick": 18400,
+          "layer": "default",
+          "floorStatus": "retained",
+          "basePixels": {
+            "width": 392,
+            "height": 392,
+            "opaque": 26183,
+            "color": 26107,
+            "hash": 2647152106
+          },
+          "drawn": 0,
+          "markerPaints": [],
+          "playerId": "76561197997351207",
+          "notice": "全员阵亡 · 底图仅作参考，不代表当前楼层"
+        },
+        {
+          "label": "after",
+          "file": ".tmp/p7-all-dead/fixed/1024x640-no-floor-reference-after.png",
+          "width": 1024,
+          "height": 640,
+          "sha256": "cba75fb44d66ce3de7f469cc987024c6bffb8accc0a51493006f7c71f9a1c627",
+          "tick": 18560,
+          "layer": "default",
+          "floorStatus": "retained",
+          "basePixels": {
+            "width": 392,
+            "height": 392,
+            "opaque": 26183,
+            "color": 26107,
+            "hash": 2647152106
+          },
+          "drawn": 0,
+          "markerPaints": [],
+          "playerId": "76561197997351207",
+          "notice": "全员阵亡 · 底图仅作参考，不代表当前楼层"
+        }
+      ]
+    },
+    {
+      "id": "c4",
+      "viewport": {
+        "width": 1920,
+        "height": 1032
+      },
+      "status": "PASS",
+      "provenance": {
+        "source": ".demo/nuke.dem",
+        "sha256": "dea9382b9cc263fed9ee4ed7e71fa6be8c176cf888868f05b26d850af6f5cb3c",
+        "spatialTick": 18000,
+        "lifecycle": "synthetic controlled DTO only; no native death claim",
+        "coordinates": "native snapshot values verbatim or null"
+      },
+      "trace": {
+        "file": ".tmp/p7-all-dead/fixed/1920x1032-c4-frames.json",
+        "sha256": "7e77f5d00e8a65436025258ae6f968b76bacb120544f15b97d7e8c10f454e099",
+        "paintSamples": 502,
+        "postDeathSamples": 430,
+        "blocks": [
+          2,
+          3,
+          4
+        ],
+        "postDeathBlackFrames": 0,
+        "postDeathLivingGlyphs": 0
+      },
+      "coldSeek": {
+        "beforeCache": [
+          "1:2",
+          "1:7",
+          "1:6"
+        ],
+        "afterTick": 18400,
+        "layer": "lower"
+      },
+      "screenshots": [
+        {
+          "label": "before",
+          "file": ".tmp/p7-all-dead/fixed/1920x1032-c4-before.png",
+          "width": 1920,
+          "height": 1032,
+          "sha256": "840272ac5c6298944c3b7d322dd4880189c06487a001b329f86263050c48233c",
+          "tick": 18376,
+          "layer": "lower",
+          "floorStatus": "known",
+          "basePixels": {
+            "width": 780,
+            "height": 780,
+            "opaque": 99066,
+            "color": 98661,
+            "hash": 442814326
+          },
+          "drawn": 1,
+          "markerPaints": [
+            "10"
+          ],
+          "playerId": "76561199063238565",
+          "notice": ""
+        },
+        {
+          "label": "death",
+          "file": ".tmp/p7-all-dead/fixed/1920x1032-c4-death.png",
+          "width": 1920,
+          "height": 1032,
+          "sha256": "90f31eafe905eaffbd180da4a4594f2604ed54e608c307e4ec9e06fa2fac118a",
+          "tick": 18400,
+          "layer": "lower",
+          "floorStatus": "retained",
+          "basePixels": {
+            "width": 780,
+            "height": 780,
+            "opaque": 99066,
+            "color": 98661,
+            "hash": 442814326
+          },
+          "drawn": 0,
+          "markerPaints": [],
+          "playerId": "76561199063238565",
+          "notice": "全员阵亡 · 底图仅作参考，不代表当前楼层"
+        },
+        {
+          "label": "after",
+          "file": ".tmp/p7-all-dead/fixed/1920x1032-c4-after.png",
+          "width": 1920,
+          "height": 1032,
+          "sha256": "8c5eb18900251903d788fd52dcdecf6e2f59a828d12c16d6c2188e3ec10735bd",
+          "tick": 18560,
+          "layer": "lower",
+          "floorStatus": "retained",
+          "basePixels": {
+            "width": 780,
+            "height": 780,
+            "opaque": 99066,
+            "color": 98661,
+            "hash": 442814326
+          },
+          "drawn": 0,
+          "markerPaints": [],
+          "playerId": "76561199063238565",
+          "notice": "全员阵亡 · 底图仅作参考，不代表当前楼层"
+        }
+      ]
+    },
+    {
+      "id": "posthumous-he",
+      "viewport": {
+        "width": 1920,
+        "height": 1032
+      },
+      "status": "PASS",
+      "provenance": {
+        "source": ".demo/nuke.dem",
+        "sha256": "dea9382b9cc263fed9ee4ed7e71fa6be8c176cf888868f05b26d850af6f5cb3c",
+        "spatialTick": 18000,
+        "lifecycle": "synthetic controlled DTO only; no native death claim",
+        "coordinates": "native snapshot values verbatim or null"
+      },
+      "trace": {
+        "file": ".tmp/p7-all-dead/fixed/1920x1032-posthumous-he-frames.json",
+        "sha256": "cd90725d8c2cf71b7076d61d21ffa17f9634ca9a50d2c8473515fc99549dde4f",
+        "paintSamples": 526,
+        "postDeathSamples": 443,
+        "blocks": [
+          2,
+          3,
+          4
+        ],
+        "postDeathBlackFrames": 0,
+        "postDeathLivingGlyphs": 0
+      },
+      "coldSeek": {
+        "beforeCache": [
+          "1:2",
+          "1:7",
+          "1:6"
+        ],
+        "afterTick": 18400,
+        "layer": "default"
+      },
+      "screenshots": [
+        {
+          "label": "before",
+          "file": ".tmp/p7-all-dead/fixed/1920x1032-posthumous-he-before.png",
+          "width": 1920,
+          "height": 1032,
+          "sha256": "f16d99917e9c36f77913acae0306e227fd2f282f0e46c41cce1cfa1dfacd7763",
+          "tick": 18376,
+          "layer": "default",
+          "floorStatus": "known",
+          "basePixels": {
+            "width": 780,
+            "height": 780,
+            "opaque": 99439,
+            "color": 99028,
+            "hash": 1450974830
+          },
+          "drawn": 1,
+          "markerPaints": [
+            "3"
+          ],
+          "playerId": "76561197997351207",
+          "notice": ""
+        },
+        {
+          "label": "death",
+          "file": ".tmp/p7-all-dead/fixed/1920x1032-posthumous-he-death.png",
+          "width": 1920,
+          "height": 1032,
+          "sha256": "35337f4b1ad249c63451cb8c5212a00b4819a97d33152d8f90163913c9858202",
+          "tick": 18400,
+          "layer": "default",
+          "floorStatus": "retained",
+          "basePixels": {
+            "width": 780,
+            "height": 780,
+            "opaque": 99439,
+            "color": 99028,
+            "hash": 1450974830
+          },
+          "drawn": 0,
+          "markerPaints": [],
+          "playerId": "76561197997351207",
+          "notice": "全员阵亡 · 底图仅作参考，不代表当前楼层"
+        },
+        {
+          "label": "after",
+          "file": ".tmp/p7-all-dead/fixed/1920x1032-posthumous-he-after.png",
+          "width": 1920,
+          "height": 1032,
+          "sha256": "cfc5ba134578471fe36b469e8248aed20695f6dda73d56f34c3bc1dbbc1636d0",
+          "tick": 18560,
+          "layer": "default",
+          "floorStatus": "retained",
+          "basePixels": {
+            "width": 780,
+            "height": 780,
+            "opaque": 99439,
+            "color": 99028,
+            "hash": 1450974830
+          },
+          "drawn": 0,
+          "markerPaints": [],
+          "playerId": "76561197997351207",
+          "notice": "全员阵亡 · 底图仅作参考，不代表当前楼层"
+        }
+      ]
+    },
+    {
+      "id": "suicide",
+      "viewport": {
+        "width": 1920,
+        "height": 1032
+      },
+      "status": "PASS",
+      "provenance": {
+        "source": ".demo/nuke.dem",
+        "sha256": "dea9382b9cc263fed9ee4ed7e71fa6be8c176cf888868f05b26d850af6f5cb3c",
+        "spatialTick": 18000,
+        "lifecycle": "synthetic controlled DTO only; no native death claim",
+        "coordinates": "native snapshot values verbatim or null"
+      },
+      "trace": {
+        "file": ".tmp/p7-all-dead/fixed/1920x1032-suicide-frames.json",
+        "sha256": "f46985a692a1fe1bae6a4a0276c66e178620a3b55629cd517dbd1d6b06c733d9",
+        "paintSamples": 517,
+        "postDeathSamples": 422,
+        "blocks": [
+          2,
+          3,
+          4
+        ],
+        "postDeathBlackFrames": 0,
+        "postDeathLivingGlyphs": 0
+      },
+      "coldSeek": {
+        "beforeCache": [
+          "1:2",
+          "1:7",
+          "1:6"
+        ],
+        "afterTick": 18400,
+        "layer": "lower"
+      },
+      "screenshots": [
+        {
+          "label": "before",
+          "file": ".tmp/p7-all-dead/fixed/1920x1032-suicide-before.png",
+          "width": 1920,
+          "height": 1032,
+          "sha256": "31fa66c8822fa18feb9716828a35097b213621654ab9eb952e583954dc83be13",
+          "tick": 18376,
+          "layer": "lower",
+          "floorStatus": "known",
+          "basePixels": {
+            "width": 780,
+            "height": 780,
+            "opaque": 99066,
+            "color": 98661,
+            "hash": 442814326
+          },
+          "drawn": 1,
+          "markerPaints": [
+            "10"
+          ],
+          "playerId": "76561199063238565",
+          "notice": ""
+        },
+        {
+          "label": "death",
+          "file": ".tmp/p7-all-dead/fixed/1920x1032-suicide-death.png",
+          "width": 1920,
+          "height": 1032,
+          "sha256": "5f83450913afe3f3d8eb75aebd0655df0c3656908f039e665fc52b49a8e31a54",
+          "tick": 18400,
+          "layer": "lower",
+          "floorStatus": "retained",
+          "basePixels": {
+            "width": 780,
+            "height": 780,
+            "opaque": 99066,
+            "color": 98661,
+            "hash": 442814326
+          },
+          "drawn": 0,
+          "markerPaints": [],
+          "playerId": "76561199063238565",
+          "notice": "全员阵亡 · 底图仅作参考，不代表当前楼层"
+        },
+        {
+          "label": "after",
+          "file": ".tmp/p7-all-dead/fixed/1920x1032-suicide-after.png",
+          "width": 1920,
+          "height": 1032,
+          "sha256": "dbd7920bfc36f8bf26a85041d2b54bf95acf52f22dc0822d750964ecd3c9be53",
+          "tick": 18560,
+          "layer": "lower",
+          "floorStatus": "retained",
+          "basePixels": {
+            "width": 780,
+            "height": 780,
+            "opaque": 99066,
+            "color": 98661,
+            "hash": 442814326
+          },
+          "drawn": 0,
+          "markerPaints": [],
+          "playerId": "76561199063238565",
+          "notice": "全员阵亡 · 底图仅作参考，不代表当前楼层"
+        }
+      ]
+    },
+    {
+      "id": "unknown",
+      "viewport": {
+        "width": 1920,
+        "height": 1032
+      },
+      "status": "PASS",
+      "provenance": {
+        "source": ".demo/nuke.dem",
+        "sha256": "dea9382b9cc263fed9ee4ed7e71fa6be8c176cf888868f05b26d850af6f5cb3c",
+        "spatialTick": 18000,
+        "lifecycle": "synthetic controlled DTO only; no native death claim",
+        "coordinates": "native snapshot values verbatim or null"
+      },
+      "trace": {
+        "file": ".tmp/p7-all-dead/fixed/1920x1032-unknown-frames.json",
+        "sha256": "e7530e33c94e3a417fc7e9468e92194574b82f890c15ba44141fb73717abbeed",
+        "paintSamples": 586,
+        "postDeathSamples": 485,
+        "blocks": [
+          2,
+          3,
+          4
+        ],
+        "postDeathBlackFrames": 0,
+        "postDeathLivingGlyphs": 0
+      },
+      "coldSeek": {
+        "beforeCache": [
+          "1:2",
+          "1:7",
+          "1:6"
+        ],
+        "afterTick": 18400,
+        "layer": "default"
+      },
+      "screenshots": [
+        {
+          "label": "before",
+          "file": ".tmp/p7-all-dead/fixed/1920x1032-unknown-before.png",
+          "width": 1920,
+          "height": 1032,
+          "sha256": "e401bc1687b4925867db92ab52382e79dd26482f6c9604a60b434877550093a7",
+          "tick": 18376,
+          "layer": "default",
+          "floorStatus": "known",
+          "basePixels": {
+            "width": 780,
+            "height": 780,
+            "opaque": 99439,
+            "color": 99028,
+            "hash": 1450974830
+          },
+          "drawn": 1,
+          "markerPaints": [
+            "3"
+          ],
+          "playerId": "76561197997351207",
+          "notice": ""
+        },
+        {
+          "label": "death",
+          "file": ".tmp/p7-all-dead/fixed/1920x1032-unknown-death.png",
+          "width": 1920,
+          "height": 1032,
+          "sha256": "d028cd4d89139c478b35aca95800c5861206fb05b57db0191020655b97f3dbad",
+          "tick": 18400,
+          "layer": "default",
+          "floorStatus": "retained",
+          "basePixels": {
+            "width": 780,
+            "height": 780,
+            "opaque": 99439,
+            "color": 99028,
+            "hash": 1450974830
+          },
+          "drawn": 0,
+          "markerPaints": [],
+          "playerId": "76561197997351207",
+          "notice": "全员阵亡 · 底图仅作参考，不代表当前楼层"
+        },
+        {
+          "label": "after",
+          "file": ".tmp/p7-all-dead/fixed/1920x1032-unknown-after.png",
+          "width": 1920,
+          "height": 1032,
+          "sha256": "5112ffaea94e49a69c6827afb9e4eadb13b022761921508ee8cba23fab368a9f",
+          "tick": 18560,
+          "layer": "default",
+          "floorStatus": "retained",
+          "basePixels": {
+            "width": 780,
+            "height": 780,
+            "opaque": 99439,
+            "color": 99028,
+            "hash": 1450974830
+          },
+          "drawn": 0,
+          "markerPaints": [],
+          "playerId": "76561197997351207",
+          "notice": "全员阵亡 · 底图仅作参考，不代表当前楼层"
+        }
+      ]
+    },
+    {
+      "id": "missing-final-position",
+      "viewport": {
+        "width": 1920,
+        "height": 1032
+      },
+      "status": "PASS",
+      "provenance": {
+        "source": ".demo/nuke.dem",
+        "sha256": "dea9382b9cc263fed9ee4ed7e71fa6be8c176cf888868f05b26d850af6f5cb3c",
+        "spatialTick": 18000,
+        "lifecycle": "synthetic controlled DTO only; no native death claim",
+        "coordinates": "native snapshot values verbatim or null"
+      },
+      "trace": {
+        "file": ".tmp/p7-all-dead/fixed/1920x1032-missing-final-position-frames.json",
+        "sha256": "29746a7ccf88cf66f3cbd994a9b83d1d2c8a249ba6fd01bd8d352ad934a4896b",
+        "paintSamples": 519,
+        "postDeathSamples": 426,
+        "blocks": [
+          2,
+          3,
+          4
+        ],
+        "postDeathBlackFrames": 0,
+        "postDeathLivingGlyphs": 0
+      },
+      "coldSeek": {
+        "beforeCache": [
+          "1:2",
+          "1:7",
+          "1:6"
+        ],
+        "afterTick": 18400,
+        "layer": "lower"
+      },
+      "screenshots": [
+        {
+          "label": "before",
+          "file": ".tmp/p7-all-dead/fixed/1920x1032-missing-final-position-before.png",
+          "width": 1920,
+          "height": 1032,
+          "sha256": "90adaa57ff72670b281a57503f788f597b9b1fd30882415bb5a94fee88c7be82",
+          "tick": 18376,
+          "layer": "lower",
+          "floorStatus": "known",
+          "basePixels": {
+            "width": 780,
+            "height": 780,
+            "opaque": 99066,
+            "color": 98661,
+            "hash": 442814326
+          },
+          "drawn": 1,
+          "markerPaints": [
+            "10"
+          ],
+          "playerId": "76561199063238565",
+          "notice": ""
+        },
+        {
+          "label": "death",
+          "file": ".tmp/p7-all-dead/fixed/1920x1032-missing-final-position-death.png",
+          "width": 1920,
+          "height": 1032,
+          "sha256": "583eb459d8b8687fd8d69b3ff30cb76cb5447a4525180d64a3a3f065bcb50d09",
+          "tick": 18400,
+          "layer": "lower",
+          "floorStatus": "retained",
+          "basePixels": {
+            "width": 780,
+            "height": 780,
+            "opaque": 99066,
+            "color": 98661,
+            "hash": 442814326
+          },
+          "drawn": 0,
+          "markerPaints": [],
+          "playerId": "76561199063238565",
+          "notice": "全员阵亡 · 底图仅作参考，不代表当前楼层"
+        },
+        {
+          "label": "after",
+          "file": ".tmp/p7-all-dead/fixed/1920x1032-missing-final-position-after.png",
+          "width": 1920,
+          "height": 1032,
+          "sha256": "e05ff8f114516f26fda0f6fee602aaf60ead6afbb7735ce385e844fc09c19a6f",
+          "tick": 18560,
+          "layer": "lower",
+          "floorStatus": "retained",
+          "basePixels": {
+            "width": 780,
+            "height": 780,
+            "opaque": 99066,
+            "color": 98661,
+            "hash": 442814326
+          },
+          "drawn": 0,
+          "markerPaints": [],
+          "playerId": "76561199063238565",
+          "notice": "全员阵亡 · 底图仅作参考，不代表当前楼层"
+        }
+      ]
+    },
+    {
+      "id": "no-floor-reference",
+      "viewport": {
+        "width": 1920,
+        "height": 1032
+      },
+      "status": "PASS",
+      "provenance": {
+        "source": ".demo/nuke.dem",
+        "sha256": "dea9382b9cc263fed9ee4ed7e71fa6be8c176cf888868f05b26d850af6f5cb3c",
+        "spatialTick": 18000,
+        "lifecycle": "synthetic controlled DTO only; no native death claim",
+        "coordinates": "native snapshot values verbatim or null"
+      },
+      "trace": {
+        "file": ".tmp/p7-all-dead/fixed/1920x1032-no-floor-reference-frames.json",
+        "sha256": "3561a734958431cd74335a17adab3d27ba02514d2c7adc343c04d5914312d30a",
+        "paintSamples": 532,
+        "postDeathSamples": 435,
+        "blocks": [
+          2,
+          3,
+          4
+        ],
+        "postDeathBlackFrames": 0,
+        "postDeathLivingGlyphs": 0
+      },
+      "coldSeek": {
+        "beforeCache": [
+          "1:2",
+          "1:7",
+          "1:6"
+        ],
+        "afterTick": 18400,
+        "layer": "default"
+      },
+      "noEvidenceAllDead": {
+        "tick": 18400,
+        "uiTick": 18400,
+        "block": 3,
+        "chunkLoaded": true,
+        "cacheKeys": [
+          "1:3",
+          "1:4",
+          "1:2"
+        ],
+        "playing": false,
+        "playerId": "76561197997351207",
+        "sidebarPlayerId": "76561197997351207",
+        "sidebar": [
+          "1.  karriganT · 阵亡",
+          "2. ropzT · 阵亡",
+          "3. rainT · 阵亡",
+          "4. chopperCT · 阵亡",
+          "5. frozenT · 阵亡",
+          "6. sh1roCT · 阵亡",
+          "7. brokyT · 阵亡",
+          "8. donkCT · 阵亡",
+          "9. zont1xCT · 阵亡",
+          "10. magixxCT · 阵亡"
+        ],
+        "baseLayer": "default",
+        "layer": "default",
+        "floorStatus": "retained",
+        "imageReady": true,
+        "allDead": "true",
+        "followPlayer": "76561197997351207",
+        "followDeath": "controlled-no-floor-reference-76561197997351207",
+        "followCause": "unknown",
+        "drawn": 0,
+        "markerPaints": [],
+        "effects": 1,
+        "smoke": 1,
+        "notice": "全员阵亡 · 底图仅作参考，不代表当前楼层",
+        "base": {
+          "width": 780,
+          "height": 780,
+          "opaque": 99412,
+          "color": 98953,
+          "hash": 4257464048
+        },
+        "foreground": {
+          "width": 780,
+          "height": 780,
+          "opaque": 1262,
+          "color": 1258,
+          "hash": 2806041319
+        },
+        "viewport": {
+          "width": 1920,
+          "height": 1032,
+          "dpr": 1
+        },
+        "rect": {
+          "x": 419,
+          "y": 117,
+          "width": 780,
+          "height": 780
+        }
+      },
+      "reverseFromNoEvidenceAllDead": {
+        "tick": 18000,
+        "uiTick": 18000,
+        "block": 0,
+        "chunkLoaded": true,
+        "cacheKeys": [
+          "1:2",
+          "1:0",
+          "1:1"
+        ],
+        "playing": false,
+        "playerId": "76561197997351207",
+        "sidebarPlayerId": "76561197997351207",
+        "sidebar": [
+          "1.  karriganT · 阵亡",
+          "2. ropzT · 阵亡",
+          "3. rainT · 100 HP",
+          "4. chopperCT · 阵亡",
+          "5. frozenT · 阵亡",
+          "6. sh1roCT · 阵亡",
+          "7. brokyT · 阵亡",
+          "8. donkCT · 阵亡",
+          "9. zont1xCT · 阵亡",
+          "10. magixxCT · 阵亡"
+        ],
+        "baseLayer": "",
+        "layer": null,
+        "floorStatus": "unknown",
+        "imageReady": false,
+        "allDead": "false",
+        "followPlayer": "76561197997351207",
+        "followDeath": "",
+        "followCause": "",
+        "drawn": 0,
+        "markerPaints": [],
+        "effects": 0,
+        "smoke": 0,
+        "notice": "目标楼层未知 · 请手动选层",
+        "base": {
+          "width": 780,
+          "height": 780,
+          "opaque": 0,
+          "color": 0,
+          "hash": 2633714581
+        },
+        "foreground": {
+          "width": 780,
+          "height": 780,
+          "opaque": 0,
+          "color": 0,
+          "hash": 2633714581
+        },
+        "viewport": {
+          "width": 1920,
+          "height": 1032,
+          "dpr": 1
+        },
+        "rect": {
+          "x": 419,
+          "y": 117,
+          "width": 780,
+          "height": 780
+        }
+      },
+      "screenshots": [
+        {
+          "label": "cold-all-dead",
+          "file": ".tmp/p7-all-dead/fixed/1920x1032-no-floor-reference-cold-all-dead.png",
+          "width": 1920,
+          "height": 1032,
+          "sha256": "07910243311ece34203e907b93222cb2885a2be25d79361245d5398eb568e629",
+          "tick": 18400,
+          "layer": "default",
+          "floorStatus": "retained",
+          "basePixels": {
+            "width": 780,
+            "height": 780,
+            "opaque": 99412,
+            "color": 98953,
+            "hash": 4257464048
+          },
+          "drawn": 0,
+          "markerPaints": [],
+          "playerId": "76561197997351207",
+          "notice": "全员阵亡 · 底图仅作参考，不代表当前楼层"
+        },
+        {
+          "label": "before",
+          "file": ".tmp/p7-all-dead/fixed/1920x1032-no-floor-reference-before.png",
+          "width": 1920,
+          "height": 1032,
+          "sha256": "95bcf33279f6249172234ea89beea318f3b035a8f104efe5869773fab2357a76",
+          "tick": 18376,
+          "layer": "default",
+          "floorStatus": "manual",
+          "basePixels": {
+            "width": 780,
+            "height": 780,
+            "opaque": 99412,
+            "color": 98953,
+            "hash": 4257464048
+          },
+          "drawn": 0,
+          "markerPaints": [],
+          "playerId": "76561197997351207",
+          "notice": ""
+        },
+        {
+          "label": "manual-reference-death",
+          "file": ".tmp/p7-all-dead/fixed/1920x1032-no-floor-reference-manual-reference-death.png",
+          "width": 1920,
+          "height": 1032,
+          "sha256": "6f9bb37648d4a20424a86c84b47d161d3b81c72275a5d1da97510cf622237bc3",
+          "tick": 18400,
+          "layer": "default",
+          "floorStatus": "manual",
+          "basePixels": {
+            "width": 780,
+            "height": 780,
+            "opaque": 99412,
+            "color": 98953,
+            "hash": 4257464048
+          },
+          "drawn": 0,
+          "markerPaints": [],
+          "playerId": "76561197997351207",
+          "notice": "全员阵亡 · 底图仅作参考，不代表当前楼层"
+        },
+        {
+          "label": "death",
+          "file": ".tmp/p7-all-dead/fixed/1920x1032-no-floor-reference-death.png",
+          "width": 1920,
+          "height": 1032,
+          "sha256": "4487458eda4025c0664ff50af73251c75475f60225e897ea4f195793639aaaa7",
+          "tick": 18400,
+          "layer": "default",
+          "floorStatus": "retained",
+          "basePixels": {
+            "width": 780,
+            "height": 780,
+            "opaque": 99412,
+            "color": 98953,
+            "hash": 4257464048
+          },
+          "drawn": 0,
+          "markerPaints": [],
+          "playerId": "76561197997351207",
+          "notice": "全员阵亡 · 底图仅作参考，不代表当前楼层"
+        },
+        {
+          "label": "after",
+          "file": ".tmp/p7-all-dead/fixed/1920x1032-no-floor-reference-after.png",
+          "width": 1920,
+          "height": 1032,
+          "sha256": "8770453b94be8cd45299ac1028510686ce1686de713bce740373ff0d6b84d42d",
+          "tick": 18560,
+          "layer": "default",
+          "floorStatus": "retained",
+          "basePixels": {
+            "width": 780,
+            "height": 780,
+            "opaque": 99412,
+            "color": 98953,
+            "hash": 4257464048
+          },
+          "drawn": 0,
+          "markerPaints": [],
+          "playerId": "76561197997351207",
+          "notice": "全员阵亡 · 底图仅作参考，不代表当前楼层"
+        }
+      ]
+    }
+  ]
+}

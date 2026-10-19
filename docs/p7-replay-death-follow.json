@@ -1,0 +1,520 @@
+{
+  "schema": "p7-replay-death-follow-acceptance-v1",
+  "date": "2026-10-19",
+  "timezone": "Asia/Shanghai",
+  "status": "IMPLEMENTED; real covered scenarios PASS; controlled all-dead Electron PASS; real DEM all-dead Electron NOT RUN",
+  "baseline": "91e4284e8be6c335950e39313335db132095fb14",
+  "branch": "codex/p7-replay-death-follow",
+  "commit": "See delivery message / git history; no self-referencing SHA in commit",
+  "baselineReproduced": {
+    "fixture": ".demo/nuke.dem",
+    "round": 2,
+    "tick": 18395,
+    "target": "dead karrigan retained",
+    "baseNonempty": false,
+    "evidence": ".tmp/p7-death-follow/baseline/electron.json"
+  },
+  "environment": {
+    "platform": "win32",
+    "node": "v26.3.0",
+    "method": "Real built Electron, existing CDP/process harness, local DEMs; Browser skill absent; no new browser dependency",
+    "viewport": "1280x800 for death acceptance; report additionally 1024x640 and 1920x1032",
+    "installation": "Unpackaged built app, not installer/manual walkthrough"
+  },
+  "productionScope": [
+    "packages/report-contract/src/replay.ts",
+    "apps/desktop/electron/replay-session.ts",
+    "apps/desktop/renderer/src/replay-follow.ts",
+    "apps/desktop/renderer/src/replay-floor.ts",
+    "apps/desktop/renderer/src/replay-player.tsx"
+  ],
+  "checks": [
+    {
+      "command": "pnpm typecheck",
+      "status": "PASS",
+      "result": "15/15 Turbo tasks",
+      "log": ".tmp/p7-death-follow/typecheck.log"
+    },
+    {
+      "command": "pnpm build",
+      "status": "PASS",
+      "result": "8/8 Turbo tasks, replay resources verified",
+      "log": ".tmp/p7-death-follow/build.log"
+    },
+    {
+      "command": "pnpm --filter @cs2-analyst/desktop test",
+      "status": "PASS",
+      "result": "194 tests, 0 skipped",
+      "log": ".tmp/p7-death-follow/desktop-test.log"
+    },
+    {
+      "command": "node --test apps/desktop/tests/replay-follow.test.mjs apps/desktop/tests/replay-session.test.mjs apps/desktop/tests/replay-floor.test.mjs",
+      "status": "PASS",
+      "result": "29 tests, included in Desktop count",
+      "log": ".tmp/p7-death-follow/focused-tests.log"
+    },
+    {
+      "command": "node scripts/replay-smoke.mjs",
+      "status": "PASS",
+      "result": "Real Dust2; replay, utilities, layout, seek, playback, lifecycle; reportUnchanged=true",
+      "log": ".tmp/p7-death-follow/replay-smoke.log"
+    },
+    {
+      "command": "node scripts/heatmap-smoke.mjs",
+      "status": "PASS",
+      "result": "Real Dust2; 30 IPC requests, cached repeats, heatmap/report regression",
+      "log": ".tmp/p7-death-follow/heatmap-smoke.log"
+    },
+    {
+      "command": "node scripts/p7-report-layout-acceptance.mjs",
+      "status": "PASS",
+      "result": "Real demo1/demo2; 1024x640 and 1920x1032, warning/empty/error states",
+      "log": ".tmp/p7-death-follow/report-layout.log"
+    },
+    {
+      "command": "node scripts/replay-death-follow-acceptance.mjs",
+      "status": "PASS (covered real scenarios)"
+    },
+    {
+      "command": "node scripts/replay-death-follow-acceptance.mjs --scenario=suicide",
+      "status": "PASS (covered real scenarios)"
+    },
+    {
+      "command": "node scripts/replay-death-follow-acceptance.mjs --scenario=posthumous",
+      "status": "PASS (covered real scenarios)"
+    },
+    {
+      "command": "node scripts/replay-death-follow-acceptance.mjs --scenario=unknown",
+      "status": "PASS (covered real scenarios)"
+    }
+  ],
+  "electron": [
+    {
+      "scenario": "nuke",
+      "status": "PASS (covered real scenarios)",
+      "fixture": ".demo/nuke.dem",
+      "fixtureSha256": "dea9382b9cc263fed9ee4ed7e71fa6be8c176cf888868f05b26d850af6f5cb3c",
+      "fixtureBytes": 471606780,
+      "event": {
+        "round": 2,
+        "tick": 18395,
+        "roundElapsedSeconds": 149.40625,
+        "victimId": "76561197989430253",
+        "killerId": "76561198386265483",
+        "weapon": "deagle"
+      },
+      "selectedPlayerId": "76561198386265483",
+      "cause": "kill",
+      "baseNonempty": true,
+      "aliveCandidateIds": null,
+      "importMs": 7395,
+      "checks": [
+        "R2 tick18395 native death attribution, living donk selected in Canvas/sidebar, nonempty map pixels",
+        "all 141 real IPC chunks share whole-round context; all native deaths/killers and alive candidates checked; chunk/session caps",
+        "all real frame/event/effect payload fingerprints match retained same-fixture source",
+        "repeated, same-tick and reverse Seek reconstruct identical victim/killer selection",
+        "direct Seek from round start into uncached death chunk reconstructs same target",
+        "ordinary deaths from 3 additional real rounds select independently verified living killers",
+        "continuous 4x crosses real chunk boundary and switches at death without empty floor",
+        "natural continuous next round restores original manual anchor with living state"
+      ],
+      "playback": {
+        "observedFrames": 798,
+        "blocks": [
+          6,
+          7
+        ]
+      },
+      "coldSeek": "PASS - Nuke cold uncached death chunk",
+      "console": {
+        "knownUnpackagedElectronWarnings": 1,
+        "unexpected": []
+      },
+      "page": {
+        "url": "file:///E:/cs2-analyst/apps/desktop/dist/renderer/index.html",
+        "title": "CS2 Analyst",
+        "overlay": false
+      },
+      "nativeCoverage": {
+        "normal": 142,
+        "self": 0,
+        "unknown": 0,
+        "posthumous": 0,
+        "allDead": 0
+      },
+      "byteBudget": {
+        "totalBytes": 29834152,
+        "followBytes": 790019,
+        "maxChunkBytes": 369573
+      },
+      "payloadRegression": {
+        "status": "PASS",
+        "scope": "FNV32 comparison of exact serialized frame/event/utility/blind/burn payloads against retained same-SHA native source chunks; non-cryptographic regression fingerprint",
+        "path": "E:\\cs2-analyst\\.tmp\\p7-nuke-s0\\chunks.json"
+      },
+      "evidence": ".tmp/p7-death-follow/fixed/electron.json",
+      "screenshots": [
+        ".tmp/p7-death-follow/fixed/r2-karrigan-before.png",
+        ".tmp/p7-death-follow/fixed/r2-karrigan-death.png",
+        ".tmp/p7-death-follow/fixed/r2-karrigan-playback-after.png"
+      ]
+    },
+    {
+      "scenario": "suicide",
+      "status": "PASS (covered real scenarios)",
+      "fixture": ".demo/ancient.dem",
+      "fixtureSha256": "ca7b6b7cefdde927d654ac101ea1bee4fd996efc9b86ac89dac33874a0115f4e",
+      "fixtureBytes": 403039766,
+      "event": {
+        "round": 19,
+        "tick": 150403,
+        "roundElapsedSeconds": 88,
+        "victimId": "76561199063238565",
+        "killerId": "76561199063238565",
+        "weapon": "hegrenade"
+      },
+      "selectedPlayerId": "76561197989430253",
+      "cause": "suicide",
+      "baseNonempty": true,
+      "aliveCandidateIds": [
+        "76561197989430253",
+        "76561198068422762"
+      ],
+      "importMs": 6512,
+      "checks": [
+        "real ancient.dem suicide native identity/lifecycle verified inside formal Replay window",
+        "fallback is a true living player and excludes victim/dead attacker; same event stable under repeated/reverse/same/direct Seek (uncached block)",
+        "actual 4x playback crosses death and real chunk boundary with consistent fallback and nonempty radar"
+      ],
+      "playback": {
+        "observedFrames": 658,
+        "blocks": [
+          3,
+          4
+        ]
+      },
+      "coldSeek": "PASS",
+      "console": {
+        "knownUnpackagedElectronWarnings": 1,
+        "unexpected": []
+      },
+      "page": {
+        "url": "file:///E:/cs2-analyst/apps/desktop/dist/renderer/index.html",
+        "title": "CS2 Analyst",
+        "overlay": false
+      },
+      "nativeCoverage": {
+        "normal": 135,
+        "self": 1,
+        "unknown": 1,
+        "posthumous": 1,
+        "allDead": 0
+      },
+      "byteBudget": null,
+      "payloadRegression": null,
+      "evidence": ".tmp/p7-death-follow/suicide/electron.json",
+      "screenshots": [
+        ".tmp/p7-death-follow/suicide/suicide-before.png",
+        ".tmp/p7-death-follow/suicide/suicide-death.png",
+        ".tmp/p7-death-follow/suicide/suicide-playback-after.png"
+      ]
+    },
+    {
+      "scenario": "posthumous",
+      "status": "PASS (covered real scenarios)",
+      "fixture": ".demo/demo1.dem",
+      "fixtureSha256": "f3c3173eae0cd100d15c81c3b734be792f9212256a9c99703b358d3434000852",
+      "fixtureBytes": 267275583,
+      "event": {
+        "round": 22,
+        "tick": 121153,
+        "roundElapsedSeconds": 32.78125,
+        "victimId": "76561198397206664",
+        "killerId": "76561199567278982",
+        "weapon": "hegrenade"
+      },
+      "selectedPlayerId": "76561199189426601",
+      "cause": "kill",
+      "baseNonempty": true,
+      "aliveCandidateIds": [
+        "76561198427875946",
+        "76561198431759580",
+        "76561198823508147",
+        "76561199189426601",
+        "76561199238050274",
+        "76561199382440624",
+        "76561199642456355"
+      ],
+      "importMs": 8179,
+      "checks": [
+        "real demo1.dem posthumous native identity/lifecycle verified inside formal Replay window",
+        "fallback is a true living player and excludes victim/dead attacker; same event stable under repeated/reverse/same/direct Seek",
+        "actual 4x playback crosses death and real chunk boundary with consistent fallback and nonempty radar"
+      ],
+      "playback": {
+        "observedFrames": 842,
+        "blocks": [
+          0,
+          1
+        ]
+      },
+      "coldSeek": "NOT RUN — automatic adjacent-block prefetch retains this event block; cold Seek separately covered by Nuke/Ancient",
+      "console": {
+        "knownUnpackagedElectronWarnings": 1,
+        "unexpected": []
+      },
+      "page": {
+        "url": "file:///E:/cs2-analyst/apps/desktop/dist/renderer/index.html",
+        "title": "CS2 Analyst",
+        "overlay": false
+      },
+      "nativeCoverage": {
+        "normal": 179,
+        "self": 0,
+        "unknown": 0,
+        "posthumous": 1,
+        "allDead": 0
+      },
+      "byteBudget": null,
+      "payloadRegression": null,
+      "evidence": ".tmp/p7-death-follow/posthumous/electron.json",
+      "screenshots": [
+        ".tmp/p7-death-follow/posthumous/posthumous-before.png",
+        ".tmp/p7-death-follow/posthumous/posthumous-death.png",
+        ".tmp/p7-death-follow/posthumous/posthumous-playback-after.png"
+      ]
+    },
+    {
+      "scenario": "unknown",
+      "status": "PASS (covered real scenarios)",
+      "fixture": ".demo/ancient.dem",
+      "fixtureSha256": "ca7b6b7cefdde927d654ac101ea1bee4fd996efc9b86ac89dac33874a0115f4e",
+      "fixtureBytes": 403039766,
+      "event": {
+        "round": 7,
+        "tick": 57874,
+        "roundElapsedSeconds": 141.1875,
+        "victimId": "76561197991272318",
+        "killerId": null,
+        "weapon": "planted_c4"
+      },
+      "selectedPlayerId": "76561198995880877",
+      "cause": "unknown",
+      "baseNonempty": true,
+      "aliveCandidateIds": [
+        "76561198995880877"
+      ],
+      "importMs": 9328,
+      "checks": [
+        "real ancient.dem unknown native identity/lifecycle verified inside formal Replay window",
+        "fallback is a true living player and excludes victim/dead attacker; same event stable under repeated/reverse/same/direct Seek (uncached block)",
+        "actual 4x playback crosses death and real chunk boundary with consistent fallback and nonempty radar"
+      ],
+      "playback": {
+        "observedFrames": 142,
+        "blocks": [
+          6,
+          7
+        ]
+      },
+      "coldSeek": "PASS",
+      "console": {
+        "knownUnpackagedElectronWarnings": 1,
+        "unexpected": []
+      },
+      "page": {
+        "url": "file:///E:/cs2-analyst/apps/desktop/dist/renderer/index.html",
+        "title": "CS2 Analyst",
+        "overlay": false
+      },
+      "nativeCoverage": {
+        "normal": 135,
+        "self": 1,
+        "unknown": 1,
+        "posthumous": 1,
+        "allDead": 0
+      },
+      "byteBudget": null,
+      "payloadRegression": null,
+      "evidence": ".tmp/p7-death-follow/unknown/electron.json",
+      "screenshots": [
+        ".tmp/p7-death-follow/unknown/unknown-before.png",
+        ".tmp/p7-death-follow/unknown/unknown-death.png",
+        ".tmp/p7-death-follow/unknown/unknown-playback-after.png"
+      ]
+    }
+  ],
+  "syntheticCoverage": {
+    "status": "PASS",
+    "scope": [
+      "all-dead final C4/HE/self/unknown and zero live candidates",
+      "stable seeded fallback/repeated and reverse seek/cold chunk/death chains",
+      "missing native death-tick rows and first later living candidate set",
+      "atomic same-tick deaths/dead attackers/unknown attribution",
+      "observed false then stale true cannot revive without valid spawn",
+      "disconnect not death, corpse disconnect retains death, spawn conflicts",
+      "chain-final player without reliable floor retains prior actual background, future floor never read",
+      "all-dead stale true suppresses corpse marker/sidebar/floor confirmation; no coordinates restored"
+    ],
+    "tests": "29 focused tests included in Desktop 194; synthetic is not real DEM evidence"
+  },
+  "review": {
+    "status": "No remaining P1/P2 after independent review",
+    "additionalChecks": "500 generated consistent timelines, 20,994 anchor/tick dead-exclusion and deterministic checks; supplemental reviewer run, not counted as repository tests"
+  },
+  "failedAttempts": [
+    {
+      "evidence": ".tmp/p7-death-follow/replay-smoke-first-failure.log",
+      "reason": "Old assertion required dead ropz to remain selected. Updated to select an observed living player and strictly verify sidebar+Canvas identity. Final full rerun passed."
+    },
+    {
+      "evidence": ".tmp/p7-death-follow/suicide/initial-endpoint-attempt.json",
+      "reason": "Harness sought past formal round endpoint; endpoint clamped and continuous playback disabled for endpoint inspection; rerun passed."
+    },
+    {
+      "evidence": ".tmp/p7-death-follow/posthumous/initial-cache-attempt.json",
+      "reason": "Harness assumed event block was uncached; adjacent prefetch retained it. Direct seek passed; this per-fixture cold case explicitly NOT RUN, cold coverage from Nuke/Ancient."
+    }
+  ],
+  "notRun": [
+    "Real all-dead Electron Replay: exact native C4 all-dead groups found only outside existing formal Replay windows; tested synthetic in-window cases, did not extend windows or claim real PASS.",
+    "demo1 posthumous event direct seek block was prefetched; per-event uncached cold seek NOT RUN. Nuke and Ancient uncached seeks passed.",
+    "No historical reliable floor and no previously painted background remains unknown; no invented coordinates/floors.",
+    "Installed/packaged app, independent human walkthrough, physical multi-monitor DPI, all rounds/all targets/all speed combinations.",
+    "Parser/Analytics/Findings/Deep Review standalone full suites and native-query performance budgets; production code unchanged there, Desktop real tests and report regression executed."
+  ],
+  "constraints": {
+    "versionsTagsReleasesUnchanged": true,
+    "demTracked": false,
+    "newDependencies": false,
+    "parserDomainAnalyticsFindingsUnchanged": true,
+    "limitsUnchanged": {
+      "chunkBytes": 1048576,
+      "sessionBytes": 67108864,
+      "rendererChunks": 3
+    }
+  },
+  "evidenceFiles": [
+    {
+      "path": ".tmp/p7-death-follow/fixed/electron.json",
+      "bytes": 68376,
+      "sha256": "fb8f5d8a72e916793f625d335c0f3560c996508e1c91ad79fc3378308c32a22b"
+    },
+    {
+      "path": ".tmp/p7-death-follow/fixed/native-oracle.json",
+      "bytes": 2221054,
+      "sha256": "af5346c7072c504bc5b542aa9eb009b7209df0fbf8c91f52fe3eee07058dec37"
+    },
+    {
+      "path": ".tmp/p7-death-follow/suicide/electron.json",
+      "bytes": 33626,
+      "sha256": "b0a5e49c9d7dd2993002c5ba11d5b86f32a1f26c5269ee8c9606a3231bbd4bcd"
+    },
+    {
+      "path": ".tmp/p7-death-follow/suicide/native-oracle.json",
+      "bytes": 2072686,
+      "sha256": "7ef37c239950931a0098555be63d82c2ab293ecf5719c7cadbdbc14fc2cbf5e8"
+    },
+    {
+      "path": ".tmp/p7-death-follow/posthumous/electron.json",
+      "bytes": 35467,
+      "sha256": "1f606060a92130d6d534ba8f5a91eacc3dba2422550840317a311864714c4e77"
+    },
+    {
+      "path": ".tmp/p7-death-follow/posthumous/native-oracle.json",
+      "bytes": 2564283,
+      "sha256": "7cb3b982cb106cb3905385fc8739a0187bcb4f28d8f5c64f3aeb0d66a30731e3"
+    },
+    {
+      "path": ".tmp/p7-death-follow/unknown/electron.json",
+      "bytes": 33167,
+      "sha256": "9372cc43c6923f73538fb53d0c6d4fb0dcffef54ea5bf99a5a23faf9d5011b4e"
+    },
+    {
+      "path": ".tmp/p7-death-follow/unknown/native-oracle.json",
+      "bytes": 2072686,
+      "sha256": "7ef37c239950931a0098555be63d82c2ab293ecf5719c7cadbdbc14fc2cbf5e8"
+    },
+    {
+      "path": ".tmp/p7-death-follow/baseline/electron.json",
+      "bytes": 25809,
+      "sha256": "967ab9db10b0b8db0c840dfb383a42a16a63da8801062836d02a27529e297ece"
+    },
+    {
+      "path": ".tmp/p7-death-follow/native-evidence.json",
+      "bytes": 59651,
+      "sha256": "79bdd9fc3c7d06c5c78766a0e9c75bf66f58a89075683eac620730a455865fe9"
+    },
+    {
+      "path": ".tmp/p7-death-follow/transport-evidence.json",
+      "bytes": 19837,
+      "sha256": "cb874bf68b2fe40f05c8c31bb9e6349cf50879c669cea5a3f0938b65a17518b9"
+    },
+    {
+      "path": ".tmp/p7-death-follow/additional-native-evidence.json",
+      "bytes": 105128,
+      "sha256": "873a7ccecd4fab6e82603f94928c0bf3be65912c77094169e4e2a921496cf928"
+    },
+    {
+      "path": ".tmp/p7-death-follow/desktop-test.log",
+      "bytes": 44509,
+      "sha256": "9ffb2ee1d8d7ceaf3fbdbb637d12c3d40e987c0284e79f2d9a8fdaa5a900e45d"
+    },
+    {
+      "path": ".tmp/p7-death-follow/focused-tests.log",
+      "bytes": 3232,
+      "sha256": "2dd6a4945479bc8f77b4e065d346c821d12b6828bcf53add2d35a9f8a41b75f2"
+    },
+    {
+      "path": ".tmp/p7-death-follow/typecheck.log",
+      "bytes": 12714,
+      "sha256": "420123686f16181e0d6060ce209a1edc2c7aa781033986123ce85e7b502a65c9"
+    },
+    {
+      "path": ".tmp/p7-death-follow/build.log",
+      "bytes": 17039,
+      "sha256": "def3e3dbc58f7fd68d69291db0a5844ea41a9c0b7e09d7d784b4b8ff81eaf92b"
+    },
+    {
+      "path": ".tmp/p7-death-follow/replay-smoke.log",
+      "bytes": 254,
+      "sha256": "7bcaf13fe2ca8df978e96f75b51d47bb27cc5a93f0431396d5ff671bcd2fa761"
+    },
+    {
+      "path": ".tmp/p7-death-follow/heatmap-smoke.log",
+      "bytes": 371,
+      "sha256": "c821d4744cc520217035f8df079412172bbb6029397db746dbabffd2237e2b40"
+    },
+    {
+      "path": ".tmp/p7-death-follow/report-layout.log",
+      "bytes": 4534,
+      "sha256": "4c61e4e49a3bddfe44bcfa02ce39d553218e29ae3befc5057614ef79af76fc60"
+    }
+  ],
+  "allDeadSupplement": {
+    "date": "2026-10-20",
+    "baseline": "b7002ff58048496965148e8c0fb599464224c64a",
+    "evidence": "docs/p7-replay-all-dead.json",
+    "classifications": {
+      "realDemAllDeadElectron": {
+        "status": "NOT RUN",
+        "reason": "Zero confirmed all-dead native death ticks within unchanged formal Replay windows"
+      },
+      "controlledAllDeadElectron": {
+        "status": "PASS",
+        "runs": 12,
+        "screenshots": 40
+      },
+      "pureAndSyntheticTests": {
+        "status": "PASS",
+        "focused": 29,
+        "desktopTotal": 194,
+        "focusedIncludedInDesktop": true
+      },
+      "realDemOtherElectronRegressions": {
+        "status": "PASS",
+        "scope": "Dust2 Replay/Heatmap and Nuke ordinary death-follow, not all-dead"
+      }
+    }
+  }
+}

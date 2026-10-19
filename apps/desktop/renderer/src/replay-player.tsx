@@ -17,6 +17,7 @@ import type { ReplayEffectImages } from './replay-effect-assets';
 import { replayFloorAt } from './replay-floor';
 import type { ReplayFloorState, ReplayFloorStatus } from './replay-floor';
 import { ReplayMapImages } from './replay-map-images';
+import { resolveReplayFollow } from './replay-follow';
 
 /**
  * Desktop analysis layout: the panel owns the full height and nothing here scrolls as a page.
@@ -269,10 +270,12 @@ export function ReplayPlayer({ metadata, fileName, initialPlayerId, active, jump
   const showNicknames=nicknames.sessionId===metadata.sessionId&&nicknames.visible;
   const effectImages=useRef<ReplayEffectImages>({});
   const [loading,setLoading]=useState(false),[error,setError]=useState<string|null>(null),[revision,setRevision]=useState(0);
-  const [floorView,setFloorView]=useState<{layerId:string|null;status:ReplayFloorStatus;ready:boolean;failed:boolean}>({layerId:null,status:'unknown',ready:false,failed:false});
+  const [floorView,setFloorView]=useState<{layerId:string|null;status:ReplayFloorStatus;ready:boolean;failed:boolean;allDead:boolean}>({layerId:null,status:'unknown',ready:false,failed:false,allDead:false});
   const floorUi=useRef(floorView),floorHistory=useRef<ReplayFloorState|null>(null),seekRevision=useRef(0);
   const mapImages=useRef<ReplayMapImages|null>(null),backgroundKey=useRef('');
+  const lastDisplayedBackground=useRef<{context:string;layerId:string}|null>(null);
   const [selectedReplayPlayerId,setSelectedReplayPlayerId]=useState(()=>resolveReplayPlayerId(metadata.players,initialPlayerId));
+  const followAnchor=useRef({sessionId:metadata.sessionId,playerId:resolveReplayPlayerId(metadata.players,initialPlayerId)});
   const [visibleEvents,setVisibleEvents]=useState<DesktopReplayEvent[]>([]),[appendSequence,setAppendSequence]=useState(0);
   const cache=useRef(new ReplayChunkCache()),clock=useRef(new ReplayClock(first?.startTick??0));
   const inFlight=useRef(false),generation=useRef(0),resume=useRef(false),failed=useRef(new Set<string>());
@@ -290,6 +293,7 @@ export function ReplayPlayer({ metadata, fileName, initialPlayerId, active, jump
   const playerIds=metadata.players.map(p=>p.id);
   const mapState=mapResourceState(metadata.map,replayMapAssets),map=mapState.definition;
   const frame=chunk?replayDisplayFrame(chunk,tick,metadata.maxInterpolationTicks,playerIds,map?z=>resolveMapLayer(map,z):undefined):null;
+  const deadPlayerIds=chunk?resolveReplayFollow(chunk,followAnchor.current.playerId,tick,playerIds).deadPlayerIds:[];
   const layer=map?.layers.find(l=>l.id===floorView.layerId);
   const imageReady=floorView.ready;
   const availableMap=mapState.status!=='unavailable';
@@ -297,7 +301,12 @@ export function ReplayPlayer({ metadata, fileName, initialPlayerId, active, jump
   // Drawing owns layerId/imageReady; React must not overwrite them with a low-frequency tick.
   live.current={...live.current,info,selectedPlayerId:selectedReplayPlayerId,active,map,floor,showNicknames};
 
-  useEffect(()=>{setSelectedReplayPlayerId(current=>metadata.players.some(p=>p.id===current)?current:resolveReplayPlayerId(metadata.players,initialPlayerId));},[metadata.sessionId]);
+  useEffect(()=>{
+    if(followAnchor.current.sessionId!==metadata.sessionId){
+      followAnchor.current={sessionId:metadata.sessionId,playerId:resolveReplayPlayerId(metadata.players,initialPlayerId)};
+      setSelectedReplayPlayerId(followAnchor.current.playerId);
+    }
+  },[metadata.sessionId]);
 
   function resetVisibleEvents(){
     visibleEventsRef.current=[];seenEventIds.current.clear();lastEventTick.current=-Infinity;setVisibleEvents([]);
@@ -383,22 +392,40 @@ export function ReplayPlayer({ metadata, fileName, initialPlayerId, active, jump
     const target=canvas.current,view=live.current;if(!target)return;
     const ctx=target.getContext('2d');if(!ctx)return;
     const started=performance.now();ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,target.width,target.height);
+    // While IPC loads a cold block keep the last background; it is not new floor evidence.
+    if(!currentChunk)return;
     const map=view.map;
+    const follow=resolveReplayFollow(currentChunk,followAnchor.current.playerId,at,playerIds);
+    if(follow.playerId!==view.selectedPlayerId){
+      view.selectedPlayerId=follow.playerId;setSelectedReplayPlayerId(follow.playerId);
+    }
+    target.dataset.followPlayer=follow.playerId;target.dataset.followDeath=follow.deathId??'';
+    target.dataset.followCause=follow.cause??'';target.dataset.allDead=String(follow.allDead);
     const selectedIndex=metadata.players.findIndex(p=>p.id===view.selectedPlayerId);
+    const backgroundContext=JSON.stringify([metadata.sessionId,metadata.matchId,map?.id,map?.resourceId]);
+    const displayedBackground=lastDisplayedBackground.current;
+    // With no spatial history, a confirmed all-dead session may show a reference
+    // texture. It is never a player position/current floor; the notice says so.
+    const retainedBackground=follow.allDead?(follow.backgroundLayer
+      ??(displayedBackground?.context===backgroundContext?displayedBackground.layerId:null)
+      ??map?.layers[0]?.id??null):null;
     const decision=map?replayFloorAt(floorHistory.current,{sessionId:metadata.sessionId,matchId:metadata.matchId,
       round:view.info?.round??0,playerId:view.selectedPlayerId,seekRevision:seekRevision.current,mode:view.floor,
-      tick:at,map,selected:current?.players.find(p=>p[0]===selectedIndex)}):null;
+      tick:at,map,selected:follow.deadPlayerIds.includes(view.selectedPlayerId)?undefined:current?.players.find(p=>p[0]===selectedIndex),allDeadBackground:retainedBackground}):null;
     floorHistory.current=decision;
     const layerId=decision?.layerId??null,entry=layerId?mapImages.current?.entries.get(layerId):undefined;
     view.layerId=layerId;view.imageReady=entry?.status==='ready';
-    const nextUi={layerId,status:decision?.status??'unknown' as ReplayFloorStatus,ready:view.imageReady,failed:entry?.status==='failed'};
+    const nextUi={layerId,status:decision?.status??'unknown' as ReplayFloorStatus,ready:view.imageReady,failed:entry?.status==='failed',allDead:follow.allDead};
     const prior=floorUi.current;
-    if(prior.layerId!==nextUi.layerId||prior.status!==nextUi.status||prior.ready!==nextUi.ready||prior.failed!==nextUi.failed){floorUi.current=nextUi;setFloorView(nextUi);}
+    if(prior.layerId!==nextUi.layerId||prior.status!==nextUi.status||prior.ready!==nextUi.ready||prior.failed!==nextUi.failed||prior.allDead!==nextUi.allDead){floorUi.current=nextUi;setFloorView(nextUi);}
     // Base and foreground are committed together, from this exact display tick.
     const base=baseCanvas.current,key=`${layerId}:${view.imageReady}:${base?.width}:${base?.height}`;
     if(base&&backgroundKey.current!==key){
       const baseCtx=base.getContext('2d');baseCtx?.clearRect(0,0,base.width,base.height);
-      if(view.imageReady&&entry)baseCtx?.drawImage(entry.image,0,0,base.width,base.height);
+      if(view.imageReady&&entry&&baseCtx&&layerId){
+        baseCtx.drawImage(entry.image,0,0,base.width,base.height);
+        lastDisplayedBackground.current={context:backgroundContext,layerId};
+      }
       backgroundKey.current=key;
     }
     if(base)base.dataset.layer=view.imageReady?layerId??'':'';
@@ -428,6 +455,7 @@ export function ReplayPlayer({ metadata, fileName, initialPlayerId, active, jump
     const statusMarks:{x:number;y:number;kind:'blind'|'burn'}[]=[];
     const labels:{x:number;y:number;text:string;chosen:boolean}[]=[];
     for(const p of current.players){
+      if(follow.deadPlayerIds.includes(metadata.players[p[0]]?.id))continue;
       if(p[7]!==true||p[2]===null||p[3]===null||resolveMapLayer(map,p[4])!==view.layerId)continue;
       const point=worldToRadar(map,{x:p[2],y:p[3]});if(!point||point.x<0||point.y<0||point.x>map.width||point.y>map.height)continue;
       drawnPlayers++;
@@ -522,7 +550,7 @@ export function ReplayPlayer({ metadata, fileName, initialPlayerId, active, jump
     return()=>{cancelAnimationFrame(raf);document.removeEventListener('visibilitychange',hidden);clock.current.pause(performance.now(),metadata.tickRate);resume.current=false;};
   },[active,metadata.sessionId]);
   useEffect(()=>{
-    backgroundKey.current='';floorHistory.current=null;
+    backgroundKey.current='';floorHistory.current=null;lastDisplayedBackground.current=null;
     const images=availableMap&&map?new ReplayMapImages(map.layers.map(layer=>[layer.id,replayMapAssets[layer.image]])):null;
     mapImages.current=images;
     fit.current=()=>{backgroundKey.current='';};
@@ -584,7 +612,7 @@ export function ReplayPlayer({ metadata, fileName, initialPlayerId, active, jump
             {info.coverage==='partial'?<span>该回合存在缺失或歧义状态；断点不连接，未知状态不补齐。</span>:null}
           </div>} />
         </div>
-        {map&&map.layers.length>1&&floor==='auto'&&floorView.status!=='known'?<Badge className={s.floorNotice} appearance="tint" color="warning" size="small" data-replay-floor-notice>{floorView.status==='retained'?'目标楼层未知 · 沿用上一确认层':'目标楼层未知 · 请手动选层'}</Badge>:null}
+        {map&&map.layers.length>1&&((floor==='auto'&&floorView.status!=='known')||floorView.allDead)?<Badge className={s.floorNotice} appearance="tint" color="warning" size="small" data-replay-floor-notice>{floorView.allDead&&floorView.layerId?'全员阵亡 · 底图仅作参考，不代表当前楼层':floorView.status==='retained'?'目标楼层未知 · 沿用上一确认层':'目标楼层未知 · 请手动选层'}</Badge>:null}
         {floorView.failed?<Body1 className={s.mapError} role="alert">本机没有配套雷达资源或图片无法装载；仍可浏览事件与玩家状态。</Body1>:null}
         {info.freezeEndTick!==null&&tick<info.freezeEndTick?<Badge className={s.mapPhase} data-replay-phase appearance="outline" size="small">冻结阶段</Badge>:null}
         <div ref={box} className={s.map}>
@@ -628,7 +656,7 @@ export function ReplayPlayer({ metadata, fileName, initialPlayerId, active, jump
         <div className={s.group}>
           <div className={s.groupHeader}><Caption1>玩家状态</Caption1><Caption1 className={s.muted}>{metadata.players.length} 人</Caption1></div>
           <div className={s.players} aria-label="回放玩家状态">
-            {metadata.players.map((player,index)=>{const p=frame?.players.find(p=>p[0]===index);return <Button key={player.id} className={s.player} appearance={player.id===selectedReplayPlayerId?'secondary':'subtle'} aria-pressed={player.id===selectedReplayPlayerId} onClick={()=>{if(player.id!==live.current.selectedPlayerId){floorHistory.current=null;live.current.selectedPlayerId=player.id;setSelectedReplayPlayerId(player.id);}}} title={player.nickname}><span className={s.name}>{index+1}. {player.nickname}</span><Caption1>{p?.[8]??'Unknown'} · {p?.[7]===false?'阵亡':p?.[7]===true?`${p[6]??'—'} HP`:'未知'}</Caption1></Button>;})}
+            {metadata.players.map((player,index)=>{const p=frame?.players.find(p=>p[0]===index);return <Button key={player.id} className={s.player} appearance={player.id===selectedReplayPlayerId?'secondary':'subtle'} aria-pressed={player.id===selectedReplayPlayerId} onClick={()=>{followAnchor.current.playerId=player.id;if(player.id!==live.current.selectedPlayerId){floorHistory.current=null;live.current.selectedPlayerId=player.id;setSelectedReplayPlayerId(player.id);}}} title={player.nickname}><span className={s.name}>{index+1}. {player.nickname}</span><Caption1>{p?.[8]??'Unknown'} · {deadPlayerIds.includes(player.id)||p?.[7]===false?'阵亡':p?.[7]===true?`${p[6]??'—'} HP`:'未知'}</Caption1></Button>;})}
           </div>
         </div>
         <div className={`${s.group} ${s.eventsGroup}`}>

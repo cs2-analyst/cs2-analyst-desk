@@ -118,3 +118,101 @@ test('native grenade releases need no effect/flight, preserve source identity an
   assert.equal(b.events.filter(e=>e.type==='weapon_fire').length,2,'unknown and firearm events stay hidden');
   assert.deepEqual(s.get({sessionId:'s',round:1,block:1}),b);
 });
+
+test('whole-round follow facts preserve real killer, suicide and unknown attribution across arbitrary blocks',()=>{
+  const {match,replay}=make(),round=replay.rounds[0];
+  match.players=['1','2','3','4'].map(steamId=>({steamId,nickname:steamId}));replay.players=['1','2','3','4'];
+  round.frames=round.frames.map(frame=>({...frame,players:replay.players.map(playerId=>({...frame.players[0],playerId}))}));
+  round.events=[
+    {eventIndex:10,event:{type:'kill',tick:100,killer:'2',victim:'1'}},
+    {eventIndex:11,event:{type:'kill',tick:159,killer:'2',victim:'2'}},
+    {eventIndex:12,event:{type:'kill',tick:160,killer:'2',victim:'3',weapon:'hegrenade'}},
+    {eventIndex:13,event:{type:'kill',tick:170,killer:'world',victim:'4'}},
+  ];
+  const original=structuredClone(round),session=new ReplaySession(match,replay,'follow');
+  const get=block=>session.get({sessionId:'follow',round:1,block});
+  const follow=get(2).follow;
+  assert.deepEqual(round,original,'presentation never rewrites source rows or death attribution');
+  assert.deepEqual(follow.deaths,[
+    {id:'r1-e10',tick:100,killerId:'2',victimId:'1',alivePlayerIds:['2','3','4']},
+    {id:'r1-e11',tick:159,killerId:'2',victimId:'2',alivePlayerIds:['3','4']},
+    {id:'r1-e12',tick:160,killerId:'2',victimId:'3',alivePlayerIds:['4']},
+    {id:'r1-e13',tick:170,killerId:null,victimId:'4',alivePlayerIds:[]},
+  ]);
+  assert.deepEqual(follow.states.at(-1),{tick:170,alivePlayerIds:[],deadPlayerIds:['1','2','3','4']},'death wins over stale true Pawn rows without inventing a spawn');
+  assert.deepEqual(get(0).follow,follow);assert.deepEqual(get(1).follow,follow);
+  assert.deepEqual(get(2).follow,follow,'cold/repeat/reverse block access has identical whole-round evidence');
+  assert.ok(!JSON.stringify(follow).includes('position'),'follow contains no synthetic player positions');
+});
+
+test('follow eligibility groups same-tick deaths, preserves unknown state and respects spawn/disconnect barriers',()=>{
+  const {match,replay}=make(),round=replay.rounds[0];
+  match.players=['1','2','3'].map(steamId=>({steamId,nickname:steamId}));replay.players=['1','2','3'];
+  round.frames=round.frames.map(frame=>({...frame,players:replay.players.map(playerId=>({...frame.players[0],playerId}))}));
+  round.lifecycle=[{type:'spawn',tick:50,player:'1',side:'T'},{type:'disconnect',tick:60,player:'3'},
+    {type:'spawn',tick:80,player:'3',side:'T'},{type:'spawn',tick:120,player:'1',side:'T'}];
+  round.events=[{eventIndex:0,event:{type:'kill',tick:50,killer:'2',victim:'1'}},
+    {eventIndex:1,event:{type:'kill',tick:100,killer:'1',victim:'2'}},
+    {eventIndex:2,event:{type:'kill',tick:100,killer:'2',victim:'3'}}];
+  round.frames.find(frame=>frame.requestedTick===90).players.find(player=>player.playerId==='1').actualTick=null;
+  const follow=new ReplaySession(match,replay,'life').get({sessionId:'life',round:1,block:0}).follow;
+  const at=tick=>follow.states.filter(state=>state.tick<=tick).at(-1);
+  assert.deepEqual(at(50),{tick:50,alivePlayerIds:['2','3'],deadPlayerIds:[]},'same-tick spawn/death remains unknown');
+  assert.deepEqual(at(60),{tick:60,alivePlayerIds:['2'],deadPlayerIds:[]},'disconnect is unknown, never dead or eligible');
+  assert.deepEqual(at(80),{tick:80,alivePlayerIds:['2','3'],deadPlayerIds:[]},'only explicit known spawn reconnects');
+  assert.deepEqual(follow.deaths.filter(death=>death.tick===100).map(death=>death.alivePlayerIds),[[],[]],'all deaths at tick apply atomically, so neither killer is eligible');
+  assert.deepEqual(at(120),{tick:120,alivePlayerIds:['1'],deadPlayerIds:['2','3']},'later unambiguous spawn can restore life');
+});
+
+test('follow background history stores only reliable uniquely resolved floor transitions without coordinates',()=>{
+  const {match,replay}=make(),round=replay.rounds[0];match.map='de_nuke';
+  for(const frame of round.frames)frame.players[0].position=[0,0,frame.requestedTick<20?-600:-400];
+  round.frames.find(frame=>frame.requestedTick===5).players[0].position=[0,0,-400];
+  round.frames.find(frame=>frame.requestedTick===5).players[0].segment=null;
+  round.frames.find(frame=>frame.requestedTick===6).players[0].position=[0,0,-400];
+  round.frames.find(frame=>frame.requestedTick===6).players[0].actualTick=null;
+  round.frames.find(frame=>frame.requestedTick===7).players[0].position=[0,0,-400];
+  round.frames.find(frame=>frame.requestedTick===7).players[0].stateAmbiguous=true;
+  round.frames.find(frame=>frame.requestedTick===8).players[0].position=[0,0,-495];
+  round.frames.find(frame=>frame.requestedTick===9).players[0].position=[NaN,0,-400];
+  round.events=[{eventIndex:0,event:{type:'kill',tick:30,killer:'world',victim:'1'}}];
+  for(const frame of round.frames.filter(frame=>frame.requestedTick>=30))frame.players[0].position=[0,0,-600];
+  const follow=new ReplaySession(match,replay,'floors').get({sessionId:'floors',round:1,block:2}).follow;
+  assert.deepEqual(follow.backgrounds,[{tick:0,playerId:'1',layerId:'lower'},{tick:20,playerId:'1',layerId:'default'}]);
+  assert.deepEqual(Object.keys(follow.backgrounds[0]).sort(),['layerId','playerId','tick'],'historical floor never fabricates or restores XYZ');
+  assert.deepEqual(follow.states.at(-1),{tick:30,alivePlayerIds:[],deadPlayerIds:['1']});
+});
+
+test('reliable dead observation cannot revive from a later stale true row without known spawn',()=>{
+  const {match,replay}=make(),round=replay.rounds[0];
+  round.frames.find(frame=>frame.requestedTick===10).players[0].alive=false;
+  round.lifecycle=[{type:'spawn',tick:200,player:'1',side:'T'}];
+  const follow=new ReplaySession(match,replay,'observed').get({sessionId:'observed',round:1,block:2}).follow;
+  const at=tick=>follow.states.filter(state=>state.tick<=tick).at(-1);
+  assert.deepEqual(at(10),{tick:10,alivePlayerIds:[],deadPlayerIds:['1']});
+  assert.deepEqual(at(199),{tick:10,alivePlayerIds:[],deadPlayerIds:['1']});
+  assert.deepEqual(at(200),{tick:200,alivePlayerIds:['1'],deadPlayerIds:[]});
+  assert.deepEqual(follow.deaths,[],'a native false observation is not fabricated into a death event');
+});
+
+test('conflicting duplicate same-tick victim attribution is unknown and never arbitrarily credits a killer',()=>{
+  const {match,replay}=make(),round=replay.rounds[0];
+  match.players=['1','2','3'].map(steamId=>({steamId,nickname:steamId}));replay.players=['1','2','3'];
+  round.frames=round.frames.map(frame=>({...frame,players:replay.players.map(playerId=>({...frame.players[0],playerId}))}));
+  round.events=[{eventIndex:10,event:{type:'kill',tick:100,killer:'2',victim:'1'}},
+    {eventIndex:11,event:{type:'kill',tick:100,killer:'3',victim:'1'}}];
+  const follow=new ReplaySession(match,replay,'duplicate').get({sessionId:'duplicate',round:1,block:0}).follow;
+  assert.deepEqual(follow.deaths,[{id:'r1-e10',tick:100,killerId:null,victimId:'1',alivePlayerIds:['2','3']}]);
+  assert.equal(round.events.length,2,'source events stay intact');
+});
+
+test('disconnect cannot erase a confirmed corpse, while a living disconnect alone remains unknown',()=>{
+  const {match,replay}=make(),round=replay.rounds[0];
+  match.players=['1','2','3'].map(steamId=>({steamId,nickname:steamId}));replay.players=['1','2','3'];
+  round.frames=round.frames.map(frame=>({...frame,players:replay.players.map(playerId=>({...frame.players[0],playerId}))}));
+  round.lifecycle=[{type:'disconnect',tick:20,player:'1'},{type:'disconnect',tick:20,player:'3'}];
+  round.events=[{eventIndex:0,event:{type:'kill',tick:10,killer:'2',victim:'1'}},
+    {eventIndex:1,event:{type:'kill',tick:30,killer:'world',victim:'2'}}];
+  const follow=new ReplaySession(match,replay,'left').get({sessionId:'left',round:1,block:0}).follow;
+  assert.deepEqual(follow.states.at(-1),{tick:30,alivePlayerIds:[],deadPlayerIds:['1','2']},'corpse stays dead; disconnected living player 3 remains unknown');
+});

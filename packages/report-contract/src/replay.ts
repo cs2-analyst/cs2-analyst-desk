@@ -33,6 +33,23 @@ export interface DesktopReplayRoundInfo {
   round: number; startTick: number; endTick: number; freezeEndTick: number | null;
   coverage: 'complete' | 'partial'; blocks: DesktopReplayBlockInfo[];
 }
+/** Exact source deaths, independent of the currently loaded 20-second block. */
+export interface DesktopReplayFollowDeath {
+  id: string; tick: number; victimId: string;
+  /** Null is unknown/world or conflicting attribution. Suicide requires equality to victimId. */
+  killerId: string | null;
+  /** Confirmed living players after the entire same-tick death/lifecycle group. */
+  alivePlayerIds: string[];
+}
+/** A change in observed round life state. Absence from both sets means unknown. */
+export interface DesktopReplayFollowState { tick: number; alivePlayerIds: string[]; deadPlayerIds: string[] }
+/** Reliable observed floor changes only; contains no saved or fabricated XYZ. */
+export interface DesktopReplayFollowBackground { tick: number; playerId: string; layerId: string }
+export interface DesktopReplayFollow {
+  deaths: DesktopReplayFollowDeath[];
+  states: DesktopReplayFollowState[];
+  backgrounds: DesktopReplayFollowBackground[];
+}
 export interface DesktopReplayMetadata {
   schemaVersion: 1; available: boolean; unavailableReason: string | null;
   sessionId: string | null; matchId: string; map: string; resourceId: string; samplingVersion: string;
@@ -47,6 +64,8 @@ export interface DesktopReplayChunk {
   frames: DesktopReplayFrame[]; events: DesktopReplayEvent[];
   /** Additive: utility effects overlapping this block; absent on legacy/effect-free chunks. */
   utilities?: DesktopReplayUtility[]; blinds?: DesktopReplayBlind[]; burns?: DesktopReplayBurn[];
+  /** Additive whole-round facts for reproducible follow choices during arbitrary Seek. */
+  follow?: DesktopReplayFollow;
 }
 export interface DesktopReplayRequest { sessionId: string; round: number; block: number }
 export type DesktopReplayResult = { kind: 'success'; chunk: DesktopReplayChunk } | { kind: 'error'; message: string };

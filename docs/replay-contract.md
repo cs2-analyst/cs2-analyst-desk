@@ -1,5 +1,14 @@
 # P6.2 回放契约与兼容性
 
+## 2026-10-19 — P7 死亡后跟随
+
+schema-v1 Chunk 新增可选 `follow`：整回合精确死亡归属、原子同 tick 存活/死亡集合变化、可靠观测的楼层 ID 变化。
+每块包含相同上下文，冷/重复/反向 Seek 与连续播放从明确的手动玩家身份重建同一跟随链。
+只有明确的自归属死亡是自杀；未知攻击者、缺行或断连不作为自杀/全员死亡。已死/同 tick 死亡攻击者不能成为新目标。
+全员确认死亡时只保留实际观察过的楼层 ID 或同会话真正显示过的背景，不恢复 XYZ，不宣称死者当前位置/楼层。
+既有 frame/event/utility 数值、8Hz/插值/Chunk/IPC 限额和分析合同不变。
+完整行为、根因、验收与限制见 [死亡后跟随](./p7-replay-death-follow.md)。下文历史阶段事实保留。
+
 独立连续采样是新增需求，不能改写Match或稀疏Spatial语义。影响match-model、dem-parser、
 report-contract和Desktop；Analytics/Findings/Deep Review仅继续使用原Match+Spatial。
 原parse()/parseWithSpatial()及报告schema v2保持，新增显式parseWithReplay()入口与独立schema v1。

@@ -1,9 +1,10 @@
 import type { Match, MatchReplay, ReplayRound } from '@cs2-analyst/match-model';
-import type { DesktopReplayBlind, DesktopReplayBomb, DesktopReplayBurn, DesktopReplayChunk, DesktopReplayEvent, DesktopReplayFrame, DesktopReplayMetadata,
+import type { DesktopReplayBlind, DesktopReplayBomb, DesktopReplayBurn, DesktopReplayChunk, DesktopReplayEvent, DesktopReplayFollow, DesktopReplayFrame, DesktopReplayMetadata,
   DesktopReplayPlayer, DesktopReplayRequest, DesktopReplayRoundInfo, DesktopReplayUtility } from '@cs2-analyst/report-contract';
 import { displayPlayerName } from './player-name.ts';
 import { replayResourceId } from '../shared/replay-resource.ts';
 import { replayThrownUtility, replayUtilityLabel } from '../shared/replay-presentation.ts';
+import { replayMapDefinitions, resolveMapLayer } from '../shared/replay-map-geometry.ts';
 
 export const REPLAY_CHUNK_BYTES = 1024 * 1024;
 export const REPLAY_CACHE_BYTES = 64 * 1024 * 1024;
@@ -40,6 +41,69 @@ function roundFrames(round: ReplayRound, replay: MatchReplay): DesktopReplayFram
     return {tick:frame.requestedTick,players,bomb:current};
   });
 }
+/** Project existing exact-tick life evidence once, before independent block serialization. */
+function roundFollow(round: ReplayRound, replay: MatchReplay, mapId: string): DesktopReplayFollow {
+  const follow: DesktopReplayFollow={deaths:[],states:[],backgrounds:[]};
+  const known=new Set(replay.players), map=replayMapDefinitions.find(map=>map.id===mapId);
+  const deaths=round.events.filter(({event})=>event.type==='kill').sort((a,b)=>a.event.tick-b.event.tick||a.eventIndex-b.eventIndex);
+  const lifecycle=[...round.lifecycle].sort((a,b)=>a.tick-b.tick);
+  const killed=new Set<string>(), observedDead=new Set<string>(), disconnected=new Set<string>(), conflicted=new Set<string>();
+  const layers=new Map<string,string>();
+  let deathCursor=0,lifeCursor=0,previousState='';
+  for(const frame of round.frames){
+    const pendingDeaths:typeof deaths=[];
+    while(deathCursor<deaths.length&&deaths[deathCursor].event.tick<=frame.requestedTick)pendingDeaths.push(deaths[deathCursor++]);
+    const pendingLife:typeof lifecycle=[];
+    while(lifeCursor<lifecycle.length&&lifecycle[lifeCursor].tick<=frame.requestedTick)pendingLife.push(lifecycle[lifeCursor++]);
+    const ticks=[...new Set([...pendingDeaths.map(({event})=>event.tick),...pendingLife.map(event=>event.tick)])].sort((a,b)=>a-b);
+    for(const tick of ticks){
+      const deadAt=new Set(pendingDeaths.filter(({event})=>event.tick===tick).map(({event})=>event.type==='kill'?event.victim:''));
+      for(const id of replay.players){
+        const life=pendingLife.filter(event=>event.tick===tick&&(event.player===id||event.player===null));
+        const spawned=life.some(event=>event.type==='spawn'&&event.player===id);
+        const left=life.some(event=>event.type==='disconnect'||(event.type==='side_change'&&event.disconnect));
+        if(left)disconnected.add(id);
+        else if(spawned){disconnected.delete(id);killed.delete(id);observedDead.delete(id);conflicted.delete(id);}
+        if(deadAt.has(id))killed.add(id);
+        if(spawned&&(left||deadAt.has(id)))conflicted.add(id);
+      }
+    }
+    const alivePlayerIds:string[]=[],deadPlayerIds:string[]=[];
+    for(const id of replay.players){
+      const sample=frame.players.find(player=>player.playerId===id);
+      const reliable=sample?.actualTick===frame.requestedTick&&!sample.stateAmbiguous;
+      // Disconnect is not a death. It also cannot undo an already confirmed death.
+      if(disconnected.has(id)&&!killed.has(id)&&!observedDead.has(id))continue;
+      if(reliable&&sample?.alive===false)observedDead.add(id);
+      // A real death remains authoritative through missing/stale Pawn rows. A same-tick
+      // spawn/death collision stays unknown until a later reliable observation or spawn.
+      if(conflicted.has(id)&&reliable&&sample?.alive===false)conflicted.delete(id);
+      if(!conflicted.has(id)&&(killed.has(id)||observedDead.has(id)))deadPlayerIds.push(id);
+      else if(!conflicted.has(id)&&reliable&&sample?.alive===true&&!killed.has(id))alivePlayerIds.push(id);
+      if(map&&alivePlayerIds.at(-1)===id&&sample?.segment!==null&&sample?.position?.every(Number.isFinite)){
+        const layerId=resolveMapLayer(map,sample.position[2]);
+        if(layerId!==null&&layers.get(id)!==layerId){follow.backgrounds.push({tick:frame.requestedTick,playerId:id,layerId});layers.set(id,layerId);}
+      }
+    }
+    alivePlayerIds.sort();deadPlayerIds.sort();
+    const state=JSON.stringify([alivePlayerIds,deadPlayerIds]);
+    if(state!==previousState){follow.states.push({tick:frame.requestedTick,alivePlayerIds,deadPlayerIds});previousState=state;}
+    const groupedVictims=new Set<string>();
+    for(const {event,eventIndex} of pendingDeaths){
+      if(event.type!=='kill')continue;
+      const key=`${event.tick}:${event.victim}`;
+      if(groupedVictims.has(key))continue;
+      groupedVictims.add(key);
+      const killers=new Set(pendingDeaths.filter(({event:other})=>other.type==='kill'&&other.tick===event.tick&&other.victim===event.victim)
+        .map(({event:other})=>other.type==='kill'&&known.has(other.killer)?other.killer:null));
+      // planReplay includes every death tick. Never borrow future state if a malformed
+      // caller omitted that observation; unknown eligibility is the honest fallback.
+      follow.deaths.push({id:`r${round.round}-e${eventIndex}`,tick:event.tick,victimId:event.victim,
+        killerId:killers.size===1?[...killers][0]:null,alivePlayerIds:event.tick===frame.requestedTick?[...alivePlayerIds]:[]});
+    }
+  }
+  return follow;
+}
 export class ReplaySession {
   readonly metadata: DesktopReplayMetadata;
   readonly cacheKey: string;
@@ -54,6 +118,7 @@ export class ReplaySession {
       players:replay.players.map(id=>({id,nickname:names.get(id)??'未知玩家'})),rounds:[],excludedRounds:replay.excludedRounds};
     for(const round of replay.rounds){
       const frames=roundFrames(round,replay), effectByEvent=new Map((round.utilities??[]).map(utility=>[utility.eventIndex,utility]));
+      const follow=roundFollow(round,replay,match.map);
       const utilities=(round.utilities??[]).map(utility=>mapUtility(round.round,utility));
       const blinds:DesktopReplayBlind[]=(round.blinds??[]).map(window=>({...window}));
       const burns:DesktopReplayBurn[]=(round.burns??[]).map(window=>({...window}));
@@ -91,7 +156,7 @@ export class ReplaySession {
         if(first>0&&frames[first].tick>startTick)first--;
         let last=first;while(last+1<frames.length&&frames[last+1].tick<=endTick)last++;if(last+1<frames.length)last++;
         const block=info.blocks.length,chunk:DesktopReplayChunk={schemaVersion:1,sessionId,matchId:match.id,round:round.round,block,startTick,endTick,
-          frames:frames.slice(first,last+1),events:events.filter(e=>e.tick>=startTick&&e.tick<=endTick)};
+          frames:frames.slice(first,last+1),events:events.filter(e=>e.tick>=startTick&&e.tick<=endTick),follow};
         const blockUtilities=utilities.filter(utility=>utilityOverlaps(utility,startTick,endTick));
         const blockBlinds=blinds.filter(window=>overlaps(startTick,endTick,window.startTick,window.endTick));
         const blockBurns=burns.filter(window=>overlaps(startTick,endTick,window.startTick,window.endTick));
