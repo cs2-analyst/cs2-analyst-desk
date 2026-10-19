@@ -2,7 +2,7 @@
   "schema": "p7-replay-death-follow-acceptance-v1",
   "date": "2026-10-19",
   "timezone": "Asia/Shanghai",
-  "status": "IMPLEMENTED; covered real scenarios PASS; real all-dead Replay NOT RUN",
+  "status": "IMPLEMENTED; real covered scenarios PASS; controlled all-dead Electron PASS; real DEM all-dead Electron NOT RUN",
   "baseline": "91e4284e8be6c335950e39313335db132095fb14",
   "branch": "codex/p7-replay-death-follow",
   "commit": "See delivery message / git history; no self-referencing SHA in commit",
@@ -490,5 +490,31 @@
       "bytes": 4534,
       "sha256": "4c61e4e49a3bddfe44bcfa02ce39d553218e29ae3befc5057614ef79af76fc60"
     }
-  ]
+  ],
+  "allDeadSupplement": {
+    "date": "2026-10-20",
+    "baseline": "b7002ff58048496965148e8c0fb599464224c64a",
+    "evidence": "docs/p7-replay-all-dead.json",
+    "classifications": {
+      "realDemAllDeadElectron": {
+        "status": "NOT RUN",
+        "reason": "Zero confirmed all-dead native death ticks within unchanged formal Replay windows"
+      },
+      "controlledAllDeadElectron": {
+        "status": "PASS",
+        "runs": 12,
+        "screenshots": 40
+      },
+      "pureAndSyntheticTests": {
+        "status": "PASS",
+        "focused": 29,
+        "desktopTotal": 194,
+        "focusedIncludedInDesktop": true
+      },
+      "realDemOtherElectronRegressions": {
+        "status": "PASS",
+        "scope": "Dust2 Replay/Heatmap and Nuke ordinary death-follow, not all-dead"
+      }
+    }
+  }
 }

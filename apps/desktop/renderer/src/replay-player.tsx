@@ -404,8 +404,11 @@ export function ReplayPlayer({ metadata, fileName, initialPlayerId, active, jump
     const selectedIndex=metadata.players.findIndex(p=>p.id===view.selectedPlayerId);
     const backgroundContext=JSON.stringify([metadata.sessionId,metadata.matchId,map?.id,map?.resourceId]);
     const displayedBackground=lastDisplayedBackground.current;
+    // With no spatial history, a confirmed all-dead session may show a reference
+    // texture. It is never a player position/current floor; the notice says so.
     const retainedBackground=follow.allDead?(follow.backgroundLayer
-      ??(displayedBackground?.context===backgroundContext?displayedBackground.layerId:null)):null;
+      ??(displayedBackground?.context===backgroundContext?displayedBackground.layerId:null)
+      ??map?.layers[0]?.id??null):null;
     const decision=map?replayFloorAt(floorHistory.current,{sessionId:metadata.sessionId,matchId:metadata.matchId,
       round:view.info?.round??0,playerId:view.selectedPlayerId,seekRevision:seekRevision.current,mode:view.floor,
       tick:at,map,selected:follow.deadPlayerIds.includes(view.selectedPlayerId)?undefined:current?.players.find(p=>p[0]===selectedIndex),allDeadBackground:retainedBackground}):null;
@@ -609,7 +612,7 @@ export function ReplayPlayer({ metadata, fileName, initialPlayerId, active, jump
             {info.coverage==='partial'?<span>该回合存在缺失或歧义状态；断点不连接，未知状态不补齐。</span>:null}
           </div>} />
         </div>
-        {map&&map.layers.length>1&&floor==='auto'&&floorView.status!=='known'?<Badge className={s.floorNotice} appearance="tint" color="warning" size="small" data-replay-floor-notice>{floorView.status==='retained'?(floorView.allDead?'全员阵亡 · 保留最后可靠底图':'目标楼层未知 · 沿用上一确认层'):'目标楼层未知 · 请手动选层'}</Badge>:null}
+        {map&&map.layers.length>1&&((floor==='auto'&&floorView.status!=='known')||floorView.allDead)?<Badge className={s.floorNotice} appearance="tint" color="warning" size="small" data-replay-floor-notice>{floorView.allDead&&floorView.layerId?'全员阵亡 · 底图仅作参考，不代表当前楼层':floorView.status==='retained'?'目标楼层未知 · 沿用上一确认层':'目标楼层未知 · 请手动选层'}</Badge>:null}
         {floorView.failed?<Body1 className={s.mapError} role="alert">本机没有配套雷达资源或图片无法装载；仍可浏览事件与玩家状态。</Body1>:null}
         {info.freezeEndTick!==null&&tick<info.freezeEndTick?<Badge className={s.mapPhase} data-replay-phase appearance="outline" size="small">冻结阶段</Badge>:null}
         <div ref={box} className={s.map}>
