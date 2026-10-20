@@ -4,6 +4,7 @@ import { checkHeatmapUx } from './heatmap-ux-checks.mjs';
 import { dust2File, verifyDust2 } from '../apps/desktop/tests/heatmap-real-fixture.mjs';
 import { checkWindowShell } from './window-shell-checks.mjs';
 import { checkWindowsInstallBranding } from './windows-branding-checks.mjs';
+import { checkInstalledP7Real } from './installed-p7-real-checks.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import nativeParser from '../packages/demoparser-native/index.cjs';
@@ -167,6 +168,9 @@ async function uninstall(variant) {
   for (const entry of entries) assert.ok(entry.uninstallString?.toLowerCase().includes(uninstaller.toLowerCase()), 'Foreign registration appeared; preserve installation: ' + JSON.stringify(entry));
   await runInstaller(scope, uninstaller, ['/S', '/currentuser'], { label: variant.label + ' uninstall', directory: variant.installDir, audit });
   await waitFor(async () => !existsSync(join(variant.installDir, APP_EXE)) && (await scope.live()).length === 0 && (await windowsRegistrations()).length === 0, 120_000, variant.label + ' 卸载文件、进程与注册移除', { diagnostics: async () => ({ target: directoryState(variant.installDir), registrations: await windowsRegistrations(), processes: await scope.live() }) });
+  const finalDirectory = directoryState(variant.installDir);
+  audit({ stage: variant.label + ' uninstall verification', status: !finalDirectory.exists || finalDirectory.entries.length === 0 ? 'PASS' : 'FAIL', target: finalDirectory, registrations: await windowsRegistrations(), processes: await scope.live() });
+  assert.ok(!finalDirectory.exists || finalDirectory.entries.length === 0, 'uninstaller left files in this run installation directory: ' + JSON.stringify(finalDirectory));
   variant.attempted = false;
   console.log(variant.label + '：卸载成功');
 }
@@ -273,7 +277,8 @@ function checkInstalledLayout(variant, expectSeam) {
   const nativeEntries = entries.filter(entry => entry.endsWith('.node'));
   assert.deepEqual(nativeEntries, [nativeRelative], 'app.asar 应只登记一个原生绑定，且位于 worker 的 node_modules');
   assert.equal(files.get(nativeRelative).unpacked, true, '原生绑定必须以 unpacked 形式打包到 app.asar.unpacked');
-  assert.ok(!entries.some(entry => entry.toLowerCase().includes('demo1.dem')), 'app.asar 不应包含测试 DEM');
+  assert.ok(!entries.some(entry => /\.dem$/i.test(entry)), 'app.asar 不应包含任何 DEM');
+  assert.ok(!entries.some(entry => /(^|\/)(tests?|fixtures?|__tests__)(\/|$)/i.test(entry)), 'app.asar 不应包含测试或 fixture 入口');
 
   const native = join(resources, 'app.asar.unpacked', nativeRelative);
   assert.ok(existsSync(native), '缺少 unpacked 原生绑定：' + native);
@@ -314,6 +319,14 @@ function checkInstalledLayout(variant, expectSeam) {
     assert.ok(mainSource.includes(SEAM_MARKER), '测试 seam 构建应包含 ' + SEAM_MARKER);
   } else {
     assert.ok(!mainSource.includes(SEAM_MARKER), '生产安装包不得包含路径注入 seam');
+    for (const entry of entries.filter(entry => /\.(?:js|cjs|html)$/i.test(entry))) {
+      const source = readAsarFile(asar, dataOffset, files.get(entry)).toString('utf8');
+      for (const marker of [SEAM_MARKER, '__qaReport', '__qaDeepOriginal', 'deep.synthetic.',
+        'P7 controlled all-dead Replay acceptance', '测试专用受控 DTO', 'acceptance:fixture',
+        'P7_ALL_DEAD_FIXTURES', 'controlled-test-only.dto']) {
+        assert.ok(!source.includes(marker), '生产安装包包含测试入口标记 ' + marker + ' in ' + entry);
+      }
+    }
   }
   for (const forbidden of ['demoparser2', 'laihoe', '@cs2-analyst/analytics', '@cs2-analyst/dem-parser']) {
     assert.ok(!rendererSource.includes(forbidden), 'renderer bundle 不应包含 ' + forbidden);
@@ -385,6 +398,9 @@ async function productionScenario() {
     assert.equal((await appProcesses()).some(p => p.commandLine?.includes('node.mojom.NodeService')), false, 'non-DEM never starts a worker');
     await dropDiskFile(disk, demo);
     await waitFor(() => disk.evaluate(`document.querySelector('main').dataset.status==='success'&&document.body.textContent.includes('25 / 20 / 4')&&document.body.textContent.includes('91.38')`), 120_000, 'production recovers via disk File / real report');
+    const realQa = join(workDir, 'p7-real-production'); mkdirSync(realQa);
+    const realResult = await checkInstalledP7Real(disk, realQa);
+    audit({ stage: 'production-p7-real', source: 'real DEM', status: realResult.status, cases: realResult.cases.length, evidence: join(realQa, 'real-dem.json') });
     await checkReportUx(disk.evaluate, disk.send);
     assert.deepEqual(disk.errors, []);
     await closeGracefully(disk);
@@ -397,6 +413,7 @@ async function productionScenario() {
     const heatmapQa = join(workDir, 'heatmap-production'); mkdirSync(heatmapQa);
     const result = await checkHeatmapUx(heatmap.evaluate, heatmap.send, { qaDir: heatmapQa, expectedDust2: true });
     writeFileSync(join(workDir, 'production-heatmap.json'), JSON.stringify(result, null, 2));
+    audit({ stage: 'production-heatmap-evidence', status: 'PASS', sources: ['real DEM / real IPC parity', 'controlled metadata/image faults with restoration'], evidence: join(workDir, 'production-heatmap.json') });
     await heatmap.evaluate(`document.getElementById('replay-tab').click()`);
     await waitFor(() => heatmap.evaluate(`Number(document.querySelector('#replay-panel canvas[role=img]')?.dataset.playerCount)>0`), 15_000, 'production Replay preserved after heatmap');
     assert.deepEqual(heatmap.errors, []);
@@ -431,7 +448,12 @@ async function testSeamScenario() {
     assert.equal(await session.evaluate(`document.getElementById('report-tab').getAttribute('aria-selected')`), 'true');
     assert.equal(await session.evaluate(`document.getElementById('report-panel').hidden`), false);
     assert.equal(await session.evaluate(`document.querySelectorAll('[data-app-sidebar] [role="tab"]').length`), 6);
-    await checkDeepReviewUx(session.evaluate, session.send);
+    const realQa = join(workDir, 'p7-real-test-seam'); mkdirSync(realQa);
+    const realResult = await checkInstalledP7Real(session, realQa);
+    audit({ stage: 'test-seam-p7-real', source: 'real DEM', status: realResult.status, cases: realResult.cases.length, evidence: join(realQa, 'real-dem.json') });
+    const controlledQa = join(workDir, 'deep-review-controlled-test-seam'); mkdirSync(controlledQa);
+    await checkDeepReviewUx(session.evaluate, session.send, controlledQa);
+    audit({ stage: 'test-seam-deep-review-controlled', source: 'controlled DTO + installed Electron; includes separately named real screenshots', status: 'PASS', evidence: controlledQa });
     await session.evaluate(`[...document.querySelectorAll('button')].find(b => b.textContent.trim() === '查看 R24').click()`);
     await waitFor(async () => session.evaluate(`!document.getElementById('timeline-panel').hidden`), 10_000, '安装版 Finding 切换 Timeline');
     await waitFor(async () => session.evaluate(`document.querySelector('[data-round-detail="24"]')?.textContent.includes('8888888888888888888888')`), 10_000, '安装版 Timeline 长数字昵称');
@@ -468,6 +490,11 @@ async function testSeamScenario() {
     await waitFor(async () => !(await appProcesses()).some(p => p.commandLine?.includes('node.mojom.NodeService')), 20_000, 'failed reimport worker cleanup');
     await clickSelectDemo(session);
     await waitFor(() => session.evaluate(`document.querySelector('main').dataset.status==='success'&&document.getElementById('report-tab').getAttribute('aria-selected')==='true'`), 120_000, 'successful recovery after corrupt reimport');
+    assert.equal(await session.evaluate(`document.querySelector('[data-analysis-tab="comparison"]').getAttribute('aria-selected')`), 'true', 'reimport resets Analysis tab');
+    assert.equal(await session.evaluate(`document.querySelector('[data-deep-tab="reviews"]').getAttribute('aria-selected')`), 'true', 'reimport resets Deep Review tab');
+    const recoveryQa = join(workDir, 'p7-real-test-seam-recovered'); mkdirSync(recoveryQa);
+    const recovered = await checkInstalledP7Real(session, recoveryQa);
+    audit({ stage: 'test-seam-reimport-recovery-real', source: 'real DEM', status: recovered.status, cases: recovered.cases.length, evidence: join(recoveryQa, 'real-dem.json') });
     console.log(variant.label + '：导入失败保留旧报告和玩家、旧回放失效、worker 释放及重新导入恢复通过');
     assertNoStiffEnglish(body);
     assert.deepEqual(session.errors, [], '页面存在未捕获异常');
@@ -481,6 +508,7 @@ async function testSeamScenario() {
     const heatmapQa = join(workDir, 'heatmap-test-seam'); mkdirSync(heatmapQa);
     const heatmapResult = await checkHeatmapUx(heatmap.evaluate, heatmap.send, { qaDir: heatmapQa, expectedDust2: true });
     writeFileSync(join(workDir, 'test-seam-heatmap.json'), JSON.stringify(heatmapResult, null, 2));
+    audit({ stage: 'test-seam-heatmap-evidence', status: 'PASS', sources: ['real DEM / real IPC parity', 'controlled metadata/image faults with restoration'], evidence: join(workDir, 'test-seam-heatmap.json') });
     const oldSession = await heatmap.evaluate(`document.querySelector('[data-heatmap-session]').dataset.heatmapSession`);
     await clickSelectDemo(heatmap);
     await waitFor(() => heatmap.evaluate(`document.querySelector('main').dataset.status==='success'&&document.getElementById('report-tab').getAttribute('aria-selected')==='true'&&document.querySelector('[data-heatmap-session]').dataset.heatmapSession!==${JSON.stringify(oldSession)}`), 120_000, 'installed heatmap session replacement');

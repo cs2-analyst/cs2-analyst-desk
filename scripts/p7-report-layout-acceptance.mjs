@@ -5,12 +5,12 @@
 // independently while the report view itself never scrolls as a page.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { existsSync, linkSync, mkdirSync, mkdtempSync, unlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { rm } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
-import { basename, join } from 'node:path';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 import { closeApp, connectCdp, waitFor, withCleanup } from './smoke-runtime.mjs';
@@ -384,15 +384,6 @@ async function testForcedColorsAndReducedMotion(evaluate, send, label) {
   await settleUi(evaluate, label + ': media reset');
 }
 
-function longDemoPath() {
-  const name = 'p7-s5-' + 'very-long-dem-file-name-'.repeat(5) + 'demo2.dem';
-  const path = join(qaDir, name);
-  try { unlinkSync(path); } catch { /* first run */ }
-  linkSync(demo2, path);
-  assert.ok(basename(path).length > 100, 'long filename fixture must exceed 100 characters');
-  return path;
-}
-
 try {
   await scenario({
     label: 'S5 demo1 1024x640 / 1920x1032',
@@ -418,13 +409,28 @@ try {
     },
   });
 
-  const longDemo = longDemoPath();
-  await withCleanup(async () => {
+  const longName = 'p7-s5-' + 'very-long-dem-file-name-'.repeat(5) + 'demo2.dem';
+  assert.ok(longName.length > 100);
     await scenario({
       label: 'S5 demo2 coverage warning / long filename / empty findings',
-      demPath: longDemo,
+      demPath: demo2,
       body: async ({ evaluate, send }) => {
         await importReport(evaluate, send);
+        // Presentation-only filename case; parse the original whitelisted DEM.
+        // Do not create an alias/hardlink or use a second path as a real fixture.
+        assert.equal(await evaluate(`(() => {
+          const node = document.getElementById('deep-review-panel');
+          let fiber = node[Object.keys(node).find(k => k.startsWith('__reactFiber$'))];
+          while (fiber && !fiber.memoizedProps?.report) fiber = fiber.return;
+          if (!fiber) return false;
+          fiber.memoizedProps.report.match.fileName = ${JSON.stringify(longName)};
+          document.getElementById('deep-review-tab').click();
+          return true;
+        })()`), true);
+        await settleUi(evaluate, 'controlled display filename');
+        await evaluate(`document.getElementById('report-tab').click()`);
+        await settleUi(evaluate, 'controlled display filename report');
+        results.checks.push('SYNTHETIC PRESENTATION ONLY: long displayed filename; real input remains .demo/demo2.dem');
         await viewport(evaluate, send, 1024, 640);
         await assertNoReportPageScroll(evaluate, 'demo2 1024x640');
         await checkReportLayout(evaluate, 'S5 demo2 1024x640');
@@ -444,14 +450,14 @@ try {
 
         const fileName = await evaluate(`(() => {
           const content = document.querySelector('[data-app-content]');
-          const span = [...content.querySelectorAll('span')].find(node => node.checkVisibility() && node.textContent === ${JSON.stringify(basename(longDemo))});
+          const span = [...content.querySelectorAll('span')].find(node => node.checkVisibility() && node.textContent === ${JSON.stringify(longName)});
           if (!span) return null;
           const r = span.getBoundingClientRect();
           return { text: span.textContent, width: r.width, height: r.height, right: r.right,
             scrollWidth: span.scrollWidth, clientWidth: span.clientWidth, wrap: getComputedStyle(span).overflowWrap };
         })()`);
         assert.ok(fileName, 'long DEM filename is not rendered');
-        assert.equal(fileName.text, basename(longDemo));
+        assert.equal(fileName.text, longName);
         assert.ok(fileName.height >= 16, 'long DEM filename collapsed');
         assert.ok(fileName.scrollWidth <= fileName.clientWidth + 1, 'long DEM filename is horizontally clipped');
         assert.equal(fileName.wrap, 'anywhere');
@@ -477,7 +483,6 @@ try {
         results.checks.push('coverage warning visible, long filename wraps, empty Findings remains reachable');
       },
     });
-  }, [() => rm(longDemo, { force: true })]);
 
   const broken = join(qaDir, 'broken.dem');
   writeFileSync(broken, 'this is not a cs2 demo');

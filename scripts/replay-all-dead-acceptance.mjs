@@ -174,7 +174,12 @@ for(const [width,height] of [[1024,640],[1920,1032]]){
      const same=run.states.filter(s=>s.tick===18400).map(s=>({layer:s.layer,hash:s.base.hash,foreground:s.foreground.hash,player:s.playerId,drawn:s.drawn,smoke:s.smoke}));
      assert.ok(same.every(s=>JSON.stringify(s)===JSON.stringify(same[0])),'same tick identical actual pixels and identity');
      // Force eviction using normal UI, then direct-seek into the uncached death block.
-     await seek(19000);await delay(500);const coldBefore=await read();assert.ok(!coldBefore.cacheKeys.includes('1:3'));
+     // One distant seek can legitimately retain block 3 as the third LRU entry:
+     // only blocks 7 and 6 are needed/prefetched. Visit block 6 as well so normal
+     // neighbor prefetch loads block 5; wait for proved eviction, never clear cache.
+     await seek(19000);await seek(fixture.metadata.rounds[0].blocks.at(-2).startTick);
+     await wait(async()=>!(await read()).cacheKeys.includes('1:3'),'normal LRU evicts death block before cold Seek');
+     const coldBefore=await read();assert.ok(!coldBefore.cacheKeys.includes('1:3'));assert.ok(coldBefore.cacheKeys.length<=3);
      const coldAfter=await seek(18400);assertDead(coldAfter);run.coldSeek={before:coldBefore,after:coldAfter};
      await seek(18360);
      if(fixture.noFloor)await choose(fixture.expectedLayer==='lower'?'下层':'主层');

@@ -28,11 +28,12 @@ await new Promise(ok => server.close(ok));
 const prefix = join(tmpdir(), 'cs2-p7-visual-'), profile = mkdtempSync(prefix);
 const env = { ...process.env, CS2_ANALYST_DEM_PATH: demo };
 delete env.ELECTRON_RUN_AS_NODE; delete env.ELECTRON_RENDERER_URL;
+const startedAt = Date.now();
 const child = spawn(require('electron'), ['.', '--inspect=0', '--remote-debugging-port=' + port, '--user-data-dir=' + profile,
   '--disable-features=CalculateNativeWinOcclusion', '--disable-backgrounding-occluded-windows'], {
   cwd: join(root, 'apps/desktop'), env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'],
 });
-const scope = new ProcessScope(); scope.track(child, 'P7 visual acceptance', Date.now());
+const scope = new ProcessScope(); scope.track(child, 'P7 visual acceptance', startedAt);
 let page, mainInspector, failure, logs = '';
 child.stdout.on('data', data => { logs += data; }); child.stderr.on('data', data => { logs += data; });
 const metrics = { label, fixture: '.demo/dust2.dem', screenshots: [], checks: [], scenes: {} };
@@ -67,6 +68,50 @@ try {
   const reportExpr='(()=>{const n=document.getElementById("replay-panel");let f=n[Object.keys(n).find(k=>k.startsWith("__reactFiber$"))];while(f&&!f.memoizedProps?.report)f=f.return;return f.memoizedProps.report;})()';
   const report=await evaluate(reportExpr),meta=report.replay,first=meta.rounds[0],second=meta.rounds[1],rate=meta.tickRate;
   const state=()=>evaluate(`({tick:Number(${canvas}.dataset.tick),round:Number(document.querySelector('[data-replay-session]').dataset.replayRound),playing:Boolean(document.querySelector('[aria-label=暂停回放]')),time:document.querySelector('[data-replay-time]').textContent,duration:document.querySelector('[data-replay-duration]').textContent})`);
+  const cachedBlocks=()=>evaluate(`(() => {
+    const n=document.querySelector('[data-replay-session]');
+    let f=n[Object.keys(n).find(k=>k.startsWith('__reactFiber$'))];
+    while(f&&f.memoizedProps?.metadata?.sessionId!==${JSON.stringify(sessionId)})f=f.return;
+    for(let h=f?.memoizedState;h;h=h.next){const c=h.memoizedState?.current;if(c?.entries instanceof Map&&typeof c.put==='function')return [...c.entries.keys()];}
+    throw new Error('Replay cache ref not found');
+  })()`);
+  // Observe completed real paints, including paint's early return for a missing
+  // chunk. That path clears the foreground but leaves dataset.tick/playerCount
+  // at their prior values, so neither attribute identifies buffering reliably.
+  await evaluate(`(() => {
+    const canvas=${canvas},originalClear=CanvasRenderingContext2D.prototype.clearRect,originalText=CanvasRenderingContext2D.prototype.fillText;
+    let paintSequence=0,markerCalls=0;
+    window.__transportFrames=[];window.__transportWatch=false;
+    window.__transportRead=()=>{
+      const n=document.querySelector('[data-replay-session]');let f=n[Object.keys(n).find(k=>k.startsWith('__reactFiber$'))];
+      while(f&&f.memoizedProps?.metadata?.sessionId!==${JSON.stringify(sessionId)})f=f.return;
+      const refs=[];for(let h=f?.memoizedState;h;h=h.next)if(h.memoizedState&&typeof h.memoizedState==='object'&&Object.hasOwn(h.memoizedState,'current'))refs.push(h.memoizedState.current);
+      const live=refs.find(r=>r?.selectedPlayerId!==undefined),clock=refs.find(r=>r?.anchorMs!==undefined),cache=refs.find(r=>r?.entries instanceof Map&&typeof r.put==='function');
+      if(!live||!clock||!cache)throw new Error('Replay observation refs not found');
+      // While buffering the real paused clock holds the sought tick; the Canvas
+      // attributes are stale. While loaded, use the completed paint's exact tick
+      // so a later microtask timestamp cannot cross a block before its next RAF.
+      const tick=clock.playing?Number(canvas.dataset.tick):clock.tick,needed=live.info.blocks.find(b=>Math.floor(tick)>=b.startTick&&Math.floor(tick)<=b.endTick);
+      return {now:performance.now(),round:live.info.round,tick,clockTick:clock.tick,clockRead:clock.read(performance.now(),${rate}),clockPlaying:clock.playing,
+        neededBlock:needed?.index??null,chunkLoaded:!!needed&&cache.entries.has(live.info.round+':'+needed.index),cacheKeys:[...cache.entries.keys()],
+        paintTick:Number(canvas.dataset.tick),players:Number(canvas.dataset.playerCount),markerCalls,paintSequence};
+    };
+    CanvasRenderingContext2D.prototype.fillText=function(text,...args){if(this.canvas===canvas&&/^\\d{1,2}$/.test(String(text)))markerCalls++;return originalText.call(this,text,...args);};
+    CanvasRenderingContext2D.prototype.clearRect=function(...args){
+      const returned=originalClear.apply(this,args);
+      if(this.canvas===canvas){
+        markerCalls=0;const sequence=++paintSequence,fullClear=args[0]===0&&args[1]===0&&args[2]===canvas.width&&args[3]===canvas.height;
+        if(window.__transportWatch)queueMicrotask(()=>{
+          if(!window.__transportWatch)return;
+          const sample=window.__transportRead();sample.paintSequence=sequence;sample.fullClear=fullClear;
+          if(!sample.chunkLoaded){const rgba=canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height).data;sample.foregroundEmpty=!rgba.some((v,i)=>i%4===3&&v!==0);}
+          window.__transportFrames.push(sample);
+        });
+      }
+      return returned;
+    };
+    window.__transportRestore=()=>{CanvasRenderingContext2D.prototype.clearRect=originalClear;CanvasRenderingContext2D.prototype.fillText=originalText;};
+  })()`);
   const click=label=>evaluate(`document.querySelector('[aria-label="${label}"]').click()`);
   const ready=()=>wait(()=>evaluate(`Number(${canvas}.dataset.playerCount)>0`),'target chunk loaded');
   const seek=async tick=>{
@@ -118,7 +163,7 @@ try {
   // rAF samples until loaded: no missing-data frame may advance its tick.
   await choose('回放倍速','1×');await seek(first.startTick+rate*2);await click('播放回放');
   await wait(async()=>(await state()).playing,'playing relative seek');
-  await evaluate(`window.__transportFrames=[];window.__transportWatch=true;function watch(){if(!window.__transportWatch)return;const c=${canvas};window.__transportFrames.push({tick:Number(c.dataset.tick),players:Number(c.dataset.playerCount)});requestAnimationFrame(watch);}requestAnimationFrame(watch);`);
+  await evaluate('window.__transportFrames=[];window.__transportWatch=true');
   const playingBefore=await sample();await click('前进 30 秒');
   await wait(async()=>(await state()).playing&&(await state()).tick>playingBefore.tick+rate*30,'relative seek resumes');
   const playingAfter=await sample();assert.ok(playingAfter.tick<playingBefore.tick+rate*33);
@@ -126,7 +171,11 @@ try {
   await evaluate('window.__transportWatch=false');metrics.chunkFrames=await evaluate('window.__transportFrames');
   for(let i=1;i<metrics.chunkFrames.length;i++){
     const a=metrics.chunkFrames[i-1],b=metrics.chunkFrames[i];
-    if(!a.players&&!b.players)assert.equal(a.tick,b.tick,'clock frozen while chunk absent');
+    if(!a.chunkLoaded&&!b.chunkLoaded){
+      assert.equal(a.clockPlaying,false);assert.equal(b.clockPlaying,false);
+      assert.equal(a.clockTick,b.clockTick,'clock frozen while chunk absent');
+      assert.equal(a.tick,b.tick,'missing-data observation tick frozen');
+    }
   }
   await click('回到最初');await delay(120);assert.deepEqual([(await state()).tick,(await state()).playing],[first.startTick,false]);
   await click('播放回放');await wait(async()=>(await state()).playing,'play before end');await click('直达最后');
@@ -135,23 +184,43 @@ try {
   // Delay the existing Main IPC handler's real response in this disposable test
   // process. This creates deterministic buffering without synthetic chunks or DEMs.
   const ipcExpr="process.getBuiltinModule('module').createRequire(process.cwd()+'/package.json')('electron').ipcMain";
-  await mainInspector.evaluate(`(()=>{const ipc=${ipcExpr};globalThis.__p7ChunkOriginal=ipc._invokeHandlers.get('replay:chunk');ipc.removeHandler('replay:chunk');ipc.handle('replay:chunk',async(...args)=>{const result=await globalThis.__p7ChunkOriginal(...args);await new Promise(ok=>setTimeout(ok,650));return result;});})()`);
+  await mainInspector.evaluate(`(()=>{const ipc=${ipcExpr};globalThis.__p7ChunkOriginal=ipc._invokeHandlers.get('replay:chunk');globalThis.__p7ChunkDelays=[];ipc.removeHandler('replay:chunk');ipc.handle('replay:chunk',async(...args)=>{const record={request:args[1],requestedAt:Date.now(),delayMs:650};globalThis.__p7ChunkDelays.push(record);const result=await globalThis.__p7ChunkOriginal(...args);record.responseReadyAt=Date.now();record.kind=result.kind;const notBefore=record.responseReadyAt+650;while(Date.now()<notBefore)await new Promise(ok=>setTimeout(ok,notBefore-Date.now()));record.releasedAt=Date.now();return result;});})()`);
   const cold=meta.rounds[2];assert.ok(cold.blocks.length>3);
   await choose('回放回合','R'+cold.round);await ready();
-  await seek(cold.startTick+rate*2);await click('播放回放');
+  // +30s from +2s lands in the normally prefetched block 1, so delaying IPC
+  // cannot force buffering there. Start late enough in block 0 to target block 2.
+  const delayedBlock=cold.blocks[2],delayedTarget=delayedBlock.startTick+Math.min(rate*2,Math.floor((delayedBlock.endTick-delayedBlock.startTick)/2));
+  const coldFrom=delayedTarget-rate*30;
+  assert.ok(coldFrom>=cold.blocks[0].startTick&&coldFrom<=cold.blocks[0].endTick);
+  await seek(coldFrom);await click('播放回放');
   await wait(async()=>(await state()).playing,'cold round playing');
-  await evaluate(`window.__transportFrames=[];window.__transportWatch=true;function coldWatch(){if(!window.__transportWatch)return;const c=${canvas};window.__transportFrames.push({tick:Number(c.dataset.tick),players:Number(c.dataset.playerCount)});requestAnimationFrame(coldWatch);}requestAnimationFrame(coldWatch);`);
+  await evaluate('window.__transportFrames=[];window.__transportWatch=true');
+  const coldCache=await cachedBlocks();
+  assert.ok(coldCache.length<=3);assert.ok(!coldCache.includes(cold.round+':'+delayedBlock.index),'delayed relative seek target must actually be uncached');
+  metrics.delayedChunkPrecondition={round:cold.round,fromTick:coldFrom,targetBlock:delayedBlock.index,cacheKeys:coldCache};
   await click('前进 30 秒');
-  await wait(()=>evaluate('window.__transportFrames.filter(f=>f.players===0).length>=2'),'observed missing chunk');
-  const stalled=await state();assert.equal(stalled.playing,false);
-  await wait(async()=>(await state()).playing&&(await state()).tick>stalled.tick,'cold seek resumes after real data');
+  await wait(()=>evaluate(`window.__transportFrames.filter(f=>!f.chunkLoaded&&f.neededBlock===${delayedBlock.index}&&f.round===${cold.round}).length>=2`),'observed missing chunk');
+  const stalled=await evaluate('window.__transportRead()');assert.equal(stalled.clockPlaying,false);assert.equal(stalled.chunkLoaded,false);
+  await wait(()=>evaluate(`window.__transportFrames.some(f=>f.chunkLoaded&&f.clockPlaying&&f.round===${cold.round}&&f.neededBlock===${delayedBlock.index}&&f.paintTick>${stalled.clockTick}&&f.markerCalls>0&&f.players>0)`),'cold seek resumes after real data and paints players');
   await evaluate('window.__transportWatch=false');metrics.delayedChunkFrames=await evaluate('window.__transportFrames');
-  assert.ok(metrics.delayedChunkFrames.filter(f=>!f.players).length>=2);
+  const missing=metrics.delayedChunkFrames.filter(f=>!f.chunkLoaded&&f.round===cold.round&&f.neededBlock===delayedBlock.index);
+  assert.ok(new Set(missing.map(f=>f.paintSequence)).size>=2,'At least two distinct actual missing-chunk paints');
+  for(const f of missing){assert.equal(f.clockPlaying,false);assert.equal(f.fullClear,true);assert.equal(f.markerCalls,0);assert.equal(f.foregroundEmpty,true,'Real foreground RGBA is transparent during missing chunk');}
   for(let i=1;i<metrics.delayedChunkFrames.length;i++){
-    const a=metrics.delayedChunkFrames[i-1],b=metrics.delayedChunkFrames[i];if(!a.players&&!b.players)assert.equal(a.tick,b.tick,'delayed chunk clock frozen');
+    const a=metrics.delayedChunkFrames[i-1],b=metrics.delayedChunkFrames[i];
+    if(!a.chunkLoaded&&!b.chunkLoaded){assert.equal(a.clockTick,b.clockTick,'delayed chunk real clock frozen');assert.equal(a.tick,b.tick,'delayed missing-data observation tick frozen');}
   }
+  const recovered=metrics.delayedChunkFrames.filter(f=>f.chunkLoaded&&f.clockPlaying&&f.round===cold.round&&f.neededBlock===delayedBlock.index&&f.paintTick>stalled.clockTick);
+  assert.ok(recovered.some(f=>f.markerCalls>0&&f.players>0),'Real player marks return after loading');
+  for(const f of recovered)assert.equal(f.markerCalls,f.players,'Actual numeric player marks match completed paint count');
   await click('暂停回放');
-  await mainInspector.evaluate(`(()=>{const ipc=${ipcExpr};ipc.removeHandler('replay:chunk');ipc.handle('replay:chunk',globalThis.__p7ChunkOriginal);delete globalThis.__p7ChunkOriginal;})()`);
+  metrics.delayedChunkResponses=await mainInspector.evaluate('globalThis.__p7ChunkDelays');
+  const delayedResponse=metrics.delayedChunkResponses.find(r=>r.request?.sessionId===sessionId&&r.request?.round===cold.round&&r.request?.block===delayedBlock.index&&r.releasedAt);
+  assert.ok(delayedResponse,'Main delayed the actual requested block response');assert.equal(delayedResponse.kind,'success');
+  assert.ok(delayedResponse.releasedAt-delayedResponse.responseReadyAt>=650,'Real successful Chunk response held at least 650ms');
+  metrics.delayedChunkMethod='Unchanged SHA-verified real Dust2 DEM and real Chunk payload; controlled >=650ms Main IPC response delay in disposable built Electron. Post-clear microtask observes each actual foreground paint, real clock/ref/cache without cache.get/LRU mutation, numeric player marks and missing-frame RGBA. Instrumented diagnostic timing, not a natural network/IPC performance measurement.';
+  await mainInspector.evaluate(`(()=>{const ipc=${ipcExpr};ipc.removeHandler('replay:chunk');ipc.handle('replay:chunk',globalThis.__p7ChunkOriginal);delete globalThis.__p7ChunkOriginal;delete globalThis.__p7ChunkDelays;})()`);
+  await evaluate('window.__transportRestore();delete window.__transportRestore;delete window.__transportRead;delete window.__transportFrames;delete window.__transportWatch');
   await choose('回放回合','R'+first.round);await ready();
   metrics.checks.push('deterministic delayed real Chunk: multiple missing-data frames freeze tick then resume');
   // Natural end still advances; manual selection still pauses at its own origin.

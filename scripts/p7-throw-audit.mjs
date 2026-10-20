@@ -73,6 +73,10 @@ for(const [id,b] of before){
 }
 assert.equal([...after.values()].filter(e=>e.type==='utility_throw').length,releases.length);
 const noEffect=releases.filter(t=>!linked.some(u=>u.releases.some(r=>r.eventIndex===t.eventIndex&&r.round===t.round)));
+const cache={sessionBytes:session.bytes,chunkCount:session.chunks.size,
+  maxChunkBytes:Math.max(...[...session.chunks.values()].map(json=>Buffer.byteLength(json)))};
+assert.ok(cache.sessionBytes<=64*1024*1024,'Existing Replay session budget');
+assert.ok(cache.maxChunkBytes<=1024*1024,'Existing Replay chunk budget');
 const result={fixture:'.demo/dust2.dem',sha256,counts,totalReleases:releases.length,totalEffects:effects.length,
   nativeRows:nativeRows.length,exactFlightStart:linked.filter(u=>u.releases.length===1).length,
   sameTick: sameTick.slice(0,8),consecutive:consecutive.slice(0,8),reusedEffectEntities:reused.length,
@@ -80,7 +84,7 @@ const result={fixture:'.demo/dust2.dem',sha256,counts,totalReleases:releases.len
   releaseWithoutEffect:noEffect,entityReuseSamples:linked.filter(u=>u.entityReused).slice(0,2),
   infernoSeparateEntitySamples:linked.filter(u=>u.kind==='fire'&&u.entity!==u.nativeRun.entity).slice(0,2),
   decision:'Direct native weapon_fire tick + shooter + exact grenade weapon; no effect-to-throw inference required. Existing effects retained.',
-  replayMs:parsed.replayMs,performance:parsed.performance};
+  replayMs:parsed.replayMs,performance:parsed.performance,cache};
 mkdirSync(new URL('../.tmp/p7-round-two/',import.meta.url),{recursive:true});
 writeFileSync(new URL('../.tmp/p7-round-two/throw-audit.json',import.meta.url),JSON.stringify(result,null,2)+'\n');
 console.log(JSON.stringify(result,null,2));

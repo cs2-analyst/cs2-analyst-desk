@@ -13,6 +13,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { closeApp, connectCdp, waitFor, withCleanup } from './smoke-runtime.mjs';
 import { ProcessScope } from './installed-smoke-lifecycle.mjs';
 import { replayDisplayFrame } from '../apps/desktop/renderer/src/replay-state.ts';
+import { resolveReplayFollow } from '../apps/desktop/renderer/src/replay-follow.ts';
 import { resolveMapLayer, worldToRadar } from '../apps/desktop/shared/replay-map-geometry.ts';
 import { explainFrame, explainPlayer, summarizeObservedFrames } from './replay-diagnosis-core.mjs';
 import { auditFloorContinuity } from './replay-floor-audit.mjs';
@@ -24,6 +25,15 @@ const input = resolve('.tmp/p7-nuke-s0'), sequencesOnly = process.argv.includes(
 const destination=s1?resolve('.tmp/p7-nuke-s1'):input;
 const out = sequencesOnly ? join(destination, 'sequences') : lifecycleOnly?join(destination,'lifecycle'):destination; mkdirSync(out, { recursive: true });
 const source = JSON.parse(readFileSync(join(input, 'source.json')));
+// Explicit expected handoff resolver; this is checked against IPC source facts below,
+// not against the Canvas' self-reported follow/floor labels alone.
+function choose(ids, seed) {
+  const candidates = [...new Set(ids)].sort();
+  if (!candidates.length) return null;
+  let hash = 2166136261;
+  for (let i = 0; i < seed.length; i++) hash = Math.imul(hash ^ seed.charCodeAt(i), 16777619) >>> 0;
+  return candidates[hash % candidates.length];
+}
 const fixture = resolve('.demo/nuke.dem'), digest = createHash('sha256');
 for await (const chunk of createReadStream(fixture)) digest.update(chunk);
 assert.equal(digest.digest('hex'), source.sha256, 'Fixture changed after native audit');
@@ -75,6 +85,7 @@ await withCleanup(async () => {
   // QA reads current React tree; no state dispatch, cache access mutation, protocol or production edit.
   await evaluate(`(() => {
     const replayDisplayFrame=${replayDisplayFrame.toString()}, resolveMapLayer=${resolveMapLayer.toString()}, worldToRadar=${worldToRadar.toString()};
+    const choose=${choose.toString()}, resolveReplayFollow=${resolveReplayFollow.toString()};
     const explainPlayer=${explainPlayer.toString()}, explainFrame=${explainFrame.toString()};
     window.__s0={frames:[],requests:[],record:false,ids:new WeakMap(),nextId:1};
     const identity=o=>{if(!window.__s0.ids.has(o))window.__s0.ids.set(o,window.__s0.nextId++);return window.__s0.ids.get(o);};
@@ -88,7 +99,8 @@ await withCleanup(async () => {
       const live=refs.find(r=>r.current?.selectedPlayerId!==undefined)?.current;
       const cache=refs.find(r=>r.current?.entries instanceof Map&&typeof r.current.put==='function')?.current;
       const clock=refs.find(r=>r.current?.anchorMs!==undefined)?.current;
-      if(!live||!cache||!clock)throw new Error('Replay refs not found');
+      const anchor=refs.find(r=>r.current?.sessionId&&typeof r.current?.playerId==='string')?.current;
+      if(!live||!cache||!clock||!anchor)throw new Error('Replay refs not found');
       const canvas=document.querySelector('#replay-panel canvas[role=img]'),at=Number(canvas.dataset.tick),meta=fiber.memoizedProps.metadata;
       const block=live.info.blocks.find(b=>Math.floor(at)>=b.startTick&&Math.floor(at)<=b.endTick);
       const chunk=block?cache.entries.get(live.info.round+':'+block.index):null;
@@ -97,12 +109,18 @@ await withCleanup(async () => {
       const images=refs.find(r=>r.current?.entries instanceof Map&&typeof r.current.dispose==='function')?.current;
       const mode=document.querySelector('[aria-label=回放楼层]').textContent==='跟随玩家'?'auto':live.layerId;
       const explained=chunk?explainFrame(chunk,at,meta,live.map,index,mode):null;
-      const eligible=chunk&&live.layerId?explainFrame(chunk,at,meta,live.map,index,live.layerId).eligible:0;
+      const expectedFollow=chunk?resolveReplayFollow(chunk,anchor.playerId,at,meta.players.map(p=>p.id)):null;
+      const deadPlayerIds=expectedFollow?.deadPlayerIds??[];
+      const onLayer=chunk&&live.layerId?explainFrame(chunk,at,meta,live.map,index,live.layerId):null;
+      // Exact native rows can contain stale alive=true after a confirmed death.
+      // Keep raw tuples for inspection, but the lifecycle must exclude them from paint.
+      const eligible=onLayer?.players.filter(p=>p.reason==='eligible'&&!deadPlayerIds.includes(p.id)).length??0;
       return {ms:performance.now(),round:live.info.round,tick:at,uiTick:Number(node.dataset.replayTick),clockTick:clock.tick,
         clockRead:clock.read(performance.now(),meta.tickRate),playing:clock.playing,speed:clock.speed,
         floorStatus:canvas.dataset.floorStatus??null,baseLayer:base.dataset.layer??null,drawP95:Number(canvas.dataset.drawP95??0),
         imageCacheId:images?identity(images):null,imageCache:images?[...images.entries].map(([id,e])=>({id,identity:identity(e.image),status:e.status,width:e.image.naturalWidth,height:e.image.naturalHeight,src:e.image.src})):null,
-        playerId:live.selectedPlayerId,mode,layerId:live.layerId,targetFloor:explained?.layerId??null,imageReady:live.imageReady,
+        playerId:live.selectedPlayerId,anchorId:anchor.playerId,expectedFollow,deadPlayerIds,
+        followPlayer:canvas.dataset.followPlayer??null,mode,layerId:live.layerId,targetFloor:deadPlayerIds.includes(live.selectedPlayerId)?null:explained?.layerId??null,imageReady:live.imageReady,
         chunkLoaded:!!chunk,block:block?.index,cacheKeys:[...cache.entries.keys()],drawn:Number(canvas.dataset.playerCount),paintCalls:canvas.__s0PaintCalls??null,eligible,
         selected:explained?.selected??null,leftTick:explained?.leftTick,rightTick:explained?.rightTick,gap:explained?.gap,
         players:explained?.players??[],reasons:explained?.reasons??{}};
@@ -120,16 +138,44 @@ await withCleanup(async () => {
   // Compare every real worker -> Main -> IPC chunk frame to the independent source session.
   const fnv = text => { let h=2166136261; for(let i=0;i<text.length;i++)h=Math.imul(h^text.charCodeAt(i),16777619); return h>>>0; };
   const sourceChunks=JSON.parse(readFileSync(join(input,'chunks.json'))).chunks;
-  result.ipc=[];
+  result.ipc=[]; const followContexts=new Map(); let ipcBytes=0;
   for(const round of metadata.rounds)for(const block of round.blocks){
     const request={sessionId:metadata.sessionId,round:round.round,block:block.index};
-    const actual=await evaluate(`(async()=>{const start=performance.now(),r=await window.cs2Analyst.replay.getChunk(${JSON.stringify(request)});if(r.kind!=='success')throw new Error(r.message);const text=JSON.stringify(r.chunk.frames);const fnv=${fnv.toString()};return {ms:performance.now()-start,hash:fnv(text),contentHash:fnv(JSON.stringify({events:r.chunk.events,utilities:r.chunk.utilities??[],blinds:r.chunk.blinds??[],burns:r.chunk.burns??[]})),frames:r.chunk.frames.length,startTick:r.chunk.startTick,endTick:r.chunk.endTick};})()`);
+    const actual=await evaluate(`(async()=>{const start=performance.now(),r=await window.cs2Analyst.replay.getChunk(${JSON.stringify(request)});if(r.kind!=='success')throw new Error(r.message);const text=JSON.stringify(r.chunk.frames);const fnv=${fnv.toString()};return {ms:performance.now()-start,hash:fnv(text),contentHash:fnv(JSON.stringify({events:r.chunk.events,utilities:r.chunk.utilities??[],blinds:r.chunk.blinds??[],burns:r.chunk.burns??[]})),follow:${block.index===0?'r.chunk.follow':'undefined'},followHash:fnv(JSON.stringify(r.chunk.follow)),bytes:new TextEncoder().encode(JSON.stringify(r.chunk)).byteLength,frames:r.chunk.frames.length,startTick:r.chunk.startTick,endTick:r.chunk.endTick};})()`);
     const expected=sourceChunks.find(c=>c.round===round.round&&c.block===block.index);
     assert.equal(actual.hash,fnv(JSON.stringify(expected.frames)),'IPC frame parity '+round.round+':'+block.index);
     assert.equal(actual.contentHash,fnv(JSON.stringify({events:expected.events,utilities:expected.utilities??[],blinds:expected.blinds??[],burns:expected.burns??[]})),'IPC event/utility parity '+round.round+':'+block.index);
     assert.equal(actual.startTick,expected.startTick);assert.equal(actual.endTick,expected.endTick);
-    result.ipc.push({round:round.round,block:block.index,...actual});
+    assert.ok(actual.bytes<=1024*1024,'Existing chunk byte cap');ipcBytes+=actual.bytes;
+    if(block.index===0){
+      assert.ok(actual.follow?.deaths&&actual.follow?.states&&actual.follow?.backgrounds,'Whole-round authoritative follow context required');
+      followContexts.set(round.round,actual.follow);
+      const chunks=sourceChunks.filter(c=>c.round===round.round);
+      const events=[...new Map(chunks.flatMap(c=>c.events).filter(e=>e.type==='kill').map(e=>[e.id,e])).values()];
+      const groups=Map.groupBy(events,e=>JSON.stringify([e.tick,e.targetId]));
+      assert.equal(actual.follow.deaths.length,groups.size,'One death per independent source tick/victim');
+      for(const death of actual.follow.deaths){
+        const sourceDeaths=groups.get(JSON.stringify([death.tick,death.victimId]));assert.ok(sourceDeaths,'Source death ownership exists');
+        const killers=[...new Set(sourceDeaths.map(e=>e.actorId))];
+        assert.equal(death.killerId,killers.length===1?killers[0]:null,'Independent source killer attribution');
+        const frame=chunks.flatMap(c=>c.frames).find(f=>f.tick===death.tick);
+        assert.ok(frame,'Death has an exact source frame');
+        const sameTickVictims=events.filter(e=>e.tick===death.tick).map(e=>e.targetId);
+        for(const id of death.alivePlayerIds){
+          const p=frame.players.find(p=>metadata.players[p[0]]?.id===id);
+          assert.ok(p&&p[1]===death.tick&&p[7]===true&&!p[10]&&!sameTickVictims.includes(id),'Handoff candidate is an exact living source row, excluding all same-tick victims');
+        }
+      }
+      for(const state of actual.follow.states){
+        assert.equal(state.alivePlayerIds.some(id=>state.deadPlayerIds.includes(id)),false,'Life sets cannot conflict');
+      }
+      if(expected.follow)assert.deepEqual(actual.follow,expected.follow,'Independent source/IPC follow parity');
+    }
+    assert.equal(actual.followHash,fnv(JSON.stringify(followContexts.get(round.round))),'Every chunk carries the same whole-round context');
+    result.ipc.push({round:round.round,block:block.index,...actual,follow:undefined});
   }
+  assert.ok(ipcBytes<=64*1024*1024,'Existing session byte cap');
+  result.checks.authoritativeFollowContext=true;result.ipcBytes=ipcBytes;
   result.metadata = metadata; result.page = await evaluate('({url:location.href,title:document.title,width:innerWidth,height:innerHeight,hidden:document.hidden,text:document.body.innerText.slice(0,400)})');
   result.sessions??=[];result.sessions.push({sessionId:metadata.sessionId,scope:sequencesOnly?'visual':fullOnly?'full-playback-retry':'matrix-and-full'});
   const dropdown = async (label, value) => {
@@ -153,6 +199,39 @@ await withCleanup(async () => {
     const name = label + '.png', shot = await page.send('Page.captureScreenshot', { format: 'png' });
     writeFileSync(join(out, name), Buffer.from(shot.data, 'base64')); result.screenshots.push({ name, state });
   };
+  const assertFollow = (f,label) => {
+    if(!f.chunkLoaded)return;
+    const expected=resolveReplayFollow({matchId:metadata.matchId,round:f.round,follow:followContexts.get(f.round)},f.anchorId,f.tick,metadata.players.map(p=>p.id));
+    assert.deepEqual(f.expectedFollow,expected,label+': probe resolves the independently verified round context');
+    assert.equal(f.playerId,expected.playerId,label+': effective target follows the last explicit manual anchor');
+    assert.equal(f.followPlayer,expected.playerId,label+': actual Canvas target agrees');
+    if(f.imageReady){assert.equal(f.baseLayer,f.layerId,label+': foreground/background layer agree');assert.equal(f.drawn,f.eligible,label+': every available living on-layer player is drawn');}
+    const p=f.selected;
+    const reliable=!expected.deadPlayerIds.includes(f.playerId)&&p?.[7]===true&&p[9]!==null&&!p[10]&&p.slice(2,5).every(v=>v!==null&&Number.isFinite(v));
+    if(f.mode==='auto'&&reliable){
+      const layer=resolveMapLayer(replayMapDefinitions.find(m=>m.id===metadata.map),p[4]);
+      if(layer!==null){assert.equal(f.layerId,layer,label+': reliable current target determines floor');assert.equal(f.floorStatus,'known',label+': observed floor is known');}
+    }
+    return f;
+  };
+  const assertFreshAuto = (f,label) => {
+    assertFollow(f,label);assert.equal(f.mode,'auto');
+    const p=f.selected,map=replayMapDefinitions.find(m=>m.id===metadata.map);
+    const reliable=!f.deadPlayerIds.includes(f.playerId)&&p?.[7]===true&&p[9]!==null&&!p[10]&&p.slice(2,5).every(v=>v!==null&&Number.isFinite(v));
+    const layer=reliable?resolveMapLayer(map,p[4]):null;
+    // A seek/mode/target reset may immediately observe the *new living target*.
+    // Only an actually unavailable current target without all-dead evidence is unknown.
+    if(layer===null&&!f.expectedFollow.allDead){assert.equal(f.floorStatus,'unknown',label+': no inherited floor');assert.equal(f.layerId,null);assert.equal(f.drawn,0);}
+    else if(layer!==null){assert.equal(f.floorStatus,'known');assert.equal(f.layerId,layer);}
+    return f;
+  };
+  const assertContinuedContext = (before,after,label) => {
+    assertFollow(after,label);
+    if(before.round===after.round&&before.playerId===after.playerId&&before.layerId&&after.targetFloor===null){
+      assert.equal(after.layerId,before.layerId,label+': same-target forward clock preserves observed floor');
+      assert.equal(after.floorStatus,'retained',label+': unavailable current target retains context');
+    }
+  };
   async function playRun(label, stop, timeout) {
     await evaluate('window.__s0.frames=[];window.__s0.record=true;document.querySelector("[aria-label=播放回放]")?.click()');
     const frames=[];let progressAt=Date.now();
@@ -173,13 +252,24 @@ await withCleanup(async () => {
     assert.ok(frames.every(f=>f.paintCalls===f.drawn),'Canvas marker calls must agree with actual draw count');
     const filename = label + '-frames.json'; writeFileSync(join(out, filename), JSON.stringify(frames));
     if(s1&&label.startsWith('w')&&label.includes('跟随玩家')){
-      const evidence=frames.find(f=>f.floorStatus==='retained'&&(label.startsWith('w5-')||f.drawn>0));
-      assert.ok(evidence,'Actual forward playback must retain background context');
+      const handoff=frames.find(f=>f.chunkLoaded&&f.expectedFollow?.deathId&&f.playerId!==f.anchorId);
+      if(handoff){
+        assertFollow(handoff,'Actual forward death handoff');
+        assert.ok(!handoff.deadPlayerIds.includes(handoff.playerId),'Death hands off to a living identity');
+      }else{
+        const evidence=frames.find(f=>f.floorStatus==='retained'&&(label.startsWith('w5-')||f.drawn>0));
+        assert.ok(evidence,'Unchanged target retains reliable background context during unavailable position');
+      }
       if(label.startsWith('w1-'))assert.ok(frames.some(f=>f.tick>4352&&f.tick<4356&&f.drawn===9),'W1 death boundary draws nine survivors');
     }
     const summary = summarizeObservedFrames(frames);
     if(s1){
-      summary.floorAudit=auditFloorContinuity(frames,replayMapDefinitions.find(m=>m.id===metadata.map));
+      for(const f of frames)assertFollow(f,label);
+      // The history oracle resets on identity change. Confirmed dead source rows must
+      // not count as current target/floor or drawable survivors, even if stale true.
+      const observed=frames.map(f=>({...f,selected:f.deadPlayerIds.includes(f.playerId)?null:f.selected,
+        players:f.players.filter(p=>!f.deadPlayerIds.includes(p.id))}));
+      summary.floorAudit=auditFloorContinuity(observed,replayMapDefinitions.find(m=>m.id===metadata.map));
       assert.equal(summary.floorAudit.layerMismatches,0,'Independent observed history agrees with painted floor');
       assert.equal(summary.floorAudit.erroneousFrames,0,'Independent oracle finds no erroneous whole-map blanks');
       const mismatches=frames.filter(f=>f.imageReady&&f.baseLayer!==f.layerId);
@@ -263,33 +353,35 @@ await withCleanup(async () => {
     const oldCacheId=await evaluate('window.__s0Read().imageCacheId');
     for(const at of [4354,4358,4354]){
       await seek(at);const f=await evaluate('window.__s0Read()');
-      assert.equal(f.floorStatus,'unknown');assert.equal(f.layerId,null);assert.equal(f.drawn,0);
+      assertFreshAuto(f,'Cold/warm/reverse seek '+at);
     }
-    checks.coldWarmReverseSeekNoHistory=true;
-    await screenshot('lifecycle-cold-death-unknown');
+    checks.coldWarmReverseSeekReconstructsFollow=true;
+    await screenshot('lifecycle-cold-death-follow');
     await dropdown('回放楼层','主层');assert.equal((await evaluate('window.__s0Read()')).drawn,9);
-    await dropdown('回放楼层','跟随玩家');assert.equal((await evaluate('window.__s0Read()')).layerId,null);
+    await dropdown('回放楼层','跟随玩家');assertFreshAuto(await evaluate('window.__s0Read()'),'Manual-to-auto reset');
     checks.manualAutoClearsHistory=true;
     await seek(4352);
     await dropdown('回放倍速','1×');
     await evaluate('document.querySelector("[aria-label=播放回放]").click()');
     await waitFor(()=>evaluate('window.__s0Read().tick>4356'),5000,'W1 death playback');await pause();
-    assert.equal((await evaluate('window.__s0Read()')).floorStatus,'retained');
-    await screenshot('lifecycle-w1-retained');
+    const afterDeath=assertFollow(await evaluate('window.__s0Read()'),'Natural W1 death');
+    assert.notEqual(afterDeath.playerId,afterDeath.anchorId,'W1 follows an eligible survivor after death');
+    await screenshot('lifecycle-w1-follow');
     const stopped=await evaluate('window.__s0Read()');await delay(200);
     assert.equal((await evaluate('window.__s0Read()')).tick,stopped.tick);
     for(const speed of ['1.5×','4×','1×']){
-      await dropdown('回放倍速',speed);assert.equal((await evaluate('window.__s0Read()')).floorStatus,'retained');
+      await dropdown('回放倍速',speed);const f=assertFollow(await evaluate('window.__s0Read()'),'Paused speed '+speed);
+      assert.equal(f.playerId,stopped.playerId);assert.equal(f.layerId,stopped.layerId);assert.equal(f.floorStatus,stopped.floorStatus);
     }
     await dropdown('回放倍速','4×');
     await evaluate('document.querySelector("[aria-label=播放回放]").click()');
     await evaluate('(()=>{const until=performance.now()+60;while(performance.now()<until){} })()');
     await delay(100);await pause();
-    assert.equal((await evaluate('window.__s0Read()')).floorStatus,'retained');checks.slowFrame4xKeepsContext=true;
-    assert.equal((await evaluate('window.__s0Read()')).floorStatus,'retained');checks.pauseResumeSpeed=true;
+    assertContinuedContext(stopped,await evaluate('window.__s0Read()'),'Slow frame 4x keeps correct follow/floor');checks.slowFrame4xKeepsContext=true;
+    checks.pauseResumeSpeed=true;
     // A briefly selected different target must not leave the prior target's history.
     await evaluate(`document.querySelectorAll('[aria-label=回放玩家状态] button')[0].click();document.querySelectorAll('[aria-label=回放玩家状态] button')[${source.windows[0].playerIndex}].click()`);
-    await delay(100);assert.equal((await evaluate('window.__s0Read()')).floorStatus,'unknown');checks.rapidTargetReset=true;
+    await delay(100);assertFreshAuto(await evaluate('window.__s0Read()'),'Rapid manual anchor reset');checks.rapidTargetReset=true;
     assert.deepEqual(await evaluate('window.__s0Read().imageCache'),imageIdentity,'All floor/unknown/seek modes reuse decoded images');
     checks.finiteDecodedImagesReused=true;
     await evaluate('document.getElementById("report-tab").click()');await delay(100);
@@ -303,7 +395,7 @@ await withCleanup(async () => {
     assert.equal(await evaluate('window.__oldS1Images.entries.size'),0);
     assert.equal(await evaluate('window.__oldS1Entries.every(e=>e.image.onload===null&&e.image.onerror===null&&!e.image.getAttribute("src"))'),true);
     await selectRound(1);await evaluate(`document.querySelectorAll('[aria-label=回放玩家状态] button')[${source.windows[0].playerIndex}].click()`);await seek(4354);
-    assert.equal((await evaluate('window.__s0Read()')).floorStatus,'unknown');
+    assertFreshAuto(await evaluate('window.__s0Read()'),'New session re-derives follow without prior floor history');
     assert.notEqual((await evaluate('window.__s0Read()')).imageCacheId,oldCacheId);
     checks.newSessionRetiresImagesAndHistory=true;
     await evaluate('delete window.__oldS1Images;delete window.__oldS1Entries');
