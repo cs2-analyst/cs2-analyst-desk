@@ -670,6 +670,20 @@ async function createWindow() {
   };
   window.on('maximize', maximizedChanged);
   window.on('unmaximize', maximizedChanged);
+  if (process.platform === 'win32' && typeof window.hookWindowMessage === 'function') {
+    // A frameless window has no native caption; WM_NCLBUTTONDBLCLK on the drag region
+    // must still follow the Windows maximize/restore expectation.
+    let lastCaptionDoubleClick = 0;
+    const captionDoubleClick = () => {
+      const now = Date.now();
+      if (now - lastCaptionDoubleClick < 250 || window.isDestroyed()) return;
+      lastCaptionDoubleClick = now;
+      if (window.isMaximized()) window.unmaximize(); else window.maximize();
+    };
+    // Windows may classify the drag region as non-client (0x00A3) or client (0x0203).
+    window.hookWindowMessage(0x00A3, captionDoubleClick);
+    window.hookWindowMessage(0x0203, captionDoubleClick);
+  }
 
   mainWindow.on('closed', () => {
     cancelActiveImport?.();stopAnalysisWorker();
