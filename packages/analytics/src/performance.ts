@@ -147,10 +147,10 @@ export function computePlayerPerformance(input: PlayerPerformanceInput): PlayerP
   return { rating: computeRating(input), highlights: highlights.slice(0, highlightRules.maxVisible) };
 }
 
-/** Adapter from frozen Analytics metrics. Utility availability never gates Rating. */
-export function summarizePlayerPerformance(player: PlayerMetrics): PlayerPerformance {
+/** Portable inputs retain the small coverage proofs needed for later algorithm replacement. */
+export function playerPerformanceInput(player: PlayerMetrics): PlayerPerformanceInput {
   const c = player.coverage;
-  return computePlayerPerformance({
+  return {
     kills: player.kills, deaths: player.deaths, assists: player.assists, validRounds: player.roundsPlayed,
     adr: player.adr, kastPercent: player.kast.percentage, kastEligibleRounds: player.kast.eligibleRounds,
     kastComplete: player.kast.complete,
@@ -166,5 +166,10 @@ export function summarizePlayerPerformance(player: PlayerMetrics): PlayerPerform
     headshotPercentage: player.headshotPercentage, headshotsComplete: c.killsWithoutHeadshotStatus === 0,
     flashAssists: player.utility.flash.assists,
     heDamage: player.utility.he.enemyDamage, fireDamage: player.utility.fire.enemyDamage,
-  });
+  };
+}
+
+/** Adapter from frozen Analytics metrics. Utility availability never gates Rating. */
+export function summarizePlayerPerformance(player: PlayerMetrics): PlayerPerformance {
+  return computePlayerPerformance(playerPerformanceInput(player));
 }

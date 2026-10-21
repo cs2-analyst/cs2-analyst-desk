@@ -3,7 +3,7 @@ import test from 'node:test';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { Demoparser2Provider } from '@cs2-analyst/dem-parser';
-import { analyzeMatch, computePlayerPerformance, computeRating, highlightRules, ratingAlgorithm,
+import { analyzeMatch, computePlayerPerformance, computeRating, highlightRules, playerPerformanceInput, ratingAlgorithm,
   summarizePlayerPerformance } from '../dist/index.js';
 
 const base = (extra = {}) => ({ kills: 20, deaths: 16, assists: 4, validRounds: 24, adr: 80,
@@ -185,6 +185,8 @@ test('real demo1 performance is deterministic, player-isolated and uses unchange
     const ratings = new Set();
     for (const player of analytics.players) {
       const performance = summarizePlayerPerformance(player);
+      assert.deepEqual(computePlayerPerformance(playerPerformanceInput(player)), performance,
+        'portable inputs preserve replaceable Rating and highlight evidence');
       assert.equal(performance.rating.status, 'available', player.nickname);
       const kpr = player.kills / player.roundsPlayed;
       const dpr = player.deaths / player.roundsPlayed;

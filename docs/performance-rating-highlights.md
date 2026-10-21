@@ -29,6 +29,8 @@ RatingApprox = 0.0073*KASTPercent + 0.3591*KPR - 0.5329*DPR
 
 `computePlayerPerformance(PlayerPerformanceInput)` 是旧报告轻量兼容入口。调用方只能将有保存证据支持的 coverage 标为完整，缺失证据必须保守降级；不重新解析 DEM。
 
+`playerPerformanceInput(PlayerMetrics)` 暴露同一适配器的轻量输入，供报告保存必要覆盖证明，后续替换算法时可重用。旧版 `coverage.complete` 未保留未知 teamkill/headshot 数量，单靠该布尔值不足以证明完整，不能据此猜测 Rating 或精准标签。
+
 ## 高光
 
 所有门槛集中于 `highlightRules`，最多展示 3 项；固定优先级为 **残、神、突、补、准、闪、辅、助**，不依赖对象或数组输入顺序。每项包含语义颜色、单字、Tooltip 和原始数值证据。颜色与尺寸由 Fluent UI 消费者渲染。
