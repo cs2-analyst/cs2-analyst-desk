@@ -17,7 +17,7 @@ pnpm --filter @cs2-analyst/desktop pack:win:test
 pnpm test:installed
 ```
 
-版本保持 `0.1.0`；生产安装包为 `release/0.1.0/CS2-Analyst-Setup-0.1.0.exe`。详见 [架构](docs/architecture.md)、[桌面报告](docs/desktop-report.md)、[Windows 打包](docs/windows-packaging.md) 与 [路线图](docs/roadmap.md)。
+当前应用版本为 `0.2.0`（L0–L5 本地比赛库已封板）；生产安装包构建后位于 `release/0.2.0/CS2-Analyst-Setup-0.2.0.exe`。详见 [架构](docs/architecture.md)、[桌面报告](docs/desktop-report.md)、[Windows 打包](docs/windows-packaging.md) 与 [路线图](docs/roadmap.md)。
 
 ## P5.6.5 Branding & App Icon
 

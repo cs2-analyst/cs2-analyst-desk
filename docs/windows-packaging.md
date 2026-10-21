@@ -35,8 +35,8 @@ Windows installer
 
 ```text
 release/
-└── 0.1.0/
-    └── CS2-Analyst-Setup-0.1.0.exe
+└── 0.2.0/
+    └── CS2-Analyst-Setup-0.2.0.exe
 ```
 
 - 版本号取自 `apps/desktop/package.json`，因此 `0.2.0` 会落到 `release/0.2.0/`。
@@ -47,7 +47,7 @@ release/
 
 - 打包工具：**electron-builder 26 + NSIS**，配置在 `apps/desktop/electron-builder.config.cjs`。
 - 目标：Windows **x64**，per-user 安装（无需管理员），`oneClick: false` 且安装时可选择目录。
-- 应用名 `CS2 Analyst`，版本沿用 `apps/desktop/package.json`（`0.1.0`），appId `com.evanpatchouli.cs2analyst`。
+- 应用名 `CS2 Analyst`，版本沿用 `apps/desktop/package.json`（当前 `0.2.0`），appId `com.evanpatchouli.cs2analyst`。
 - 桌面与开始菜单快捷方式、独立卸载器（`Uninstall CS2 Analyst.exe`）。
 - 复用工作区已安装的 Electron 运行时（`electronDist` 指向 `node_modules/electron/dist`），首次打包只需联网获取 NSIS 组件。
 - 打包在系统临时目录完成，只把最终安装包复制到 `release/<version>/`：工作区文件 watcher 会占用新建的 `app.asar`，在仓库内原地重建会让 electron-builder 无法重置输出目录。

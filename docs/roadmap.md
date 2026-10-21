@@ -153,6 +153,8 @@ Current: **v0.1 Final Acceptance FINAL PASS; P5 COMPLETE; P5.7 FINAL PASS.** 验
 
 ## Local Match Library & History（已授权，L0–L5 PASS）
 
+> **L 阶段封板版本：v0.2.0（2026-10-22）**。本次仅提升源码版本号并更新打包文档；不创建 tag/Release、不声称已重新构建或验收 0.2.0 安装包。L5 历史验收证据仍对应当时的 0.1.0 构建。
+
 > **用户于 2026-10-21 明确授权一次性实施 L0–L5；2026-10-22 L0–L4 独立审核通过，L5 技术矩阵与人工验收均 PASS。** [执行台账](./match-library-execution.md) · [L0 实证](./match-library-l0-storage-evidence.md) · [L1 证据](./match-library-l1-foundation-evidence.md) · [L2 证据](./match-library-l2-offline-restore-evidence.md) · [L3 证据](./match-library-l3-data-operations-evidence.md) · [L4 证据](./match-library-l4-navigation-evidence.md) · [L5 验收](./match-library-l5-acceptance.md)。旧的“账号 + apps/api + 服务端比赛摘要”路径已废止。P7 已封板；本阶段采用 **Windows 客户端 Local-first**，保存解析/分析完成的本机比赛归档，原 DEM 不保存、个人比赛不上传服务器。**不做账号/公共比赛历史后端**；与 P8 内部职业知识管线及 AI Coach 后端分开。
 
 - 现有单份 `report` + 临时 Replay/Heatmap Session 不具备历史恢复能力；新增比赛库必须在不依赖原 DEM、不依赖旧 Utility Process 的情况下离线打开已有六个功能。
