@@ -50,9 +50,9 @@ foreach($taskHive in @([Microsoft.Win32.RegistryHive]::CurrentUser,[Microsoft.Wi
    $taskRoot=$taskBase.OpenSubKey('Software\Microsoft\Windows\CurrentVersion\Uninstall')
    if($taskRoot) { try { foreach($taskName in $taskRoot.GetSubKeyNames()) {
     $taskKey=$taskRoot.OpenSubKey($taskName)
-    try { if($taskKey.GetValue('DisplayName') -like '*CS2 Analyst*') {
+    if($taskKey) { try { if($taskKey.GetValue('DisplayName') -like '*CS2 Analyst*') {
      $items += [pscustomobject]@{hive="$taskHive";view="$taskView";key=$taskName;displayName=$taskKey.GetValue('DisplayName');installLocation=$taskKey.GetValue('InstallLocation');uninstallString=$taskKey.GetValue('UninstallString');quietUninstallString=$taskKey.GetValue('QuietUninstallString')}
-    } } finally { $taskKey.Dispose() }
+    } } finally { $taskKey.Dispose() } }
    } } finally { $taskRoot.Dispose() } }
   } finally { $taskBase.Dispose() }
  }
