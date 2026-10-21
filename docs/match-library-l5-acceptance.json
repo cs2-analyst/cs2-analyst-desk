@@ -1,0 +1,118 @@
+{
+  "schemaVersion": 1,
+  "stage": "L5",
+  "generatedAt": "2026-10-21T18:55:11.797Z",
+  "commit": "50a8059",
+  "productRevision": "63d6e12ad9de0352bdc38206dcc4a39d22bd19c1",
+  "status": "TECHNICAL_PASS_HUMAN_ACCEPTANCE_NOT_RUN",
+  "tests": {
+    "desktopFull": "285/285 PASS, 0 skipped",
+    "typecheck": "15/15 tasks PASS",
+    "desktopReportSmoke": "PASS (3 scenarios)",
+    "navigationSmoke": "PASS (24 geometry states, max delta 0)"
+  },
+  "artifacts": {
+    "productionInstaller": {
+      "path": "release/0.1.0/CS2-Analyst-Setup-0.1.0.exe",
+      "sha256": "d8c6b8c481f6735179af94b1e40d42cbf4307ba57549e44e45b7884728880dec",
+      "bytes": 117232623
+    },
+    "previousL1Installer": {
+      "path": "E:/cs2-analyst-l1/release/0.1.0/CS2-Analyst-Setup-0.1.0.exe",
+      "sha256": "1d5960f26e3478510c6bba85ffe30022c8e516affd75499b7f176b0279f75b9c"
+    },
+    "testSeamInstaller": {
+      "path": ".tmp/test-output/0.1.0/CS2-Analyst-TestSeam-Setup-0.1.0.exe"
+    }
+  },
+  "matrix": [
+    {
+      "id": 1,
+      "item": "Production NSIS install/import/restart/uninstall retention",
+      "status": "PASS",
+      "evidence": "production-installed.json; Nuke import 15,568.8ms; cold catalogue 1.33ms; manifest retained"
+    },
+    {
+      "id": 2,
+      "item": "Installed data operations via QA test seam",
+      "status": "PASS",
+      "evidence": "testseam-dust2-data-operations.json; export 16,929,688B/164 files; delete; import; offline open; corrupt rejections; productRevision 63d6e12"
+    },
+    {
+      "id": 3,
+      "item": "Upgrade from L1 build to final build",
+      "status": "PASS",
+      "evidence": "upgrade.json; L1 1d5960f -> final d8c6b8c; report e071bfa7 unchanged; archive retained after uninstall"
+    },
+    {
+      "id": 4,
+      "item": "Rollback to older build",
+      "status": "NOT RUN",
+      "evidence": "Old installer can list/open? Not executed; only forward upgrade verified"
+    },
+    {
+      "id": 5,
+      "item": "Corrupt/malicious package rejection",
+      "status": "PASS",
+      "evidence": "L3 dev + test-seam installed: bit-flip and truncation rejected, staging empty, existing match openable"
+    },
+    {
+      "id": 6,
+      "item": "Delete single/active; capacity consistency",
+      "status": "PASS",
+      "evidence": "L3/integrated: active delete 179-250ms; archiveBytes -> 0; batch API unit-tested; orphan cleanup tested"
+    },
+    {
+      "id": 7,
+      "item": "Large library first screen",
+      "status": "NOT RUN",
+      "evidence": "Only 1-2 real records; no 50+ isolated-copy simulation in this pass"
+    },
+    {
+      "id": 8,
+      "item": "Performance matrix",
+      "status": "PARTIAL",
+      "evidence": "Import 15-20s, open 2.5-3.1s (full verify), list 1.3ms; Replay 5131.302ms debt unchanged"
+    },
+    {
+      "id": 9,
+      "item": "Privacy/network",
+      "status": "PASS (code review)",
+      "evidence": "No network upload path in local library; export requires explicit save; no DEM retained"
+    },
+    {
+      "id": 10,
+      "item": "Keyboard/high contrast",
+      "status": "NOT RUN",
+      "evidence": "DOM aria/disabled tested; real forced-colors/Narrator walkthrough not run"
+    },
+    {
+      "id": 11,
+      "item": "DPI 125/150 and physical multi-monitor",
+      "status": "NOT RUN",
+      "evidence": "devicePixelRatio=1 only"
+    },
+    {
+      "id": 12,
+      "item": "Human product acceptance",
+      "status": "NOT RUN",
+      "evidence": "Requires product owner to open library, navigate, export/import and sign off"
+    }
+  ],
+  "manualNotRun": [
+    "rollback",
+    "50+ library list simulation",
+    "DPI 125%/150%",
+    "Windows high contrast / Narrator",
+    "physical caption double-click",
+    "human product sign-off"
+  ],
+  "residualRisks": [
+    "Replay independent query historical 5131.302ms > 5000ms remains unresolved",
+    "Opening an archive fully verifies/decompresses all components (~2.5-3.1s for 12-17MB); large archives not stress-tested",
+    "Delete row-first leaves an unremovable orphan until restart; capacity may transiently include it",
+    "Cross-version archive manifest versions are structurally checked but not compared with the running build",
+    "NSIS only Windows x64 single-user; upgrade/rollback same version 0.1.0",
+    "Test-seam installer is QA-only and not a release artifact"
+  ]
+}
