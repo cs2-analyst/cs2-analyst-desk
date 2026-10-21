@@ -1,8 +1,10 @@
 import type { Finding, FindingEvidence } from '@cs2-analyst/findings';
 import type { DesktopReplayMetadata, DesktopReplayRequest, DesktopReplayResult } from './replay.js';
 import type { DesktopHeatmapMetadata, DesktopHeatmapRequest, DesktopHeatmapResult } from './heatmap.js';
+import type { LibraryListQuery, LibraryListResult, LibraryStorageResult } from './library.js';
 export type * from './replay.js';
 export type * from './heatmap.js';
+export type * from './library.js';
 
 /**
  * Presentation-only addition to a frozen evidence row. Seconds from the round
@@ -185,6 +187,10 @@ export type ImportPhase = 'selecting' | 'parsing' | 'analyzing';
 export type ImportResult = { kind: 'success'; report: DesktopMatchReport } | { kind: 'cancelled' } | { kind: 'error'; message: string };
 export interface DesktopApi {
   version: string;
+  library: {
+    list(query?: LibraryListQuery): Promise<LibraryListResult>;
+    storage(): Promise<LibraryStorageResult>;
+  };
   window: {
     minimize(): Promise<void>;
     toggleMaximize(): Promise<void>;

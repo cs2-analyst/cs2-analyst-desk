@@ -3,6 +3,10 @@ import type { DesktopApi, ImportPhase } from '@cs2-analyst/report-contract';
 
 const api: DesktopApi = {
   version: '0.1.0',
+  library: {
+    list: query => ipcRenderer.invoke('library:list', query),
+    storage: () => ipcRenderer.invoke('library:storage'),
+  },
   window: {
     minimize: () => ipcRenderer.invoke('window:minimize'),
     toggleMaximize: () => ipcRenderer.invoke('window:toggle-maximize'),
