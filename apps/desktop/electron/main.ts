@@ -702,9 +702,6 @@ async function createWindow() {
 
   mainWindow.on('closed', () => {
     cancelActiveImport?.();stopAnalysisWorker();
-    if (typeof window.unhookWindowMessage === 'function') {
-      window.unhookWindowMessage(0x00A3); window.unhookWindowMessage(0x0203);
-    }
     mainWindow = null;
   });
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
