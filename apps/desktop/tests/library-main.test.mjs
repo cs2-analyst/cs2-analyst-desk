@@ -132,8 +132,11 @@ test('failed saved-match open keeps the previous live session and worker', async
   assert.equal((await opened.promise).kind, 'error');
   assert.equal(opened.worker.killed, true);
   assert.equal(current.worker.killed, false);
-  void h.handlers.get('replay:chunk')(h.trusted, { sessionId: oldSession, round: 1, block: 0 }); await tick();
-  assert.ok(current.worker.sent.some(message => message.kind === 'replay-chunk'));
+  const pending = h.handlers.get('replay:chunk')(h.trusted, { sessionId: oldSession, round: 1, block: 0 }); await tick();
+  const request = current.worker.sent.at(-1); assert.equal(request.kind, 'replay-chunk');
+  current.worker.emit('message', { kind: 'replay-chunk', requestId: request.requestId,
+    result: { kind: 'success', chunk: { schemaVersion: 1, matchId: 'match', sessionId: oldSession, round: 1, block: 0, frames: [], events: [] } } });
+  assert.equal((await pending).kind, 'success', 'the previous session must still answer after a failed open');
   await h.handlers.get('session:release')(h.trusted, oldSession);
 });
 
