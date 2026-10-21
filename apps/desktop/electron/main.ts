@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, utilityProcess } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, screen, utilityProcess } from 'electron';
 import { fileURLToPath } from 'node:url';
 import { basename, dirname, extname, isAbsolute, join, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -677,10 +677,17 @@ async function createWindow() {
     const captionDoubleClick = () => {
       const now = Date.now();
       if (now - lastCaptionDoubleClick < 250 || window.isDestroyed()) return;
+      // The client double-click hook fires for the whole window. Only the custom
+      // 40px titlebar (same as app-titlebar CSS) is a caption; content must not toggle.
+      const point = screen.getCursorScreenPoint();
+      const bounds = window.getContentBounds();
+      if (point.x < bounds.x || point.x >= bounds.x + bounds.width
+        || point.y < bounds.y || point.y >= bounds.y + 40) return;
       lastCaptionDoubleClick = now;
       if (window.isMaximized()) window.unmaximize(); else window.maximize();
     };
-    // Windows may classify the drag region as non-client (0x00A3) or client (0x0203).
+    // The drag region is classified as a client area on Windows, so both messages are
+    // observed; the callback above scopes the client variant to the titlebar.
     window.hookWindowMessage(0x00A3, captionDoubleClick);
     window.hookWindowMessage(0x0203, captionDoubleClick);
   }

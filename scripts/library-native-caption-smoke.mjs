@@ -1,6 +1,6 @@
 // L5 native caption double-click: real Win32 mouse input on the frameless titlebar.
 import assert from 'node:assert/strict';
-import { spawn, spawnSync } from 'node:child_process';
+import { execSync, spawn, spawnSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { createServer } from 'node:net';
@@ -14,6 +14,7 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 const require = createRequire(new URL('../apps/desktop/package.json', import.meta.url));
 const run = createOwnedQaRun('l5-caption', { parent: join(root, '.tmp') });
 const evidence = { schemaVersion: 1, stage: 'L5-native-caption', startedAt: new Date().toISOString(), run,
+  sourceRevision: execSync('git rev-parse HEAD', { cwd: root, encoding: 'utf8' }).trim(), build: 'dev electron .',
   physicalPointer: true, checks: [], status: 'RUNNING' };
 const scope = new ProcessScope(); let child;
 const save = () => writeFileSync(join(run.output, 'native-caption.json'), JSON.stringify(evidence, null, 2) + '\n');
@@ -132,7 +133,7 @@ try {
   await page.evaluate('void window.cs2Analyst.window.isMaximized()');
   await page.send('Page.bringToFront');
   await new Promise(resolve => setTimeout(resolve, 500));
-  const point = async () => page.evaluate('(() => ({ x: Math.round(screenX + outerWidth * 0.25), y: Math.round(screenY + 20), maximized: null }))()');
+  const point = async () => page.evaluate('(() => ({ x: Math.round(screenX + outerWidth * 0.25), y: Math.round(screenY + 20) }))()');
   evidence.childPid = child.pid;
   evidence.foreground = focusApp(child.pid);
   let p = await point(); evidence.normalPoint = p;
@@ -146,7 +147,13 @@ try {
   click(p.x, p.y);
   await waitFor(async () => (await page.evaluate('window.cs2Analyst.window.isMaximized()')) === false, 7000, 'double-click restore');
   evidence.restoredAfterSecondDoubleClick = true;
+  const content = await page.evaluate('(() => ({ x: Math.round(screenX + outerWidth * 0.75), y: Math.round(screenY + outerHeight * 0.6) }))()');
+  click(content.x, content.y);
+  await new Promise(resolve => setTimeout(resolve, 700));
+  assert.equal(await page.evaluate('window.cs2Analyst.window.isMaximized()'), false, 'content double-click must not maximize');
+  evidence.contentDoubleClickDidNotMaximize = true;
   evidence.checks.push('real Win32 double-click on the frameless draggable titlebar maximized and restored the window');
+  evidence.checks.push('a real double-click in client content did not toggle maximize (non-client hook is scoped)');
   evidence.status = 'PASS';
   try { await page.evaluate('void window.cs2Analyst.window.close()'); } catch { /* CDP disconnect */ }
   await waitFor(() => child.exitCode !== null, 15_000, 'caption close');

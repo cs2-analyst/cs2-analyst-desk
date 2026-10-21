@@ -41,19 +41,19 @@
       "id": 1,
       "item": "Production NSIS install/import/restart/uninstall retention",
       "status": "PASS",
-      "evidence": "production-installed.json; Nuke import 15,266.0ms; cold catalogue 0.99ms; manifest retained; installed sourceRevision cbfa566"
+      "evidence": "production-foundation.json; Nuke import 15,266.0ms; cold catalogue 0.99ms; manifest retained; installed sourceRevision cbfa566"
     },
     {
       "id": 2,
       "item": "Installed data operations via QA test seam",
       "status": "PASS",
-      "evidence": "testseam-dust2-data-operations.json; export 16,929,688B/164 files; delete; import; offline open; corrupt rejections; productRevision 63d6e12"
+      "evidence": "testseam-dust2-data-operations.json; export 16,929,688B/164 files; delete; import; offline open; corrupt rejections; productRevision cbfa566"
     },
     {
       "id": 3,
       "item": "Upgrade from L1 build to final build",
       "status": "PASS",
-      "evidence": "upgrade.json; L1 1d5960f -> final d8c6b8c; report e071bfa7 unchanged; archive retained after uninstall"
+      "evidence": "upgrade.json; L1 1d5960f -> final b92b21e6; report e071bfa7 unchanged; archive retained after uninstall"
     },
     {
       "id": 4,

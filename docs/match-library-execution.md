@@ -53,7 +53,7 @@
 - L4 产品构建 `70dbece`：全局/比赛两套互斥侧栏、六视图复用、比赛数据列表/打开/删除确认/导出/导入、标题栏后退/前进与整窗品牌居中。
 - 真实 Electron 24 个几何状态全部 delta 0px（原生 3 状态 + Emulation 精确视口）；六 Tab 可用；切换 7 次 Tab 后一次后退回列表，forward 恢复 `heatmap-tab`。
 - 复核 P2 修复：报告异常回退释放会话并替换历史；列表筛选进 store；禁用后退/前进保留可辨识低亮与可聚焦 Tooltip；共享验收改读 `aria-disabled`。
-- 保留风险：DPI 125/150、高对比度/Narrator、物理 caption 双击未测（NOT RUN）；列表最多一次 100 条；L3 数据操作的真实 UI 回归已在集成后补跑。
+- 保留风险：DPI 125/150、高对比度/Narrator 当时未测（L5 已有模拟 DPI/forced-colors，物理项仍 NOT RUN）；物理 caption 双击已在 L5 由 Win32 真实鼠标验证 PASS；列表最多一次 100 条；L3 数据操作的真实 UI 回归已在集成后补跑。
 - 细节见 [L4 证据文档](./match-library-l4-navigation-evidence.md)。
 
 ## L3/L4 集成

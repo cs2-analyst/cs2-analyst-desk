@@ -105,7 +105,8 @@ export function AppTitlebar() {
     return () => { active = false; unsubscribe(); };
   }, []);
 
-  // Chromium's native drag region owns dragging and double-click maximize/restore.
+  // The drag region owns dragging; the Main-process WM_NCLBUTTONDBLCLK hook owns
+  // double-click maximize/restore for this frameless caption.
   return <TitlebarView canBack={canBack} canForward={canForward} onBack={() => void back()} onForward={() => void forward()}
     maximized={maximized}
     onMinimize={() => void window.cs2Analyst.window.minimize()}
