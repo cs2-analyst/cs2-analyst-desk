@@ -48,7 +48,7 @@ export function upgradeReportPerformance(report: DesktopMatchReport): DesktopMat
     };
     const performance = computePlayerPerformance(input);
     if (!proof) performance.rating = { ...performance.rating, value: null, status: 'unavailable',
-      reason: '旧报告缺少评分所需的统计覆盖证明；重新分析源 DEM 后可获取评分。' };
+      reason: '旧报告缺少评分所需的统计覆盖证明；当前归档无法计算可靠评分。' };
     return { ...p, performance };
   });
   return report;
