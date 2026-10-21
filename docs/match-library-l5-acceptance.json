@@ -1,9 +1,10 @@
 {
   "schemaVersion": 1,
   "stage": "L5",
-  "generatedAt": "2026-10-21T19:51:17.027Z",
-  "commit": "14e9ed0",
-  "productRevision": "14e9ed0f6b75d38c9b9caefab39a3e652b533d8c",
+  "generatedAt": "2026-10-21T20:09:40.219Z",
+  "commit": "ea6e4e0",
+  "productCommit": "ea6e4e07f1233cff074d7e5b8f408422a551a9df",
+  "archiveSourceRevision": "4f42c7509ee97196ce122f586835f40ae07248a8",
   "status": "TECHNICAL_PASS_HUMAN_ACCEPTANCE_NOT_RUN",
   "tests": {
     "desktopFull": "285/285 PASS, 0 skipped",
@@ -19,8 +20,8 @@
   "artifacts": {
     "productionInstaller": {
       "path": "release/0.1.0/CS2-Analyst-Setup-0.1.0.exe",
-      "sha256": "ee6ba4d654cc54ccdf40435e9f874986af55c606d534410edd9aaf9d5f5226e9",
-      "bytes": 117232850
+      "sha256": "544d6e61f3c7a42d003e0efd7da840800ade61f21f71398f3c54106997905f56",
+      "bytes": 117232858
     },
     "previousL1Installer": {
       "path": "E:/cs2-analyst-l1/release/0.1.0/CS2-Analyst-Setup-0.1.0.exe",
@@ -28,12 +29,12 @@
     },
     "testSeamInstaller": {
       "path": ".tmp/test-output/0.1.0/CS2-Analyst-TestSeam-Setup-0.1.0.exe",
-      "sha256": "cf45fc7b92981935bc92a50bece0d81fef76d29ba778cf7f47214eeb856f3e88",
-      "bytes": 117232835
+      "sha256": "2d7c978ed08f73bf591c01484227dc41531034e5b82ffc91d610d7d20813e43a",
+      "bytes": 117232919
     },
     "productionFoundationEvidence": {
       "path": ".tmp/l5/evidence/production-foundation.json",
-      "sha256": "283f9a495e9701da0963a9814e3bc4fdefaf75ee9ed02c5e45a3dc759c279039"
+      "sha256": "2d78f778296463ceb8ceb8581fb9e22ec23330519ca29c549633293dc2c1e4df"
     }
   },
   "matrix": [
@@ -41,19 +42,19 @@
       "id": 1,
       "item": "Production NSIS install/import/restart/uninstall retention",
       "status": "PASS",
-      "evidence": "production-foundation.json; Nuke import 15,815.7ms; cold catalogue 1.63ms; manifest retained; installed sourceRevision 14e9ed0"
+      "evidence": "production-foundation.json; Nuke import 13,550.9ms; cold catalogue 1.66ms; manifest retained; installer SHA-256 verified"
     },
     {
       "id": 2,
       "item": "Installed data operations via QA test seam",
       "status": "PASS",
-      "evidence": "testseam-dust2-data-operations.json; export 16,929,688B/164 files; delete; import; offline open; corrupt rejections; productRevision 14e9ed0"
+      "evidence": "testseam-dust2-data-operations.json; export 16,929,694B/164 files; delete; import; offline open; corrupt rejections; archive sourceRevision 4f42c75"
     },
     {
       "id": 3,
       "item": "Upgrade from L1 build to final build",
       "status": "PASS",
-      "evidence": "upgrade.json; L1 1d5960f -> final ee6ba4d6; report e071bfa7 unchanged; archive retained after uninstall"
+      "evidence": "upgrade.json; L1 1d5960f -> final 544d6e61; report e071bfa7 unchanged; archive retained after uninstall"
     },
     {
       "id": 4,
