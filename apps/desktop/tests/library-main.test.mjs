@@ -339,19 +339,23 @@ test('corrupt or truncated packages are rejected before commit, discard staging 
   }
 });
 
-test('import cancellation leaves no staging and dev path injection is ignored by packaged and test-seam builds', async t => {
+test('import cancellation leaves no staging; production ignores path injection while test-seam may use it', async t => {
   const run = await ownedRun(t), archive = await archiveFixture(run.directory), packagePath = join(run.directory, 'match.cs2a');
   await writePortableArchive(archive, packagePath);
   const h = await harness({ dialog: { showOpenDialog: async () => ({ canceled: true, filePaths: [] }) } });
   let created = 0; h.service.createStaging = async () => { created++; return { id: 'stage-1', directory: join(run.directory, 'cancelled-stage') }; };
   assert.equal((await h.handlers.get('library:import')(h.trusted)).kind, 'cancelled');
   assert.equal(created, 0);
-  for (const options of [{ isPackaged: true }, { isPackaged: false, testSeam: true }]) {
-    const packaged = await harness({ ...options, env: { CS2_ANALYST_IMPORT_PATH: packagePath },
-      dialog: { showOpenDialog: async () => ({ canceled: true, filePaths: [] }) } });
-    assert.equal((await packaged.handlers.get('library:import')(packaged.trusted)).kind, 'cancelled',
-      'the environment path must be ignored in production and packaged test-seam builds');
-  }
+  const packaged = await harness({ isPackaged: true, env: { CS2_ANALYST_IMPORT_PATH: packagePath },
+    dialog: { showOpenDialog: async () => ({ canceled: true, filePaths: [] }) } });
+  assert.equal((await packaged.handlers.get('library:import')(packaged.trusted)).kind, 'cancelled',
+    'production must ignore the environment path');
+  const seamStage = join(run.directory, 'seam-stage'); await mkdir(seamStage);
+  const seam = await harness({ isPackaged: true, testSeam: true, env: { CS2_ANALYST_IMPORT_PATH: packagePath } });
+  seam.service.createStaging = async () => ({ id: 'stage-seam', directory: seamStage });
+  seam.service.commitStaging = async () => ({ entry: realEntry(), duplicate: true });
+  assert.equal((await seam.handlers.get('library:import')(seam.trusted)).kind, 'success',
+    'the dedicated test-seam build may use the QA path');
   const relative = await harness({ env: { CS2_ANALYST_IMPORT_PATH: 'relative.cs2a' } });
   assert.equal((await relative.handlers.get('library:import')(relative.trusted)).kind, 'error');
   assert.deepEqual(relative.service.discarded, []);

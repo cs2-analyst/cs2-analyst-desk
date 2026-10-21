@@ -116,11 +116,12 @@ function localAbsolutePath(value: unknown): string | null {
   return path.startsWith('\\\\') ? null : path;
 }
 /**
- * Development-only acceptance seam for automated QA. Packaged builds and the packaged
- * test-seam installer ignore these variables entirely; Renderer never sees either path.
+ * QA-only acceptance seam. Production packaged builds ignore these variables; the
+ * explicitly built test-seam installer may use them for installed file-dialog tests.
+ * Renderer never sees either path.
  */
 function developmentInjectedPath(variable: string): string | undefined {
-  if (__CS2_ANALYST_TEST_SEAM__ || app.isPackaged) return undefined;
+  if (app.isPackaged && !__CS2_ANALYST_TEST_SEAM__) return undefined;
   const value = process.env[variable];
   return typeof value === 'string' && value.trim() ? value : undefined;
 }

@@ -11,13 +11,14 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createOwnedQaRun, qaLaunchOptions } from './owned-qa-run.mjs';
-import { connectCdp, waitFor } from './smoke-runtime.mjs';
+import { connectCdp, dropDiskFile, waitFor } from './smoke-runtime.mjs';
 import { ProcessScope } from './installed-smoke-lifecycle.mjs';
 import { verifyPortableArchive } from '../apps/desktop/electron/library-portable.ts';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const require = createRequire(new URL('../apps/desktop/package.json', import.meta.url));
 const fixture = resolve(process.argv[2] ?? 'E:/cs2-analyst/.demo/dust2.dem');
+const installed = process.argv[3] ? resolve(process.argv[3]) : null;
 assert.match(fixture.replaceAll('\\', '/'), /\/(?:dust2|nuke|inferno|mirage|ancient|anubis|overpass|train|demo|demo1|demo2)\.dem$/);
 const run = createOwnedQaRun('l3-data-ops', { parent: realpathSync(tmpdir()) });
 const source = join(run.directory, fixture.split(/[\\/]/).at(-1));
@@ -25,7 +26,7 @@ const exportDirectory = join(run.directory, 'export');
 const exportPath = join(exportDirectory, 'match.cs2a');
 mkdirSync(exportDirectory);
 const libraryRoot = join(run.localAppData, 'CS2 Analyst', 'MatchLibrary');
-const result = { schemaVersion: 1, stage: 'L3', startedAt: new Date().toISOString(),
+const result = { schemaVersion: 1, stage: 'L3', startedAt: new Date().toISOString(), installed,
   run: { directory: run.directory, output: run.output, localAppData: run.localAppData },
   fixture: { fileName: source.split(/[\\/]/).at(-1) }, checks: [], timings: {} };
 const digest = value => createHash('sha256').update(value).digest('hex');
@@ -56,8 +57,10 @@ async function launch(envExtra = {}) {
   for (const name of ['ELECTRON_RUN_AS_NODE', 'ELECTRON_RENDERER_URL', 'CS2_ANALYST_TEST_DEM_PATH', 'CS2_ANALYST_DEM_PATH',
     'CS2_ANALYST_IMPORT_PATH', 'CS2_ANALYST_EXPORT_PATH']) if (!(name in envExtra)) delete env[name];
   const startedAt = Date.now();
-  const child = spawn(require('electron'), ['.', ...options.applicationArgs, '--remote-debugging-port=' + port, '--disable-backgrounding-occluded-windows'],
-    { cwd: join(root, 'apps/desktop'), env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+  const command = installed ?? require('electron');
+  const args = installed ? [...options.applicationArgs] : ['.', ...options.applicationArgs];
+  const child = spawn(command, [...args, '--remote-debugging-port=' + port, '--disable-backgrounding-occluded-windows'],
+    { cwd: installed ? dirname(installed) : join(root, 'apps/desktop'), env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
   const tracked = scope.track(child, 'L3 product Electron', startedAt); await scope.live();
   const target = await waitFor(async () => {
     if (child.exitCode !== null) throw new Error(tracked.stderr);
@@ -133,7 +136,8 @@ try {
   checkpoint('import-export-delete');
   app = await launch({ CS2_ANALYST_DEM_PATH: source, CS2_ANALYST_EXPORT_PATH: exportPath });
   const importStart = performance.now();
-  await app.page.evaluate('document.querySelector("[data-sidebar-import]").click()');
+  if (installed) await dropDiskFile(app.page, source);
+  else await app.page.evaluate('document.querySelector("[data-sidebar-import]").click()');
   await waitFor(() => app.page.evaluate('document.querySelector("main")?.dataset.status === "success"'), 120_000, 'initial import', {
     diagnostics: () => app.page.evaluate('({status:document.querySelector("main")?.dataset.status,text:document.body.innerText.slice(-1200)})') });
   result.timings.importMs = performance.now() - importStart;
