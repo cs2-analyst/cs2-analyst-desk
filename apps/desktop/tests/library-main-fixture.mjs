@@ -1,14 +1,13 @@
 // In-memory service double for existing Main IPC tests. Archive durability has separate real disk/child-process tests.
 import * as libraryIpc from '../shared/library-ipc.ts';
+import * as libraryArchive from '../electron/library-archive.ts';
+import * as libraryPortable from '../electron/library-portable.ts';
 export const tick = () => new Promise(resolve => setImmediate(resolve));
 export function mainLibraryRequire(name, require, service = createLibraryDouble(), modules = {}) {
   if (name === './local-library.ts') return { LocalMatchLibrary: { open: async () => service } };
   if (name === '../shared/library-ipc.ts') return libraryIpc;
-  if (name === './library-archive.ts') return modules.archive ?? require(name);
-  if (name === './library-portable.ts') return modules.portable ?? {
-    writePortableArchive: async () => { throw new Error('portable export was not expected'); },
-    extractPortableArchive: async () => { throw new Error('portable import was not expected'); },
-  };
+  if (name === './library-archive.ts') return modules.archive ?? libraryArchive;
+  if (name === './library-portable.ts') return modules.portable ?? libraryPortable;
   return require(name);
 }
 export function createLibraryDouble() {

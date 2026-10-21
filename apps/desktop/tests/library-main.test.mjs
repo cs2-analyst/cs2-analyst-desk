@@ -369,3 +369,23 @@ test('export dev path injection is ignored by packaged builds while the dialog p
   assert.equal(result.kind, 'success'); assert.equal(result.fileName, 'dialog.cs2a');
   assert.ok(existsSync(chosen)); assert.equal(existsSync(injected), false);
 });
+
+test('the import dialog supplies a .cs2a package, and other extensions are rejected without staging', async t => {
+  const run = await ownedRun(t), archive = await archiveFixture(run.directory), packagePath = join(run.directory, 'dialog.cs2a');
+  await writePortableArchive(archive, packagePath);
+  const staging = join(run.directory, 'dialog-staging');
+  await mkdir(staging);
+  const calls = [];
+  const h = await harness({ dialog: { showOpenDialog: async (_window, options) => { calls.push(options); return { canceled: false, filePaths: [packagePath] }; } } });
+  h.service.createStaging = async () => ({ id: 'stage-1', directory: staging });
+  h.service.commitStaging = async () => ({ entry: realEntry(), duplicate: false });
+  const result = await h.handlers.get('library:import')(h.trusted);
+  assert.equal(result.kind, 'success'); assert.equal(result.duplicate, false);
+  assert.deepEqual(Array.from(calls[0].properties), ['openFile']);
+  assert.deepEqual(JSON.parse(JSON.stringify(calls[0].filters)), [{ name: 'CS2 Analyst 比赛归档', extensions: ['cs2a'] }]);
+  let created = 0;
+  const wrong = await harness({ dialog: { showOpenDialog: async () => ({ canceled: false, filePaths: [join(run.directory, 'match.zip')] }) } });
+  wrong.service.createStaging = async () => { created++; return { id: 'stage-1', directory: staging }; };
+  assert.equal((await wrong.handlers.get('library:import')(wrong.trusted)).kind, 'error');
+  assert.equal(created, 0);
+});
