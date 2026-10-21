@@ -2,7 +2,7 @@
 
 > 状态：**L4 实现与独立复核 PASS，待 L3 数据操作合并后的真实删除/导出/导入回归。** 本阶段不改后端/Electron 服务、归档编解码或 `packages/report-contract`；不复制 DEM；不修改用户现有比赛库。
 >
-> 分支：`codex/l4-library-navigation`；实现 HEAD：`58d6858`（父提交 `c17bcf5`，工作树从 `41926f5` 基线创建）。几何/历史证据 JSON：`.tmp/l4-library-navigation-evidence.json`（本地未跟踪）。
+> 分支：`codex/l4-library-navigation`；实现 HEAD：`70dbece`（父提交 `c17bcf5`，工作树从 `41926f5` 基线创建）。几何/历史证据 JSON：`.tmp/l4-library-navigation-evidence.json`（本地未跟踪）。
 
 ## 1. 交付范围
 
@@ -74,7 +74,8 @@ scripts/report-ux-checks.mjs                    导入后历史按钮断言
 
 - **报告异常回退泄漏会话**：`selectSection` 现在在离开比赛时先 `leaveMatch`（释放精确 sessionId）并用 `replaceRoute` 替换比赛历史节点；报告错误边界不再先清空 report，避免 Main 会话无法释放。
 - **返回列表丢失筛选**：搜索/地图/排序/方向移入 store `libraryFilters`，进入比赛再后退不会重置。
-- **可访问性**：每行的打开/导出/删除增加带文件名的 `aria-label`；后退/前进改为 `aria-disabled` + 点击守卫，禁用时仍可聚焦并触发 Tooltip。
+- **可访问性**：每行的打开/导出/删除增加带文件名的 `aria-label`；后退/前进改为 `aria-disabled` + 点击守卫，禁用时仍可聚焦并触发 Tooltip；`data-nav-disabled` 增加低亮颜色、透明 hover 与默认光标，避免“可聚焦但看起来可用”。
+- **共享验收**：`scripts/report-ux-checks.mjs`、`window-shell-checks.mjs`、`library-navigation-smoke.mjs` 均改为读取 `aria-disabled`，不再依赖原生 `.disabled`。
 - **已删除比赛的历史**：`degradeToLibrary` 对当前 match 使用替换而非追加，后退不会重新进入已删除比赛。
 - **全局忙碌文案**：导出/导入/删除显示对应文案；只有解析/分析阶段显示“取消导入”，避免库操作时出现无效取消按钮。
 
