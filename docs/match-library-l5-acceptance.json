@@ -1,15 +1,17 @@
 {
   "schemaVersion": 1,
   "stage": "L5",
-  "generatedAt": "2026-10-21T18:55:11.797Z",
-  "commit": "b3c204a",
+  "generatedAt": "2026-10-21T19:04:06.889Z",
+  "commit": "8d56b7e",
   "productRevision": "63d6e12ad9de0352bdc38206dcc4a39d22bd19c1",
   "status": "TECHNICAL_PASS_HUMAN_ACCEPTANCE_NOT_RUN",
   "tests": {
     "desktopFull": "285/285 PASS, 0 skipped",
     "typecheck": "15/15 tasks PASS",
-    "desktopReportSmoke": "PASS (3 scenarios)",
-    "navigationSmoke": "PASS (24 geometry states, max delta 0)"
+    "desktopReportSmoke": "PASS (3 scenarios; .tmp/l5/evidence/desktop-report-smoke.log)",
+    "navigationSmoke": "PASS (24 geometry states, max delta 0)",
+    "fullTestLog": ".tmp/l5/evidence/desktop-full-test.log (285/285)",
+    "typecheckLog": ".tmp/l5/evidence/typecheck.log (15/15)"
   },
   "artifacts": {
     "productionInstaller": {
@@ -22,7 +24,13 @@
       "sha256": "1d5960f26e3478510c6bba85ffe30022c8e516affd75499b7f176b0279f75b9c"
     },
     "testSeamInstaller": {
-      "path": ".tmp/test-output/0.1.0/CS2-Analyst-TestSeam-Setup-0.1.0.exe"
+      "path": ".tmp/test-output/0.1.0/CS2-Analyst-TestSeam-Setup-0.1.0.exe",
+      "sha256": "b052b775adc7f48befcf194b5e66135c59649dc784a27bb9b2b494d4883947b3",
+      "bytes": 117232576
+    },
+    "productionFoundationEvidence": {
+      "path": ".tmp/l5/evidence/production-foundation.json",
+      "sha256": "723243ab33b7b1fa5272db63ff50ffae567b8850ad6a0fe3bd8bb62ef990835a"
     }
   },
   "matrix": [
@@ -52,9 +60,9 @@
     },
     {
       "id": 5,
-      "item": "Corrupt/malicious package rejection",
+      "item": "Corrupt package rejection (flip/truncation); traversal/UNC/budget unit tests",
       "status": "PASS",
-      "evidence": "L3 dev + test-seam installed: bit-flip and truncation rejected, staging empty, existing match openable"
+      "evidence": "L3 dev + test-seam installed: bit-flip and truncation rejected, staging empty, existing match openable; traversal/absolute/UNC/duplicate/budget covered by library-portable.test.mjs, not installed-flow"
     },
     {
       "id": 6,

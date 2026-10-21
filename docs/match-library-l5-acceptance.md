@@ -2,7 +2,7 @@
 
 > **结论：技术矩阵通过；人工产品验收 NOT RUN。** 本文不宣告版本发布，也不把 L0–L4 证据替代 L5 人工确认。
 >
-> 产品构建 `63d6e12`；验收文档提交 `b3c204a`。机器记录：[match-library-l5-acceptance.json](./match-library-l5-acceptance.json)；各阶段证据见 [执行台账](./match-library-execution.md)。
+> 产品构建 `63d6e12`；验收记录提交 `8d56b7e`。机器记录：[match-library-l5-acceptance.json](./match-library-l5-acceptance.json)；各阶段证据见 [执行台账](./match-library-execution.md)。
 
 ## 1. 技术矩阵
 
@@ -12,7 +12,7 @@
 | 2 | test-seam 安装版导出/删除/导入/冷打开 | PASS | `.cs2a` 16,929,688B / 164 文件；删除后 archiveBytes=0；损坏包拒绝；`productRevision=63d6e12` |
 | 3 | L1 构建 → 最终构建升级 | PASS | 旧安装包 `1d5960f2…79f75b9c`；升级后旧归档 report `e071bfa7…5771f748` 不变；卸载保留 |
 | 4 | 回滚到旧构建 | PASS（只读/列表） | L1 构建可列出最终库中 ready 归档；旧构建没有 open API，未验证旧版渲染 |
-| 5 | 损坏/恶意包 | PASS | 1 位翻转/截断均拒绝；staging 为空；现有比赛仍可打开 |
+| 5 | 损坏包（翻转/截断）；路径/UNC/预算 | PASS | 端到端：1 位翻转/截断拒绝、staging 为空、现有比赛可打开；遍历/绝对/UNC/重复/预算由 `library-portable.test.mjs` 单测覆盖，非安装版流程 |
 | 6 | 删除单场/活动场/容量 | PASS | 活动场删除 179–250ms；archiveBytes 归零；孤儿恢复与部分失败单测 |
 | 7 | 50+ 大库首屏 | NOT RUN | 仅 1–2 条真实记录，未做隔离副本规模模拟 |
 | 8 | 性能 | PARTIAL | 导入 15–20s；打开 2.5–3.1s（全量校验）；列表冷读 1.3ms；Replay 5131.302ms 债未解 |
@@ -25,7 +25,8 @@
 
 - 全量 Desktop：**285/285 PASS，0 skipped**。
 - 类型检查：15/15 任务通过。
-- `desktop-report-smoke`（真实 demo1、损坏 DEM、非 .dem）：3/3 场景 PASS；共享 window-shell/report-ux 检查已适配 L4。
+- `desktop-report-smoke`（真实 demo1、损坏 DEM、非 .dem）：3/3 场景 PASS，日志 `.tmp/l5/evidence/desktop-report-smoke.log`；共享 window-shell/report-ux 检查已适配 L4。
+- 全量测试日志 `.tmp/l5/evidence/desktop-full-test.log`（285/285）、类型检查日志 `typecheck.log`（15/15）；生产安装基础证据已复制为 `.tmp/l5/evidence/production-foundation.json`。
 - 集成导航 smoke：24 个几何状态 max delta = 0px；一次后退/前进语义通过。
 - 集成数据操作 Dust2/Nuke：PASS；test-seam 安装版 Dust2：PASS。
 - 生产安装版：PASS；升级：PASS；回滚（旧构建列表/只读）：PASS。
@@ -38,7 +39,7 @@
 2. 六个比赛视图可切换；切换多次后单击标题栏「后退」一次回到比赛数据列表；「前进」回到该场最后视图。
 3. 打开已保存比赛时源 DEM 不存在仍可用；关闭重启后仍在列表。
 4. 删除确认、导出 `.cs2a`（隐私提示）、导入 `.cs2a`、重复导入提示、损坏包错误提示。
-5. 1024×640 与 1920×1032 下标题栏品牌居中、按钮/Tooltip/键盘焦点可用；高对比度与 Narrator 走查。
+5. 1024×640 与 1920×1032 下标题栏品牌居中、按钮/Tooltip/键盘焦点可用；高对比度与 Narrator 走查；物理双击标题栏最大化/还原。
 6. 卸载后用户比赛库仍在；重新安装后仍可打开。
 
 以上任一项未确认，L5 只能保持“技术通过、人工待验”，不得宣称最终发布完成。

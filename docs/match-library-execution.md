@@ -21,7 +21,7 @@
 | L2 | `/root/l2_lead` | L1 PASS | PASS | 产品构建 `5875e92`；测试收尾 `825637b`；[证据](./match-library-l2-offline-restore-evidence.md)，51/51 聚焦、246/246 全量、Dust2/Nuke 无 DEM 重开 | 独立复核 PASS，无 P1/P2；P3：失败打开后 UI 旧会话不可交互、跨版本恢复未比对、重建/证据可追溯性 |
 | L3 | `/root/l3_lead` | L2 PASS | PASS | 产品构建 `1b812ae`；[证据](./match-library-l3-data-operations-evidence.md)，57/57 聚焦、270/270 全量、Dust2/Nuke 导出→删除→导入→无 DEM 重开 | 独立复核 PASS；P2 已修（孤儿恢复、瞬时 I/O 不降级）；P3 记录在文档 |
 | L4 | `/root/l4_lead` | L2 PASS | PASS | 产品构建 `70dbece`；[证据](./match-library-l4-navigation-evidence.md)，24/24 聚焦、261/261 全量、24 个几何状态 0px | 独立复核 PASS；P2 修复（会话泄漏、筛选丢失、禁用可辨识性、共享检查）；P3 记录 |
-| L5 | `/root/l5_lead` | L3/L4 PASS | TECHNICAL PASS / HUMAN NOT RUN | 产品构建 `63d6e12`；[验收记录](./match-library-l5-acceptance.md) / [JSON](./match-library-l5-acceptance.json)；285/285 全量、生产 NSIS、test-seam 数据操作、L1→最终升级 PASS | 回滚、50+ 大库、DPI/高对比度/Narrator、人工签收 NOT RUN；不得宣称最终发布完成 |
+| L5 | `/root/l5_lead` | L3/L4 PASS | TECHNICAL PASS / HUMAN NOT RUN | 产品构建 `63d6e12`；[验收记录](./match-library-l5-acceptance.md) / [JSON](./match-library-l5-acceptance.json)；285/285 全量、生产 NSIS（Nuke）、test-seam 数据操作、L1→最终升级、回滚列表/只读 PASS | 旧版打开/渲染、50+ 大库、DPI/高对比度/Narrator、物理双击、人工签收 NOT RUN；不得宣称最终发布完成 |
 
 ## L1 收尾与证据
 
@@ -64,9 +64,9 @@
 
 ## L5 技术验收与人工待验
 
-- 生产 NSIS（`d8c6b8c4…8880dec`）在自有目录完成安装、Dust2/Nuke 导入、重启与卸载保留；test-seam 安装版完成导出→删除→导入→冷打开及损坏包拒绝；L1 安装包→最终包升级后旧归档 report 指纹不变。
-- 全量 Desktop 285/285、类型检查 15/15、`desktop-report-smoke` 3/3、导航 24 状态 0px、集成 Dust2/Nuke 数据操作 PASS。
-- **人工 NOT RUN**：真实产品签收、回滚、50+ 大库、DPI 125%/150%、Windows 高对比度/Narrator、物理 caption 双击。不得用自动化结果替代人工确认。
+- 生产 NSIS（`d8c6b8c4…8880dec`）在自有目录完成安装、Nuke 导入、重启与卸载保留；test-seam 安装版完成导出→删除→导入→冷打开及损坏包拒绝；L1 安装包→最终包升级后旧归档 report 指纹不变；L1 构建回滚可列出 ready 归档（旧版无 open API，旧版渲染未验证）。
+- 全量 Desktop 285/285、类型检查 15/15、`desktop-report-smoke` 3/3、导航 24 状态 0px、集成 Dust2/Nuke 数据操作 PASS；日志与生产基础证据在 `.tmp/l5/evidence/`。
+- **人工 NOT RUN**：旧版打开/渲染回滚、50+ 大库、DPI 125%/150%、Windows 高对比度/Narrator、物理 caption 双击、真实产品签收。不得用自动化结果替代人工确认。
 - 保留风险：Replay 5131.302ms 历史债；打开全量校验 2.5–3.1s；删除孤儿容量；跨版本版本比对；NSIS 单用户 x64。
 - 详见 [L5 验收记录](./match-library-l5-acceptance.md)。
 
