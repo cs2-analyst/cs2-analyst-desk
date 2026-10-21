@@ -13,6 +13,9 @@ const restoredSessionBytes = Buffer.byteLength(',"sessionId":"00000000-0000-0000
 export const LIBRARY_ARCHIVE_LIMITS = Object.freeze({ manifestBytes: MiB, fileCount: 4096,
   componentBytes: 256 * MiB, reportBytes: 16 * MiB, totalRawBytes: 512 * MiB,
   totalGzipBytes: 256 * MiB, chunkBytes: MiB, replayBytes: 64 * MiB, players: 64, rounds: 1024 });
+/** Summary metadata shared with the SQLite catalogue. A written manifest must stay listable. */
+export const LIBRARY_METADATA_LIMITS = Object.freeze({ fileName: 256, map: 64, rounds: 1024,
+  players: 64, nickname: 1024, version: 1024, reason: 512 });
 const capabilityNames = ['report', 'deepReview', 'timeline', 'analysis', 'replay', 'heatmap'] as const;
 export type ArchiveFileRole = 'report' | 'heatmap-match' | 'heatmap-replay' | 'heatmap-spatial' | 'replay-chunk';
 export interface ArchiveFile { path: string; role: ArchiveFileRole; rawBytes: number; gzipBytes: number;
@@ -102,27 +105,27 @@ async function readBounded(directory: string, path: string, maximum: number, exa
 }
 
 function validSummary(value: unknown): boolean {
-  if (!keys(value, ['fileName', 'map', 'rounds', 'score', 'players']) || !text(value.fileName)
+  if (!keys(value, ['fileName', 'map', 'rounds', 'score', 'players']) || !text(value.fileName, LIBRARY_METADATA_LIMITS.fileName)
     || /[\\/:]/.test(value.fileName) || basename(value.fileName) !== value.fileName || value.fileName === '.' || value.fileName === '..'
-    || !text(value.map, 64) || !integer(value.rounds, 0, LIBRARY_ARCHIVE_LIMITS.rounds)
-    || !Array.isArray(value.players) || value.players.length > LIBRARY_ARCHIVE_LIMITS.players) return false;
+    || !text(value.map, LIBRARY_METADATA_LIMITS.map) || !integer(value.rounds, 0, LIBRARY_METADATA_LIMITS.rounds)
+    || !Array.isArray(value.players) || value.players.length > LIBRARY_METADATA_LIMITS.players) return false;
   if (value.score !== null && (!keys(value.score, ['initialCT', 'initialT'])
-    || !integer(value.score.initialCT, 0, LIBRARY_ARCHIVE_LIMITS.rounds) || !integer(value.score.initialT, 0, LIBRARY_ARCHIVE_LIMITS.rounds))) return false;
+    || !integer(value.score.initialCT, 0, LIBRARY_METADATA_LIMITS.rounds) || !integer(value.score.initialT, 0, LIBRARY_METADATA_LIMITS.rounds))) return false;
   const players = value.players;
   return players.every(player => keys(player, ['id', 'nickname']) && text(player.id) && typeof player.nickname === 'string'
-    && player.nickname.length <= 1024 && !player.nickname.includes('\0')) && new Set(players.map(player => player.id)).size === players.length;
+    && player.nickname.length <= LIBRARY_METADATA_LIMITS.nickname && !player.nickname.includes('\0')) && new Set(players.map(player => player.id)).size === players.length;
 }
 function validVersions(value: unknown): value is ArchiveVersions {
   return keys(value, ['application', 'archive', 'report', 'replay', 'analysis', 'parser', 'native', 'sampling', 'mapResource', 'sourceRevision'])
     && value.archive === 1 && value.report === 2 && value.replay === 1
-    && ['application', 'analysis', 'parser', 'native', 'sampling', 'mapResource'].every(key => text(value[key], 1024))
+    && ['application', 'analysis', 'parser', 'native', 'sampling', 'mapResource'].every(key => text(value[key], LIBRARY_METADATA_LIMITS.version))
     && typeof value.sourceRevision === 'string' && /^[a-f0-9]{40}$/.test(value.sourceRevision);
 }
 function validCapabilities(value: unknown): value is ArchiveCapabilities {
   return keys(value, [...capabilityNames]) && capabilityNames.every(name => {
     const item = value[name];
     return keys(item, ['status', 'reason']) && ['available', 'partial', 'unavailable'].includes(item.status as string)
-      && (item.reason === null || text(item.reason, 512)) && (item.status === 'available' || item.reason !== null);
+      && (item.reason === null || text(item.reason, LIBRARY_METADATA_LIMITS.reason)) && (item.status === 'available' || item.reason !== null);
   });
 }
 function validFile(file: unknown): file is ArchiveFile {

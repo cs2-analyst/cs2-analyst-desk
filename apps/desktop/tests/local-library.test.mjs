@@ -91,6 +91,22 @@ test('durable catalogue is WAL/FULL, survives close/reopen, lists and sorts smal
   assert.equal(library.list().total, 2);
 }));
 
+test('longest accepted version metadata stays listable across restart and longer input is rejected', async () => scope(async ({ library, root, setLibrary }) => {
+  const longest = input(); longest.versions = { ...versions, application: 'v'.repeat(1024) };
+  const added = await add(library, longest);
+  assert.equal(library.list().total, 1);
+  assert.equal(library.list().entries[0].versions.application.length, 1024);
+  assert.deepEqual(library.get(added.entry.matchId), added.entry);
+  library.close();
+  library = await LocalMatchLibrary.open(root); setLibrary(library);
+  assert.equal(library.list().entries[0].versions.application.length, 1024, 'catalogue validation must match the archive limit');
+  const oversized = input('b'.repeat(64)); oversized.versions = { ...versions, application: 'v'.repeat(1025) };
+  const staged = await library.createStaging();
+  await assert.rejects(writeLibraryArchive(staged.directory, oversized), /writer identity or versions/);
+  assert.equal(library.list().total, 1, 'a rejected write cannot leave an unlistable record');
+  await library.discardStaging(staged.id);
+}));
+
 test('SHA duplicate preserves the existing snapshot and same filename never merges distinct bytes', async () => scope(async ({ library }) => {
   const first = await add(library);
   const duplicateInput = input(); duplicateInput.report.players[0].nickname = 'A changed analysis must not overwrite';

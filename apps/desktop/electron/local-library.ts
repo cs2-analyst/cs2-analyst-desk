@@ -5,7 +5,7 @@ import { realpathSync } from 'node:fs';
 import { dirname, isAbsolute, join, parse, relative, resolve, sep } from 'node:path';
 import type { LibraryListQuery, LibraryListResult, LibraryStorageResult, MatchLibraryEntry } from '@cs2-analyst/report-contract';
 import { LIBRARY_LIST_RESPONSE_BYTES, boundedLibraryResult, isMatchId, normalizeLibraryListQuery } from '../shared/library-ipc.ts';
-import { archiveManifestHash, readArchiveManifest, verifyLibraryArchive, type ArchiveManifest } from './library-archive.ts';
+import { LIBRARY_METADATA_LIMITS, archiveManifestHash, readArchiveManifest, verifyLibraryArchive, type ArchiveManifest } from './library-archive.ts';
 
 const stagingId = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/;
 const samePath = (a: string, b: string) => process.platform === 'win32' ? a.toLowerCase() === b.toLowerCase() : a === b;
@@ -23,23 +23,26 @@ const record = (value: unknown): value is Record<string, unknown> => value !== n
 const shortText = (value: unknown, max = 256): value is string => typeof value === 'string' && value.length > 0 && value.length <= max && !/[\u0000-\u001f]/.test(value);
 const nonnegative = (value: unknown, max = Number.MAX_SAFE_INTEGER): value is number => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 && value <= max;
 function validEntry(value: unknown): value is MatchLibraryEntry {
-  if (!record(value) || !isMatchId(value.matchId) || !shortText(value.fileName) || /[\\/:]/.test(value.fileName)
-    || !shortText(value.map, 64) || !nonnegative(value.rounds, 1024) || !nonnegative(value.storedBytes)
-    || typeof value.importedAt !== 'string' || !Number.isFinite(Date.parse(value.importedAt))
-    || !Array.isArray(value.players) || value.players.length > 64 || !record(value.versions) || !record(value.capabilities)
+  if (!record(value) || !isMatchId(value.matchId) || !shortText(value.fileName, LIBRARY_METADATA_LIMITS.fileName) || /[\\/:]/.test(value.fileName)
+    || !shortText(value.map, LIBRARY_METADATA_LIMITS.map) || !nonnegative(value.rounds, LIBRARY_METADATA_LIMITS.rounds)
+    || !nonnegative(value.storedBytes) || typeof value.importedAt !== 'string' || !Number.isFinite(Date.parse(value.importedAt))
+    || !Array.isArray(value.players) || value.players.length > LIBRARY_METADATA_LIMITS.players
+    || !record(value.versions) || !record(value.capabilities)
     || !['ready', 'invalid', 'unsupported'].includes(value.state as string)) return false;
-  if (value.score !== null && (!record(value.score) || !nonnegative(value.score.initialCT, 1024) || !nonnegative(value.score.initialT, 1024))) return false;
+  if (value.score !== null && (!record(value.score) || !nonnegative(value.score.initialCT, LIBRARY_METADATA_LIMITS.rounds)
+    || !nonnegative(value.score.initialT, LIBRARY_METADATA_LIMITS.rounds))) return false;
   if (!value.players.every(player => record(player) && shortText(player.id) && typeof player.nickname === 'string'
-    && player.nickname.length <= 1024 && !player.nickname.includes('\0'))) return false;
+    && player.nickname.length <= LIBRARY_METADATA_LIMITS.nickname && !player.nickname.includes('\0'))) return false;
   const versions = value.versions;
   if (versions.archive !== 1 || versions.report !== 2 || versions.replay !== 1
-    || !['application', 'analysis', 'parser', 'native', 'sampling', 'mapResource'].every(key => shortText(versions[key]))
+    || !['application', 'analysis', 'parser', 'native', 'sampling', 'mapResource'].every(key => shortText(versions[key], LIBRARY_METADATA_LIMITS.version))
     || typeof versions.sourceRevision !== 'string' || !/^[a-f0-9]{40}$/.test(versions.sourceRevision)) return false;
   const capabilities = value.capabilities;
   return ['report', 'deepReview', 'timeline', 'analysis', 'replay', 'heatmap'].every(key => {
     const capability = capabilities[key];
     return record(capability) && ['available', 'partial', 'unavailable'].includes(capability.status as string)
-      && (capability.reason === null || shortText(capability.reason, 512));
+      && (capability.reason === null || shortText(capability.reason, LIBRARY_METADATA_LIMITS.reason))
+      && (capability.status === 'available' || capability.reason !== null);
   });
 }
 
