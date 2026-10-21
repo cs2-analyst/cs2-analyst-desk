@@ -17,7 +17,7 @@ test('catalogue identity and outgoing byte limits remain independent of archive 
   assert.ok(isMatchId('a'.repeat(64)));
   for (const value of ['A'.repeat(64), 'a'.repeat(63), '../' + 'a'.repeat(64), null]) assert.equal(isMatchId(value), false);
   assert.equal(LIBRARY_LIST_RESPONSE_BYTES, 512 * 1024);assert.equal(LIBRARY_STORAGE_RESPONSE_BYTES, 16 * 1024);
-  const value = { kind: 'success', entries: [], total: 0, offset: 0, limit: 25 };
+  const value = { kind: 'success', entries: [], total: 0, offset: 0, limit: 25, unreadableCount: 0 };
   assert.equal(boundedLibraryResult(value, 1024), value);
   assert.equal(boundedLibraryResult({ ...value, text: '地图'.repeat(1000) }, 1024).kind, 'error');
 });

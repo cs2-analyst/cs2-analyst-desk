@@ -34,7 +34,9 @@ export interface LibraryListQuery {
   sort?: 'importedAt' | 'map' | 'storedBytes';
   direction?: 'asc' | 'desc';
 }
-export type LibraryListResult = { kind: 'success'; entries: MatchLibraryEntry[]; total: number; offset: number; limit: number }
+export type LibraryListResult = { kind: 'success'; entries: MatchLibraryEntry[]; total: number; offset: number; limit: number;
+  /** Invalid index rows omitted from this SQL page; total still includes these rows. */
+  unreadableCount: number }
   | { kind: 'error'; message: string };
 export type LibraryStorageResult = { kind: 'success'; matchCount: number; archiveBytes: number; indexBytes: number; totalBytes: number }
   | { kind: 'error'; message: string };
