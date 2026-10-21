@@ -158,7 +158,7 @@ export async function checkAppShell(evaluate, send) {
     return {
       sidebar: Boolean(sidebar), toggle: Boolean(toggle), card: Boolean(card), pick: Boolean(pick),
       tabCount: tabs.length, tabsDisabled: tabs.every(t => t.disabled), globalTabs: globalTabs.map(t => t.dataset.globalTab),
-      mode: sidebar.getAttribute('data-sidebar-mode'), hasMatchImport: Boolean(sidebar.querySelector('[data-sidebar-import]')),
+      mode: sidebar.getAttribute('data-sidebar-mode'), importLabel: sidebar.querySelector('[data-sidebar-import]')?.getAttribute('aria-label') ?? null,
       libraryPage: Boolean(document.querySelector('[data-library-page]')), libraryEmpty: Boolean(document.querySelector('[data-library-empty]')),
       historyDisabled: [...document.querySelectorAll('[data-nav-action]')].every(b => b.disabled),
       width: sidebar.getBoundingClientRect().width,
@@ -171,7 +171,7 @@ export async function checkAppShell(evaluate, send) {
   assert.equal(shell.mode, 'global', 'fresh app must boot in the global sidebar mode');
   assert.deepEqual(shell.globalTabs, ['personal', 'library'], 'global rail must expose exactly 个人数据 / 比赛数据');
   assert.equal(shell.tabCount, 2, 'global rail must not embed the six match views');
-  assert.equal(shell.hasMatchImport, false, 'match-only import action must not leak into global mode');
+  assert.equal(shell.importLabel, '选择 DEM', 'global rail keeps its DEM import entry');
   assert.equal(shell.libraryPage, true, '比赛数据 must be the default first-level page');
   assert.equal(shell.libraryEmpty, true, 'an empty library must show the empty state');
   assert.equal(shell.historyDisabled, true, 'a fresh library page has no back/forward entries yet');
@@ -179,6 +179,7 @@ export async function checkAppShell(evaluate, send) {
   assert.equal(shell.pick, true, '比赛数据缺少“选择 DEM”入口');
   assert.equal(shell.collapsedAttr, 'false');
   assert.ok(shell.width > 150, '展开态侧边栏应显示图标与文本');
+  await checkSidebarImport(evaluate, send, '选择 DEM');
 
   // Drag-and-drop wiring: dragover highlights the card, drop runs the file-entry pipeline.
   await evaluate(`(() => {
@@ -213,7 +214,8 @@ export async function checkAppShell(evaluate, send) {
   assert.equal(collapsed.hiddenLabels, true, '折叠态不应显示导航文本');
   assert.ok(Math.abs(collapsed.navIconX - collapsed.toggleIconX) <= 1, '折叠后折叠按钮与导航图标应在同一垂直线');
   assert.equal(collapsed.toggleLabel, '展开导航');
-  await waitForUi(evaluate, `document.querySelector('[role="tooltip"]')?.textContent.includes('比赛数据')`, 'collapsed global tooltip');
+  await checkSidebarImport(evaluate, send, '选择 DEM');
+  await waitForUi(evaluate, `document.querySelector('[role="tooltip"]')?.textContent.includes('选择 DEM')`, 'collapsed global import tooltip');
 
   await evaluate(`document.querySelector('[data-sidebar-toggle]').click()`);
   await waitForUi(evaluate, `document.getAnimations().every(a => a.playState !== 'running')`, 'sidebar transition');
@@ -226,6 +228,7 @@ export async function checkAppShell(evaluate, send) {
   assert.equal(restored.attr, 'false');
   assert.equal(restored.width, shell.width, '展开后宽度应恢复');
   assert.equal(restored.visibleLabels, true, '展开态应恢复图标与文本');
+  await checkSidebarImport(evaluate, send, '选择 DEM');
   console.log('App shell: 比赛数据默认页、点击/拖放入口、双模式侧边栏展开/折叠与品牌居中 PASS');
 }
 

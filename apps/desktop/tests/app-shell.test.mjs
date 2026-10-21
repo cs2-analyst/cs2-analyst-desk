@@ -43,14 +43,15 @@ const entries = [
 ];
 
 test('global sidebar exposes exactly the two first-level entries and never the six match views', () => {
-  const html = render(createElement(GlobalSidebar, { section: 'library', collapsed: false, onSelectSection: noop, onToggleCollapsed: noop }));
+  const html = render(createElement(GlobalSidebar, { section: 'library', collapsed: false, importBusy: false, onSelectSection: noop, onToggleCollapsed: noop, onImport: noop }));
   assert.ok(html.includes('data-app-sidebar'));
   assert.ok(html.includes('data-sidebar-mode="global"'));
   assert.deepEqual([...html.matchAll(/id="(global-[a-z]+-tab)"/g)].map(match => match[1]), ['global-personal-tab', 'global-library-tab']);
   for (const label of ['个人数据', '比赛数据']) assert.ok(html.includes(label), label);
   assert.equal(html.includes('比赛报告'), false, 'global mode must not embed match views');
   assert.equal([...html.matchAll(/role="tab"/g)].length, 2);
-  assert.equal(html.includes('data-sidebar-import'), false);
+  assert.ok(html.includes('data-sidebar-import'), 'global mode keeps the keyboard-reachable DEM import');
+  assert.ok(html.includes('aria-label="选择 DEM"'));
   assert.ok(html.includes('data-sidebar-toggle'));
 });
 
@@ -69,7 +70,7 @@ test('match sidebar keeps the six existing report views in order and preserves t
 });
 
 test('collapsed global sidebar keeps accessible icon labels and hides text from the visual row', () => {
-  const html = render(createElement(GlobalSidebar, { section: 'personal', collapsed: true, onSelectSection: noop, onToggleCollapsed: noop }));
+  const html = render(createElement(GlobalSidebar, { section: 'personal', collapsed: true, importBusy: false, onSelectSection: noop, onToggleCollapsed: noop, onImport: noop }));
   assert.ok(html.includes('data-collapsed="true"'));
   assert.equal([...html.matchAll(/role="tab"/g)].length, 2);
   assert.equal([...html.matchAll(/aria-label="个人数据"/g)].length, 1);

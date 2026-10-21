@@ -546,7 +546,8 @@ function App() {
           importLabel={report || status === 'error' ? '重新选择 DEM' : '选择 DEM'}
           onSelectView={setMatchView} onToggleCollapsed={() => setCollapsed(value => !value)} onImport={() => void importDemo()} />
       : <GlobalSidebar section={route.kind === 'global' ? route.section : 'library'} collapsed={collapsed}
-          onSelectSection={selectSection} onToggleCollapsed={() => setCollapsed(value => !value)} />}
+          importBusy={busy} onSelectSection={selectSection} onToggleCollapsed={() => setCollapsed(value => !value)}
+          onImport={() => void importDemo()} />}
     <main className={s.main} data-app-content data-status={status} data-route-kind={route.kind}
       data-match-id={route.kind === 'match' ? route.matchId : ''} data-session-active={sessionActive ? 'true' : 'false'}>
       {matchMode ? <>

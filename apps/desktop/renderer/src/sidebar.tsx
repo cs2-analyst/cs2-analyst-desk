@@ -78,11 +78,13 @@ function CollapseToggle({ collapsed, onToggleCollapsed }: { collapsed: boolean; 
  * Global first-level rail. The saved-match list lives in the main content area,
  * never as child nodes here: a large library must not become a navigation tree.
  */
-export function GlobalSidebar({ section, collapsed, onSelectSection, onToggleCollapsed }: {
+export function GlobalSidebar({ section, collapsed, importBusy, onSelectSection, onToggleCollapsed, onImport }: {
   section: GlobalSection;
   collapsed: boolean;
+  importBusy: boolean;
   onSelectSection: (section: GlobalSection) => void;
   onToggleCollapsed: () => void;
+  onImport: () => void;
 }) {
   const s = useStyles();
   return <nav className={mergeClasses(s.sidebar, collapsed && s.sidebarCollapsed)} aria-label="主导航"
@@ -99,6 +101,14 @@ export function GlobalSidebar({ section, collapsed, onSelectSection, onToggleCol
       })}
     </TabList>
     <div className={s.footer}>
+      {/* The library page owns the detailed import UI; this footer keeps the long-standing,
+          keyboard-reachable DEM entry available in global mode as well. */}
+      <Tooltip content="选择 DEM" relationship="description" positioning="after">
+      <button type="button" className={s.footerButton} data-sidebar-import aria-label="选择 DEM" disabled={importBusy} onClick={onImport}>
+        <ImportIcon size={20} />
+        {collapsed ? null : <span className={s.label}>选择 DEM</span>}
+      </button>
+      </Tooltip>
       <CollapseToggle collapsed={collapsed} onToggleCollapsed={onToggleCollapsed} />
     </div>
   </nav>;

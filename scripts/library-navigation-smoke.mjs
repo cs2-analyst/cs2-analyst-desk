@@ -190,8 +190,7 @@ async function main() {
       assert.equal(await maximize(), false, 'second native toggle must restore');
       await setWindowSize(width, height);
       await measure(`${label} ${width}x${height} restored expanded`);
-      if (label === 'match' && width === 1024) await screenshot('match-1024x640');
-      if (label === 'match' && width === 1920) await screenshot('match-1920x1032');
+      await screenshot(`${label}-${width}x${height}`);
     }
   };
 
@@ -216,7 +215,6 @@ async function main() {
     await measure('global native restored');
 
     await matrixFor('global');
-    await screenshot('global-1024x640');
 
     await setWindowSize(1024, 640);
     const importStarted = Date.now();

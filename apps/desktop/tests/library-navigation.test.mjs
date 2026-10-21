@@ -102,6 +102,22 @@ test('one back exits a match after any number of tab changes; forward re-enters 
   assert.deepEqual(calls.open, [id, id]);
 });
 
+test('global section changes are real history entries; re-selecting the same section is not stacked', async () => {
+  bridge();
+  reset();
+  useReport.getState().selectSection('personal');
+  assert.deepEqual(useReport.getState().navigation.history[useReport.getState().navigation.index], { kind: 'global', section: 'personal' });
+  const length = useReport.getState().navigation.history.length;
+  useReport.getState().selectSection('personal');
+  assert.equal(useReport.getState().navigation.history.length, length, 'same section must not duplicate history');
+  useReport.getState().selectSection('library');
+  assert.deepEqual(useReport.getState().navigation.history[useReport.getState().navigation.index], libraryRoute);
+  await useReport.getState().back();
+  assert.deepEqual(useReport.getState().navigation.history[useReport.getState().navigation.index], { kind: 'global', section: 'personal' });
+  await useReport.getState().forward();
+  assert.deepEqual(useReport.getState().navigation.history[useReport.getState().navigation.index], libraryRoute);
+});
+
 test('deleted/invalid forward target degrades to the library list with a message, not a stale match', async () => {
   const { api, calls } = bridge();
   reset();
