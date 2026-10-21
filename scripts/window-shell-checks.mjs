@@ -21,7 +21,7 @@ export async function checkWindowLayout(evaluate) {
       logoDrag: getComputedStyle(brand).getPropertyValue('-webkit-app-region'),
       brand: { left: brandRect.left, width: brandRect.width, center: brandRect.left + brandRect.width / 2 },
       brandCenterDelta: Math.abs(brandRect.left + brandRect.width / 2 - (rect.left + rect.width / 2)),
-      nav: nav.map(b => ({ action: b.dataset.navAction, label: b.getAttribute('aria-label'), disabled: b.disabled,
+      nav: nav.map(b => ({ action: b.dataset.navAction, label: b.getAttribute('aria-label'), disabled: b.disabled, ariaDisabled: b.getAttribute('aria-disabled'),
         width: b.getBoundingClientRect().width, height: b.getBoundingClientRect().height,
         drag: getComputedStyle(b).getPropertyValue('-webkit-app-region'), svg: !!b.querySelector('svg') })),
       buttons: buttons.map(b => ({ name: b.dataset.windowControl, label: b.getAttribute('aria-label'),
@@ -160,7 +160,7 @@ export async function checkAppShell(evaluate, send) {
       tabCount: tabs.length, tabsDisabled: tabs.every(t => t.disabled), globalTabs: globalTabs.map(t => t.dataset.globalTab),
       mode: sidebar.getAttribute('data-sidebar-mode'), importLabel: sidebar.querySelector('[data-sidebar-import]')?.getAttribute('aria-label') ?? null,
       libraryPage: Boolean(document.querySelector('[data-library-page]')), libraryEmpty: Boolean(document.querySelector('[data-library-empty]')),
-      historyDisabled: [...document.querySelectorAll('[data-nav-action]')].every(b => b.disabled),
+      historyDisabled: [...document.querySelectorAll('[data-nav-action]')].every(b => b.getAttribute('aria-disabled') === 'true'),
       width: sidebar.getBoundingClientRect().width,
       collapsedAttr: sidebar.getAttribute('data-collapsed'),
     };

@@ -5,7 +5,7 @@ import {
 } from '@fluentui/react-components';
 import type { MatchLibraryEntry } from '@cs2-analyst/report-contract';
 import { useReport } from './store';
-import { defaultLibraryFilters, formatBytes, formatImportedAt, toLibraryListQuery } from './library-query.ts';
+import { formatBytes, formatImportedAt, toLibraryListQuery } from './library-query.ts';
 import type { LibraryFilters } from './library-query.ts';
 import { ImportIcon } from './icons';
 import { palette } from './theme';
@@ -84,9 +84,12 @@ function LibraryRow({ entry, busy, onOpen, onExport, onDelete }: {
       {entry.state === 'ready' ? null : <Caption1 className={s.muted}>{entry.state === 'invalid' ? '当前档案不可读，只能删除或导出尝试。' : '档案版本不受支持，无法在本版本打开。'}</Caption1>}
     </div>
     <div className={s.actions}>
-      <Button size="small" appearance="primary" data-library-open disabled={busy || entry.state !== 'ready'} onClick={() => onOpen(entry.matchId)}>打开</Button>
-      <Button size="small" data-library-export disabled={busy || entry.state !== 'ready'} onClick={() => onExport(entry.matchId)}>导出</Button>
-      <Button size="small" appearance="subtle" data-library-delete disabled={busy} onClick={() => onDelete(entry)}>删除</Button>
+      <Button size="small" appearance="primary" data-library-open aria-label={`打开 ${entry.fileName}`}
+        disabled={busy || entry.state !== 'ready'} onClick={() => onOpen(entry.matchId)}>打开</Button>
+      <Button size="small" data-library-export aria-label={`导出 ${entry.fileName}`}
+        disabled={busy || entry.state !== 'ready'} onClick={() => onExport(entry.matchId)}>导出</Button>
+      <Button size="small" appearance="subtle" data-library-delete aria-label={`删除 ${entry.fileName}`}
+        disabled={busy} onClick={() => onDelete(entry)}>删除</Button>
     </div>
   </div>;
 }
@@ -105,10 +108,11 @@ export function LibraryPage() {
   const importDemo = useReport(state => state.importDemo);
   const importDroppedFile = useReport(state => state.importDroppedFile);
   const clearLibraryMessage = useReport(state => state.clearLibraryMessage);
+  const filters = useReport(state => state.libraryFilters);
+  const setFilters = useReport(state => state.setLibraryFilters);
   const importBusy = status === 'selecting' || status === 'parsing' || status === 'analyzing' || status === 'opening';
   const busy = importBusy || libraryBusy !== null;
 
-  const [filters, setFilters] = useState<LibraryFilters>(defaultLibraryFilters);
   const [entries, setEntries] = useState<MatchLibraryEntry[]>([]);
   const [total, setTotal] = useState(0);
   const [unreadable, setUnreadable] = useState(0);
@@ -153,7 +157,7 @@ export function LibraryPage() {
   }, [libraryRevision]);
 
   const filtering = filters.search.trim().length > 0 || filters.map !== 'all';
-  const update = (patch: Partial<LibraryFilters>) => setFilters(previous => ({ ...previous, ...patch }));
+  const update = (patch: Partial<LibraryFilters>) => setFilters(patch);
   const confirmDelete = () => {
     const entry = pendingDelete;
     setPendingDelete(null);
@@ -178,7 +182,7 @@ export function LibraryPage() {
     </div>
 
     <div className={s.toolbar} data-library-toolbar>
-      <SearchBox className={s.search} aria-label="搜索比赛" placeholder="搜索文件名、地图或玩家" value={filters.search}
+      <SearchBox className={s.search} aria-label="搜索比赛" placeholder="搜索文件名或地图" value={filters.search}
         onChange={(_, data) => update({ search: data.value })} />
       <Select className={s.select} aria-label="按地图筛选" value={filters.map} onChange={(_, data) => update({ map: data.value })}>
         <option value="all">全部地图</option>
@@ -204,7 +208,7 @@ export function LibraryPage() {
       <MessageBarBody>{libraryNotice}<Button size="small" appearance="transparent" onClick={clearLibraryMessage}>关闭</Button></MessageBarBody>
     </MessageBar></div> : null}
     {listError ? <div className={s.status}><MessageBar intent="error" data-library-list-error>
-      <MessageBarBody>{listError}<Button size="small" appearance="transparent" onClick={() => setFilters(previous => ({ ...previous }))}>重试</Button></MessageBarBody>
+      <MessageBarBody>{listError}<Button size="small" appearance="transparent" onClick={() => setFilters({})}>重试</Button></MessageBarBody>
     </MessageBar></div> : null}
     {unreadable > 0 ? <div className={s.status}><MessageBar intent="warning" data-library-unreadable>
       <MessageBarBody>有 {unreadable} 条索引记录无法读取，已从列表隐藏；磁盘文件未自动删除。</MessageBarBody>

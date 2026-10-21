@@ -130,8 +130,9 @@ test('library page first paint is an honest loading state without touching Repla
 test('titlebar disabled states, accessible names and brand group', () => {
   const disabled = render(createElement(TitlebarView, { canBack: false, canForward: false, onBack: noop, onForward: noop,
     maximized: false, onMinimize: noop, onToggleMaximize: noop, onClose: noop }));
-  assert.match(disabled, /data-nav-action="back"[^>]*disabled/);
-  assert.match(disabled, /data-nav-action="forward"[^>]*disabled/);
+  assert.match(disabled, /data-nav-action="back"[^>]*aria-disabled="true"/);
+  assert.match(disabled, /data-nav-action="forward"[^>]*aria-disabled="true"/);
+  assert.match(disabled, /data-nav-action="back"[^>]*data-nav-disabled="true"/);
   assert.ok(disabled.includes('aria-label="后退"'));
   assert.ok(disabled.includes('aria-label="前进"'));
   assert.ok(disabled.includes('data-app-brand'));
@@ -141,8 +142,9 @@ test('titlebar disabled states, accessible names and brand group', () => {
   assert.equal(disabled.includes('>还原<'), false);
   const enabled = render(createElement(TitlebarView, { canBack: true, canForward: true, onBack: noop, onForward: noop,
     maximized: true, onMinimize: noop, onToggleMaximize: noop, onClose: noop }));
-  assert.doesNotMatch(enabled, /data-nav-action="back"[^>]*disabled/);
-  assert.doesNotMatch(enabled, /data-nav-action="forward"[^>]*disabled/);
+  assert.doesNotMatch(enabled, /data-nav-action="back"[^>]*aria-disabled="true"/);
+  assert.doesNotMatch(enabled, /data-nav-action="forward"[^>]*aria-disabled="true"/);
+  assert.doesNotMatch(enabled, /data-nav-action="back"[^>]*data-nav-disabled="true"/);
   assert.ok(enabled.includes('aria-label="还原"'));
 });
 

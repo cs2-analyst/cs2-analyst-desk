@@ -3,9 +3,11 @@ import type { DesktopMatchReport, ImportPhase } from '@cs2-analyst/report-contra
 import type { ViewId } from './sidebar';
 import {
   backTarget, canBack, canForward, currentRoute, degradeToLibrary, forwardTarget, initialNavigation,
-  matchRoute, pushRoute, viewForMatch,
+  matchRoute, pushRoute, replaceRoute, viewForMatch,
 } from './navigation.ts';
 import type { GlobalSection, MatchViews, NavigationState, Route } from './navigation.ts';
+import { defaultLibraryFilters } from './library-query.ts';
+import type { LibraryFilters } from './library-query.ts';
 
 type Status = 'idle' | ImportPhase | 'opening' | 'success' | 'error';
 export type LibraryOperation = 'remove' | 'export' | 'importArchive';
@@ -28,6 +30,8 @@ export interface ReportState {
   navigation: NavigationState;
   matchViews: MatchViews;
   libraryRevision: number;
+  /** Kept in the store so leaving a match and returning preserves search/map/sort. */
+  libraryFilters: LibraryFilters;
   libraryBusy: LibraryOperation | null;
   libraryError: string | null;
   libraryNotice: string | null;
@@ -35,6 +39,7 @@ export interface ReportState {
   selectPlayer(id: string): void;
   selectSection(section: GlobalSection): void;
   setMatchView(view: ViewId): void;
+  setLibraryFilters(patch: Partial<LibraryFilters>): void;
   back(): Promise<void>;
   forward(): Promise<void>;
   importDemo(): Promise<void>;
@@ -92,6 +97,7 @@ export const useReport = create<ReportState>((set, get) => ({
   navigation: initialNavigation(),
   matchViews: {},
   libraryRevision: 0,
+  libraryFilters: defaultLibraryFilters,
   libraryBusy: null,
   libraryError: null,
   libraryNotice: null,
@@ -106,6 +112,12 @@ export const useReport = create<ReportState>((set, get) => ({
     const route: Route = { kind: 'global', section };
     const active = currentRoute(state.navigation);
     if (active.kind === 'global' && active.section === section) return;
+    // Leaving a match (including the report-error fallback) must release its IPC
+    // session and replace the match history node, so back cannot re-enter it.
+    if (active.kind === 'match') {
+      void leaveMatch(get, set, replaceRoute(state.navigation, route));
+      return;
+    }
     set({ navigation: pushRoute(state.navigation, route), error: null, libraryError: null, libraryNotice: null });
   },
   // Tab selection is workspace-local: it must never push a history node.
@@ -115,6 +127,7 @@ export const useReport = create<ReportState>((set, get) => ({
     if (route.kind !== 'match') return;
     set({ matchViews: { ...state.matchViews, [route.matchId]: view } });
   },
+  setLibraryFilters: patch => set(state => ({ libraryFilters: { ...state.libraryFilters, ...patch } })),
   cancelImport: async () => { await window.cs2Analyst.cancelImport(); },
   back: async () => {
     const state = get();

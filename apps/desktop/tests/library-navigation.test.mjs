@@ -102,6 +102,30 @@ test('one back exits a match after any number of tab changes; forward re-enters 
   assert.deepEqual(calls.open, [id, id]);
 });
 
+test('library filters live in the store so back-to-list preserves search, map and sort', () => {
+  bridge();
+  reset();
+  useReport.getState().setLibraryFilters({ search: 'dust2', map: 'de_dust2', sort: 'map', direction: 'asc' });
+  const state = useReport.getState();
+  assert.deepEqual(state.libraryFilters, { search: 'dust2', map: 'de_dust2', sort: 'map', direction: 'asc' });
+  assert.deepEqual(state.libraryFilters, useReport.getState().libraryFilters, 'filters survive page unmount because they are store state');
+});
+
+test('leaving a match through a global section releases the session and replaces its history node', async () => {
+  const { calls } = bridge();
+  const id = matchId('a');
+  reset({ status: 'success', report: report(id), sessionActive: true,
+    navigation: { history: [libraryRoute, matchRoute(id)], index: 1 } });
+  useReport.getState().selectSection('library');
+  await new Promise(resolve => setImmediate(resolve));
+  const state = useReport.getState();
+  assert.equal(state.report, null);
+  assert.equal(state.sessionActive, false);
+  assert.deepEqual(calls.release, ['session-' + id]);
+  assert.deepEqual(state.navigation.history, [libraryRoute], 'the abandoned match must not stay one back-step away');
+  assert.equal(navigationCanBack(state), false);
+});
+
 test('global section changes are real history entries; re-selecting the same section is not stacked', async () => {
   bridge();
   reset();

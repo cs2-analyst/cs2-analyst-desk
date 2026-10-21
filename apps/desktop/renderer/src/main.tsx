@@ -537,7 +537,9 @@ function App() {
   useEffect(() => window.cs2Analyst.onProgress(setPhase), [setPhase]);
   const importBusy = status === 'selecting' || status === 'parsing' || status === 'analyzing' || status === 'opening';
   const busy = importBusy || libraryBusy !== null;
-  const phase = status === 'opening' ? '正在打开已保存比赛…' : status === 'selecting' ? '正在选择 DEM…' : status === 'parsing' ? '正在后台解析 DEM…' : '正在生成指标与深度复盘…';
+  const phase = libraryBusy === 'export' ? '正在导出比赛归档…' : libraryBusy === 'importArchive' ? '正在导入比赛归档…'
+    : libraryBusy === 'remove' ? '正在删除比赛…'
+    : status === 'opening' ? '正在打开已保存比赛…' : status === 'selecting' ? '正在选择 DEM…' : status === 'parsing' ? '正在后台解析 DEM…' : '正在生成指标与深度复盘…';
   const [collapsed, setCollapsed] = useState(false);
   const matchMode = route.kind === 'match';
   return <>
@@ -569,7 +571,7 @@ function App() {
         {busy ? <div className={s.statusStrip} role="status">
           <Spinner size="tiny" label={phase} />
           <Caption1 className={s.muted}>大型录像可能需要数十秒，请保持应用打开。</Caption1>
-          {status !== 'selecting' && status !== 'opening' ? <Button appearance="subtle" size="small" onClick={() => void cancelImport()}>取消导入</Button> : null}
+          {status === 'parsing' || status === 'analyzing' ? <Button appearance="subtle" size="small" onClick={() => void cancelImport()}>取消导入</Button> : null}
         </div> : null}
         {route.section === 'personal' ? <PersonalSection /> : <LibraryPage />}
       </>}
@@ -581,7 +583,7 @@ class ReportErrorBoundary extends React.Component<React.PropsWithChildren, { fai
   state = { failed: false };
   static getDerivedStateFromError() { return { failed: true }; }
   render() {
-    return this.state.failed ? <MessageBar intent="error"><MessageBarBody>报告展示失败。<Button onClick={() => { useReport.setState({ status: 'idle', report: null, error: null, sessionActive: false }); useReport.getState().selectSection('library'); this.setState({ failed: false }); }}>返回比赛数据</Button></MessageBarBody></MessageBar> : this.props.children;
+    return this.state.failed ? <MessageBar intent="error"><MessageBarBody>报告展示失败。<Button onClick={() => { void useReport.getState().selectSection('library'); this.setState({ failed: false }); }}>返回比赛数据</Button></MessageBarBody></MessageBar> : this.props.children;
   }
 }
 function DesktopShell() {

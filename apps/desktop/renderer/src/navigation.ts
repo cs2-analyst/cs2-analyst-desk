@@ -74,11 +74,25 @@ export function forwardTarget(navigation: NavigationState): { navigation: Naviga
  * clearing the unusable forward branch. When the browser is already on the
  * library page only the forward entries are dropped.
  */
+/** Replace the current page without leaving a back entry to the abandoned page. */
+export function replaceRoute(navigation: NavigationState, route: Route): NavigationState {
+  const history = navigation.history.slice(0, navigation.index);
+  // Replacing a match with the page directly before it must not duplicate that page.
+  if (history.length && isSameRoute(history[history.length - 1], route)) {
+    return { history, index: history.length - 1 };
+  }
+  history.push(route);
+  return { history, index: history.length - 1 };
+}
+
 export function degradeToLibrary(navigation: NavigationState): NavigationState {
   const current = currentRoute(navigation);
   if (current.kind === 'global' && current.section === 'library') {
     return { history: navigation.history.slice(0, navigation.index + 1), index: navigation.index };
   }
+  // A deleted/broken match must not remain one back-step away; replace it instead of
+  // appending the library page after it.
+  if (current.kind === 'match') return replaceRoute(navigation, globalRoute('library'));
   return bounded([...navigation.history.slice(0, navigation.index + 1), globalRoute('library')], navigation.index + 1);
 }
 

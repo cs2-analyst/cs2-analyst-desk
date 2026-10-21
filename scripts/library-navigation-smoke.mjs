@@ -203,7 +203,7 @@ async function main() {
     assert.equal(state.route, 'global');
     assert.equal(state.libraryEntries, 0, 'owned profile must start empty');
     assert.equal(await evaluate("document.querySelectorAll('[data-app-sidebar] [role=\"tab\"]').length"), 2);
-    assert.equal(await evaluate("!!document.querySelector('[data-nav-action=\"back\"]').disabled && !!document.querySelector('[data-nav-action=\"forward\"]').disabled"), true, 'fresh history has both buttons disabled');
+    assert.equal(await evaluate("document.querySelector('[data-nav-action=\"back\"]').getAttribute('aria-disabled') === 'true' && document.querySelector('[data-nav-action=\"forward\"]').getAttribute('aria-disabled') === 'true'"), true, 'fresh history has both buttons disabled');
     // Real native window states, no Emulation override, at this machine's actual work area.
     if (await evaluate('window.cs2Analyst.window.isMaximized()')) await maximize();
     await settle('native normal');
@@ -231,8 +231,8 @@ async function main() {
     assert.equal(state.tabs.length, 6, 'match rail must contain the six existing views');
     assert.deepEqual(state.tabs.map(tab => tab.id), ['report-tab', 'deep-review-tab', 'timeline-tab', 'analysis-tab', 'replay-tab', 'heatmap-tab']);
     assert.equal(state.tabs.every(tab => !tab.disabled), true, 'all six views must be usable after import');
-    assert.equal(await evaluate("document.querySelector('[data-nav-action=\"back\"]').disabled"), false, 'one back must be available from the match');
-    assert.equal(await evaluate("document.querySelector('[data-nav-action=\"forward\"]').disabled"), true, 'fresh import has no forward branch');
+    assert.equal(await evaluate("document.querySelector('[data-nav-action=\"back\"]').getAttribute('aria-disabled') !== 'true'"), true, 'one back must be available from the match');
+    assert.equal(await evaluate("document.querySelector('[data-nav-action=\"forward\"]').getAttribute('aria-disabled') === 'true'"), true, 'fresh import has no forward branch');
 
     await matrixFor('match');
 
@@ -249,7 +249,7 @@ async function main() {
     assert.equal(state.route, 'global');
     assert.equal(state.mode, 'global');
     assert.ok(state.libraryEntries >= 1, 'the imported match must be in the saved-match list');
-    assert.equal(await evaluate("document.querySelector('[data-nav-action=\"forward\"]').disabled"), false, 'forward must re-enter the exited match');
+    assert.equal(await evaluate("document.querySelector('[data-nav-action=\"forward\"]').getAttribute('aria-disabled') !== 'true'"), true, 'forward must re-enter the exited match');
     evidence.history.push({ step: 'back-from-any-tab', route: state.route, libraryEntries: state.libraryEntries, pass: true });
 
     await evaluate("document.querySelector('[data-nav-action=\"forward\"]').click()");

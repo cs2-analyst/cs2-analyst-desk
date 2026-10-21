@@ -59,11 +59,13 @@ export function TitlebarView({ canBack, canForward, onBack, onForward, maximized
     <div className={s.nav} data-app-history-nav>
       <Tooltip content={canBack ? '后退' : '没有可返回的页面'} relationship="description">
         <Button appearance="transparent" className={s.navButton} data-nav-action="back"
-          aria-label="后退" disabled={!canBack} icon={<BackIcon size={18} />} onClick={onBack} />
+          aria-label="后退" aria-disabled={!canBack} data-nav-disabled={!canBack ? 'true' : 'false'}
+          icon={<BackIcon size={18} />} onClick={() => { if (canBack) onBack(); }} />
       </Tooltip>
       <Tooltip content={canForward ? '前进' : '没有可前进的页面'} relationship="description">
         <Button appearance="transparent" className={s.navButton} data-nav-action="forward"
-          aria-label="前进" disabled={!canForward} icon={<ForwardIcon size={18} />} onClick={onForward} />
+          aria-label="前进" aria-disabled={!canForward} data-nav-disabled={!canForward ? 'true' : 'false'}
+          icon={<ForwardIcon size={18} />} onClick={() => { if (canForward) onForward(); }} />
       </Tooltip>
     </div>
     <div className={s.brand} data-app-brand>
