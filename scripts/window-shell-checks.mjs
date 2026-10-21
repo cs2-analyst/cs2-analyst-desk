@@ -9,13 +9,21 @@ export async function checkWindowLayout(evaluate) {
     const buttons = [...bar.querySelectorAll('[data-window-control]')];
     const rect = bar.getBoundingClientRect();
     const logo = bar.querySelector('[data-app-logo]');
+    const brand = bar.querySelector('[data-app-brand]');
+    const brandRect = brand.getBoundingClientRect();
+    const nav = [...bar.querySelectorAll('[data-nav-action]')];
     return { title: document.title, logo: !!logo, text: bar.textContent,
       mark: { tag: logo.tagName, loaded: logo.complete && logo.naturalWidth > 0,
         width: logo.getBoundingClientRect().width, height: logo.getBoundingClientRect().height,
         fit: getComputedStyle(logo).objectFit, draggable: logo.draggable },
       height: rect.height, top: rect.top, left: rect.left, right: rect.right, width: innerWidth,
       drag: getComputedStyle(bar).getPropertyValue('-webkit-app-region'),
-      logoDrag: getComputedStyle(bar.querySelector('[data-app-logo]').parentElement).getPropertyValue('-webkit-app-region'),
+      logoDrag: getComputedStyle(brand).getPropertyValue('-webkit-app-region'),
+      brand: { left: brandRect.left, width: brandRect.width, center: brandRect.left + brandRect.width / 2 },
+      brandCenterDelta: Math.abs(brandRect.left + brandRect.width / 2 - (rect.left + rect.width / 2)),
+      nav: nav.map(b => ({ action: b.dataset.navAction, label: b.getAttribute('aria-label'), disabled: b.disabled,
+        width: b.getBoundingClientRect().width, height: b.getBoundingClientRect().height,
+        drag: getComputedStyle(b).getPropertyValue('-webkit-app-region'), svg: !!b.querySelector('svg') })),
       buttons: buttons.map(b => ({ name: b.dataset.windowControl, label: b.getAttribute('aria-label'),
         width: b.getBoundingClientRect().width, height: b.getBoundingClientRect().height,
         drag: getComputedStyle(b).getPropertyValue('-webkit-app-region'), svg: !!b.querySelector('svg') })),
@@ -27,7 +35,13 @@ export async function checkWindowLayout(evaluate) {
   assert.equal(shell.title, 'CS2 Analyst'); assert.equal(shell.logo, true); assert.equal(shell.text, 'CS2 Analyst');
   assert.deepEqual(shell.mark, { tag: 'IMG', loaded: true, width: 20, height: 20, fit: 'contain', draggable: false });
   assert.equal(shell.height, 40); assert.equal(shell.top, 0); assert.equal(shell.left, 0); assert.equal(shell.right, shell.width);
-  assert.equal(shell.drag, 'drag'); assert.equal(shell.logoDrag, 'no-drag');
+  assert.equal(shell.drag, 'drag'); assert.equal(shell.logoDrag, 'drag');
+  assert.ok(shell.brandCenterDelta <= 1, 'brand group must be centered on the full window width: ' + JSON.stringify(shell.brand));
+  assert.deepEqual(shell.nav.map(b => b.action), ['back', 'forward']);
+  for (const b of shell.nav) {
+    assert.ok(['后退', '前进'].includes(b.label), 'history button needs an aria label');
+    assert.equal(b.width, 32); assert.equal(b.height, 32); assert.equal(b.drag, 'no-drag'); assert.equal(b.svg, true);
+  }
   assert.equal(shell.contentTop, 40); assert.equal(shell.overflow, false);
   assert.equal(shell.contentOverflow, false); assert.notEqual(shell.contentDrag, 'drag');
   assert.deepEqual(shell.buttons.map(b => b.name), ['minimize', 'maximize', 'close']);
@@ -140,9 +154,13 @@ export async function checkAppShell(evaluate, send) {
     const card = document.querySelector('[data-import-card]');
     const pick = [...document.querySelectorAll('button')].find(b => b.textContent.includes('选择 DEM'));
     const tabs = [...document.querySelectorAll('[data-app-sidebar] [role="tab"]')];
+    const globalTabs = [...document.querySelectorAll('[data-global-tab]')];
     return {
       sidebar: Boolean(sidebar), toggle: Boolean(toggle), card: Boolean(card), pick: Boolean(pick),
-      tabCount: tabs.length, tabsDisabled: tabs.every(t => t.disabled),
+      tabCount: tabs.length, tabsDisabled: tabs.every(t => t.disabled), globalTabs: globalTabs.map(t => t.dataset.globalTab),
+      mode: sidebar.getAttribute('data-sidebar-mode'), hasMatchImport: Boolean(sidebar.querySelector('[data-sidebar-import]')),
+      libraryPage: Boolean(document.querySelector('[data-library-page]')), libraryEmpty: Boolean(document.querySelector('[data-library-empty]')),
+      historyDisabled: [...document.querySelectorAll('[data-nav-action]')].every(b => b.disabled),
       width: sidebar.getBoundingClientRect().width,
       collapsedAttr: sidebar.getAttribute('data-collapsed'),
     };
@@ -150,10 +168,15 @@ export async function checkAppShell(evaluate, send) {
   await assertNoPageScroll(evaluate, '首页');
   assert.equal(shell.sidebar, true, '缺少桌面侧边栏');
   assert.equal(shell.toggle, true, '缺少侧边栏折叠按钮');
-  assert.equal(shell.card, true, '首页缺少导入卡片');
-  assert.equal(shell.pick, true, '首页缺少“选择 DEM”入口');
-  assert.equal(shell.tabCount, 6, '侧边栏应列出 6 个报告视图');
-  assert.equal(shell.tabsDisabled, true, '未导入时导航项应不可用');
+  assert.equal(shell.mode, 'global', 'fresh app must boot in the global sidebar mode');
+  assert.deepEqual(shell.globalTabs, ['personal', 'library'], 'global rail must expose exactly 个人数据 / 比赛数据');
+  assert.equal(shell.tabCount, 2, 'global rail must not embed the six match views');
+  assert.equal(shell.hasMatchImport, false, 'match-only import action must not leak into global mode');
+  assert.equal(shell.libraryPage, true, '比赛数据 must be the default first-level page');
+  assert.equal(shell.libraryEmpty, true, 'an empty library must show the empty state');
+  assert.equal(shell.historyDisabled, true, 'a fresh library page has no back/forward entries yet');
+  assert.equal(shell.card, true, 'empty state doubles as the DEM drop target');
+  assert.equal(shell.pick, true, '比赛数据缺少“选择 DEM”入口');
   assert.equal(shell.collapsedAttr, 'false');
   assert.ok(shell.width > 150, '展开态侧边栏应显示图标与文本');
 
@@ -180,7 +203,7 @@ export async function checkAppShell(evaluate, send) {
       width: sidebar.getBoundingClientRect().width,
       attr: sidebar.getAttribute('data-collapsed'),
       hiddenLabels: labels.every(n => getComputedStyle(n).display === 'none'),
-      navIconX: iconCenter(document.getElementById('report-tab')),
+      navIconX: iconCenter(document.getElementById('global-library-tab')),
       toggleIconX: iconCenter(document.querySelector('[data-sidebar-toggle]')),
       toggleLabel: document.querySelector('[data-sidebar-toggle]').getAttribute('aria-label'),
     };
@@ -190,8 +213,7 @@ export async function checkAppShell(evaluate, send) {
   assert.equal(collapsed.hiddenLabels, true, '折叠态不应显示导航文本');
   assert.ok(Math.abs(collapsed.navIconX - collapsed.toggleIconX) <= 1, '折叠后折叠按钮与导航图标应在同一垂直线');
   assert.equal(collapsed.toggleLabel, '展开导航');
-  await checkSidebarImport(evaluate, send, '重新选择 DEM');
-  await waitForUi(evaluate, `document.querySelector('[role="tooltip"]')?.textContent.includes('重新选择 DEM')`, 'collapsed import tooltip');
+  await waitForUi(evaluate, `document.querySelector('[role="tooltip"]')?.textContent.includes('比赛数据')`, 'collapsed global tooltip');
 
   await evaluate(`document.querySelector('[data-sidebar-toggle]').click()`);
   await waitForUi(evaluate, `document.getAnimations().every(a => a.playState !== 'running')`, 'sidebar transition');
@@ -204,8 +226,7 @@ export async function checkAppShell(evaluate, send) {
   assert.equal(restored.attr, 'false');
   assert.equal(restored.width, shell.width, '展开后宽度应恢复');
   assert.equal(restored.visibleLabels, true, '展开态应恢复图标与文本');
-  await checkSidebarImport(evaluate, send, '重新选择 DEM');
-  console.log('App shell: 首页导入卡片、点击/拖放入口、侧边栏展开/折叠与图标对齐 PASS');
+  console.log('App shell: 比赛数据默认页、点击/拖放入口、双模式侧边栏展开/折叠与品牌居中 PASS');
 }
 
 export async function checkWindowShell(evaluate, send) {
