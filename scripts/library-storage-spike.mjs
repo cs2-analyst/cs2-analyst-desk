@@ -43,7 +43,8 @@ if (mode === 'capture') {
   assert.equal(parsed.match.id, sha256); assert.ok(parsed.replay && parsed.spatial, 'Both canonical heatmap sources required for full restoration');
   const sid = randomUUID(), report = buildDesktopReport(parsed.match, pathArg, parsed.spatial);
   const replay = new ReplaySession(parsed.match, parsed.replay, sid);
-  const beforeCollection = process.memoryUsage(); global.gc();
+  const beforeCollection = process.memoryUsage(), gcStart = performance.now(); global.gc();
+  const explicitGcMs = performance.now() - gcStart;
   const afterCollection = process.memoryUsage();
   const heatmap = createHeatmapSession(parsed.match, parsed.replay, parsed.spatial, sid);
   assert.ok(heatmap.session && heatmap.metadata.available, 'Production heatmap admission must remain available');
@@ -53,13 +54,14 @@ if (mode === 'capture') {
     source: { fileName: basename(pathArg), sha256, bytes: size }, reportSchema: report.schemaVersion, replaySchema: 1,
     sourceBaseline: spawnSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).stdout.trim(), runtime: runtime(),
     files: [], chunkIndex: [], heatmapComparisons: [], reportHash: hashJson(withoutSession(report)),
-    experimentalGc: { explicitlyCollectedBeforeHeatmapAdmission: true, beforeCollection, afterCollection,
+    experimentalGc: { explicitlyCollectedBeforeHeatmapAdmission: true, explicitGcMs, beforeCollection, afterCollection,
       reason: 'Node26 experiment GC timing differs from Electron24; existing 512MiB budget unchanged. Electron experiment is required separately.' } };
   function save(name, value) {
-    const raw = Buffer.from(JSON.stringify(value));
+    const serializeStart = performance.now(), raw = Buffer.from(JSON.stringify(value)), serializeMs = performance.now() - serializeStart;
     const start = performance.now(), { result, gzip } = compareCodecs(raw);
-    const path = name + '.json.gz'; mkdirSync(dirname(join(out, path)), { recursive: true }); writeFileSync(join(out, path), gzip);
-    const descriptor = { path, ...result, gzipBytes: gzip.length, gzipSha256: digest(gzip), compareAndWriteMs: performance.now() - start };
+    const path = name + '.json.gz', writeStart = performance.now(); mkdirSync(dirname(join(out, path)), { recursive: true }); writeFileSync(join(out, path), gzip);
+    const filesystemWriteMs = performance.now() - writeStart;
+    const descriptor = { path, ...result, gzipBytes: gzip.length, gzipSha256: digest(gzip), serializeMs, filesystemWriteMs, compareAndWriteMs: performance.now() - start };
     manifest.files.push(descriptor); return descriptor;
   }
   const writeStart = performance.now();
@@ -103,6 +105,12 @@ if (mode === 'capture') {
     assert.equal(hashJson(chunk), info.sha256);
     const sample = chunk.frames.find(f => f.tick === info.sample.tick); assert.deepEqual(sample.players, info.sample.players); sampleFrames++;
   }
+  const allChunksStart = performance.now();
+  for (const info of manifest.chunkIndex) {
+    const chunk = load(info.path); assert.equal(hashJson(chunk), info.sha256);
+    assert.equal(chunk.matchId, manifest.source.sha256); assert.equal(chunk.round, info.round); assert.equal(chunk.block, info.block);
+  }
+  const allChunksVerificationMs = performance.now() - allChunksStart;
   const sourceAt = performance.now(), match = load('heatmap/match.json.gz'), replay = load('heatmap/replay.json.gz'), spatial = load('heatmap/spatial.json.gz');
   const sourceMs = performance.now() - sourceAt, sid = randomUUID(); global.gc();
   const heatmap = createHeatmapSession(match, replay, spatial, sid);
@@ -114,6 +122,7 @@ if (mode === 'capture') {
   }
   const result = { mode, originalDemAbsent: !existsSync(pathArg), source: manifest.source, freshSession: sid,
     reportHash: manifest.reportHash, reportMs, randomReadMs: quantiles(chunkMs), exactRawTickFrames: sampleFrames,
+    allReplayChunksEqual: manifest.chunkIndex.length, allChunksVerificationMs,
     canonicalSourceLoadMs: sourceMs, heatmapCasesEqual: manifest.heatmapComparisons.length, heatmapProjectionMs: quantiles(projectionMs),
     totalMs: performance.now() - start, cpuMicroseconds: process.cpuUsage(cpu), observed: rss(),
     scope: 'Data/production presenters restored in a fresh process, not a Renderer/installed-app acceptance claim' };
