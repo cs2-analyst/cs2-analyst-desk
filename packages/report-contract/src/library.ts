@@ -40,3 +40,16 @@ export type LibraryListResult = { kind: 'success'; entries: MatchLibraryEntry[];
   | { kind: 'error'; message: string };
 export type LibraryStorageResult = { kind: 'success'; matchCount: number; archiveBytes: number; indexBytes: number; totalBytes: number }
   | { kind: 'error'; message: string };
+/** L3 data operations. Paths, dialogs and filesystem handles stay in Main. */
+export type LibraryDeleteResult =
+  | { kind: 'success'; removed: string[]; failed: { matchId: string; message: string }[] }
+  | { kind: 'error'; message: string };
+export type LibraryExportResult =
+  | { kind: 'success'; fileName: string; bytes: number }
+  | { kind: 'cancelled' }
+  | { kind: 'error'; message: string };
+export type LibraryImportResult =
+  | { kind: 'success'; entry: MatchLibraryEntry; duplicate: boolean }
+  | { kind: 'cancelled' }
+  | { kind: 'error'; message: string };
+

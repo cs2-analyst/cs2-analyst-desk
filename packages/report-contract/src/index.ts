@@ -1,7 +1,7 @@
 import type { Finding, FindingEvidence } from '@cs2-analyst/findings';
 import type { DesktopReplayMetadata, DesktopReplayRequest, DesktopReplayResult } from './replay.js';
 import type { DesktopHeatmapMetadata, DesktopHeatmapRequest, DesktopHeatmapResult } from './heatmap.js';
-import type { LibraryListQuery, LibraryListResult, LibraryStorageResult } from './library.js';
+import type { LibraryDeleteResult, LibraryExportResult, LibraryImportResult, LibraryListQuery, LibraryListResult, LibraryStorageResult } from './library.js';
 export type * from './replay.js';
 export type * from './heatmap.js';
 export type * from './library.js';
@@ -192,6 +192,11 @@ export interface DesktopApi {
     storage(): Promise<LibraryStorageResult>;
     /** Reopen a saved match without its source DEM and with a fresh IPC session. */
     open(matchId: string): Promise<ImportResult>;
+    remove(matchIds: string[]): Promise<LibraryDeleteResult>;
+    /** Main owns the save dialog; Renderer receives only the basename and size. */
+    exportMatch(matchId: string): Promise<LibraryExportResult>;
+    /** Main owns the open dialog and validates the portable package before commit. */
+    importArchive(): Promise<LibraryImportResult>;
   };
   window: {
     minimize(): Promise<void>;
