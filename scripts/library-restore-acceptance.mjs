@@ -1,6 +1,6 @@
 // L2 offline restore acceptance: import once, delete the source DEM, reopen from the archive.
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { copyFileSync, createReadStream, existsSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -80,7 +80,7 @@ async function replayHashes(page, metadata) {
   }
   return hashes;
 }
-async function sixViews(page) {
+async function sixViews(page, expected) {
   for (const [tab, panel] of [['report', 'report-panel'], ['deep-review', 'deep-review-panel'], ['timeline', 'timeline-panel'],
     ['analysis', 'analysis-panel'], ['replay', 'replay-panel'], ['heatmap', 'heatmap-panel']]) {
     await page.evaluate('document.getElementById("' + tab + '-tab").click()');
@@ -88,6 +88,19 @@ async function sixViews(page) {
     const text = await page.evaluate('document.getElementById("' + panel + '").innerText.length');
     assert.ok(text > 0, tab + ' panel must render content');
   }
+  await page.evaluate('document.getElementById("replay-tab").click()');
+  await waitFor(() => page.evaluate('Boolean(document.querySelector("[data-replay-session]"))'), 30_000, 'replay session');
+  const session = await page.evaluate('document.querySelector("[data-replay-session]").dataset.replaySession');
+  assert.equal(session, expected.replay.sessionId, 'Replay UI must use the fresh session');
+  await page.evaluate('document.querySelector(\'[aria-label="直达最后"]\')?.click()');
+  await waitFor(() => page.evaluate('document.querySelectorAll("[data-replay-event]").length > 0'), 30_000, 'Replay events');
+  const endTick = await page.evaluate('Number(document.querySelector("[data-replay-session]").dataset.replayTick)');
+  await page.evaluate('document.querySelector(\'[aria-label="回到最初"]\')?.click()');
+  await waitFor(() => page.evaluate('Number(document.querySelector("[data-replay-session]").dataset.replayTick) < ' + endTick), 30_000, 'Replay return to start');
+  const before = await page.evaluate('Number(document.querySelector("[data-replay-session]").dataset.replayTick)');
+  await page.evaluate('document.querySelector(\'[aria-label="播放回放"]\')?.click()');
+  await waitFor(() => page.evaluate('Number(document.querySelector("[data-replay-session]").dataset.replayTick) > ' + before), 20_000, 'Replay playback advances');
+  await page.evaluate('document.querySelector(\'[aria-label="暂停回放"]\')?.click()');
 }
 try {
   checkpoint('fixture-hash');
@@ -102,16 +115,19 @@ try {
   await waitFor(() => app.page.evaluate('document.querySelector("main")?.dataset.status === "success"'), 120_000, 'initial import', {
     diagnostics: () => app.page.evaluate('({status:document.querySelector("main")?.dataset.status,text:document.body.innerText.slice(-1200)})') });
   result.importMs = performance.now() - importStart;
+  result.productRevision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
   const first = await report(app.page);
   assert.equal(first.match.id, result.fixture.sha256);
   const catalogue = await app.page.evaluate('window.cs2Analyst.library.list()');
   assert.equal(catalogue.kind, 'success'); assert.equal(catalogue.total, 1);
   result.matchId = first.match.id; result.firstReportHash = digest(JSON.stringify(withoutSession(first)));
+  result.firstReplaySessionId = first.replay?.sessionId ?? null;
   result.firstHeatmapHashes = await heatmapHashes(app.page, first.heatmap);
   result.firstReplayHashes = await replayHashes(app.page, first.replay);
   await close(app); app = null;
   rmSync(source);
   assert.equal(existsSync(source), false);
+  result.sourceAbsent = !existsSync(source);
   result.checks.push('initial import persisted a ready catalogue entry and archived report/Replay/heatmap sources');
   checkpoint('source-removed');
   app = await launch();
@@ -124,16 +140,22 @@ try {
   const restored = await report(app.page);
   assert.equal(restored.match.id, result.matchId);
   assert.notEqual(restored.replay?.sessionId, first.replay.sessionId, 'restore must issue a fresh Replay session');
-  assert.equal(digest(JSON.stringify(withoutSession(restored))), result.firstReportHash, 'report fingerprint must match');
-  assert.deepEqual(await heatmapHashes(app.page, restored.heatmap), result.firstHeatmapHashes, 'every heatmap filter must match');
-  assert.deepEqual(await replayHashes(app.page, restored.replay), result.firstReplayHashes, 'archived Replay chunks must match');
+  result.restoredReplaySessionId = restored.replay?.sessionId ?? null;
+  result.freshReplaySession = result.restoredReplaySessionId !== result.firstReplaySessionId;
+  result.restoredReportHash = digest(JSON.stringify(withoutSession(restored)));
+  assert.equal(result.restoredReportHash, result.firstReportHash, 'report fingerprint must match');
+  result.restoredHeatmapHashes = await heatmapHashes(app.page, restored.heatmap);
+  assert.deepEqual(result.restoredHeatmapHashes, result.firstHeatmapHashes, 'every heatmap filter must match');
+  result.restoredReplayHashes = await replayHashes(app.page, restored.replay);
+  assert.deepEqual(result.restoredReplayHashes, result.firstReplayHashes, 'archived Replay chunks must match');
   result.checks.push('fresh Electron process reopened the match with the source DEM absent; report, filtered heatmaps and Replay chunks match');
-  await sixViews(app.page);
-  result.checks.push('all six existing views render from the archived match');
+  await sixViews(app.page, restored);
+  result.checks.push('all six existing views render; Replay seeks, loads an archived block and advances from the fresh session');
   assert.equal(await app.page.evaluate('document.querySelectorAll("[data-library-entry]").length'), 0, 'report view replaces the library home');
   assert.equal(await app.page.evaluate('typeof window.require'), 'undefined');
   const listed = await app.page.evaluate('window.cs2Analyst.library.list()');
   assert.equal(listed.total, 1); assert.equal(listed.entries[0].matchId, result.matchId);
+  result.catalogueTotal = listed.total; result.sixViewsRendered = true;
   result.checks.push('Renderer remains sandboxed and the catalogue still exposes exactly one ready match');
   await close(app); app = null;
   result.status = 'PASS'; checkpoint('restored');

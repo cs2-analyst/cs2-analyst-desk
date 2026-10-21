@@ -94,8 +94,32 @@ test('saved-match open restores a fresh session from the archive directory', asy
   opened.worker.emit('message', { kind: 'replay-chunk', requestId: request.requestId,
     result: { kind: 'success', chunk: { schemaVersion: 1, matchId: id, sessionId, round: 1, block: 0, frames: [], events: [] } } });
   const chunk = await chunkPromise; assert.equal(chunk.kind, 'success');
-  await h.handlers.get('session:release')(h.trusted, sessionId);
+  opened.worker.emit('exit', 0); await tick();
+  const afterExit = await h.handlers.get('replay:chunk')(h.trusted, { sessionId, round: 1, block: 0 });
+  assert.equal(afterExit.kind, 'error', 'a dead restored worker must not leave a stale active session');
   assert.equal(opened.worker.killed, true);
+});
+
+test('restored worker heatmap replies are routed and cleared on failure', async () => {
+  const h = await harness(), id = 'a'.repeat(64);
+  const opened = await h.open(id);
+  const sessionId = opened.worker.sent[0].sessionId;
+  opened.worker.emit('message', { kind: 'restored', report: { schemaVersion: 2, match: { id }, replay: null,
+    heatmap: { schemaVersion: 1, sessionId, matchId: id, available: true, unavailableReason: null,
+      layers: { positions: { available: true, unavailableReason: null }, kills: { available: false, unavailableReason: 'spatial-unavailable' },
+        deaths: { available: false, unavailableReason: 'spatial-unavailable' } },
+      map: { id: 'de_dust2', resourceId: null, alignment: 'unavailable', precision: 'schematic-position-distribution' },
+      samplingVersion: 's', resolutions: [32], playerIds: [], rounds: [1], floors: [] } } });
+  assert.equal((await opened.promise).kind, 'success');
+  const pending = h.handlers.get('heatmap:grid')(h.trusted, { schemaVersion: 1, sessionId, layer: 'positions', resolution: 32,
+    scope: { rounds: null, playerIds: null, side: 'all', floor: null, includeFreezeTime: false, samplingSet: 'all-valid' } });
+  await tick();
+  const request = opened.worker.sent.at(-1); assert.equal(request.kind, 'heatmap-grid');
+  opened.worker.emit('message', { kind: 'heatmap-grid', requestId: request.requestId, result: { kind: 'error', message: 'bad' } });
+  const settled = await Promise.race([pending, new Promise(resolve => setTimeout(() => resolve('pending'), 100))]);
+  assert.notEqual(settled, 'pending'); assert.equal(settled.kind, 'error');
+  assert.equal([...h.timers.values()].some(timer => timer.ms === 15_000), false, 'reply must clear its timeout');
+  await h.handlers.get('session:release')(h.trusted, sessionId);
 });
 
 test('failed saved-match open keeps the previous live session and worker', async () => {

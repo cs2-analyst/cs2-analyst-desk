@@ -391,7 +391,10 @@ async function openSavedMatch(matchId: string): Promise<ImportResult> {
         void finish({ kind: 'success', report }, true);
       } else if (message.kind === 'error') void finish(message);
     });
-    worker.on('exit', () => { if (!settled) void finish({ kind: 'error', message: '恢复进程意外退出；当前比赛保持可用。' }); });
+    worker.on('exit', () => {
+      if (!settled) void finish({ kind: 'error', message: '恢复进程意外退出；当前比赛保持可用。' });
+      else if (activeWorker === worker) stopAnalysisWorker();
+    });
   });
 }
 
