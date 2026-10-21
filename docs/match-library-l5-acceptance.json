@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "stage": "L5",
-  "generatedAt": "2026-10-21T19:04:06.889Z",
+  "generatedAt": "2026-10-21T19:11:45.553Z",
   "commit": "4fae411",
   "productRevision": "63d6e12ad9de0352bdc38206dcc4a39d22bd19c1",
   "status": "TECHNICAL_PASS_HUMAN_ACCEPTANCE_NOT_RUN",
@@ -11,7 +11,9 @@
     "desktopReportSmoke": "PASS (3 scenarios; .tmp/l5/evidence/desktop-report-smoke.log)",
     "navigationSmoke": "PASS (24 geometry states, max delta 0)",
     "fullTestLog": ".tmp/l5/evidence/desktop-full-test.log (285/285)",
-    "typecheckLog": ".tmp/l5/evidence/typecheck.log (15/15)"
+    "typecheckLog": ".tmp/l5/evidence/typecheck.log (15/15)",
+    "largeLibrary": "PASS (50 synthetic entries, ~5ms list, 50 rows, no chunks)",
+    "accessibility": "PASS emulated 1.25/1.5 DPR + forced-colors; physical/Narrator NOT RUN"
   },
   "artifacts": {
     "productionInstaller": {
@@ -54,9 +56,9 @@
     },
     {
       "id": 4,
-      "item": "Rollback to older build",
-      "status": "PASS (list/read only)",
-      "evidence": "rollback.json; L1 build lists the final-build library, entry ready, sourceRevision 9809f39; old build has no open API"
+      "item": "Rollback open/render with older build",
+      "status": "PASS",
+      "evidence": "rollback.json + rollback-open.json; L1 lists ready entry; L2 build opens the final-build archive and renders report e071bfa7 identically"
     },
     {
       "id": 5,
@@ -72,9 +74,9 @@
     },
     {
       "id": 7,
-      "item": "Large library first screen",
-      "status": "NOT RUN",
-      "evidence": "Only 1-2 real records; no 50+ isolated-copy simulation in this pass"
+      "item": "Large library first screen (50 synthetic archives)",
+      "status": "PASS (synthetic)",
+      "evidence": "large-library.json; 50 entries listed in ~5ms, 50 rows rendered, no Replay session/chunks; synthetic, not real matches"
     },
     {
       "id": 8,
@@ -91,14 +93,14 @@
     {
       "id": 10,
       "item": "Keyboard/high contrast",
-      "status": "NOT RUN",
-      "evidence": "DOM aria/disabled tested; real forced-colors/Narrator walkthrough not run"
+      "status": "PARTIAL (emulated forced-colors only)",
+      "evidence": "accessibility.json emulates forced-colors and checks visible nav color; real Windows high contrast/Narrator NOT RUN"
     },
     {
       "id": 11,
       "item": "DPI 125/150 and physical multi-monitor",
-      "status": "NOT RUN",
-      "evidence": "devicePixelRatio=1 only"
+      "status": "PARTIAL (CDP emulated DPI)",
+      "evidence": "accessibility.json 1.25/1.5 DPR: brand delta 0; physical DPI and multi-monitor NOT RUN"
     },
     {
       "id": 12,
@@ -108,9 +110,8 @@
     }
   ],
   "manualNotRun": [
-    "50+ library list simulation",
-    "DPI 125%/150%",
-    "Windows high contrast / Narrator",
+    "physical DPI / multi-monitor",
+    "real Windows high contrast / Narrator walkthrough",
     "physical caption double-click",
     "human product sign-off"
   ],

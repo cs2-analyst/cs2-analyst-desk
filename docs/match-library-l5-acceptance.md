@@ -11,14 +11,14 @@
 | 1 | 生产 NSIS 安装 → Nuke 导入 → 重启 → 卸载保留 | PASS | 安装包 `d8c6b8c4…8880dec`；导入 15,568.8ms；冷目录 1.33ms；卸载后 manifest 保留 |
 | 2 | test-seam 安装版导出/删除/导入/冷打开 | PASS | `.cs2a` 16,929,688B / 164 文件；删除后 archiveBytes=0；损坏包拒绝；`productRevision=63d6e12` |
 | 3 | L1 构建 → 最终构建升级 | PASS | 旧安装包 `1d5960f2…79f75b9c`；升级后旧归档 report `e071bfa7…5771f748` 不变；卸载保留 |
-| 4 | 回滚到旧构建 | PASS（只读/列表） | L1 构建可列出最终库中 ready 归档；旧构建没有 open API，未验证旧版渲染 |
+| 4 | 回滚旧构建打开/渲染 | PASS | L1 可列出 ready 归档；L2 构建可打开最终库归档并渲染相同 report `e071bfa7…` |
 | 5 | 损坏包（翻转/截断）；路径/UNC/预算 | PASS | 端到端：1 位翻转/截断拒绝、staging 为空、现有比赛可打开；遍历/绝对/UNC/重复/预算由 `library-portable.test.mjs` 单测覆盖，非安装版流程 |
 | 6 | 删除单场/活动场/容量 | PASS | 活动场删除 179–250ms；archiveBytes 归零；孤儿恢复与部分失败单测 |
-| 7 | 50+ 大库首屏 | NOT RUN | 仅 1–2 条真实记录，未做隔离副本规模模拟 |
+| 7 | 50+ 大库首屏 | PASS（合成） | 50 条合成归档：列表约 5ms、50 行渲染、首屏无 Replay 会话/Chunk；不是真实比赛样本 |
 | 8 | 性能 | PARTIAL | 导入 15–20s；打开 2.5–3.1s（全量校验）；列表冷读 1.3ms；Replay 5131.302ms 债未解 |
 | 9 | 隐私/网络 | PASS（代码审查） | 无自动上传；导出需用户选择；不保存 DEM |
-| 10 | 键盘/高对比度 | NOT RUN | DOM aria/禁用态有测试；未做真实 forced-colors/Narrator |
-| 11 | DPI 125%/150%、物理多屏 | NOT RUN | 仅 devicePixelRatio=1 |
+| 10 | 键盘/高对比度 | PARTIAL（仅模拟） | CDP forced-colors 下导航仍可见；真实 Windows 高对比度/Narrator NOT RUN |
+| 11 | DPI 125%/150%、物理多屏 | PARTIAL（仅模拟） | CDP 1.25/1.5 DPR 下品牌 delta=0；物理 DPI/多屏 NOT RUN |
 | 12 | 人工产品验收 | NOT RUN | 需产品负责人实际打开、导航、导出/导入并签收 |
 
 ## 2. 自动化结果
@@ -29,7 +29,8 @@
 - 全量测试日志 `.tmp/l5/evidence/desktop-full-test.log`（285/285）、类型检查日志 `typecheck.log`（15/15）；生产安装基础证据已复制为 `.tmp/l5/evidence/production-foundation.json`。
 - 集成导航 smoke：24 个几何状态 max delta = 0px；一次后退/前进语义通过。
 - 集成数据操作 Dust2/Nuke：PASS；test-seam 安装版 Dust2：PASS。
-- 生产安装版：PASS；升级：PASS；回滚（旧构建列表/只读）：PASS。
+- 生产安装版：PASS；升级：PASS；回滚：L1 列表/只读 + L2 打开/渲染 PASS。
+- 50 条合成库首屏、模拟 1.25/1.5 DPR 与 forced-colors：PASS；结果在 `.tmp/l5/evidence/{large-library,accessibility}.json`。
 
 ## 3. 人工验收清单（NOT RUN）
 
