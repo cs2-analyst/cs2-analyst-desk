@@ -1,9 +1,14 @@
 // In-memory service double for existing Main IPC tests. Archive durability has separate real disk/child-process tests.
 import * as libraryIpc from '../shared/library-ipc.ts';
 export const tick = () => new Promise(resolve => setImmediate(resolve));
-export function mainLibraryRequire(name, require, service = createLibraryDouble()) {
+export function mainLibraryRequire(name, require, service = createLibraryDouble(), modules = {}) {
   if (name === './local-library.ts') return { LocalMatchLibrary: { open: async () => service } };
   if (name === '../shared/library-ipc.ts') return libraryIpc;
+  if (name === './library-archive.ts') return modules.archive ?? require(name);
+  if (name === './library-portable.ts') return modules.portable ?? {
+    writePortableArchive: async () => { throw new Error('portable export was not expected'); },
+    extractPortableArchive: async () => { throw new Error('portable import was not expected'); },
+  };
   return require(name);
 }
 export function createLibraryDouble() {
@@ -15,6 +20,8 @@ export function createLibraryDouble() {
       if (signal?.aborted) throw new Error('cancelled');
       onCommitted?.(); return { entry: { matchId: 'match' }, duplicate: false };
     },
+    removed: [],
+    async remove(matchIds) { this.removed.push([...matchIds]); return { kind: 'success', removed: [...matchIds], failed: [] }; },
     get(matchId) { return { matchId, state: 'ready' }; },
     async archiveDirectory(matchId) { return `C:/owned-test/archive-${matchId}`; },
     list() { return { kind: 'success', entries: [], total: 0, offset: 0, limit: 25 }; },

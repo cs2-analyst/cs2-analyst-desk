@@ -1,13 +1,16 @@
 import { app, BrowserWindow, dialog, ipcMain, utilityProcess } from 'electron';
 import { fileURLToPath } from 'node:url';
-import { dirname, extname, isAbsolute, join } from 'node:path';
+import { basename, dirname, extname, isAbsolute, join, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { access, mkdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { access, mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { constants as fsConstants } from 'node:fs';
 import type { ImportPhase, ImportResult, DesktopReplayMetadata, DesktopReplayRequest, DesktopReplayResult,
-  DesktopHeatmapMetadata, DesktopHeatmapRequest, DesktopHeatmapResult } from '@cs2-analyst/report-contract';
+  DesktopHeatmapMetadata, DesktopHeatmapRequest, DesktopHeatmapResult,
+  LibraryDeleteResult, LibraryExportResult, LibraryImportResult } from '@cs2-analyst/report-contract';
 import { HEATMAP_MAX_PENDING, HEATMAP_TIMEOUT_MS, validateHeatmapRequest, validateHeatmapResult } from '../shared/heatmap-ipc.ts';
 import { LocalMatchLibrary } from './local-library.ts';
+import { verifyLibraryArchive } from './library-archive.ts';
+import { extractPortableArchive, writePortableArchive } from './library-portable.ts';
 import { normalizeLibraryListQuery, boundedLibraryResult, isMatchId, LIBRARY_LIST_RESPONSE_BYTES, LIBRARY_STORAGE_RESPONSE_BYTES } from '../shared/library-ipc.ts';
 
 /** Replaced at build time by electron.vite.config.ts. False in production installers. */
@@ -20,6 +23,7 @@ let activeWorker: Electron.UtilityProcess | null = null;
 let activeReplay: DesktopReplayMetadata | null = null;
 let activeHeatmap: DesktopHeatmapMetadata | null = null;
 let activeSessionId: string | null = null;
+let activeMatchId: string | null = null;
 let cancelActiveImport: (() => void) | null = null;
 let libraryInstance: LocalMatchLibrary | null = null;
 let libraryOpening: Promise<LocalMatchLibrary> | null = null;
@@ -62,17 +66,75 @@ function routeReplayReply(worker: Electron.UtilityProcess, message: Record<strin
   return true;
 }
 function stopAnalysisWorker() {
-  const worker=activeWorker;activeWorker=null;activeReplay=null;activeHeatmap=null;activeSessionId=null;
+  const worker=activeWorker;activeWorker=null;activeReplay=null;activeHeatmap=null;activeSessionId=null;activeMatchId=null;
   for(const [id,pending] of pendingChunks){clearTimeout(pending.timer);pending.resolve({kind:'error',message:'回放会话已结束。'});pendingChunks.delete(id);}
   for(const [id,pending] of pendingHeatmaps){clearTimeout(pending.timer);pending.resolve({kind:'error',message:'热力图会话已结束。'});pendingHeatmaps.delete(id);}
   // Graceful clear when possible; process termination also drops every retained domain reference.
   try { worker?.postMessage({kind:'session-release'}); } catch { /* Worker already exited. */ }
   if(worker){
-    worker.removeAllListeners();
+    // Keep exit listeners: a caller may be awaiting real termination before deleting files.
+    worker.removeAllListeners('message');
     // kill() can return false before Utility Process spawn. Retire that late process too.
     if(worker.pid===undefined)worker.once('spawn',()=>worker.kill());
     worker.kill();
   }
+}
+
+/**
+ * Stop the worker that owns the active match and wait (bounded) for the process to
+ * actually exit. A live worker must never keep reading an archive that is being deleted.
+ */
+function retireActiveWorker(): Promise<boolean> {
+  const worker = activeWorker;
+  if (!worker) { activeMatchId = null; return Promise.resolve(true); }
+  const exited = new Promise<boolean>(resolveExit => {
+    let settled = false;
+    const finish = (confirmed: boolean) => { if (settled) return; settled = true; clearTimeout(timer); resolveExit(confirmed); };
+    const timer = setTimeout(() => finish(false), 3_000);
+    worker.once('exit', () => finish(true));
+  });
+  stopAnalysisWorker();
+  return exited;
+}
+
+const ARCHIVE_EXTENSION = '.cs2a';
+const LIBRARY_DELETE_LIMIT = 100;
+function normalizeMatchIds(value: unknown): string[] | null {
+  if (!Array.isArray(value) || value.length < 1 || value.length > LIBRARY_DELETE_LIMIT) return null;
+  const ids: string[] = [], seen = new Set<string>();
+  for (const item of value) {
+    if (!isMatchId(item) || seen.has(item)) return null;
+    seen.add(item); ids.push(item);
+  }
+  return ids;
+}
+function localAbsolutePath(value: unknown): string | null {
+  if (typeof value !== 'string' || !value.trim() || !isAbsolute(value) || value.includes('\0')) return null;
+  const path = resolve(value);
+  return path.startsWith('\\\\') ? null : path;
+}
+/**
+ * Development-only acceptance seam for automated QA. Packaged builds and the packaged
+ * test-seam installer ignore these variables entirely; Renderer never sees either path.
+ */
+function developmentInjectedPath(variable: string): string | undefined {
+  if (__CS2_ANALYST_TEST_SEAM__ || app.isPackaged) return undefined;
+  const value = process.env[variable];
+  return typeof value === 'string' && value.trim() ? value : undefined;
+}
+const withArchiveExtension = (path: string): string => extname(path).toLowerCase() === ARCHIVE_EXTENSION ? path : path + ARCHIVE_EXTENSION;
+function exportFileName(fileName: string): string {
+  const base = fileName.replace(/\.dem$/i, '').replace(/[\\/:*?"<>|]/g, '_').slice(0, 200);
+  return `${base || 'match'}${ARCHIVE_EXTENSION}`;
+}
+async function exportDefaultPath(fileName: string): Promise<string> {
+  const name = exportFileName(fileName);
+  try { return join(app.getPath('documents'), name); } catch { return name; }
+}
+function importFailureMessage(error: unknown): string {
+  if ((error as { code?: string })?.code === 'ARCHIVE_UNSUPPORTED') return '该比赛由更新版本的 CS2 Analyst 导出，当前版本无法读取。';
+  if (/portable archive/i.test(error instanceof Error ? error.message : '')) return '比赛归档无效、已损坏或超过安全限制，未导入任何内容。';
+  return '无法导入比赛归档；现有比赛保持不变。';
 }
 
 /** Only the current application's main frame can invoke privileged actions. */
@@ -115,6 +177,116 @@ ipcMain.handle('library:open', async (event, matchId: unknown): Promise<ImportRe
   opening = true;
   try { return await openSavedMatch(matchId); }
   finally { opening = false; }
+});
+ipcMain.handle('library:remove', async (event, value: unknown): Promise<LibraryDeleteResult> => {
+  if (!trustedWindow(event)) return { kind: 'error', message: '比赛库请求无效。' };
+  const matchIds = normalizeMatchIds(value);
+  if (!matchIds) return { kind: 'error', message: '无效的删除请求。' };
+  try {
+    const failed: { matchId: string; message: string }[] = [];
+    let deletable = matchIds;
+    // Never remove an archive that the live Replay/Heatmap worker can still read.
+    const retiring = activeMatchId;
+    if (retiring !== null && matchIds.includes(retiring)) {
+      // Capture the id: retiring the session clears activeMatchId. Only remove the archive
+      // after the worker actually exited; otherwise report this id and keep its files.
+      if (!await retireActiveWorker()) {
+        failed.push({ matchId: retiring, message: '回放会话仍在使用该比赛，请稍后重试。' });
+        deletable = matchIds.filter(id => id !== retiring);
+      }
+    }
+    if (!deletable.length) return { kind: 'success', removed: [], failed };
+    const result = await (await libraryService()).remove(deletable);
+    return result.kind === 'success' ? { kind: 'success', removed: result.removed, failed: [...failed, ...result.failed] } : result;
+  } catch {
+    return { kind: 'error', message: '无法删除本地比赛，请稍后重试。' };
+  }
+});
+ipcMain.handle('library:export', async (event, matchId: unknown): Promise<LibraryExportResult> => {
+  const window = trustedWindow(event);
+  if (!window || !isMatchId(matchId)) return { kind: 'error', message: '无效的导出请求。' };
+  if (importing || opening) return { kind: 'error', message: '已有比赛任务正在运行，请稍后再导出。' };
+  let temporary: string | null = null;
+  try {
+    const library = await libraryService();
+    const entry = library.get(matchId);
+    if (!entry || entry.state !== 'ready') return { kind: 'error', message: '该比赛当前不可用，无法导出。' };
+    const archiveDirectory = await library.archiveDirectory(matchId);
+    let destination: string;
+    const injected = developmentInjectedPath('CS2_ANALYST_EXPORT_PATH');
+    if (injected !== undefined) {
+      const path = localAbsolutePath(injected);
+      if (!path) return { kind: 'error', message: '导出目标路径无效。' };
+      destination = withArchiveExtension(path);
+    } else {
+      const chosen = await dialog.showSaveDialog(window, { title: '导出比赛归档',
+        defaultPath: await exportDefaultPath(entry.fileName),
+        filters: [{ name: 'CS2 Analyst 比赛归档', extensions: ['cs2a'] }] });
+      if (chosen.canceled || !chosen.filePath || window.isDestroyed()) return { kind: 'cancelled' };
+      const path = localAbsolutePath(chosen.filePath);
+      if (!path) return { kind: 'error', message: '导出目标路径无效。' };
+      destination = withArchiveExtension(path);
+    }
+    temporary = join(dirname(destination), `.${basename(destination)}.${randomUUID()}.tmp`);
+    const written = await writePortableArchive(archiveDirectory, temporary);
+    const info = await stat(temporary);
+    if (info.size !== written.bytes) throw new Error('Exported package size mismatch.');
+    // Same-volume rename replaces atomically on Windows once the bytes are durable.
+    await rename(temporary, destination);
+    temporary = null;
+    return { kind: 'success', fileName: basename(destination), bytes: info.size };
+  } catch (error) {
+    console.error('Match export failed', error);
+    return { kind: 'error', message: '无法导出比赛归档。请检查目标位置、磁盘空间后重试。' };
+  } finally {
+    if (temporary) { try { await rm(temporary, { force: true }); } catch { /* Best-effort temp cleanup. */ } }
+  }
+});
+ipcMain.handle('library:import', async (event): Promise<LibraryImportResult> => {
+  const window = trustedWindow(event);
+  if (!window) return { kind: 'error', message: '比赛库请求无效。' };
+  if (importing || opening) return { kind: 'error', message: '已有比赛任务正在运行。' };
+  importing = true;
+  try {
+    let filePath: string;
+    const injected = developmentInjectedPath('CS2_ANALYST_IMPORT_PATH');
+    if (injected !== undefined) {
+      const path = localAbsolutePath(injected);
+      if (!path || extname(path).toLowerCase() !== ARCHIVE_EXTENSION) return { kind: 'error', message: '请选择 .cs2a 比赛归档。' };
+      filePath = path;
+    } else {
+      const chosen = await dialog.showOpenDialog(window, { title: '导入比赛归档', properties: ['openFile'],
+        filters: [{ name: 'CS2 Analyst 比赛归档', extensions: ['cs2a'] }] });
+      if (chosen.canceled || !chosen.filePaths.length || window.isDestroyed()) return { kind: 'cancelled' };
+      const path = localAbsolutePath(chosen.filePaths[0]);
+      if (!path || extname(path).toLowerCase() !== ARCHIVE_EXTENSION) return { kind: 'error', message: '请选择 .cs2a 比赛归档。' };
+      filePath = path;
+    }
+    const library = await libraryService();
+    const staging = await library.createStaging();
+    let committed = false;
+    try {
+      // Stream into the owned staging directory, then re-verify every component with L1
+      // before the catalogue transaction can publish anything.
+      await extractPortableArchive(filePath, staging.directory);
+      const verified = await verifyLibraryArchive(staging.directory);
+      const saved = await library.commitStaging(staging.id, undefined, { manifestHash: verified.manifestHash, storedBytes: verified.storedBytes });
+      committed = true;
+      return { kind: 'success', entry: saved.entry, duplicate: saved.duplicate };
+    } catch (error) {
+      console.error('Match archive import rejected', error);
+      return { kind: 'error', message: importFailureMessage(error) };
+    } finally {
+      // A duplicate commit already removed its staging directory; a failure is always
+      // discarded so no partial data survives and existing matches are untouched.
+      if (!committed) { try { await library.discardStaging(staging.id); } catch (error) { console.error('Import staging cleanup failed', error); } }
+    }
+  } catch (error) {
+    console.error('Match archive import failed', error);
+    return { kind: 'error', message: '无法导入比赛归档；现有比赛保持不变。' };
+  } finally {
+    importing = false;
+  }
 });
 ipcMain.handle('heatmap:grid', (event, value: unknown): Promise<DesktopHeatmapResult> | DesktopHeatmapResult => {
   const fail = (): DesktopHeatmapResult => ({kind:'error',message:'无效、不可用或已过期的热力图请求。'});
@@ -281,10 +453,11 @@ async function analyzeDemo(filePath: string, window: BrowserWindow): Promise<Imp
       const replayAvailable=metadata?.available===true&&metadata.sessionId===sessionId;
       const heatmapAvailable=heatmap?.available===true&&heatmap.sessionId===sessionId;
       activeWorker=worker;activeSessionId=sessionId;
+      activeMatchId=isMatchId(report.report.match?.id)?report.report.match.id:null;
       candidateWorkers.delete(worker);
       activeReplay=replayAvailable?metadata!:null;activeHeatmap=heatmapAvailable?heatmap!:null;
       void finish(report,replayAvailable||heatmapAvailable);
-      if (!replayAvailable && !heatmapAvailable) { activeWorker=null;activeSessionId=null; }
+      if (!replayAvailable && !heatmapAvailable) { activeWorker=null;activeSessionId=null;activeMatchId=null; }
     };
     worker.on('spawn', () => {
       if(settled||controller.signal.aborted){worker.kill();return;}
@@ -365,11 +538,11 @@ async function openSavedMatch(matchId: string): Promise<ImportResult> {
       const report = result.report, replay = report.replay, heatmap = report.heatmap;
       const replayAvailable = replay?.available === true && replay.sessionId === sessionId;
       const heatmapAvailable = heatmap?.available === true && heatmap.sessionId === sessionId;
-      activeWorker = worker; activeSessionId = sessionId;
+      activeWorker = worker; activeSessionId = sessionId; activeMatchId = matchId;
       activeReplay = replayAvailable ? replay! : null; activeHeatmap = heatmapAvailable ? heatmap! : null;
       candidateWorkers.delete(worker);
       if (!replayAvailable && !heatmapAvailable) {
-        activeWorker = null; activeSessionId = null; void retireCandidate(worker);
+        activeWorker = null; activeSessionId = null; activeMatchId = null; void retireCandidate(worker);
       }
       resolve(result);
     };
