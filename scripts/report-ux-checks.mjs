@@ -150,8 +150,8 @@ export async function checkReportUx(evaluate, send, qaDir) {
   assert.deepEqual(await evaluate(`[...document.querySelectorAll('[data-app-sidebar] [role="tab"]')].map(t => t.querySelector('.fui-Tab__content').textContent)`), ['比赛报告', '深度复盘', '回合时间线', '分析', '比赛回放', '热力图']);
   assert.equal(await evaluate(`[...document.querySelectorAll('[role="tabpanel"]')].filter(p => !p.parentElement.closest('[role="tabpanel"]')).length`), 6);
   assert.equal(await evaluate(`document.getElementById('report-panel').hidden`), false);
-  assert.equal(await evaluate(`document.querySelector('[data-nav-action="back"]').disabled`), false, 'import success must leave the match reachable by back');
-  assert.equal(await evaluate(`document.querySelector('[data-nav-action="forward"]').disabled`), true, 'no forward branch after a fresh import');
+  assert.equal(await evaluate(`document.querySelector('[data-nav-action="back"]').getAttribute('aria-disabled') !== 'true'`), true, 'import success must leave the match reachable by back');
+  assert.equal(await evaluate(`document.querySelector('[data-nav-action="forward"]').getAttribute('aria-disabled') === 'true'`), true, 'no forward branch after a fresh import');
   await checkSidebarImport(evaluate, send, '重新选择 DEM');
   await evaluate(`document.querySelector('[data-sidebar-toggle]').click()`);
   await waitForUi(evaluate, `document.querySelector('[data-app-sidebar]').dataset.collapsed === 'true' && document.getAnimations().every(a => a.playState !== 'running')`, 'collapsed report sidebar');

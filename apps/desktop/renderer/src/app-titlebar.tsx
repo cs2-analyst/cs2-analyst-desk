@@ -21,6 +21,11 @@ const useStyles = makeStyles({
     ':hover': { backgroundColor: palette.cardHover, color: palette.text },
     ':active': { backgroundColor: palette.raised },
     ':focus-visible': { outline: `1px solid ${palette.textMuted}`, outlineOffset: '-2px' },
+    '&[data-nav-disabled="true"]': {
+      color: palette.textMuted, cursor: 'default',
+      ':hover': { backgroundColor: 'transparent', color: palette.textMuted },
+      ':active': { backgroundColor: 'transparent' },
+    },
   },
   // Absolutely centred on the full window width, not on the space left by the buttons.
   brand: {

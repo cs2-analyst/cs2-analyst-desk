@@ -540,6 +540,7 @@ function App() {
   const phase = libraryBusy === 'export' ? '正在导出比赛归档…' : libraryBusy === 'importArchive' ? '正在导入比赛归档…'
     : libraryBusy === 'remove' ? '正在删除比赛…'
     : status === 'opening' ? '正在打开已保存比赛…' : status === 'selecting' ? '正在选择 DEM…' : status === 'parsing' ? '正在后台解析 DEM…' : '正在生成指标与深度复盘…';
+  const busyHint = libraryBusy !== null ? '请稍候，操作完成前不要关闭应用。' : '大型录像可能需要数十秒，请保持应用打开。';
   const [collapsed, setCollapsed] = useState(false);
   const matchMode = route.kind === 'match';
   return <>
@@ -556,7 +557,7 @@ function App() {
         {error ? <div className={s.banner}><MessageBar intent="error"><MessageBarBody>{error}</MessageBarBody></MessageBar></div> : null}
         {busy && report ? <div className={s.statusStrip} role="status">
           <Spinner size="tiny" label={phase} />
-          <Caption1 className={s.muted}>大型录像可能需要数十秒，请保持应用打开。</Caption1>
+          <Caption1 className={s.muted}>{busyHint}</Caption1>
           {status !== 'selecting' && status !== 'opening' ? <Button appearance="subtle" size="small" onClick={() => void cancelImport()}>取消导入</Button> : null}
         </div> : null}
         {report ? <>
@@ -570,7 +571,7 @@ function App() {
         {error ? <div className={s.banner}><MessageBar intent="error"><MessageBarBody>{error}</MessageBarBody></MessageBar></div> : null}
         {busy ? <div className={s.statusStrip} role="status">
           <Spinner size="tiny" label={phase} />
-          <Caption1 className={s.muted}>大型录像可能需要数十秒，请保持应用打开。</Caption1>
+          <Caption1 className={s.muted}>{busyHint}</Caption1>
           {status === 'parsing' || status === 'analyzing' ? <Button appearance="subtle" size="small" onClick={() => void cancelImport()}>取消导入</Button> : null}
         </div> : null}
         {route.section === 'personal' ? <PersonalSection /> : <LibraryPage />}
