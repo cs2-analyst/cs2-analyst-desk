@@ -5,6 +5,7 @@ import { promisify } from 'node:util';
 import { gzip as gzipCallback, gunzip as gunzipCallback } from 'node:zlib';
 import type { Match, MatchReplay, MatchSpatialEvidence } from '@cs2-analyst/match-model';
 import type { ArchiveVersions, ArchiveCapabilities, LibraryCapability, DesktopMatchReport, DesktopReplayChunk, DesktopReplayRequest } from '@cs2-analyst/report-contract';
+import { upgradeReportPerformance } from './player-performance.ts';
 export type { ArchiveVersions, ArchiveCapabilities } from '@cs2-analyst/report-contract';
 
 const gzip = promisify(gzipCallback), gunzip = promisify(gunzipCallback);
@@ -427,7 +428,7 @@ export async function readArchiveReport(directory: string, manifest: ArchiveMani
   const report = value as DesktopMatchReport;
   if (report.replay) report.replay.sessionId = report.replay.available ? sessionId : null;
   if (report.heatmap) report.heatmap.sessionId = sessionId;
-  return report;
+  return upgradeReportPerformance(report);
 }
 export async function readArchiveChunk(directory: string, manifest: ArchiveManifest, request: DesktopReplayRequest): Promise<DesktopReplayChunk> {
   if (!validateArchiveManifest(manifest) || !uuid(request.sessionId) || !integer(request.round, 1, LIBRARY_ARCHIVE_LIMITS.rounds)

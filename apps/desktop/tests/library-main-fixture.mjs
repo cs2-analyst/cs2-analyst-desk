@@ -24,6 +24,7 @@ export function createLibraryDouble() {
     get(matchId) { return { matchId, state: 'ready' }; },
     async archiveDirectory(matchId) { return `C:/owned-test/archive-${matchId}`; },
     list() { return { kind: 'success', entries: [], total: 0, offset: 0, limit: 25 }; },
+    async listWithPerformance(query) { return this.list(query); },
     async storage() { return { kind: 'success', matchCount: 0, archiveBytes: 0, indexBytes: 0, totalBytes: 0 }; },
     close() {},
   };

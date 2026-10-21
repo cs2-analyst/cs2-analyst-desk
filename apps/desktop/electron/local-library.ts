@@ -5,7 +5,8 @@ import { realpathSync } from 'node:fs';
 import { dirname, isAbsolute, join, parse, relative, resolve, sep } from 'node:path';
 import type { LibraryDeleteResult, LibraryListQuery, LibraryListResult, LibraryStorageResult, MatchLibraryEntry } from '@cs2-analyst/report-contract';
 import { LIBRARY_LIST_RESPONSE_BYTES, boundedLibraryResult, isMatchId, normalizeLibraryListQuery } from '../shared/library-ipc.ts';
-import { LIBRARY_METADATA_LIMITS, archiveManifestHash, readArchiveManifest, verifyLibraryArchive, type ArchiveManifest } from './library-archive.ts';
+import { LIBRARY_METADATA_LIMITS, archiveManifestHash, readArchiveManifest, readArchiveReport, verifyLibraryArchive, type ArchiveManifest } from './library-archive.ts';
+import { PERFORMANCE_CACHE_VERSION, reportPlayerSummaries, validCachedPlayerSummaries } from './player-performance.ts';
 
 const stagingId = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/;
 const samePath = (a: string, b: string) => process.platform === 'win32' ? a.toLowerCase() === b.toLowerCase() : a === b;
@@ -153,6 +154,10 @@ export class LocalMatchLibrary {
           );
           CREATE INDEX IF NOT EXISTS matches_imported_at ON matches(imported_at);
           CREATE INDEX IF NOT EXISTS matches_map ON matches(map);
+          CREATE TABLE IF NOT EXISTS player_summary_cache (
+            match_id TEXT PRIMARY KEY, manifest_hash TEXT NOT NULL, cache_version TEXT NOT NULL,
+            summary_json TEXT NOT NULL CHECK(length(summary_json)<=262144)
+          );
           PRAGMA user_version=1;
           COMMIT;`);
         break;
@@ -391,6 +396,61 @@ export class LocalMatchLibrary {
     const result: LibraryListResult = { kind: 'success', entries, unreadableCount, total, offset: query.offset, limit: query.limit };
     return boundedLibraryResult(result, LIBRARY_LIST_RESPONSE_BYTES);
   }
+
+  /**
+   * Derive only the requested page once from saved report metrics, never DEM/Replay.
+   * The original archive, manifest hash, catalogue snapshot and import date remain immutable.
+   */
+  listWithPerformance(value: LibraryListQuery = {}): Promise<LibraryListResult> {
+    return this.serial(async () => {
+      let query = value;
+      while (true) {
+        const result = this.list(query);
+        if (result.kind !== 'success') return result;
+        let overBudget = false;
+        for (const entry of result.entries) {
+          if (entry.state !== 'ready') continue;
+          const row = this.row(entry.matchId);
+          if (!row) continue;
+          const cached = this.db.prepare('SELECT manifest_hash,cache_version,summary_json FROM player_summary_cache WHERE match_id=?')
+            .get(entry.matchId) as { manifest_hash: string; cache_version: string; summary_json: string } | undefined;
+          if (cached?.manifest_hash === row.manifest_hash && cached.cache_version === PERFORMANCE_CACHE_VERSION) {
+            try {
+              const summary: unknown = JSON.parse(cached.summary_json);
+              if (validCachedPlayerSummaries(summary, entry.players.map(p => p.id))) {
+                Object.assign(entry, summary);
+                if (Buffer.byteLength(JSON.stringify(result)) > LIBRARY_LIST_RESPONSE_BYTES) { overBudget = true; break; }
+                continue;
+              }
+            } catch { /* Malformed derived data is rebuilt without demoting the source archive. */ }
+          }
+          try {
+            const directory = await this.archiveDirectory(entry.matchId);
+            const manifest = await readArchiveManifest(directory);
+            if (archiveManifestHash(manifest) !== row.manifest_hash) throw new Error('Archive manifest changed');
+            // readArchiveReport verifies this bounded component's compressed/raw digests.
+            const report = await readArchiveReport(directory, manifest, randomUUID());
+            const summary = reportPlayerSummaries(report);
+            const json = JSON.stringify(summary);
+            if (Buffer.byteLength(json) > 262144 || !validCachedPlayerSummaries(summary, entry.players.map(p => p.id))) {
+              throw new Error('Invalid derived player summaries');
+            }
+            this.db.prepare('INSERT OR REPLACE INTO player_summary_cache(match_id,manifest_hash,cache_version,summary_json) VALUES(?,?,?,?)')
+              .run(entry.matchId, row.manifest_hash, PERFORMANCE_CACHE_VERSION, json);
+            Object.assign(entry, summary);
+            if (Buffer.byteLength(JSON.stringify(result)) > LIBRARY_LIST_RESPONSE_BYTES) { overBudget = true; break; }
+          } catch (error) {
+            // A missing/unreadable metric is unknown, never zero; open keeps its original full verification.
+            this.options.diagnostic?.(`Player summary ${entry.matchId} unavailable: ${error instanceof Error ? error.message : 'unknown'}`);
+          }
+        }
+        if (!overBudget || result.limit === 1) return boundedLibraryResult(result, LIBRARY_LIST_RESPONSE_BYTES);
+        // Re-query a smaller SQL page, so offset + limit still identifies the next row exactly,
+        // including invalid rows omitted by list(). Already derived summaries are reused.
+        query = { ...query, limit: Math.max(1, Math.floor(result.limit / 2)) };
+      }
+    });
+  }
   /**
    * Delete catalogue rows in short transactions, then remove the owned archive
    * directories. A directory that survives a failure has already lost its row and is
@@ -411,6 +471,7 @@ export class LocalMatchLibrary {
           try {
             const result = this.db.prepare('DELETE FROM matches WHERE match_id=?').run(matchId);
             if (Number(result.changes) !== 1) throw new Error('比赛索引未能删除。');
+            this.db.prepare('DELETE FROM player_summary_cache WHERE match_id=?').run(matchId);
             this.db.exec('COMMIT');
           } catch (error) { try { this.db.exec('ROLLBACK'); } catch { /* Preserve the delete failure. */ } throw error; }
           try {

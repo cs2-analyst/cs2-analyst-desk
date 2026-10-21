@@ -2,6 +2,8 @@ import type { Finding, FindingEvidence } from '@cs2-analyst/findings';
 import type { DesktopReplayMetadata, DesktopReplayRequest, DesktopReplayResult } from './replay.js';
 import type { DesktopHeatmapMetadata, DesktopHeatmapRequest, DesktopHeatmapResult } from './heatmap.js';
 import type { LibraryDeleteResult, LibraryExportResult, LibraryImportResult, LibraryListQuery, LibraryListResult, LibraryStorageResult } from './library.js';
+import type { DesktopPlayerPerformance } from './performance.js';
+export type * from './performance.js';
 export type * from './replay.js';
 export type * from './heatmap.js';
 export type * from './library.js';
@@ -75,6 +77,10 @@ export interface DesktopPlayerTimeline {
 /** JSON-only presentation contract. No domain events, native objects or file paths. */
 export interface DesktopPlayerAnalytics {
   playerId: string;
+  /** Additive schema-v2 field; older archives are upgraded outside Renderer. */
+  performance?: DesktopPlayerPerformance;
+  /** Exact Analytics coverage proofs, absent from historical schema-v2 archives. */
+  performanceCoverage?: { countsComplete: boolean; roundsAligned: boolean; headshotsComplete: boolean };
   kills: number;
   deaths: number;
   assists: number;

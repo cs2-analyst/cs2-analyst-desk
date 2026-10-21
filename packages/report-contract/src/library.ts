@@ -1,3 +1,4 @@
+import type { LibraryPlayerSummary } from './performance.js';
 /** Small, JSON-only catalogue contracts. Disk paths and archive payloads stay in Main/Utility. */
 export interface ArchiveVersions {
   application: string;
@@ -15,6 +16,9 @@ export type LibraryCapability = { status: 'available' | 'partial' | 'unavailable
 export type ArchiveCapabilities = Record<'report' | 'deepReview' | 'timeline' | 'analysis' | 'replay' | 'heatmap', LibraryCapability>;
 export interface MatchLibraryEntry {
   matchId: string;
+  /** Derived local cache, keyed by archive digest and rule version; absent in legacy rows. */
+  playerSummaries?: LibraryPlayerSummary[];
+  selectedPlayer?: string;
   fileName: string;
   map: string;
   rounds: number;

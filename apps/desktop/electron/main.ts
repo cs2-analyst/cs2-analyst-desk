@@ -166,7 +166,7 @@ ipcMain.handle('session:release', releaseSession);
 ipcMain.handle('library:list', async (event, value: unknown) => {
   const query = normalizeLibraryListQuery(value);
   if (!trustedWindow(event) || !query) return { kind: 'error', message: '比赛库查询无效。' };
-  try { return boundedLibraryResult((await libraryService()).list(query), LIBRARY_LIST_RESPONSE_BYTES); }
+  try { return boundedLibraryResult(await (await libraryService()).listWithPerformance(query), LIBRARY_LIST_RESPONSE_BYTES); }
   catch { return { kind: 'error', message: '无法读取本地比赛库，请检查磁盘权限或稍后重试。' }; }
 });
 ipcMain.handle('library:storage', async event => {

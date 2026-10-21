@@ -1,7 +1,7 @@
 import { displayPlayerName } from './player-name.ts';
 import { adaptDeepReviewFinding } from './deep-review-copy.ts';
 import { basename } from 'node:path';
-import { analyzeMatch } from '@cs2-analyst/analytics';
+import { analyzeMatch, playerPerformanceInput, summarizePlayerPerformance } from '@cs2-analyst/analytics';
 import type { PlayerMetrics } from '@cs2-analyst/analytics';
 import { Demoparser2Provider } from '@cs2-analyst/dem-parser';
 import { generateFindings } from '@cs2-analyst/findings';
@@ -317,8 +317,12 @@ export function buildDesktopReport(match: Match, filePath: string, spatial?: Mat
     players: valid.map(p => ({ id: p.steamId, nickname: displayPlayerName(p.steamId, p.nickname) })),
     analytics: valid.map(p => {
       const notes = coverageNotes(p, clutchIneligible);
+      const proof = playerPerformanceInput(p);
       return {
         playerId: p.steamId, kills: p.kills, deaths: p.deaths, assists: p.assists, roundsPlayed: p.roundsPlayed,
+        performance: summarizePlayerPerformance(p),
+        performanceCoverage: { countsComplete: proof.countsComplete, roundsAligned: proof.roundsAligned,
+          headshotsComplete: proof.headshotsComplete === true },
         adr: p.adr, headshotPercentage: p.headshotPercentage,
         kast: { percentage: p.kast.percentage, complete: p.kast.complete, rounds: p.kast.rounds, eligibleRounds: p.kast.eligibleRounds },
         trade: { rate: p.trade.tradeRate, complete: p.trade.complete, kills: p.trade.tradeKills, tradedDeaths: p.trade.tradedDeaths, tradeableDeaths: p.trade.tradeableDeaths },
