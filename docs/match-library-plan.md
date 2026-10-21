@@ -1,6 +1,6 @@
 # CS2 Analyst · 本地比赛库与历史持久化实施计划
 
-> **当前状态：L0 PASS；L1 READY；L2–L5 HOLD。** 用户已于 2026-10-21 明确授权一次性实施 L0–L5；2026-10-22 L0 独立审查及总线审核通过，按依赖自动放行 L1，无须逐阶段再次授权。量化证据见 [L0 报告](./match-library-l0-storage-evidence.md)，最新状态见 [执行台账](./match-library-execution.md)。不修改版本号/tag/release，不进入 P8。
+> **当前状态：L0 PASS；L1 PASS；L2 RUNNING；L3–L5 HOLD。** 用户已于 2026-10-21 明确授权一次性实施 L0–L5；2026-10-22 L0、L1 独立审查及总线审核通过，按依赖自动放行 L2，无须逐阶段再次授权。量化证据见 [L0 报告](./match-library-l0-storage-evidence.md)、[L1 证据](./match-library-l1-foundation-evidence.md)，最新状态见 [执行台账](./match-library-execution.md)。不修改版本号/tag/release，不进入 P8。
 >
 > 设计文档：[导航与标题栏](./match-library-navigation.md) · [存储/容量/可移植档案](./match-library-storage.md)。总路线见 [Roadmap](./roadmap.md)。
 

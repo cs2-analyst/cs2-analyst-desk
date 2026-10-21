@@ -1,6 +1,6 @@
 # CS2 Analyst · 本地比赛存储与可移植档案设计（规划）
 
-> **状态：L0 证据 Gate 已通过，L1 待实施生产格式。** 完整热力图规范源 A、独立 gzip-6 分块及 Electron 内置 SQLite 作为已审核候选；具体 manifest/API/安全限额仍须 L1 验证冻结。实测见 [L0 报告](./match-library-l0-storage-evidence.md) 与 [JSON](./match-library-size-benchmark.json)。与 [比赛库计划](./match-library-plan.md)、[导航设计](./match-library-navigation.md) 配套。
+> **状态：L0、L1 Gate 已通过，L2 离线恢复实施中。** 完整热力图规范源 A、独立 gzip-6 分块及 Electron 内置 SQLite 已由 L1 冻结生产格式与安全限额。实测见 [L0 报告](./match-library-l0-storage-evidence.md)、[L1 证据](./match-library-l1-foundation-evidence.md) 与 [JSON](./match-library-size-benchmark.json)。与 [比赛库计划](./match-library-plan.md)、[导航设计](./match-library-navigation.md) 配套。
 >
 > 核心决定：默认把用户主动导入的 DEM **解析后、分析后的完整可复用结果保存在 Windows 本机**；**不保存 DEM 原文件**、不建设个人比赛历史公共服务端、不要求账号、不上传个人 DEM。用户可删除、导出及导入单场归档。P8 职业知识管线/AI Coach 服务是另外一条独立路线，不与本地比赛库混淆。
 

@@ -17,11 +17,20 @@
 | 阶段 | 负责人 | 前置 | 状态 | 实现提交 / 测试证据 | 风险与审核决定 |
 |---|---|---|---|---|---|
 | L0 | `/root/l0_lead` | 无 | PASS | Gate 包 `481cf79`；集成 `b2f8877`；[报告](./match-library-l0-storage-evidence.md) / [JSON](./match-library-size-benchmark.json)，5/5 纯测试及真实实验 | L3 Lead 独立复核 PASS，总线复核/集成通过，限制保留 |
-| L1 | `/root/l1_lead` | L0 PASS | READY | 环境已准备；待采用最新集成基线 | SQLite 安装 ABI、持久化故障一致性必须实际验证 |
-| L2 | `/root/l2_lead` | L1 PASS | HOLD | 只读调查完成；无产品实现 | 完整热力图源、按需 Chunk、会话生命周期待冻结 |
+| L1 | `/root/l1_lead` | L0 PASS | PASS | 产品构建 `9809f39`；QA 收尾 `7de1347`；[证据](./match-library-l1-foundation-evidence.md)，45/45 聚焦、240/240 全量、Dust2/Nuke 真实 Electron、NSIS 安装/卸载 | 独立复审无 P1；唯一 P2 为证据早于最终基线，已按 `9809f39` 重建并重跑；P3 记录在证据文档 |
+| L2 | `/root/l2_lead` | L1 PASS | RUNNING | 基线 `7de1347`；离线打开/恢复实现中 | 完整热力图源、按需 Chunk、会话生命周期、失败保留旧会话 |
 | L3 | `/root/l3_lead` | L2 PASS | HOLD | 只读调查完成；兼任独立 L0 Reviewer，未实现 L0 | 不可信归档边界与删除恢复待验证 |
 | L4 | `/root/l4_lead` | L2 PASS | HOLD | 只读调查已开展；无产品实现 | 互斥侧栏、历史栈与整窗品牌中心均须真实 Electron 检查 |
 | L5 | `/root/l5_lead` | L3/L4 PASS | HOLD | 只读调查完成；无最终集成验收 | 人工无法执行项记 NOT RUN，不以早期证据替代最终验收 |
+
+## L1 收尾与证据
+
+- L1 产品构建 `9809f39` 已通过真实 Electron Dust2/Nuke 导入、取消保留、重复快照、重启冷目录及生产 NSIS 安装/卸载验证；证据的 `versions.sourceRevision` 均为该构建。
+- 全量 Desktop 240/240、聚焦库测试 45/45、类型检查通过；全量测试通过 `CS2_ANALYST_FIXTURE_ROOT` 只读引用白名单 DEM，未复制、未提交。
+- 审查驱动修复：重复导入钉住旧索引摘要；损坏行隔离并暴露 `unreadableCount`；归档与目录元数据上限统一；64×1024 昵称会生成 67,981 字节目录行，已改为 512 并加 65,536 字节重命名前守卫；NSIS 归属改由 `UninstallString` 证明。
+- 最终 NSIS 复跑暴露测试脚本的注册表枚举竞态（键在枚举间隙消失）与失败路径兜底缺口，已在 QA 脚本 `7de1347` 修复；该提交不进入安装包，产品证据仍对应 `9809f39`。
+- 保留风险：仅两份真实比赛；Replay 5131.302ms 历史债未解；NSIS 仅当前 x64 单用户路径；不覆盖 L2–L5。
+- 执行细节与真实字节/指纹见 [L1 证据文档](./match-library-l1-foundation-evidence.md)。
 
 ## 文件所有权与契约
 
