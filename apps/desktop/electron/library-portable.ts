@@ -19,7 +19,7 @@ const REPLAY_PATH = /^replay\/r([1-9]\d{0,3})-b(0|[1-9]\d{0,3})\.json\.gz$/;
 const ISO_MILLIS = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/;
 
 export const PORTABLE_MAGIC = MAGIC;
-export const PORTABLE_LIMITS = Object.freeze({ headerBytes: MiB, fileCount: 4096, payloadBytes: 256 * MiB, fileBytes: 256 * MiB });
+export const PORTABLE_LIMITS = Object.freeze({ headerBytes: MiB, fileCount: 4097, payloadBytes: 256 * MiB, fileBytes: 256 * MiB });
 
 export interface PortableFile { path: string; bytes: number; sha256: string }
 export interface PortableHeader {

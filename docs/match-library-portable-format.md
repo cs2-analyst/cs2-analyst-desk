@@ -38,7 +38,7 @@ Header：
 
 约束：
 
-- header 为规范 JSON（无多余空白、无未知键），上限 1 MiB；文件数上限 4096；payload 总量上限 256 MiB（与现有 gzip 总预算一致），单文件上限 256 MiB。
+- header 为规范 JSON（无多余空白、无未知键），上限 1 MiB；文件数上限 4097（含 `manifest.json`，对应 L1 最多 4096 个组件）；payload 总量上限 256 MiB（与现有 gzip 总预算一致），单文件上限 256 MiB。
 - `files` 必须与源归档的精确 inventory 一致：`manifest.json`、`report.json.gz`、`heatmap/{match,replay,spatial}.json.gz`、以及全部 `replay/r<round>-b<block>.json.gz`；不得缺项、重复或附加。
 - `path` 只允许上述相对路径；禁止 `..`、反斜杠、盘符、UNC、绝对路径、空段。
 - 每个 `bytes`/`sha256` 对应 payload 原始压缩字节；导入时边写边校验，任何不符立即失败。

@@ -7,7 +7,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { createOwnedTempDirectory, assertOwnedDirectory } from '../../../scripts/owned-qa-run.mjs';
-import { LocalMatchLibrary, localMatchLibraryRoot } from '../electron/local-library.ts';
+import { LocalMatchLibrary, isDefinitiveArchiveFailure, localMatchLibraryRoot } from '../electron/local-library.ts';
 import { writeLibraryArchive, readArchiveManifest } from '../electron/library-archive.ts';
 
 const versions = { application: '0.1.0', archive: 1, report: 2, replay: 1, analysis: 'test-analysis', parser: 'test-parser', native: 'test-native',
@@ -337,15 +337,29 @@ test('a failed archive removal is reported alone, keeps the other deletion and i
   assert.equal(library.get(first.entry.matchId), null, 'the row is already deleted');
   assert.ok(existsSync(firstDirectory), 'the leftover directory is an orphan, not an indexed match');
   assert.equal(library.list().total, 0);
+  library.close();
+  const diagnostics = [];
+  // The unremovable orphan must not make every other match unavailable. Keep the
+  // junction in place across this reopen; the old test removed it too early.
+  library = await LocalMatchLibrary.open(root, { diagnostic: message => diagnostics.push(message) });
+  setLibrary(library);
+  assert.equal(library.list().total, 0);
+  assert.ok(existsSync(firstDirectory), 'the orphan is retained while cleanup is impossible');
+  assert.ok(diagnostics.some(message => message.includes('Orphan archive')), diagnostics.join('\n'));
   rmSync(redirect);
-  const leftover = await library.storage();
-  assert.equal(leftover.matchCount, 0); assert.ok(leftover.archiveBytes > 0, 'capacity reflects files that remain');
   library.close();
   library = await LocalMatchLibrary.open(root); setLibrary(library);
-  assert.equal(existsSync(firstDirectory), false, 'startup orphan cleanup removes the leftover');
+  assert.equal(existsSync(firstDirectory), false, 'startup orphan cleanup removes the leftover after the obstruction');
   const clean = await library.storage();
   assert.equal(clean.archiveBytes, 0); assert.equal(clean.matchCount, 0);
 }));
+
+test('only definitive archive corruption may demote a ready row', () => {
+  assert.equal(isDefinitiveArchiveFailure(new Error('Invalid match archive: compressed digest mismatch')), true);
+  assert.equal(isDefinitiveArchiveFailure(Object.assign(new Error('unsupported'), { code: 'ARCHIVE_UNSUPPORTED' })), true);
+  for (const code of ['EBUSY', 'EACCES', 'ENOENT', 'EPERM']) assert.equal(isDefinitiveArchiveFailure(Object.assign(new Error(code), { code })), false);
+  assert.equal(isDefinitiveArchiveFailure(new Error('ENOENT: missing payload')), false);
+});
 
 test('real killed writer recovers after rename and preserves commit completed before process death', async () => scope(async ({ library, root, owned, setLibrary }) => {
   const existing = await add(library); library.close();

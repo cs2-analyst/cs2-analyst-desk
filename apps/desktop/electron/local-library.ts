@@ -10,6 +10,17 @@ import { LIBRARY_METADATA_LIMITS, archiveManifestHash, readArchiveManifest, veri
 const stagingId = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/;
 const samePath = (a: string, b: string) => process.platform === 'win32' ? a.toLowerCase() === b.toLowerCase() : a === b;
 const missing = (error: unknown) => (error as NodeJS.ErrnoException)?.code === 'ENOENT';
+/**
+ * Only definitive archive corruption may demote a ready row. Filesystem errors such as
+ * EBUSY/EACCES/ENOENT from antivirus or a transient lock must leave the healthy record
+ * ready and let the next open/export retry.
+ */
+export function isDefinitiveArchiveFailure(error: unknown): boolean {
+  const code = (error as { code?: string })?.code;
+  if (code === 'ARCHIVE_UNSUPPORTED') return true;
+  if (typeof code === 'string' && /^E[A-Z]+$/.test(code)) return false;
+  return error instanceof Error && error.message.startsWith('Invalid match archive');
+}
 type Phase = 'validated' | 'before-rename' | 'after-rename' | 'before-index-commit' | 'after-index-commit';
 interface Options {
   /** Internal test seam: never populated from Renderer, IPC, or environment variables. */
@@ -211,8 +222,15 @@ export class LocalMatchLibrary {
     for (const item of await readdir(join(this.root, 'matches'), { withFileTypes: true })) {
       if (!isMatchId(item.name)) throw new Error('比赛库包含未知比赛目录。');
       const path = join(this.root, 'matches', item.name);
-      await plainDirectory(path);
-      if (!this.row(item.name)) await this.removeDirectory(path);
+      // A row-less directory is an interrupted-delete orphan. If it cannot be removed
+      // (junction/ACL/EBUSY), retain it with a diagnostic instead of making the whole
+      // catalogue unopenable; the next restart can retry.
+      if (!this.row(item.name)) {
+        try { await this.removeDirectory(path); }
+        catch (error) {
+          this.options.diagnostic?.('Orphan archive ' + item.name + ' retained: ' + (error instanceof Error ? error.message : 'unknown'));
+        }
+      }
     }
     for (const row of this.db.prepare(`SELECT ${rowColumns} FROM matches`).all() as unknown as Row[]) {
       let trustedManifest: ArchiveManifest | null = null;
@@ -275,7 +293,11 @@ export class LocalMatchLibrary {
         let previous;
         try { previous = await verifyLibraryArchive(await this.archiveDirectory(manifest.matchId), { signal, mode: 'compressed' }); }
         catch (error) {
-          if (!signal?.aborted) this.db.prepare('UPDATE matches SET state=? WHERE match_id=?').run('invalid', manifest.matchId);
+          if (!signal?.aborted && isDefinitiveArchiveFailure(error)) {
+            this.db.prepare('UPDATE matches SET state=? WHERE match_id=?').run('invalid', manifest.matchId);
+          } else if (!signal?.aborted) {
+            this.options.diagnostic?.('Existing archive ' + manifest.matchId + ' temporarily unreadable; state retained.');
+          }
           throw error;
         }
         if (previous.manifestHash !== existingRow.manifest_hash
@@ -394,8 +416,10 @@ export class LocalMatchLibrary {
           try {
             await this.removeDirectory(join(this.root, 'matches', matchId));
           } catch (error) {
-            this.options.diagnostic?.(`Removed catalogue row ${matchId}, but archive cleanup failed: ${error instanceof Error ? error.message : 'unknown'}`);
-            throw new Error('比赛索引已删除，但归档目录清理失败；重启后将自动清理。');
+            if (!missing(error)) {
+              this.options.diagnostic?.('Removed catalogue row ' + matchId + ', but archive cleanup failed: ' + (error instanceof Error ? error.message : 'unknown'));
+              throw new Error('比赛索引已删除，但归档目录暂时无法清理；重启后会再次尝试，期间该目录可能仍占用空间。');
+            }
           }
           removed.push(matchId);
         } catch (error) {

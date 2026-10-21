@@ -134,12 +134,12 @@ test('per-file limits, total payload budget and file count are bounded before al
   const total = structuredClone(header); total.files[1].bytes = 200 * 1024 * 1024; total.files[2].bytes = 200 * 1024 * 1024;
   await assert.rejects(verifyPortableArchive(await write('total.cs2a', total)), /header contract/);
   const many = structuredClone(header);
-  for (let block = 0; block < 4092; block++) many.files.push({ path: `replay/r1-b${block}.json.gz`, bytes: 1, sha256: 'b'.repeat(64) });
-  assert.equal(many.files.length, 4097);
+  for (let block = 0; block < 4093; block++) many.files.push({ path: `replay/r1-b${block}.json.gz`, bytes: 1, sha256: 'b'.repeat(64) });
+  assert.equal(many.files.length, 4098);
   await assert.rejects(verifyPortableArchive(await write('many.cs2a', many)), /header contract/);
   const boundary = structuredClone(header);
-  for (let block = 0; block < 4091; block++) boundary.files.push({ path: `replay/r1-b${block}.json.gz`, bytes: 1, sha256: 'b'.repeat(64) });
-  assert.equal(boundary.files.length, 4096);
+  for (let block = 0; block < 4092; block++) boundary.files.push({ path: `replay/r1-b${block}.json.gz`, bytes: 1, sha256: 'b'.repeat(64) });
+  assert.equal(boundary.files.length, 4097);
   assert.equal(validatePortableHeader(boundary), true);
   assert.equal(validatePortableHeader(header), true);
 });
