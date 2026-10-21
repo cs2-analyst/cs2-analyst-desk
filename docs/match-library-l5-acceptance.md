@@ -2,7 +2,7 @@
 
 > **结论：技术矩阵通过；人工产品验收 NOT RUN。** 本文不宣告版本发布，也不把 L0–L4 证据替代 L5 人工确认。
 >
-> 产品构建 `63d6e12`；验收记录提交 `8d56b7e`。机器记录：[match-library-l5-acceptance.json](./match-library-l5-acceptance.json)；各阶段证据见 [执行台账](./match-library-execution.md)。
+> 产品构建 `63d6e12`；验收记录提交 `4fae411`。机器记录：[match-library-l5-acceptance.json](./match-library-l5-acceptance.json)；各阶段证据见 [执行台账](./match-library-execution.md)。
 
 ## 1. 技术矩阵
 
