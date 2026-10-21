@@ -33,6 +33,7 @@ export const palette = {
   scrollbarThumbActive: 'rgba(143, 157, 176, 0.62)',
   scrollbarThumbFallback: 'rgba(143, 157, 176, 0.36)',
   currentPlayer: '#62abf5',
+  performance: { win: '#78c99a', loss: '#ef8d96', strong: '#39d6bb', weak: '#f0788b' },
   heatmap: { positions: '#54c8f0', kills: '#f8c45a', deaths: '#f27896' },
   replay: { ct: '#62abf5', t: '#ffb13b', unknown: '#8f9db0', selection: '#ffffff', bomb: '#ffe08a', surface: '#111821' },
   /** Colours reserved for the utility icons; every one is a visual anchor, not a data encoding. */

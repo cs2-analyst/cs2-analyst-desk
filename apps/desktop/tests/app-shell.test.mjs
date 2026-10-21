@@ -30,6 +30,8 @@ const { LibraryList, LibraryPage, PersonalSection } = await import('../renderer/
 const { TitlebarView } = await import('../renderer/src/app-titlebar.tsx');
 const { brandCenterOffset, isBrandCentered } = await import('../renderer/src/titlebar-geometry.ts');
 const { toLibraryListQuery, formatBytes } = await import('../renderer/src/library-query.ts');
+const { RatingValue, ReportSecondaryLine, formatRating, formatKast } = await import('../renderer/src/performance-display.tsx');
+const { useReport } = await import('../renderer/src/store.ts');
 const render = element => renderToStaticMarkup(createElement(SSRProvider, null, element));
 const noop = () => {};
 
@@ -104,6 +106,66 @@ test('saved-match list renders open/export/delete actions and disables unavailab
   assert.match(brokenRow, /data-library-open[^>]*disabled/);
   const busy = render(createElement(LibraryList, { entries, busy: true, onOpen: noop, onExport: noop, onDelete: noop }));
   assert.equal([...busy.matchAll(/data-library-open[^>]*disabled/g)].length, 2, 'busy disables opening');
+});
+
+const rating = value => ({ value, algorithm: 'hltv-2.0-community-approx-v1', status: 'available', reason: null });
+test('record table columns, formats and precomputed outcomes follow the selected identity', () => {
+  const entry = { ...entries[0], selectedPlayer: '1', playerSummaries: [
+    { playerId: '1', kills: 25, deaths: 20, assists: 4, adr: 91.38, kastPercentage: 75, outcome: 'win',
+      performance: { rating: rating(1.423456), highlights: [{ type: 'opening', label: '突', color: 'blue', tooltip: '突破表现：本场首杀 4 次，首死 0 次', evidence: { kills: 4, deaths: 0 } }] } },
+    { playerId: '2', kills: 10, deaths: 22, assists: 3, adr: 40, kastPercentage: 50, outcome: 'loss', performance: { rating: rating(0.654), highlights: [] } },
+  ] };
+  const htmlFor = playerId => render(createElement(LibraryList, { entries: [entry], playerId, busy: false, onOpen: noop, onExport: noop, onDelete: noop }));
+  const html = htmlFor('1');
+  const headings = [...html.matchAll(/<th\b[^>]*>(.*?)<\/th>/gs)].map(m => m[1].replace(/<[^>]*>/g, ''));
+  assert.deepEqual(headings, ['日期 · 导入', '地图', '胜/负', '比分', 'K/D/A', 'ADR', 'Rating', 'KAST', '高光', '操作']);
+  for (const removed of ['RWS', '>WE<', 'Rating Pro', '级别']) assert.equal(html.includes(removed), false);
+  for (const expected of ['25/20/4', '91.4', '75.0%', 'data-rating-value="1.42"', 'data-library-outcome="win"', 'data-highlight="opening"', '首杀 4 次，首死 0 次']) assert.ok(html.includes(expected), expected);
+  const switched = htmlFor('2');
+  for (const expected of ['10/22/3', '50.0%', 'data-rating-value="0.65"', 'data-library-outcome="loss"', 'data-highlight-empty']) assert.ok(switched.includes(expected), expected);
+  assert.equal(switched.includes('data-highlight="opening"'), false);
+  const absent = htmlFor('not-in-match');
+  assert.ok(absent.includes('data-rating-value="—"'));
+  assert.ok(absent.includes('data-library-outcome="unknown"'));
+  assert.equal(absent.includes('25/20/4'), false);
+});
+
+test('shared rating formatter handles missing values, preserves precision and explains unavailable results', () => {
+  assert.equal(formatRating(rating(1.42501)), '1.43');
+  assert.equal(formatRating(rating(Infinity)), '—');
+  assert.equal(formatRating(), '—');
+  assert.equal(formatRating({ ...rating(0), status: 'unavailable', reason: '有效回合不可用' }), '—');
+  assert.equal(formatKast(75), '75.0%');
+  assert.equal(formatKast(null), '—');
+  const html = render(createElement(RatingValue, { rating: { ...rating(null), status: 'unavailable', reason: '有效回合不可用' } }));
+  assert.ok(html.includes('评分不可用：有效回合不可用'));
+});
+
+test('report secondary line keeps full long filename accessible and shares list rating formatting', () => {
+  const fileName = 'very-long-demo-name-'.repeat(20) + '.dem';
+  const html = render(createElement(ReportSecondaryLine, { fileName, rating: rating(1.423456) }));
+  assert.ok(html.includes('data-report-secondary'));
+  assert.ok(html.includes('title="' + fileName + '"'));
+  assert.ok(html.includes('Rating: 1.42'));
+  const missing = render(createElement(ReportSecondaryLine, { fileName }));
+  assert.ok(missing.includes('Rating: —'));
+});
+
+test('library player preference is reused on activation and never reuses another match player metrics', async () => {
+  const original = useReport.getState();
+  const oldWindow = globalThis.window;
+  try {
+    const source = { match: { id: 'c'.repeat(64) }, selectedPlayer: '1', players: [{ id: '1' }, { id: '2' }] };
+    globalThis.window = { cs2Analyst: { library: { open: async () => ({ kind: 'success', report: source }) } } };
+    useReport.setState({ status: 'idle', report: null, playerId: '', preferredPlayerId: '', libraryBusy: null });
+    useReport.getState().selectLibraryPlayer('2');
+    await useReport.getState().openMatch(source.match.id);
+    assert.equal(useReport.getState().playerId, '2');
+    useReport.getState().selectPlayer('1');
+    assert.equal(useReport.getState().preferredPlayerId, '1');
+    useReport.getState().selectPlayer('absent');
+    assert.equal(useReport.getState().preferredPlayerId, '1');
+  } finally { useReport.setState(original); globalThis.window = oldWindow; }
 });
 
 test('library query maps search/filter/sort into the frozen catalogue contract', () => {

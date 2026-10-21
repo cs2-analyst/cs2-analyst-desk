@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Body1, Button, Caption1, Dialog, DialogActions, DialogBody, DialogContent, DialogSurface,
-  DialogTitle, MessageBar, MessageBarBody, SearchBox, Select, Spinner, Subtitle1, Title1, makeStyles, tokens,
+  DialogTitle, MessageBar, MessageBarBody, SearchBox, Select, Spinner, Subtitle1, Title1,
+  Table, TableHeader, TableHeaderCell, TableBody, TableRow, TableCell, Tooltip, makeStyles, mergeClasses, tokens,
 } from '@fluentui/react-components';
 import type { MatchLibraryEntry } from '@cs2-analyst/report-contract';
 import { useReport } from './store';
@@ -9,6 +10,7 @@ import { formatBytes, formatImportedAt, toLibraryListQuery } from './library-que
 import type { LibraryFilters } from './library-query.ts';
 import { ImportIcon } from './icons';
 import { palette } from './theme';
+import { RatingValue, HighlightTags, formatMetric, formatKast } from './performance-display';
 
 const useStyles = makeStyles({
   page: { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' },
@@ -19,18 +21,21 @@ const useStyles = makeStyles({
   search: { width: 'min(260px, 100%)' },
   select: { minWidth: '128px' },
   status: { padding: '0 24px 8px' },
-  scroll: { flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 24px 20px' },
-  list: { display: 'flex', flexDirection: 'column', gap: '8px' },
+  scroll: { flex: 1, minHeight: 0, overflow: 'auto', padding: '0 24px 20px' },
+  list: { minWidth: '1052px', width: '100%', tableLayout: 'fixed', fontVariantNumeric: 'tabular-nums' },
+  tableHead: { '& .fui-TableHeaderCell__button': { justifyContent: 'center' }, height: '36px', color: tokens.colorNeutralForeground3, fontSize: '12px', fontWeight: 400, borderBottom: `1px solid ${palette.border}`, backgroundColor: palette.pageTop },
+  cell: { padding: '0 10px', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', boxSizing: 'border-box' },
+  mapCell: { textAlign: 'left', '& .fui-TableHeaderCell__button': { justifyContent: 'flex-start' } },
   row: {
-    display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', alignItems: 'center', gap: '16px',
-    padding: '12px 16px', backgroundColor: palette.card, border: `1px solid ${palette.border}`,
-    borderRadius: tokens.borderRadiusLarge,
+    height: '50px', borderBottom: `1px solid ${palette.rowDivider}`, fontSize: '13px', fontWeight: 600,
+    ':hover': { backgroundColor: palette.cardHover },
   },
+  result: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '20px', height: '20px', borderRadius: '2px', fontSize: '12px', fontWeight: 700 },
   rowUnavailable: { opacity: 0.7 },
   info: { minWidth: 0, display: 'flex', flexDirection: 'column', gap: '2px' },
   fileName: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   muted: { color: tokens.colorNeutralForeground3 },
-  actions: { display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end' },
+  actions: { display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'nowrap', justifyContent: 'flex-end' },
   empty: {
     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '10px',
     textAlign: 'center', padding: '48px 24px', backgroundColor: palette.card,
@@ -57,46 +62,73 @@ export function PersonalSection() {
   </section>;
 }
 
-/** Pure list surface, also rendered by DOM tests without IPC. */
-export function LibraryList({ entries, busy, onOpen, onExport, onDelete }: {
-  entries: MatchLibraryEntry[]; busy: boolean;
+/** Pure catalogue surface: all business results arrive precomputed across IPC. */
+export function LibraryList({ entries, busy, playerId = '', onOpen, onExport, onDelete }: {
+  entries: MatchLibraryEntry[]; busy: boolean; playerId?: string;
   onOpen: (matchId: string) => void; onExport: (matchId: string) => void; onDelete: (entry: MatchLibraryEntry) => void;
 }) {
   const s = useStyles();
-  return <div className={s.list} role="list" data-library-list data-library-visible={entries.length}>
-    {entries.map(entry => <LibraryRow key={entry.matchId} entry={entry} busy={busy}
-      onOpen={onOpen} onExport={onExport} onDelete={onDelete} />)}
-  </div>;
+  const columns = [
+    ['日期', 148], ['地图', 142], ['胜/负', 58], ['比分', 78], ['K/D/A', 100],
+    ['ADR', 64], ['Rating', 76], ['KAST', 78], ['高光', 100], ['操作', 188],
+  ] as const;
+  return <Table size="small" aria-label="比赛记录" className={s.list} data-library-list data-library-visible={entries.length}>
+    <TableHeader><TableRow>
+      {columns.map(([label, width]) => <TableHeaderCell key={label} className={mergeClasses(s.tableHead, s.cell, label === '地图' && s.mapCell)} style={{ width }}>
+        {label === '日期' ? <Tooltip content="当前 DEM 未提供可信比赛日期，下方日期为本机导入时间。" relationship="description"><span tabIndex={0}>日期 · 导入</span></Tooltip> : label}
+      </TableHeaderCell>)}
+    </TableRow></TableHeader>
+    <TableBody>{entries.map(entry => <LibraryRow key={entry.matchId} entry={entry} busy={busy} playerId={playerId}
+      onOpen={onOpen} onExport={onExport} onDelete={onDelete} />)}</TableBody>
+  </Table>;
 }
 
-/** One saved match row: lightweight catalogue data only, no Replay chunk is fetched for the list. */
-function LibraryRow({ entry, busy, onOpen, onExport, onDelete }: {
-  entry: MatchLibraryEntry; busy: boolean;
+function LibraryRow({ entry, busy, playerId, onOpen, onExport, onDelete }: {
+  entry: MatchLibraryEntry; busy: boolean; playerId: string;
   onOpen: (matchId: string) => void; onExport: (matchId: string) => void; onDelete: (entry: MatchLibraryEntry) => void;
 }) {
   const s = useStyles();
-  const score = entry.score ? `${entry.score.initialCT} : ${entry.score.initialT}` : '比分不可用';
-  return <div className={`${s.row}${entry.state === 'ready' ? '' : ` ${s.rowUnavailable}`}`} role="listitem"
-    data-library-entry={entry.matchId} data-library-state={entry.state}>
-    <div className={s.info}>
-      <Body1 className={s.fileName} title={entry.fileName}>{entry.fileName}</Body1>
-      <Caption1 className={s.muted}>{entry.map} · {score} · {entry.rounds} 回合 · {entry.players.length} 名玩家 · {formatBytes(entry.storedBytes)} · {formatImportedAt(entry.importedAt)}</Caption1>
-      {entry.state === 'ready' ? null : <Caption1 className={s.muted}>{entry.state === 'invalid' ? '当前档案不可读，只能删除或导出尝试。' : '档案版本不受支持，无法在本版本打开。'}</Caption1>}
-    </div>
-    <div className={s.actions}>
-      <Button size="small" appearance="primary" data-library-open aria-label={`打开 ${entry.fileName}`}
-        disabled={busy || entry.state !== 'ready'} onClick={() => onOpen(entry.matchId)}>打开</Button>
-      <Button size="small" data-library-export aria-label={`导出 ${entry.fileName}`}
-        disabled={busy || entry.state !== 'ready'} onClick={() => onExport(entry.matchId)}>导出</Button>
-      <Button size="small" appearance="subtle" data-library-delete aria-label={`删除 ${entry.fileName}`}
-        disabled={busy} onClick={() => onDelete(entry)}>删除</Button>
-    </div>
-  </div>;
+  const id = playerId || entry.selectedPlayer;
+  const summary = entry.state === 'ready' ? entry.playerSummaries?.find(p => p.playerId === id) : undefined;
+  const player = entry.players.find(p => p.id === id);
+  const outcome = summary?.outcome ?? 'unknown';
+  const result = { win: ['胜', palette.performance.win], loss: ['负', palette.performance.loss], draw: ['平', palette.textMuted], unknown: ['—', 'transparent'] }[outcome];
+  const status = entry.state === 'invalid' ? '当前档案不可读，只能删除或导出尝试。' : entry.state === 'unsupported' ? '档案版本不受支持，无法在本版本打开。' : null;
+  const description = `${entry.fileName} · ${entry.rounds} 回合 · ${formatBytes(entry.storedBytes)}${status ? ` · ${status}` : ''}`;
+  return <TableRow className={mergeClasses(s.row, entry.state !== 'ready' && s.rowUnavailable)}
+    data-library-entry={entry.matchId} data-library-state={entry.state} data-library-player={id ?? ''}>
+    <TableCell className={s.cell}><Tooltip content={`导入时间：${formatImportedAt(entry.importedAt)}。比赛日期未知。`} relationship="description">
+      <time tabIndex={0} dateTime={entry.importedAt}>{formatImportedAt(entry.importedAt)}</time>
+    </Tooltip></TableCell>
+    <TableCell className={mergeClasses(s.cell, s.mapCell)} title={description}>
+      <Tooltip content={description} relationship="description"><div className={s.fileName} tabIndex={0}>{entry.map}</div></Tooltip>
+      <Caption1 className={s.muted}>{player?.nickname ?? (playerId ? '本场无此玩家' : '玩家未知')}</Caption1>
+    </TableCell>
+    <TableCell className={s.cell}><span className={s.result} data-library-outcome={outcome} style={{ backgroundColor: result[1], color: outcome === 'unknown' ? palette.textMuted : '#111821' }} title={outcome === 'unknown' ? '玩家或队伍胜负证据不可用' : undefined}>{result[0]}</span></TableCell>
+    <TableCell className={s.cell} data-library-score>{entry.score ? `${entry.score.initialCT} : ${entry.score.initialT}` : '—'}</TableCell>
+    <TableCell className={s.cell} data-library-kda>{summary ? `${summary.kills ?? '—'}/${summary.deaths ?? '—'}/${summary.assists ?? '—'}` : '—'}</TableCell>
+    <TableCell className={s.cell} data-library-adr>{formatMetric(summary?.adr, 1)}</TableCell>
+    <TableCell className={s.cell}><RatingValue rating={summary?.performance.rating} /></TableCell>
+    <TableCell className={s.cell} data-library-kast>{formatKast(summary?.kastPercentage)}</TableCell>
+    <TableCell className={s.cell}><HighlightTags highlights={summary?.performance.highlights} /></TableCell>
+    <TableCell className={s.cell}>
+      <div className={s.actions}>
+        <Button size="small" appearance="subtle" data-library-open aria-label={`打开 ${entry.fileName}`}
+          disabled={busy || entry.state !== 'ready'} onClick={() => onOpen(entry.matchId)}>打开</Button>
+        <Button size="small" appearance="subtle" data-library-export aria-label={`导出 ${entry.fileName}`}
+          disabled={busy || entry.state !== 'ready'} onClick={() => onExport(entry.matchId)}>导出</Button>
+        <Button size="small" appearance="subtle" data-library-delete aria-label={`删除 ${entry.fileName}`}
+          disabled={busy} onClick={() => onDelete(entry)}>删除</Button>
+      </div>
+    </TableCell>
+  </TableRow>;
 }
 
 export function LibraryPage() {
   const s = useStyles();
   const status = useReport(state => state.status);
+  const preferredPlayerId = useReport(state => state.preferredPlayerId);
+  const selectLibraryPlayer = useReport(state => state.selectLibraryPlayer);
   const libraryBusy = useReport(state => state.libraryBusy);
   const libraryError = useReport(state => state.libraryError);
   const libraryNotice = useReport(state => state.libraryNotice);
@@ -115,6 +147,9 @@ export function LibraryPage() {
 
   const [entries, setEntries] = useState<MatchLibraryEntry[]>([]);
   const [total, setTotal] = useState(0);
+  const [offset, setOffset] = useState(0);
+  const [pageSize, setPageSize] = useState(25);
+  const [pageOffsets, setPageOffsets] = useState<number[]>([]);
   const [unreadable, setUnreadable] = useState(0);
   const [mapOptions, setMapOptions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -125,7 +160,8 @@ export function LibraryPage() {
   const [dragOver, setDragOver] = useState(false);
   const requestRef = useRef(0);
 
-  const query = useMemo(() => toLibraryListQuery(filters), [filters]);
+  const playerOptions = useMemo(() => Array.from(new Map(entries.flatMap(entry => entry.players).map(p => [p.id, p])).values()), [entries]);
+  const query = useMemo(() => ({ ...toLibraryListQuery(filters, 25), offset }), [filters, offset]);
   useEffect(() => {
     const requestId = ++requestRef.current;
     setLoading(true);
@@ -133,8 +169,12 @@ export function LibraryPage() {
     void window.cs2Analyst.library.list(query).then(result => {
       if (requestId !== requestRef.current) return;
       if (result.kind === 'error') { setListError(result.message); setEntries([]); setTotal(0); setUnreadable(0); return; }
+      if (result.total > 0 && result.offset >= result.total) {
+        setOffset(pageOffsets.at(-1) ?? 0); setPageOffsets(pageOffsets.slice(0, -1)); return;
+      }
       setEntries(result.entries);
       setTotal(result.total);
+      setPageSize(result.limit);
       setUnreadable(result.unreadableCount);
       setMapOptions(previous => Array.from(new Set([...previous, ...result.entries.map(entry => entry.map)])).sort());
     }).catch(() => {
@@ -157,7 +197,7 @@ export function LibraryPage() {
   }, [libraryRevision]);
 
   const filtering = filters.search.trim().length > 0 || filters.map !== 'all';
-  const update = (patch: Partial<LibraryFilters>) => setFilters(patch);
+  const update = (patch: Partial<LibraryFilters>) => { setOffset(0); setPageOffsets([]); setFilters(patch); };
   const confirmDelete = () => {
     const entry = pendingDelete;
     setPendingDelete(null);
@@ -182,6 +222,11 @@ export function LibraryPage() {
     </div>
 
     <div className={s.toolbar} data-library-toolbar>
+      <Select className={s.select} aria-label="比赛记录玩家" value={preferredPlayerId} onChange={(_, data) => selectLibraryPlayer(data.value)}>
+        <option value="">各场默认玩家</option>
+        {preferredPlayerId && !playerOptions.some(p => p.id === preferredPlayerId) ? <option value={preferredPlayerId}>已选玩家（本页无记录）</option> : null}
+        {playerOptions.map(player => <option key={player.id} value={player.id}>{player.nickname} · {player.id.slice(-6)}</option>)}
+      </Select>
       <SearchBox className={s.search} aria-label="搜索比赛" placeholder="搜索文件名或地图" value={filters.search}
         onChange={(_, data) => update({ search: data.value })} />
       <Select className={s.select} aria-label="按地图筛选" value={filters.map} onChange={(_, data) => update({ map: data.value })}>
@@ -230,13 +275,15 @@ export function LibraryPage() {
         <Subtitle1>{filtering ? '没有匹配的比赛' : '还没有保存的比赛'}</Subtitle1>
         <Body1>{filtering ? '调整搜索词或地图筛选后再试。' : '选择一份 CS2 .dem 开始分析，或把 .dem 文件直接拖放到这里；分析完成后会自动保存到本机比赛库。'}</Body1>
         <Caption1 className={s.muted}>导入 .cs2a 可恢复另一台本机导出的比赛；文件只在本机处理。</Caption1>
-      </div> : <LibraryList entries={entries} busy={busy}
+      </div> : <LibraryList entries={entries} busy={busy} playerId={preferredPlayerId}
         onOpen={matchId => void openMatch(matchId)} onExport={matchId => void exportMatch(matchId)} onDelete={setPendingDelete} />}
     </div>
 
     <div className={s.storage} data-library-storage>
+      <Button size="small" appearance="subtle" aria-label="上一页比赛" disabled={loading || busy || offset === 0} onClick={() => { setOffset(pageOffsets.at(-1) ?? 0); setPageOffsets(pageOffsets.slice(0, -1)); }}>上一页</Button>
+      <Button size="small" appearance="subtle" aria-label="下一页比赛" disabled={loading || busy || offset + pageSize >= total} onClick={() => { setPageOffsets([...pageOffsets, offset]); setOffset(offset + pageSize); }}>下一页</Button>
       <Caption1 className={s.muted}>
-        {storage ? `本机占用 ${formatBytes(storage.totalBytes)} · ${storage.matchCount} 场比赛 · 当前显示 ${entries.length} / ${total}` : storageError ? '暂时无法读取本机占用' : '正在读取本机占用…'}
+        {storage ? `本机占用 ${formatBytes(storage.totalBytes)} · ${storage.matchCount} 场比赛 · 当前显示 ${total ? offset + 1 : 0}–${Math.min(offset + pageSize, total)} / ${total}` : storageError ? '暂时无法读取本机占用' : '正在读取本机占用…'}
       </Caption1>
     </div>
 

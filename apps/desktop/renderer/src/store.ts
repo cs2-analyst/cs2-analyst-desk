@@ -19,6 +19,8 @@ export interface ReportState {
   report: DesktopMatchReport | null;
   reportRevision: number;
   playerId: string;
+  /** A SteamID preference only; statistics remain isolated by match and player. */
+  preferredPlayerId: string;
   error: string | null;
   /**
    * Explicit "the current report's Replay/Heatmap IPC session is usable" signal.
@@ -37,6 +39,7 @@ export interface ReportState {
   libraryNotice: string | null;
   setPhase(phase: ImportPhase): void;
   selectPlayer(id: string): void;
+  selectLibraryPlayer(id: string): void;
   selectSection(section: GlobalSection): void;
   setMatchView(view: ViewId): void;
   setLibraryFilters(patch: Partial<LibraryFilters>): void;
@@ -69,6 +72,13 @@ async function releaseSession(report: DesktopMatchReport | null): Promise<void> 
 }
 
 const matchIdOf = (report: DesktopMatchReport | null): string | null => report?.match?.id ?? null;
+const playerPreferenceKey = 'cs2-analyst:preferred-player:v1';
+function readPlayerPreference(): string {
+  try { return (typeof window !== 'undefined' ? window.localStorage?.getItem(playerPreferenceKey) : null) ?? ''; } catch { return ''; }
+}
+function savePlayerPreference(id: string): void {
+  try { (typeof window !== 'undefined' ? window.localStorage?.setItem(playerPreferenceKey, id) : undefined); } catch { /* Session selection still works. */ }
+}
 
 /** Leave the match workspace for a global page without leaving a stale IPC session behind. */
 async function leaveMatch(get: Getter, set: Setter, navigation: NavigationState): Promise<void> {
@@ -83,17 +93,20 @@ async function leaveMatch(get: Getter, set: Setter, navigation: NavigationState)
 /** Common tail of every successful report activation. */
 function activatedReport(state: ReportState, report: DesktopMatchReport, navigation: NavigationState, resetView: boolean): Partial<ReportState> {
   const matchId = matchIdOf(report);
+  const playerId = report.players.some(p => p.id === state.preferredPlayerId) ? state.preferredPlayerId : report.selectedPlayer;
+  savePlayerPreference(playerId);
   const views = resetView && matchId
     ? { ...state.matchViews, [matchId]: 'report' as ViewId }
     : state.matchViews;
   return {
-    status: 'success', report, reportRevision: state.reportRevision + 1, playerId: report.selectedPlayer,
+    status: 'success', report, reportRevision: state.reportRevision + 1,
+    playerId, preferredPlayerId: playerId,
     error: null, sessionActive: true, navigation, matchViews: views,
   };
 }
 
 export const useReport = create<ReportState>((set, get) => ({
-  status: 'idle', report: null, reportRevision: 0, playerId: '', error: null,
+  status: 'idle', report: null, reportRevision: 0, playerId: '', preferredPlayerId: readPlayerPreference(), error: null,
   sessionActive: false,
   navigation: initialNavigation(),
   matchViews: {},
@@ -106,7 +119,12 @@ export const useReport = create<ReportState>((set, get) => ({
   setPhase: phase => set(state => ['selecting', 'parsing', 'analyzing'].includes(state.status) ? {
     status: phase,
   } : {}),
-  selectPlayer: id => { if (get().report?.players.some(p => p.id === id)) set({ playerId: id }); },
+  selectPlayer: id => {
+    if (get().report?.players.some(p => p.id === id)) {
+      savePlayerPreference(id); set({ playerId: id, preferredPlayerId: id });
+    }
+  },
+  selectLibraryPlayer: id => { savePlayerPreference(id); set({ preferredPlayerId: id }); },
   selectSection: section => {
     const state = get();
     if (busyState(state)) return;

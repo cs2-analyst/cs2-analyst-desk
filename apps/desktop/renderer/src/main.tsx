@@ -20,6 +20,7 @@ import { AppTitlebar } from './app-titlebar';
 import { GlobalSidebar, MatchSidebar } from './sidebar';
 import type { ViewId } from './sidebar';
 import { LibraryPage, PersonalSection } from './library-page';
+import { ReportSecondaryLine } from './performance-display';
 import { ReplayPlayer } from './replay-player';
 import { WinOption as Option } from './winui-option';
 import { HeatmapView } from './heatmap-view';
@@ -66,7 +67,7 @@ const useStyles = makeStyles({
     padding: '2px 6px 8px 2px', borderRadius: tokens.borderRadiusMedium,
     ':focus-visible': { outline: `2px solid ${tokens.colorBrandStroke1}`, outlineOffset: '2px' },
   },
-  reportHeaderInfo: { minWidth: 0 },
+  reportHeaderInfo: { minWidth: 0, flex: 1 },
   statValueCompact: { fontVariantNumeric: 'tabular-nums' },
   // Timeline owns no view-level scroll: only the round card's inner list scrolls.
   timelinePanel: { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '20px 24px 32px', '&[hidden]': { display: 'none' } },
@@ -441,7 +442,7 @@ function Report({ report, playerId, replayActive, activeTab, onSelectView }: {
   useEffect(() => () => { if (highlightTimer.current !== undefined) window.clearTimeout(highlightTimer.current); }, []);
   return <div className={s.reportFrame}>
     <div className={s.viewHeader}>
-      <div className={`${s.column} ${s.reportHeaderInfo}`}><Title1>{report.match.map}</Title1><Body1>{report.match.score ? `${report.match.score.initialCT} : ${report.match.score.initialT}` : '比分不可用'} · 开局 CT 队 / 开局 T 队 · {report.match.rounds} 回合</Body1><Caption1 className={s.muted} style={{ overflowWrap: 'anywhere', minWidth: 0 }}>{report.match.fileName}</Caption1></div>
+      <div className={`${s.column} ${s.reportHeaderInfo}`}><Title1>{report.match.map}</Title1><Body1>{report.match.score ? `${report.match.score.initialCT} : ${report.match.score.initialT}` : '比分不可用'} · 开局 CT 队 / 开局 T 队 · {report.match.rounds} 回合</Body1><ReportSecondaryLine fileName={report.match.fileName} rating={p.performance?.rating} /></div>
       <div className={s.column}><Caption1>目标玩家</Caption1><Tooltip content={player.nickname} relationship="description"><Dropdown className={s.playerDropdown} listbox={{ style: { maxWidth: '250px' } }} aria-label="目标玩家" value={player.nickname} selectedOptions={[playerId]} onOptionSelect={(_, data) => data.optionValue && selectPlayer(data.optionValue)}>
         {report.players.map(p => <Option key={p.id} value={p.id} text={p.nickname}><Tooltip content={p.nickname} relationship="description"><span className={s.playerName}>{p.nickname}</span></Tooltip></Option>)}
       </Dropdown></Tooltip></div>
