@@ -6,6 +6,7 @@ const api: DesktopApi = {
   library: {
     list: query => ipcRenderer.invoke('library:list', query),
     storage: () => ipcRenderer.invoke('library:storage'),
+    open: matchId => ipcRenderer.invoke('library:open', matchId),
   },
   window: {
     minimize: () => ipcRenderer.invoke('window:minimize'),

@@ -520,10 +520,10 @@ function Report({ report, playerId, replayActive, activeTab, onSelectView }: {
 
 function App() {
   const s = useStyles();
-  const { status, report, reportRevision, playerId, error, importDemo, importDroppedFile, setPhase, cancelImport } = useReport();
+  const { status, report, reportRevision, playerId, error, importDemo, importDroppedFile, openMatch, setPhase, cancelImport } = useReport();
   useEffect(() => window.cs2Analyst.onProgress(setPhase), [setPhase]);
-  const busy = status === 'selecting' || status === 'parsing' || status === 'analyzing';
-  const phase = status === 'selecting' ? '正在选择 DEM…' : status === 'parsing' ? '正在后台解析 DEM…' : '正在生成指标与深度复盘…';
+  const busy = status === 'selecting' || status === 'parsing' || status === 'analyzing' || status === 'opening';
+  const phase = status === 'opening' ? '正在打开已保存比赛…' : status === 'selecting' ? '正在选择 DEM…' : status === 'parsing' ? '正在后台解析 DEM…' : '正在生成指标与深度复盘…';
   const [activeView, setActiveView] = useState<ViewId>('report');
   const [collapsed, setCollapsed] = useState(false);
   // Every successful import opens a fresh report, including another import of the same DEM.
@@ -538,7 +538,7 @@ function App() {
       {busy && report ? <div className={s.statusStrip} role="status">
         <Spinner size="tiny" label={phase} />
         <Caption1 className={s.muted}>大型录像可能需要数十秒，请保持应用打开。</Caption1>
-        {status !== 'selecting' ? <Button appearance="subtle" size="small" onClick={() => void cancelImport()}>取消导入</Button> : null}
+        {status !== 'selecting' && status !== 'opening' ? <Button appearance="subtle" size="small" onClick={() => void cancelImport()}>取消导入</Button> : null}
       </div> : null}
       {report ? <>
         {status === 'error' || busy ? <div className={s.banner}><Caption1>下方为上一次成功导入的报告。</Caption1></div> : null}
@@ -546,8 +546,8 @@ function App() {
       </> : busy ? <div className={s.center} role="status">
         <Spinner size="large" label={phase} />
         <Caption1 className={s.muted}>大型录像可能需要数十秒，请保持应用打开。</Caption1>
-        {status !== 'selecting' ? <Button appearance="subtle" onClick={() => void cancelImport()}>取消导入</Button> : null}
-      </div> : <Home busy={busy} onImport={() => void importDemo()} onImportFile={file => void importDroppedFile(file)} />}
+        {status !== 'selecting' && status !== 'opening' ? <Button appearance="subtle" onClick={() => void cancelImport()}>取消导入</Button> : null}
+      </div> : <Home busy={busy} onImport={() => void importDemo()} onImportFile={file => void importDroppedFile(file)} onOpenMatch={matchId => void openMatch(matchId)} />}
     </main>
   </>;
 }

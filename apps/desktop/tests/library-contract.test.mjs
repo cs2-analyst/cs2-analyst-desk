@@ -27,7 +27,8 @@ test('preload exposes named catalogue methods and forwards bounded query values 
   let api;const calls=[];
   vm.runInNewContext(source, { require: () => ({ contextBridge: { exposeInMainWorld(_name, value) { api=value; } },
     ipcRenderer: { invoke(...args) { calls.push(args);return Promise.resolve({kind:'success'}); } }, webUtils: {} }) });
-  assert.deepEqual(Object.keys(api.library).sort(), ['list', 'storage']);
-  const query = { limit: 10, map: 'de_nuke' };await api.library.list(query);await api.library.storage();
-  assert.deepEqual(calls, [['library:list', query], ['library:storage']]);
+  assert.deepEqual(Object.keys(api.library).sort(), ['list', 'open', 'storage']);
+  const query = { limit: 10, map: 'de_nuke' }, matchId = 'a'.repeat(64);
+  await api.library.list(query);await api.library.storage();await api.library.open(matchId);
+  assert.deepEqual(calls, [['library:list', query], ['library:storage'], ['library:open', matchId]]);
 });

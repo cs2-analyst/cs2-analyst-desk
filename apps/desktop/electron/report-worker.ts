@@ -17,6 +17,24 @@ function clearSessions() {
   heatmapSession?.clear();heatmapSession=null;
 }
 process.on('exit',clearSessions);
+async function restoreArchived(directory: string, sessionId: string) {
+  clearSessions();
+  const archive = await import('./library-archive.ts');
+  // Full verification decompresses every component; historical open never trusts a summary.
+  const { manifest } = await archive.verifyLibraryArchive(directory);
+  const report = await archive.readArchiveReport(directory, manifest, sessionId);
+  const sources = await archive.readArchiveSources(directory, manifest);
+  if (disposed) throw new Error('Worker disposed during restore');
+  const heatmap = createHeatmapSession(sources.match, sources.replay, sources.spatial, sessionId);
+  heatmapSession = heatmap.session;
+  // Preserve archived capability limitations; never turn unavailable data into a new analysis.
+  if (report.heatmap?.available) report.heatmap = heatmap.metadata;
+  else { heatmapSession?.clear(); heatmapSession = null; }
+  if (report.replay?.available) {
+    session = { metadata: report.replay, get: request => archive.readArchiveChunk(directory, manifest, request), clear() {} };
+  }
+  return report;
+}
 process.parentPort?.on('message', async ({ data }: { data: { kind?: string; filePath?: string; sessionId?: string; requestId?: number; request?: unknown; archiveDirectory?: string } }) => {
   if(!data||typeof data!=='object')return;
   if(data.kind==='session-release'){disposed=true;clearSessions();return;}
@@ -36,25 +54,14 @@ process.parentPort?.on('message', async ({ data }: { data: { kind?: string; file
       result:chunk?{kind:'success',chunk}:{kind:'error',message:'回放会话或数据块已失效。'} });
     return;
   }
-  // Internal duplicate recovery preserves the original analysed snapshot. L2 owns the public historical-open API.
-  if (data.kind === 'restore-duplicate' && initialized && !disposed && typeof data.archiveDirectory === 'string' && typeof data.sessionId === 'string') {
+  // Duplicate recovery reuses the just-analysed worker; public open starts from a fresh worker.
+  const restoreKind = data.kind === 'restore-duplicate' ? (initialized ? 'restored-duplicate' : null)
+    : data.kind === 'restore' && !initialized ? 'restored' : null;
+  if (restoreKind && !disposed && typeof data.archiveDirectory === 'string' && typeof data.sessionId === 'string') {
+    if (restoreKind === 'restored') initialized = true;
     try {
-      clearSessions();
-      const archive = await import('./library-archive.ts');
-      const { manifest } = await archive.verifyLibraryArchive(data.archiveDirectory);
-      const report = await archive.readArchiveReport(data.archiveDirectory, manifest, data.sessionId);
-      const sources = await archive.readArchiveSources(data.archiveDirectory, manifest);
-      if (disposed) return;
-      const heatmap = createHeatmapSession(sources.match, sources.replay, sources.spatial, data.sessionId);
-      heatmapSession = heatmap.session;
-      // Preserve archived capability limitations; never turn unavailable data into a new analysis.
-      if (report.heatmap?.available) report.heatmap = heatmap.metadata;
-      else { heatmapSession?.clear(); heatmapSession = null; }
-      if (report.replay?.available) {
-        const directory = data.archiveDirectory;
-        session = { metadata: report.replay, get: request => archive.readArchiveChunk(directory, manifest, request), clear() {} };
-      }
-      process.parentPort?.postMessage({ kind: 'restored-duplicate', report });
+      const report = await restoreArchived(data.archiveDirectory, data.sessionId);
+      process.parentPort?.postMessage({ kind: restoreKind, report });
     } catch { clearSessions(); process.parentPort?.postMessage({ kind: 'error', message: '已保存的比赛无法恢复，请检查比赛库档案完整性。' }); }
     return;
   }

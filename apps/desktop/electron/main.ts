@@ -8,13 +8,14 @@ import type { ImportPhase, ImportResult, DesktopReplayMetadata, DesktopReplayReq
   DesktopHeatmapMetadata, DesktopHeatmapRequest, DesktopHeatmapResult } from '@cs2-analyst/report-contract';
 import { HEATMAP_MAX_PENDING, HEATMAP_TIMEOUT_MS, validateHeatmapRequest, validateHeatmapResult } from '../shared/heatmap-ipc.ts';
 import { LocalMatchLibrary } from './local-library.ts';
-import { normalizeLibraryListQuery, boundedLibraryResult, LIBRARY_LIST_RESPONSE_BYTES, LIBRARY_STORAGE_RESPONSE_BYTES } from '../shared/library-ipc.ts';
+import { normalizeLibraryListQuery, boundedLibraryResult, isMatchId, LIBRARY_LIST_RESPONSE_BYTES, LIBRARY_STORAGE_RESPONSE_BYTES } from '../shared/library-ipc.ts';
 
 /** Replaced at build time by electron.vite.config.ts. False in production installers. */
 declare const __CS2_ANALYST_TEST_SEAM__: boolean;
 
 let mainWindow: BrowserWindow | null = null;
 let importing = false;
+let opening = false;
 let activeWorker: Electron.UtilityProcess | null = null;
 let activeReplay: DesktopReplayMetadata | null = null;
 let activeHeatmap: DesktopHeatmapMetadata | null = null;
@@ -33,6 +34,31 @@ function libraryService(): Promise<LocalMatchLibrary> {
 let requestSequence = 0;
 const pendingChunks = new Map<number, { worker: Electron.UtilityProcess; request: DesktopReplayRequest; timer: ReturnType<typeof setTimeout>; resolve: (result: DesktopReplayResult) => void }>();
 const pendingHeatmaps = new Map<number, { worker: Electron.UtilityProcess; request: DesktopHeatmapRequest; timer: ReturnType<typeof setTimeout>; resolve: (result: DesktopHeatmapResult) => void }>();
+function routeHeatmapReply(worker: Electron.UtilityProcess, message: Record<string, unknown>): boolean {
+  if (activeWorker !== worker) return false;
+  const pending = pendingHeatmaps.get(message.requestId as number);
+  if (!pending || pending.worker !== worker) return false;
+  clearTimeout(pending.timer); pendingHeatmaps.delete(message.requestId as number);
+  let valid = false;
+  try { valid = activeHeatmap !== null && validateHeatmapResult(message.result, pending.request, activeHeatmap); }
+  catch { /* Non-JSON/malformed worker reply. */ }
+  pending.resolve(valid ? message.result as DesktopHeatmapResult : { kind: 'error', message: '热力图响应无效或超过大小限制。' });
+  return true;
+}
+function routeReplayReply(worker: Electron.UtilityProcess, message: Record<string, unknown>): boolean {
+  if (activeWorker !== worker) return false;
+  const pending = pendingChunks.get(message.requestId as number);
+  if (!pending || pending.worker !== worker) return false;
+  const result = message.result as DesktopReplayResult;
+  if (result?.kind === 'success') {
+    const chunk = result.chunk;
+    if (chunk?.schemaVersion !== 1 || chunk?.matchId !== activeReplay?.matchId || chunk?.sessionId !== activeReplay?.sessionId
+      || chunk?.sessionId !== pending.request.sessionId || chunk?.round !== pending.request.round || chunk?.block !== pending.request.block
+      || Buffer.byteLength(JSON.stringify(chunk)) > 1024 * 1024) return true;
+  } else if (result?.kind !== 'error') return true;
+  clearTimeout(pending.timer); pendingChunks.delete(message.requestId as number); pending.resolve(result);
+  return true;
+}
 function stopAnalysisWorker() {
   const worker=activeWorker;activeWorker=null;activeReplay=null;activeHeatmap=null;activeSessionId=null;
   for(const [id,pending] of pendingChunks){clearTimeout(pending.timer);pending.resolve({kind:'error',message:'回放会话已结束。'});pendingChunks.delete(id);}
@@ -80,6 +106,13 @@ ipcMain.handle('library:storage', async event => {
   if (!trustedWindow(event)) return { kind: 'error', message: '比赛库请求无效。' };
   try { return boundedLibraryResult(await (await libraryService()).storage(), LIBRARY_STORAGE_RESPONSE_BYTES); }
   catch { return { kind: 'error', message: '无法读取比赛库磁盘占用。' }; }
+});
+ipcMain.handle('library:open', async (event, matchId: unknown): Promise<ImportResult> => {
+  if (!trustedWindow(event) || !isMatchId(matchId)) return { kind: 'error', message: '无效的比赛请求。' };
+  if (importing || opening) return { kind: 'error', message: '已有比赛任务正在运行。' };
+  opening = true;
+  try { return await openSavedMatch(matchId); }
+  finally { opening = false; }
 });
 ipcMain.handle('heatmap:grid', (event, value: unknown): Promise<DesktopHeatmapResult> | DesktopHeatmapResult => {
   const fail = (): DesktopHeatmapResult => ({kind:'error',message:'无效、不可用或已过期的热力图请求。'});
@@ -257,26 +290,8 @@ async function analyzeDemo(filePath: string, window: BrowserWindow): Promise<Imp
     });
     worker.on('message', async (message) => {
       if(!message||typeof message!=='object')return;
-      if(message.kind==='heatmap-grid'){
-        if(activeWorker!==worker)return;
-        const pending=pendingHeatmaps.get(message.requestId);if(!pending||pending.worker!==worker)return;
-        clearTimeout(pending.timer);pendingHeatmaps.delete(message.requestId);
-        // Every recognized reply ends its Promise, including malformed/error replies.
-        let valid=false;
-        try {valid=activeHeatmap!==null&&validateHeatmapResult(message.result,pending.request,activeHeatmap);}catch { /* Non-JSON/malformed worker reply. */ }
-        pending.resolve(valid?message.result:{kind:'error',message:'热力图响应无效或超过大小限制。'});return;
-      }
-      if(message.kind==='replay-chunk'){
-        if(activeWorker!==worker)return;
-        const pending=pendingChunks.get(message.requestId);if(!pending||pending.worker!==worker)return;
-        const result=message.result as DesktopReplayResult;
-        if(result?.kind==='success'){
-          const chunk=result.chunk;
-          if(chunk?.schemaVersion!==1||chunk?.matchId!==activeReplay?.matchId||chunk?.sessionId!==activeReplay?.sessionId||chunk?.sessionId!==pending.request.sessionId||chunk?.round!==pending.request.round||chunk?.block!==pending.request.block
-            ||Buffer.byteLength(JSON.stringify(chunk))>1024*1024)return;
-        }else if(result?.kind!=='error')return;
-        clearTimeout(pending.timer);pendingChunks.delete(message.requestId);pending.resolve(result);return;
-      }
+      if(message.kind==='heatmap-grid'){ routeHeatmapReply(worker,message);return; }
+      if(message.kind==='replay-chunk'){ routeReplayReply(worker,message);return; }
       if(settled)return;
       if (message.kind === 'progress' && message.phase === 'analyzing') {
         if (!window.isDestroyed()) window.webContents.send('report:progress', 'analyzing');
@@ -308,6 +323,76 @@ async function analyzeDemo(filePath: string, window: BrowserWindow): Promise<Imp
   });
 }
 
+/** Reopen a saved archive in a fresh Utility worker; the old session survives until success. */
+async function openSavedMatch(matchId: string): Promise<ImportResult> {
+  let directory: string;
+  try {
+    const library = await libraryService();
+    const entry = library.get(matchId);
+    if (!entry || entry.state !== 'ready') return { kind: 'error', message: '该比赛当前不可用。' };
+    directory = await library.archiveDirectory(matchId);
+  } catch {
+    return { kind: 'error', message: '无法读取已保存的比赛，请检查比赛库完整性。' };
+  }
+  const sessionId = randomUUID();
+  let worker: Electron.UtilityProcess;
+  try { worker = utilityProcess.fork(fileURLToPath(new URL('./report-worker.js', import.meta.url)), [], { serviceName: 'CS2 Saved Match Restore' }); }
+  catch { return { kind: 'error', message: '无法启动恢复进程；当前比赛保持可用。' }; }
+  const exited = new Promise<void>(exit => worker.once('exit', () => { candidateWorkers.delete(worker); exit(); }));
+  candidateWorkers.set(worker, exited);
+  return new Promise(resolve => {
+    let settled = false;
+    const finish = async (result: ImportResult, activate = false) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      worker.removeAllListeners('message');
+      if (!activate) {
+        await retireCandidate(worker);
+        resolve(result);
+        return;
+      }
+      if (result.kind !== 'success') { await retireCandidate(worker); resolve(result); return; }
+      // The restored worker keeps serving heatmap and Replay requests for this session.
+      worker.on('message', message => {
+        if (!message || typeof message !== 'object') return;
+        if (message.kind === 'heatmap-grid') routeHeatmapReply(worker, message);
+        else if (message.kind === 'replay-chunk') routeReplayReply(worker, message);
+      });
+      stopAnalysisWorker();
+      const report = result.report, replay = report.replay, heatmap = report.heatmap;
+      const replayAvailable = replay?.available === true && replay.sessionId === sessionId;
+      const heatmapAvailable = heatmap?.available === true && heatmap.sessionId === sessionId;
+      activeWorker = worker; activeSessionId = sessionId;
+      activeReplay = replayAvailable ? replay! : null; activeHeatmap = heatmapAvailable ? heatmap! : null;
+      candidateWorkers.delete(worker);
+      if (!replayAvailable && !heatmapAvailable) {
+        activeWorker = null; activeSessionId = null; void retireCandidate(worker);
+      }
+      resolve(result);
+    };
+    const timer = setTimeout(() => void finish({ kind: 'error', message: '打开已保存比赛超时；当前比赛保持可用。' }), 60_000);
+    worker.on('spawn', () => {
+      if (settled) { worker.kill(); return; }
+      worker.postMessage({ kind: 'restore', archiveDirectory: directory, sessionId });
+    });
+    worker.on('message', message => {
+      if (settled || !message || typeof message !== 'object') return;
+      if (message.kind === 'restored') {
+        const report = message.report;
+        if (!report || report.schemaVersion !== 2 || report.match?.id !== matchId
+          || (report.replay?.available === true && report.replay.sessionId !== sessionId)
+          || (report.heatmap?.available === true && report.heatmap.sessionId !== sessionId)) {
+          void finish({ kind: 'error', message: '已保存比赛的报告无效；当前比赛保持可用。' });
+          return;
+        }
+        void finish({ kind: 'success', report }, true);
+      } else if (message.kind === 'error') void finish(message);
+    });
+    worker.on('exit', () => { if (!settled) void finish({ kind: 'error', message: '恢复进程意外退出；当前比赛保持可用。' }); });
+  });
+}
+
 /** Shared tail of every import path: extension gate, parsing progress, worker analysis. */
 async function analyzeFromPath(filePath: string, window: BrowserWindow, rememberDirectory = false): Promise<ImportResult> {
   if (extname(filePath).toLowerCase() !== '.dem') return { kind: 'error', message: '请选择 .dem 文件。' };
@@ -323,7 +408,7 @@ ipcMain.handle('report:import', async (event): Promise<ImportResult> => {
   if (!window) {
     return { kind: 'error', message: '无效的报告请求。' };
   }
-  if (importing) return { kind: 'error', message: '已有分析任务正在运行。' };
+  if (importing || opening) return { kind: 'error', message: '已有分析任务正在运行。' };
   importing = true;
   const progress = (phase: ImportPhase) => { if (!window.isDestroyed()) window.webContents.send('report:progress', phase); };
   try {
@@ -356,7 +441,7 @@ ipcMain.handle('report:import-file', async (event, value: unknown): Promise<Impo
   const window = trustedWindow(event);
   if (!window) return { kind: 'error', message: '无效的报告请求。' };
   if (typeof value !== 'string' || !value.trim() || !isAbsolute(value)) return { kind: 'error', message: '无效的 DEM 路径。' };
-  if (importing) return { kind: 'error', message: '已有分析任务正在运行。' };
+  if (importing || opening) return { kind: 'error', message: '已有分析任务正在运行。' };
   importing = true;
   try {
     return await analyzeFromPath(value, window, true);

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { DesktopMatchReport, ImportPhase } from '@cs2-analyst/report-contract';
 
-type Status = 'idle' | ImportPhase | 'success' | 'error';
+type Status = 'idle' | ImportPhase | 'opening' | 'success' | 'error';
 interface ReportState {
   status: Status;
   report: DesktopMatchReport | null;
@@ -12,6 +12,7 @@ interface ReportState {
   selectPlayer(id: string): void;
   importDemo(): Promise<void>;
   importDroppedFile(file: File): Promise<void>;
+  openMatch(matchId: string): Promise<void>;
   cancelImport(): Promise<void>;
 }
 export const useReport = create<ReportState>((set, get) => ({
@@ -23,7 +24,7 @@ export const useReport = create<ReportState>((set, get) => ({
   selectPlayer: id => { if (get().report?.players.some(p => p.id === id)) set({ playerId: id }); },
   cancelImport: async () => { await window.cs2Analyst.cancelImport(); },
   importDemo: async () => {
-    if (['selecting', 'parsing', 'analyzing'].includes(get().status)) return;
+    if (['selecting', 'parsing', 'analyzing', 'opening'].includes(get().status)) return;
     set({ status: 'selecting', error: null });
     try {
       const result = await window.cs2Analyst.importDemo();
@@ -36,7 +37,7 @@ export const useReport = create<ReportState>((set, get) => ({
   },
   // Preload owns the disk path; Main progress invalidates old replay only when analysis starts.
   importDroppedFile: async file => {
-    if (['selecting', 'parsing', 'analyzing'].includes(get().status)) return;
+    if (['selecting', 'parsing', 'analyzing', 'opening'].includes(get().status)) return;
     set({ status: 'selecting', error: null });
     try {
       const result = await window.cs2Analyst.importDroppedFile(file);
@@ -45,6 +46,20 @@ export const useReport = create<ReportState>((set, get) => ({
       else set(state => ({ status: 'success', report: result.report, reportRevision: state.reportRevision + 1, playerId: result.report.selectedPlayer }));
     } catch {
       set({ status: 'error', error: '桌面分析连接失败。请重新选择 DEM；若仍失败，请重启应用。' });
+    }
+  },
+  openMatch: async matchId => {
+    if (['selecting', 'parsing', 'analyzing', 'opening'].includes(get().status)) return;
+    set({ status: 'opening', error: null });
+    try {
+      const result = await window.cs2Analyst.library.open(matchId);
+      if (result.kind === 'success') set(state => ({
+        status: 'success', report: result.report, reportRevision: state.reportRevision + 1, playerId: result.report.selectedPlayer,
+      }));
+      else if (result.kind === 'error') set({ status: 'error', error: result.message });
+      else set({ status: get().report ? 'success' : 'idle' });
+    } catch {
+      set({ status: 'error', error: '无法打开已保存的比赛。请检查比赛库完整性或重启应用。' });
     }
   },
 }));

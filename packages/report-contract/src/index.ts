@@ -190,6 +190,8 @@ export interface DesktopApi {
   library: {
     list(query?: LibraryListQuery): Promise<LibraryListResult>;
     storage(): Promise<LibraryStorageResult>;
+    /** Reopen a saved match without its source DEM and with a fresh IPC session. */
+    open(matchId: string): Promise<ImportResult>;
   };
   window: {
     minimize(): Promise<void>;
