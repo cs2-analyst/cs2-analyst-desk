@@ -54,6 +54,9 @@ L0 已审核候选约束：完整热力图源 A、独立 gzip-6 Chunk、内置 S
 - QA 使用归属明确的 `LOCALAPPDATA` 子进程环境隔离本地库；默认生产路径不跟随 `--user-data-dir` 迁移，现有 userData 偏好不变。
 - L5 独立预备单元已审核提前集成：`63b8e7e` owned QA helper，`ea6a8c6` 唯一打包 staging；总线集成后 6/6 纯测试及脚本语法通过。此项不依赖归档契约，不构成 L5 正式验收或 NSIS 通过。
 - L0 独立审查最终 PASS：45 个 artifact 摘要/字节、12 PNG 尺寸一致；300 个全部 Chunk 和 10 隔离副本已核。总线复跑 SQLite 探针再现约 53ms 句柄释放窗口，集成后 5/5 核心测试通过，2026-10-22 正式 UNBLOCK L1。
+- L1 执行角色为 `/root/l1_lead/archive_executor` 与 `/root/l1_lead/catalogue_executor`。基础模块并行提交的依赖顺序与历史顺序不同；最终集成按公共契约→归档→目录→Main/QA，保留原提交，不宣称中间分支历史可独立 checkout 验证。
+- 未实现 L1 的 L0 Lead 担任独立 Reviewer：专用 32/32 通过后仍以额外合成库复现上述两个 P2，已退回原 catalogue 执行者修复并补测试。总线另要求候选进程真实退出确认、重复恢复有限超时、fork 失败清理；L1 Gate 尚未提交通过申请。
+- L2/L3/L4 工作树已从 `1af57c8` 独立准备并完成 frozen 依赖安装；仅链接固定 native 目录，不复制/链接 DEM，也未越过 HOLD 写产品实现。
 
 ## 不得遗失的历史边界
 
