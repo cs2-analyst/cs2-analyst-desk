@@ -11,7 +11,7 @@
 | 1 | 生产 NSIS 安装 → Nuke 导入 → 重启 → 卸载保留 | PASS | 安装包 `d8c6b8c4…8880dec`；导入 15,568.8ms；冷目录 1.33ms；卸载后 manifest 保留 |
 | 2 | test-seam 安装版导出/删除/导入/冷打开 | PASS | `.cs2a` 16,929,688B / 164 文件；删除后 archiveBytes=0；损坏包拒绝；`productRevision=63d6e12` |
 | 3 | L1 构建 → 最终构建升级 | PASS | 旧安装包 `1d5960f2…79f75b9c`；升级后旧归档 report `e071bfa7…5771f748` 不变；卸载保留 |
-| 4 | 回滚到旧构建 | NOT RUN | 未执行旧版打开新归档的完整回滚 |
+| 4 | 回滚到旧构建 | PASS（只读/列表） | L1 构建可列出最终库中 ready 归档；旧构建没有 open API，未验证旧版渲染 |
 | 5 | 损坏/恶意包 | PASS | 1 位翻转/截断均拒绝；staging 为空；现有比赛仍可打开 |
 | 6 | 删除单场/活动场/容量 | PASS | 活动场删除 179–250ms；archiveBytes 归零；孤儿恢复与部分失败单测 |
 | 7 | 50+ 大库首屏 | NOT RUN | 仅 1–2 条真实记录，未做隔离副本规模模拟 |
@@ -28,7 +28,7 @@
 - `desktop-report-smoke`（真实 demo1、损坏 DEM、非 .dem）：3/3 场景 PASS；共享 window-shell/report-ux 检查已适配 L4。
 - 集成导航 smoke：24 个几何状态 max delta = 0px；一次后退/前进语义通过。
 - 集成数据操作 Dust2/Nuke：PASS；test-seam 安装版 Dust2：PASS。
-- 生产安装版：PASS；升级：PASS。
+- 生产安装版：PASS；升级：PASS；回滚（旧构建列表/只读）：PASS。
 
 ## 3. 人工验收清单（NOT RUN）
 

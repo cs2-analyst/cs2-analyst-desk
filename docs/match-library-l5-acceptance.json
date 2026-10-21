@@ -47,8 +47,8 @@
     {
       "id": 4,
       "item": "Rollback to older build",
-      "status": "NOT RUN",
-      "evidence": "Old installer can list/open? Not executed; only forward upgrade verified"
+      "status": "PASS (list/read only)",
+      "evidence": "rollback.json; L1 build lists the final-build library, entry ready, sourceRevision 9809f39; old build has no open API"
     },
     {
       "id": 5,
@@ -100,7 +100,6 @@
     }
   ],
   "manualNotRun": [
-    "rollback",
     "50+ library list simulation",
     "DPI 125%/150%",
     "Windows high contrast / Narrator",
