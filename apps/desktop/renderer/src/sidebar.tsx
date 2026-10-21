@@ -2,9 +2,11 @@ import React from 'react';
 import { TabList, Tab, Tooltip, makeStyles, mergeClasses, tokens } from '@fluentui/react-components';
 import { palette } from './theme';
 import {
-  AnalysisIcon, CollapseNavIcon, DeepReviewIcon, ExpandNavIcon, ImportIcon, ReplayIcon, ReportIcon, TimelineIcon,
+  AnalysisIcon, CollapseNavIcon, DeepReviewIcon, ExpandNavIcon, ImportIcon, LibraryIcon, PersonalIcon,
+  ReplayIcon, ReportIcon, TimelineIcon,
 } from './icons';
 import type { IconProps } from './icons';
+import type { GlobalSection } from './navigation.ts';
 
 export type ViewId = 'report' | 'deep-review' | 'timeline' | 'analysis' | 'replay' | 'heatmap';
 
@@ -49,7 +51,7 @@ const useStyles = makeStyles({
   label: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
 });
 
-const items: { value: ViewId; label: string; icon: (props: IconProps) => React.ReactElement }[] = [
+const matchItems: { value: ViewId; label: string; icon: (props: IconProps) => React.ReactElement }[] = [
   { value: 'report', label: '比赛报告', icon: ReportIcon },
   { value: 'deep-review', label: '深度复盘', icon: DeepReviewIcon },
   { value: 'timeline', label: '回合时间线', icon: TimelineIcon },
@@ -58,12 +60,66 @@ const items: { value: ViewId; label: string; icon: (props: IconProps) => React.R
   { value: 'heatmap', label: '热力图', icon: AnalysisIcon },
 ];
 
+const globalItems: { value: GlobalSection; label: string; icon: (props: IconProps) => React.ReactElement }[] = [
+  { value: 'personal', label: '个人数据', icon: PersonalIcon },
+  { value: 'library', label: '比赛数据', icon: LibraryIcon },
+];
+
+function CollapseToggle({ collapsed, onToggleCollapsed }: { collapsed: boolean; onToggleCollapsed: () => void }) {
+  const s = useStyles();
+  return <button type="button" className={s.footerButton} data-sidebar-toggle onClick={onToggleCollapsed}
+    aria-label={collapsed ? '展开导航' : '收起导航'} aria-expanded={!collapsed}>
+    {collapsed ? <ExpandNavIcon size={20} /> : <CollapseNavIcon size={20} />}
+    {collapsed ? null : <span className={s.label}>收起导航</span>}
+  </button>;
+}
+
 /**
- * Desktop navigation rail. Report views are real Fluent Tabs (role="tab") so the
- * existing tab keyboard semantics and QA hooks (id / aria-selected / .fui-Tab__content)
- * are preserved; only the presentation moves from a horizontal bar to the rail.
+ * Global first-level rail. The saved-match list lives in the main content area,
+ * never as child nodes here: a large library must not become a navigation tree.
  */
-export function Sidebar({ reportReady, busy, collapsed, activeView, importLabel, onSelectView, onToggleCollapsed, onImport }: {
+export function GlobalSidebar({ section, collapsed, importBusy, onSelectSection, onToggleCollapsed, onImport }: {
+  section: GlobalSection;
+  collapsed: boolean;
+  importBusy: boolean;
+  onSelectSection: (section: GlobalSection) => void;
+  onToggleCollapsed: () => void;
+  onImport: () => void;
+}) {
+  const s = useStyles();
+  return <nav className={mergeClasses(s.sidebar, collapsed && s.sidebarCollapsed)} aria-label="主导航"
+    data-app-sidebar data-sidebar-mode="global" data-collapsed={collapsed ? 'true' : 'false'}>
+    <TabList vertical appearance="subtle" className={s.nav} selectedValue={section}
+      onTabSelect={(_, data) => onSelectSection(String(data.value) as GlobalSection)}>
+      {globalItems.map(item => {
+        const tab = <Tab key={item.value} id={`global-${item.value}-tab`} value={item.value}
+          aria-controls={`${item.value}-panel`} data-global-tab={item.value}
+          icon={<item.icon size={20} />} className={mergeClasses(s.tab, collapsed && s.tabCollapsed)}>{item.label}</Tab>;
+        return collapsed
+          ? <Tooltip key={item.value} content={item.label} relationship="label" positioning="after">{tab}</Tooltip>
+          : tab;
+      })}
+    </TabList>
+    <div className={s.footer}>
+      {/* The library page owns the detailed import UI; this footer keeps the long-standing,
+          keyboard-reachable DEM entry available in global mode as well. */}
+      <Tooltip content="选择 DEM" relationship="description" positioning="after">
+      <button type="button" className={s.footerButton} data-sidebar-import aria-label="选择 DEM" disabled={importBusy} onClick={onImport}>
+        <ImportIcon size={20} />
+        {collapsed ? null : <span className={s.label}>选择 DEM</span>}
+      </button>
+      </Tooltip>
+      <CollapseToggle collapsed={collapsed} onToggleCollapsed={onToggleCollapsed} />
+    </div>
+  </nav>;
+}
+
+/**
+ * Match workspace rail: the existing six report views, unchanged in component,
+ * order, labels, ids and selection semantics. The shell swaps the whole rail;
+ * global entries are never rendered together with these six.
+ */
+export function MatchSidebar({ reportReady, busy, collapsed, activeView, importLabel, onSelectView, onToggleCollapsed, onImport }: {
   reportReady: boolean;
   busy: boolean;
   collapsed: boolean;
@@ -75,10 +131,10 @@ export function Sidebar({ reportReady, busy, collapsed, activeView, importLabel,
 }) {
   const s = useStyles();
   return <nav className={mergeClasses(s.sidebar, collapsed && s.sidebarCollapsed)} aria-label="主导航"
-    data-app-sidebar data-collapsed={collapsed ? 'true' : 'false'}>
+    data-app-sidebar data-sidebar-mode="match" data-collapsed={collapsed ? 'true' : 'false'}>
     <TabList vertical appearance="subtle" className={s.nav} selectedValue={reportReady ? activeView : ''}
       onTabSelect={(_, data) => onSelectView(String(data.value) as ViewId)}>
-      {items.map(item => {
+      {matchItems.map(item => {
         const tab = <Tab key={item.value} id={`${item.value}-tab`} value={item.value} aria-controls={`${item.value}-panel`}
           icon={<item.icon size={20} />} disabled={!reportReady}
           className={mergeClasses(s.tab, collapsed && s.tabCollapsed)}>{item.label}</Tab>;
@@ -94,11 +150,7 @@ export function Sidebar({ reportReady, busy, collapsed, activeView, importLabel,
         {collapsed ? null : <span className={s.label}>{importLabel}</span>}
       </button>
       </Tooltip>
-      <button type="button" className={s.footerButton} data-sidebar-toggle onClick={onToggleCollapsed}
-        aria-label={collapsed ? '展开导航' : '收起导航'} aria-expanded={!collapsed}>
-        {collapsed ? <ExpandNavIcon size={20} /> : <CollapseNavIcon size={20} />}
-        {collapsed ? null : <span className={s.label}>收起导航</span>}
-      </button>
+      <CollapseToggle collapsed={collapsed} onToggleCollapsed={onToggleCollapsed} />
     </div>
   </nav>;
 }

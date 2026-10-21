@@ -11,15 +11,15 @@ import type {
 import { KillFeedEvent } from './killfeed-event';
 import { AnalysisViews } from './analysis-views';
 import { DeepReview } from './deep-review';
-import { useReport } from './store';
+import { useReport, activeMatchView, matchSessionActive } from './store';
 import { AnalysisIcon, CrossedSwordsIcon, QuestionCircleIcon } from './icons';
 import { UtilityIcon } from './utility-icons';
 import { flashOrder, utilityDamageRows, utilityThrowRows } from './utility-display';
 import { coachTheme, palette, useAppShellStyles, useScrollbarStyles } from './theme';
 import { AppTitlebar } from './app-titlebar';
-import { Home } from './home';
-import { Sidebar } from './sidebar';
+import { GlobalSidebar, MatchSidebar } from './sidebar';
 import type { ViewId } from './sidebar';
+import { LibraryPage, PersonalSection } from './library-page';
 import { ReplayPlayer } from './replay-player';
 import { WinOption as Option } from './winui-option';
 import { HeatmapView } from './heatmap-view';
@@ -520,34 +520,62 @@ function Report({ report, playerId, replayActive, activeTab, onSelectView }: {
 
 function App() {
   const s = useStyles();
-  const { status, report, reportRevision, playerId, error, importDemo, importDroppedFile, openMatch, setPhase, cancelImport } = useReport();
+  const status = useReport(state => state.status);
+  const report = useReport(state => state.report);
+  const reportRevision = useReport(state => state.reportRevision);
+  const playerId = useReport(state => state.playerId);
+  const error = useReport(state => state.error);
+  const route = useReport(state => state.navigation.history[state.navigation.index]);
+  const activeView = useReport(activeMatchView);
+  const sessionActive = useReport(matchSessionActive);
+  const libraryBusy = useReport(state => state.libraryBusy);
+  const importDemo = useReport(state => state.importDemo);
+  const setPhase = useReport(state => state.setPhase);
+  const cancelImport = useReport(state => state.cancelImport);
+  const selectSection = useReport(state => state.selectSection);
+  const setMatchView = useReport(state => state.setMatchView);
   useEffect(() => window.cs2Analyst.onProgress(setPhase), [setPhase]);
-  const busy = status === 'selecting' || status === 'parsing' || status === 'analyzing' || status === 'opening';
-  const phase = status === 'opening' ? '正在打开已保存比赛…' : status === 'selecting' ? '正在选择 DEM…' : status === 'parsing' ? '正在后台解析 DEM…' : '正在生成指标与深度复盘…';
-  const [activeView, setActiveView] = useState<ViewId>('report');
+  const importBusy = status === 'selecting' || status === 'parsing' || status === 'analyzing' || status === 'opening';
+  const busy = importBusy || libraryBusy !== null;
+  const phase = libraryBusy === 'export' ? '正在导出比赛归档…' : libraryBusy === 'importArchive' ? '正在导入比赛归档…'
+    : libraryBusy === 'remove' ? '正在删除比赛…'
+    : status === 'opening' ? '正在打开已保存比赛…' : status === 'selecting' ? '正在选择 DEM…' : status === 'parsing' ? '正在后台解析 DEM…' : '正在生成指标与深度复盘…';
+  const busyHint = libraryBusy !== null ? '请稍候，操作完成前不要关闭应用。' : '大型录像可能需要数十秒，请保持应用打开。';
   const [collapsed, setCollapsed] = useState(false);
-  // Every successful import opens a fresh report, including another import of the same DEM.
-  // Parsing, failure and cancellation keep the previous report's navigation state.
-  useEffect(() => { setActiveView('report'); }, [reportRevision]);
+  const matchMode = route.kind === 'match';
   return <>
-    <Sidebar reportReady={Boolean(report)} busy={busy} collapsed={collapsed} activeView={activeView}
-      importLabel={report || status === 'error' ? '重新选择 DEM' : '选择 DEM'}
-      onSelectView={setActiveView} onToggleCollapsed={() => setCollapsed(value => !value)} onImport={() => void importDemo()} />
-    <main className={s.main} data-app-content data-status={status}>
-      {error ? <div className={s.banner}><MessageBar intent="error"><MessageBarBody>{error}</MessageBarBody></MessageBar></div> : null}
-      {busy && report ? <div className={s.statusStrip} role="status">
-        <Spinner size="tiny" label={phase} />
-        <Caption1 className={s.muted}>大型录像可能需要数十秒，请保持应用打开。</Caption1>
-        {status !== 'selecting' && status !== 'opening' ? <Button appearance="subtle" size="small" onClick={() => void cancelImport()}>取消导入</Button> : null}
-      </div> : null}
-      {report ? <>
-        {status === 'error' || busy ? <div className={s.banner}><Caption1>下方为上一次成功导入的报告。</Caption1></div> : null}
-        <Report key={reportRevision} report={report} playerId={playerId} replayActive={!busy&&status==='success'} activeTab={activeView} onSelectView={setActiveView} />
-      </> : busy ? <div className={s.center} role="status">
-        <Spinner size="large" label={phase} />
-        <Caption1 className={s.muted}>大型录像可能需要数十秒，请保持应用打开。</Caption1>
-        {status !== 'selecting' && status !== 'opening' ? <Button appearance="subtle" onClick={() => void cancelImport()}>取消导入</Button> : null}
-      </div> : <Home busy={busy} onImport={() => void importDemo()} onImportFile={file => void importDroppedFile(file)} onOpenMatch={matchId => void openMatch(matchId)} />}
+    {matchMode
+      ? <MatchSidebar reportReady={Boolean(report)} busy={busy} collapsed={collapsed} activeView={activeView}
+          importLabel={report || status === 'error' ? '重新选择 DEM' : '选择 DEM'}
+          onSelectView={setMatchView} onToggleCollapsed={() => setCollapsed(value => !value)} onImport={() => void importDemo()} />
+      : <GlobalSidebar section={route.kind === 'global' ? route.section : 'library'} collapsed={collapsed}
+          importBusy={busy} onSelectSection={selectSection} onToggleCollapsed={() => setCollapsed(value => !value)}
+          onImport={() => void importDemo()} />}
+    <main className={s.main} data-app-content data-status={status} data-route-kind={route.kind}
+      data-match-id={route.kind === 'match' ? route.matchId : ''} data-session-active={sessionActive ? 'true' : 'false'}>
+      {matchMode ? <>
+        {error ? <div className={s.banner}><MessageBar intent="error"><MessageBarBody>{error}</MessageBarBody></MessageBar></div> : null}
+        {busy && report ? <div className={s.statusStrip} role="status">
+          <Spinner size="tiny" label={phase} />
+          <Caption1 className={s.muted}>{busyHint}</Caption1>
+          {status !== 'selecting' && status !== 'opening' ? <Button appearance="subtle" size="small" onClick={() => void cancelImport()}>取消导入</Button> : null}
+        </div> : null}
+        {report ? <>
+          {status === 'error' || busy ? <div className={s.banner}><Caption1>下方为上一次成功导入的报告。</Caption1></div> : null}
+          <Report key={reportRevision} report={report} playerId={playerId} replayActive={sessionActive} activeTab={activeView} onSelectView={setMatchView} />
+        </> : <div className={s.center} role="status">
+          <Spinner size="large" label="正在载入比赛…" />
+          <Caption1 className={s.muted}>正在重建本机归档的回放与热力图会话。</Caption1>
+        </div>}
+      </> : <>
+        {error ? <div className={s.banner}><MessageBar intent="error"><MessageBarBody>{error}</MessageBarBody></MessageBar></div> : null}
+        {busy ? <div className={s.statusStrip} role="status">
+          <Spinner size="tiny" label={phase} />
+          <Caption1 className={s.muted}>{busyHint}</Caption1>
+          {status === 'parsing' || status === 'analyzing' ? <Button appearance="subtle" size="small" onClick={() => void cancelImport()}>取消导入</Button> : null}
+        </div> : null}
+        {route.section === 'personal' ? <PersonalSection /> : <LibraryPage />}
+      </>}
     </main>
   </>;
 }
@@ -556,7 +584,7 @@ class ReportErrorBoundary extends React.Component<React.PropsWithChildren, { fai
   state = { failed: false };
   static getDerivedStateFromError() { return { failed: true }; }
   render() {
-    return this.state.failed ? <MessageBar intent="error"><MessageBarBody>报告展示失败。<Button onClick={() => { useReport.setState({ status: 'idle', report: null, error: null }); this.setState({ failed: false }); }}>重新选择 DEM</Button></MessageBarBody></MessageBar> : this.props.children;
+    return this.state.failed ? <MessageBar intent="error"><MessageBarBody>报告展示失败。<Button onClick={() => { void useReport.getState().selectSection('library'); this.setState({ failed: false }); }}>返回比赛数据</Button></MessageBarBody></MessageBar> : this.props.children;
   }
 }
 function DesktopShell() {

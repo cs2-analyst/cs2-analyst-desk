@@ -137,3 +137,28 @@ export function ExpandNavIcon(props: IconProps) {
     <path d="M10.8 5l4.5 5-4.5 5" />
   </Icon>;
 }
+/** 全局侧栏：个人数据（单人）。 */
+export function PersonalIcon(props: IconProps) {
+  return <Icon {...props}>
+    <circle cx="10" cy="6.4" r="2.9" />
+    <path d="M4.4 16.2c.4-3 2.6-4.6 5.6-4.6s5.2 1.6 5.6 4.6" />
+  </Icon>;
+}
+
+/** 全局侧栏：比赛数据（本地比赛库）。 */
+export function LibraryIcon(props: IconProps) {
+  return <Icon {...props}>
+    <path d="M4 5.4h12v10.2H4z" />
+    <path d="M4 8.4h12M7.2 5.4v10.2" />
+  </Icon>;
+}
+
+/** 标题栏：后退。 */
+export function BackIcon(props: IconProps) {
+  return <Icon {...props}><path d="M15.5 10h-11M9 4.8 3.8 10 9 15.2" /></Icon>;
+}
+
+/** 标题栏：前进。 */
+export function ForwardIcon(props: IconProps) {
+  return <Icon {...props}><path d="M4.5 10h11M11 4.8l5.2 5.2-5.2 5.2" /></Icon>;
+}
