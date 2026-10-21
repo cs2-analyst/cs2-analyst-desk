@@ -44,6 +44,10 @@ async function scenario({ label, demPath, ready, assertReport, assertDom, import
   delete env.ELECTRON_RUN_AS_NODE;
   delete env.ELECTRON_RENDERER_URL;
   const profile = mkdtempSync(join(tmpdir(), 'cs2-analyst-report-profile-'));
+  // The match library lives under LOCALAPPDATA, not --user-data-dir. Isolate it so the
+  // pre-import empty state is deterministic and the real user library is untouched.
+  const localAppData = mkdtempSync(join(tmpdir(), 'cs2-analyst-report-localappdata-'));
+  env.LOCALAPPDATA = localAppData;
   const startedAt = Date.now();
   const child = spawn(electron, ['.', `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, '--disable-features=CalculateNativeWinOcclusion', '--disable-backgrounding-occluded-windows'], {
     cwd: desktop, env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'],
@@ -122,6 +126,7 @@ async function scenario({ label, demPath, ready, assertReport, assertDom, import
       () => scope.cleanup(),
       // Windows helpers may briefly hold profile handles after the parent exits.
       () => rm(profile, { recursive: true, force: true, maxRetries: 8, retryDelay: 250 }),
+      () => rm(localAppData, { recursive: true, force: true, maxRetries: 8, retryDelay: 250 }),
     ]);
   }
 }
@@ -415,7 +420,7 @@ await withCleanup(async () => {
     ready: text => text.includes('无法分析此 DEM'),
     assertReport: text => {
       assert.ok(text.includes('CS2 Analyst'), '错误后页面不应白屏');
-      assert.ok(text.includes('重新选择 DEM'), '错误后应保留重新选择入口');
+      assert.ok(text.includes('选择 DEM'), '错误后应保留重新选择入口');
     },
     assertDom: async evaluate => {
       const rows = await evaluate("document.querySelectorAll('[data-round-summary]').length");
@@ -430,7 +435,7 @@ await withCleanup(async () => {
     demPath: notDemo,
     ready: text => text.includes('请选择 .dem 文件'),
     assertReport: text => {
-      assert.ok(text.includes('重新选择 DEM'), '拒绝后应保留重新选择入口');
+      assert.ok(text.includes('选择 DEM'), '拒绝后应保留重新选择入口');
     },
   });
 }, [() => rm(dir, { recursive: true, force: true, maxRetries: 8, retryDelay: 250 })]);

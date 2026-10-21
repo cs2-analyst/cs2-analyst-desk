@@ -215,7 +215,12 @@ export async function checkAppShell(evaluate, send) {
   assert.ok(Math.abs(collapsed.navIconX - collapsed.toggleIconX) <= 1, '折叠后折叠按钮与导航图标应在同一垂直线');
   assert.equal(collapsed.toggleLabel, '展开导航');
   await checkSidebarImport(evaluate, send, '选择 DEM');
-  await waitForUi(evaluate, `document.querySelector('[role="tooltip"]')?.textContent.includes('选择 DEM')`, 'collapsed global import tooltip');
+  // Fluent Tooltip opens on pointer hover, not on programmatic focus; move the real
+  // CDP pointer onto the collapsed import button before asserting the tooltip.
+  const importPoint = await evaluate(`(() => { const r = document.querySelector('[data-sidebar-import]').getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()`);
+  await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: importPoint.x, y: importPoint.y });
+  await waitForUi(evaluate, `[...document.querySelectorAll('[role="tooltip"]')].some(t => t.textContent.includes('选择 DEM'))`, 'collapsed global import tooltip');
 
   await evaluate(`document.querySelector('[data-sidebar-toggle]').click()`);
   await waitForUi(evaluate, `document.getAnimations().every(a => a.playState !== 'running')`, 'sidebar transition');
