@@ -93,7 +93,8 @@ test('saved-match open restores a fresh session from the archive directory', asy
   const request = opened.worker.sent.at(-1); assert.equal(request.kind, 'replay-chunk');
   opened.worker.emit('message', { kind: 'replay-chunk', requestId: request.requestId,
     result: { kind: 'success', chunk: { schemaVersion: 1, matchId: id, sessionId, round: 1, block: 0, frames: [], events: [] } } });
-  const chunk = await chunkPromise; assert.equal(chunk.kind, 'success');
+  const chunk = await Promise.race([chunkPromise, new Promise(resolve => setTimeout(() => resolve('pending'), 100))]);
+  assert.notEqual(chunk, 'pending', 'missing reply routing must fail instead of hanging'); assert.equal(chunk.kind, 'success');
   opened.worker.emit('exit', 0); await tick();
   const afterExit = await h.handlers.get('replay:chunk')(h.trusted, { sessionId, round: 1, block: 0 });
   assert.equal(afterExit.kind, 'error', 'a dead restored worker must not leave a stale active session');
