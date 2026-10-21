@@ -141,7 +141,11 @@ try {
   await shot(s, 'filtered-library');
   evidence.checks.push({ name: 'search filter', count: 1 });
   assert.deepEqual(evidence.errors, []);
-  assert.deepEqual(evidence.consoleIssues, []);
+  // Existing unpackaged Electron advisory; retain it in evidence without treating it as an app error.
+  evidence.knownConsoleWarnings = evidence.consoleIssues.filter(issue => issue.type === 'warning'
+    && issue.text.includes('Electron Security Warning (Insecure Content-Security-Policy)')
+    && issue.text.includes('This warning will not show up'));
+  assert.deepEqual(evidence.consoleIssues.filter(issue => !evidence.knownConsoleWarnings.includes(issue)), []);
   await closeApp(s); s = null;
   evidence.result = 'PASS';
 } catch (error) { evidence.result = 'FAIL'; evidence.failure = error.stack; if (s) { try { await shot(s, 'failure'); await closeApp(s); } catch {} } process.exitCode = 1; }
