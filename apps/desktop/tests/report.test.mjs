@@ -10,8 +10,9 @@ import { comparisonMetrics, comparisonValue, comparisonIncomplete, sortedCompari
 import { useReport } from '../renderer/src/store.ts';
 import { displayPlayerName } from '../electron/player-name.ts';
 import { analyzeDemoFile, buildDesktopReport } from '../electron/report.ts';
+import { localDemFixture, allowedDemFile } from './local-dem-fixture.mjs';
 
-const demo = process.env.DEM_TEST_FILE ?? fileURLToPath(new URL('../../../.demo/demo1.dem', import.meta.url));
+const demo = process.env.DEM_TEST_FILE ? allowedDemFile(process.env.DEM_TEST_FILE) : localDemFixture('demo1.dem');
 const hasDemo = existsSync(demo);
 
 test('real demo flows through parser -> analytics -> findings into a serializable DTO', { skip: hasDemo ? false : 'demo1.dem not present' }, async () => {
@@ -453,7 +454,7 @@ function assertDeepDto(report) {
 }
 
 test('Nuke Desktop integrates shared spatial pipeline, JSON DTO and deterministic per-player results', async () => {
-  const file = fileURLToPath(new URL('../../../.demo/nuke.dem', import.meta.url));
+  const file = localDemFixture('nuke.dem');
   assert.ok(existsSync(file), 'Nuke integration fixture required');
   let timings;
   const result = await analyzeDemoFile(file, undefined, t => { timings = t; });

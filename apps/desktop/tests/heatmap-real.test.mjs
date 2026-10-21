@@ -6,8 +6,9 @@ import test from 'node:test';
 import { performance } from 'node:perf_hooks';
 import { Demoparser2Provider } from '@cs2-analyst/dem-parser';
 import { projectMapHeatmap } from '../shared/heatmap.ts';
+import { localDemFixture } from './local-dem-fixture.mjs';
 
-const file = fileURLToPath(new URL('../../../.demo/dust2.dem', import.meta.url));
+const file = localDemFixture('dust2.dem');
 const sha = 'db90fe85aab023a1d2c8a5996182e6120d98ef494f02a070b17982b235e4958c';
 const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 test('P7.1 exact whitelisted Dust2: source classification, independent events, repeatable 32x32', {

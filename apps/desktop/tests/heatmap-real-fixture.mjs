@@ -2,8 +2,9 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { createReadStream, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { localDemFixture } from './local-dem-fixture.mjs';
 
-export const dust2File = fileURLToPath(new URL('../../../.demo/dust2.dem', import.meta.url));
+export const dust2File = localDemFixture('dust2.dem');
 export const dust2Sha = 'db90fe85aab023a1d2c8a5996182e6120d98ef494f02a070b17982b235e4958c';
 export const jsonHash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 export const defaultScope = () => ({ rounds: null, playerIds: null, side: 'all', floor: null,

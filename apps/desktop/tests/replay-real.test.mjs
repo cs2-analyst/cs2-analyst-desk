@@ -6,7 +6,8 @@ import { performance } from 'node:perf_hooks';
 import test from 'node:test';
 import { Demoparser2Provider } from '@cs2-analyst/dem-parser';
 import { ReplaySession,REPLAY_CACHE_BYTES,REPLAY_CHUNK_BYTES } from '../electron/replay-session.ts';
-const file=fileURLToPath(new URL('../../../.demo/dust2.dem',import.meta.url));
+import { localDemFixture } from './local-dem-fixture.mjs';
+const file=localDemFixture('dust2.dem');
 test('selected Dust2: bounded cache, all chunks JSON-only, random seek and adjacent guard state match',{skip:!existsSync(file)?'Selected local DEM missing; no download':false},async()=>{
   assert.equal(statSync(file).size,557650967);
   const digest=createHash('sha256');for await(const chunk of createReadStream(file))digest.update(chunk);
