@@ -50,13 +50,15 @@ function routeReplayReply(worker: Electron.UtilityProcess, message: Record<strin
   const pending = pendingChunks.get(message.requestId as number);
   if (!pending || pending.worker !== worker) return false;
   const result = message.result as DesktopReplayResult;
+  let valid = result?.kind === 'error';
   if (result?.kind === 'success') {
     const chunk = result.chunk;
-    if (chunk?.schemaVersion !== 1 || chunk?.matchId !== activeReplay?.matchId || chunk?.sessionId !== activeReplay?.sessionId
-      || chunk?.sessionId !== pending.request.sessionId || chunk?.round !== pending.request.round || chunk?.block !== pending.request.block
-      || Buffer.byteLength(JSON.stringify(chunk)) > 1024 * 1024) return true;
-  } else if (result?.kind !== 'error') return true;
-  clearTimeout(pending.timer); pendingChunks.delete(message.requestId as number); pending.resolve(result);
+    valid = chunk?.schemaVersion === 1 && chunk?.matchId === activeReplay?.matchId && chunk?.sessionId === activeReplay?.sessionId
+      && chunk?.sessionId === pending.request.sessionId && chunk?.round === pending.request.round && chunk?.block === pending.request.block
+      && Buffer.byteLength(JSON.stringify(chunk)) <= 1024 * 1024;
+  }
+  clearTimeout(pending.timer); pendingChunks.delete(message.requestId as number);
+  pending.resolve(valid ? result : { kind: 'error', message: '回放响应无效或超过大小限制。' });
   return true;
 }
 function stopAnalysisWorker() {
