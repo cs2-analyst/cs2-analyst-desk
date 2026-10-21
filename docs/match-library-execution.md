@@ -18,9 +18,9 @@
 |---|---|---|---|---|---|
 | L0 | `/root/l0_lead` | 无 | PASS | Gate 包 `481cf79`；集成 `b2f8877`；[报告](./match-library-l0-storage-evidence.md) / [JSON](./match-library-size-benchmark.json)，5/5 纯测试及真实实验 | L3 Lead 独立复核 PASS，总线复核/集成通过，限制保留 |
 | L1 | `/root/l1_lead` | L0 PASS | PASS | 产品构建 `9809f39`；QA 收尾 `7de1347`；[证据](./match-library-l1-foundation-evidence.md)，45/45 聚焦、240/240 全量、Dust2/Nuke 真实 Electron、NSIS 安装/卸载 | 独立复审无 P1；唯一 P2 为证据早于最终基线，已按 `9809f39` 重建并重跑；P3 记录在证据文档 |
-| L2 | `/root/l2_lead` | L1 PASS | RUNNING | 基线 `7de1347`；离线打开/恢复实现中 | 完整热力图源、按需 Chunk、会话生命周期、失败保留旧会话 |
-| L3 | `/root/l3_lead` | L2 PASS | HOLD | 只读调查完成；兼任独立 L0 Reviewer，未实现 L0 | 不可信归档边界与删除恢复待验证 |
-| L4 | `/root/l4_lead` | L2 PASS | HOLD | 只读调查已开展；无产品实现 | 互斥侧栏、历史栈与整窗品牌中心均须真实 Electron 检查 |
+| L2 | `/root/l2_lead` | L1 PASS | PASS | 产品构建 `5875e92`；测试收尾 `825637b`；[证据](./match-library-l2-offline-restore-evidence.md)，51/51 聚焦、246/246 全量、Dust2/Nuke 无 DEM 重开 | 独立复核 PASS，无 P1/P2；P3：失败打开后 UI 旧会话不可交互、跨版本恢复未比对、重建/证据可追溯性 |
+| L3 | `/root/l3_lead` | L2 PASS | RUNNING | 基线 `825637b`；删除/导出/导入实施中 | `.cs2a` 容器边界、活动场删除、失败不留脏数据 |
+| L4 | `/root/l4_lead` | L2 PASS | RUNNING | 基线 `825637b`；Shell/侧栏/标题栏/库 UI 实施中 | 互斥侧栏、历史栈与整窗品牌中心均须真实 Electron 检查 |
 | L5 | `/root/l5_lead` | L3/L4 PASS | HOLD | 只读调查完成；无最终集成验收 | 人工无法执行项记 NOT RUN，不以早期证据替代最终验收 |
 
 ## L1 收尾与证据
@@ -31,6 +31,14 @@
 - 最终 NSIS 复跑暴露测试脚本的注册表枚举竞态（键在枚举间隙消失）与失败路径兜底缺口，已在 QA 脚本 `7de1347` 修复；该提交不进入安装包，产品证据仍对应 `9809f39`。
 - 保留风险：仅两份真实比赛；Replay 5131.302ms 历史债未解；NSIS 仅当前 x64 单用户路径；不覆盖 L2–L5。
 - 执行细节与真实字节/指纹见 [L1 证据文档](./match-library-l1-foundation-evidence.md)。
+
+## L2 收尾与证据
+
+- L2 产品构建 `5875e92` 通过真实 Electron Dust2/Nuke：首次导入后删除源 DEM 副本，新进程从本地归档重开；报告指纹、3 组热力图筛选、2 个 Replay Chunk 与首次一致，六视图渲染并完成 Replay 跳到末回合/回起点/播放/暂停。
+- 全量 Desktop 246/246、聚焦库测试 51/51、类型检查通过；验收用临时目录模拟源文件缺失，原始 `.demo` 文件未被修改或复制进仓库。
+- 审查驱动修复：恢复 Worker 的回包路由必须在成功后继续挂载；无效/错配 Replay 回包立即结束；恢复 Worker 崩溃时释放活动会话；补齐导入/打开互斥、失败保留旧会话、Renderer opening 状态测试。
+- 已知 P3：失败打开后 Main 会话仍存活但 Renderer 因 `status='error'` 将旧会话置为不可交互（L4 处理）；跨版本清单未比对当前构建（L5 矩阵）；打开仍完整解压校验（2.55–3.05s）。
+- 细节与机器证据见 [L2 证据文档](./match-library-l2-offline-restore-evidence.md)。
 
 ## 文件所有权与契约
 
