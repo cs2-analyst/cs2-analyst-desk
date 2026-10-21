@@ -54,6 +54,8 @@ export type {
   RoundClutchResolution,
 } from "./clutch.js";
 export { analyzeMatch } from "./metrics.js";
+export { computeRating, computePlayerPerformance, summarizePlayerPerformance, ratingAlgorithm, highlightRules } from './performance.js';
+export type { PlayerRating, RatingInput, PlayerHighlight, HighlightType, PlayerPerformance, PlayerPerformanceInput } from './performance.js';
 export { classifyUtilityWeapon, summarizeUtility } from "./utility.js";
 export type {
   FlashMetrics, GrenadeKind, UtilityDamageMetrics, UtilityEvidence, UtilityIssue, UtilityMetrics,
