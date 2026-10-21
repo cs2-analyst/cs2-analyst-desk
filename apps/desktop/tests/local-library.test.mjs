@@ -101,6 +101,66 @@ test('SHA duplicate preserves the existing snapshot and same filename never merg
   assert.equal(library.list().total, 2);
 }));
 
+test('duplicate refuses a validly changed old manifest before discarding new staging', async () => scope(async ({ library, root, setLibrary }) => {
+  const first = await add(library), archive = await library.archiveDirectory(first.entry.matchId);
+  const reportBefore = readFileSync(join(archive, 'report.json.gz'));
+  const manifestPath = join(archive, 'manifest.json'), changed = await readArchiveManifest(archive);
+  changed.createdAt = new Date(Date.parse(changed.createdAt) + 1).toISOString();
+  const changedBytes = JSON.stringify(changed); writeFileSync(manifestPath, changedBytes);
+  const staged = await stage(library); let committed = false;
+  await assert.rejects(library.commitStaging(staged.id, undefined, staged.receipt, () => { committed = true; }), /不一致/);
+  assert.equal(committed, false); assert.ok(existsSync(staged.directory), 'failed duplicate retains stage until caller cleanup');
+  assert.equal(library.get(first.entry.matchId).state, 'invalid');
+  assert.equal(readFileSync(manifestPath, 'utf8'), changedBytes, 'old archive must not be replaced by duplicate');
+  assert.deepEqual(readFileSync(join(archive, 'report.json.gz')), reportBefore);
+  await library.discardStaging(staged.id); library.close();
+  library = await LocalMatchLibrary.open(root); setLibrary(library);
+  assert.equal(library.get(first.entry.matchId).state, 'invalid');
+}));
+
+test('duplicate verifies the old indexed snapshot as well as archive payload hashes', async () => scope(async ({ library }) => {
+  const first = await add(library), changed = structuredClone(first.entry);
+  changed.players[0].nickname = 'Controlled index corruption';
+  // Fault injection writes the real SQLite connection, not a mock catalogue.
+  library.db.prepare('UPDATE matches SET entry_json=? WHERE match_id=?').run(JSON.stringify(changed), first.entry.matchId);
+  const staged = await stage(library);
+  await assert.rejects(library.commitStaging(staged.id), /不一致/);
+  assert.ok(existsSync(staged.directory)); assert.equal(library.get(first.entry.matchId).state, 'invalid');
+  await library.discardStaging(staged.id);
+}));
+
+test('damaged JSON is recovered from a trusted manifest as invalid without blocking good records', async () => scope(async ({ library, root, setLibrary }) => {
+  const first = await add(library), second = await add(library, input('b'.repeat(64)));
+  library.close();
+  const db = new DatabaseSync(join(root, 'library.db'));
+  db.prepare('UPDATE matches SET entry_json=? WHERE match_id=?').run('{broken', first.entry.matchId); db.close();
+  library = await LocalMatchLibrary.open(root); setLibrary(library);
+  const listed = library.list({ limit: 100 });
+  assert.equal(listed.kind, 'success'); assert.equal(listed.total, 2); assert.equal(listed.unreadableCount, 0);
+  assert.deepEqual(library.get(first.entry.matchId), { ...first.entry, state: 'invalid' });
+  assert.deepEqual(library.get(second.entry.matchId), second.entry);
+  library.close(); library = await LocalMatchLibrary.open(root); setLibrary(library);
+  assert.equal(library.get(first.entry.matchId).state, 'invalid', 'reconstructed index is never silently promoted to ready');
+}));
+
+test('unrecoverable bad rows are omitted per page with a visible count and controlled get error', async () => scope(async ({ library, root, setLibrary }) => {
+  const first = await add(library), second = await add(library, input('b'.repeat(64)));
+  const damagedArchive = await library.archiveDirectory(first.entry.matchId); library.close();
+  writeFileSync(join(damagedArchive, 'manifest.json'), '{}');
+  const db = new DatabaseSync(join(root, 'library.db'));
+  db.prepare('UPDATE matches SET entry_json=? WHERE match_id=?').run('{broken', first.entry.matchId); db.close();
+  library = await LocalMatchLibrary.open(root); setLibrary(library);
+  const listed = library.list({ sort: 'map', direction: 'asc', limit: 100 });
+  assert.equal(listed.kind, 'success'); assert.equal(listed.total, 2); assert.equal(listed.unreadableCount, 1);
+  assert.deepEqual(listed.entries, [second.entry]);
+  assert.throws(() => library.get(first.entry.matchId), /比赛库索引记录损坏/);
+  const firstPage = library.list({ limit: 1, offset: 0, sort: 'map', direction: 'asc' });
+  const secondPage = library.list({ limit: 1, offset: 1, sort: 'map', direction: 'asc' });
+  assert.equal(firstPage.unreadableCount, 1); assert.equal(firstPage.entries.length, 0); assert.equal(firstPage.total, 2);
+  assert.equal(secondPage.unreadableCount, 0); assert.deepEqual(secondPage.entries, [second.entry]);
+  assert.ok(existsSync(join(damagedArchive, 'report.json.gz')), 'irrecoverable index never deletes archive bytes');
+}));
+
 test('invalid IDs, malformed queries and forged writer receipts cannot reach another directory', async () => scope(async ({ library }) => {
   for (const query of [{ limit: 101 }, { offset: -1 }, { search: 'a'.repeat(129) }, { sort: 'match_id;DROP TABLE matches' }, { arbitrary: 'path' }])
     assert.equal(library.list(query).kind, 'error');

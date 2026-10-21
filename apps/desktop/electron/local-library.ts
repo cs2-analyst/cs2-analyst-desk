@@ -16,7 +16,32 @@ interface Options {
   phase?: (phase: Phase, context: { matchId: string; directory: string }) => void | Promise<void>;
   diagnostic?: (message: string) => void;
 }
-interface Row { match_id: string; entry_json: string; manifest_hash: string; state: string }
+interface Row { match_id: string; entry_json: string; manifest_hash: string; state: string;
+  imported_at: string; map: string; file_name: string; stored_bytes: number }
+const rowColumns = 'match_id,entry_json,manifest_hash,state,imported_at,map,file_name,stored_bytes';
+const record = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value);
+const shortText = (value: unknown, max = 256): value is string => typeof value === 'string' && value.length > 0 && value.length <= max && !/[\u0000-\u001f]/.test(value);
+const nonnegative = (value: unknown, max = Number.MAX_SAFE_INTEGER): value is number => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 && value <= max;
+function validEntry(value: unknown): value is MatchLibraryEntry {
+  if (!record(value) || !isMatchId(value.matchId) || !shortText(value.fileName) || /[\\/:]/.test(value.fileName)
+    || !shortText(value.map, 64) || !nonnegative(value.rounds, 1024) || !nonnegative(value.storedBytes)
+    || typeof value.importedAt !== 'string' || !Number.isFinite(Date.parse(value.importedAt))
+    || !Array.isArray(value.players) || value.players.length > 64 || !record(value.versions) || !record(value.capabilities)
+    || !['ready', 'invalid', 'unsupported'].includes(value.state as string)) return false;
+  if (value.score !== null && (!record(value.score) || !nonnegative(value.score.initialCT, 1024) || !nonnegative(value.score.initialT, 1024))) return false;
+  if (!value.players.every(player => record(player) && shortText(player.id) && typeof player.nickname === 'string'
+    && player.nickname.length <= 1024 && !player.nickname.includes('\0'))) return false;
+  const versions = value.versions;
+  if (versions.archive !== 1 || versions.report !== 2 || versions.replay !== 1
+    || !['application', 'analysis', 'parser', 'native', 'sampling', 'mapResource'].every(key => shortText(versions[key]))
+    || typeof versions.sourceRevision !== 'string' || !/^[a-f0-9]{40}$/.test(versions.sourceRevision)) return false;
+  const capabilities = value.capabilities;
+  return ['report', 'deepReview', 'timeline', 'analysis', 'replay', 'heatmap'].every(key => {
+    const capability = capabilities[key];
+    return record(capability) && ['available', 'partial', 'unavailable'].includes(capability.status as string)
+      && (capability.reason === null || shortText(capability.reason, 512));
+  });
+}
 
 function localAbsolute(value: unknown): string {
   if (typeof value !== 'string' || !value || !isAbsolute(value) || value.includes('\0')) throw new Error('比赛库需要有效的本机绝对路径。');
@@ -150,12 +175,27 @@ export class LocalMatchLibrary {
   private row(matchId: string): Row | undefined {
     this.assertOpen();
     if (!isMatchId(matchId)) throw new Error('无效的比赛标识。');
-    return this.db.prepare('SELECT match_id, entry_json, manifest_hash, state FROM matches WHERE match_id=?').get(matchId) as Row | undefined;
+    return this.db.prepare(`SELECT ${rowColumns} FROM matches WHERE match_id=?`).get(matchId) as Row | undefined;
   }
   private entry(row: Row): MatchLibraryEntry {
-    const entry = JSON.parse(row.entry_json) as MatchLibraryEntry;
-    if (!entry || entry.matchId !== row.match_id || !isMatchId(entry.matchId)) throw new Error('比赛库索引记录损坏。');
+    let entry: MatchLibraryEntry;
+    try { entry = JSON.parse(row.entry_json) as MatchLibraryEntry; }
+    catch { throw new Error('比赛库索引记录损坏。'); }
+    if (!validEntry(entry) || entry.matchId !== row.match_id
+      || !['ready', 'invalid', 'unsupported'].includes(row.state)) throw new Error('比赛库索引记录损坏。');
     return { ...entry, state: row.state as MatchLibraryEntry['state'] };
+  }
+  private storedBytes(manifest: ArchiveManifest): number {
+    return Buffer.byteLength(JSON.stringify(manifest)) + manifest.files.reduce((sum, file) => sum + file.gzipBytes, 0);
+  }
+  private matchesSnapshot(row: Row, entry: MatchLibraryEntry, manifest: ArchiveManifest, storedBytes: number): boolean {
+    const expected = this.manifestEntry(manifest, storedBytes);
+    // Compare only the explicitly owned contract fields, independent of object key order.
+    const values = (value: MatchLibraryEntry) => [value.matchId, value.fileName, value.map, value.rounds, value.score,
+      value.players, value.importedAt, value.versions, value.capabilities, value.storedBytes];
+    return row.match_id === manifest.matchId && row.imported_at === expected.importedAt && row.map === expected.map
+      && row.file_name === expected.fileName && row.stored_bytes === storedBytes
+      && JSON.stringify(values(entry)) === JSON.stringify(values(expected));
   }
 
   /** Reconcile interrupted new imports without replacing or deleting existing indexed records. */
@@ -171,17 +211,26 @@ export class LocalMatchLibrary {
       await plainDirectory(path);
       if (!this.row(item.name)) await this.removeDirectory(path);
     }
-    for (const row of this.db.prepare('SELECT match_id, entry_json, manifest_hash, state FROM matches').all() as unknown as Row[]) {
+    for (const row of this.db.prepare(`SELECT ${rowColumns} FROM matches`).all() as unknown as Row[]) {
+      let trustedManifest: ArchiveManifest | null = null;
       try {
-        this.entry(row);
+        if (!isMatchId(row.match_id)) throw new Error('Invalid catalogue match identity');
         const manifest = await readArchiveManifest(join(this.root, 'matches', row.match_id));
         if (manifest.matchId !== row.match_id) throw new Error('Archive identity mismatch');
         // Startup reads bounded manifests only, never decompresses historical matches.
         if (archiveManifestHash(manifest) !== row.manifest_hash) throw new Error('Archive manifest changed');
+        trustedManifest = manifest;
+        if (!this.matchesSnapshot(row, this.entry(row), manifest, this.storedBytes(manifest))) throw new Error('Catalogue snapshot changed');
       } catch (error) {
         // Preserve bytes and the existing record for explicit repair/deletion later.
         const unsupported = (error as { code?: string })?.code === 'ARCHIVE_UNSUPPORTED';
-        this.db.prepare('UPDATE matches SET state=? WHERE match_id=?').run(unsupported ? 'unsupported' : 'invalid', row.match_id);
+        if (trustedManifest) {
+          // A valid manifest whose digest still matches SQLite can recover the small
+          // summary, but corruption is never promoted back to ready automatically.
+          const recovered = { ...this.manifestEntry(trustedManifest, this.storedBytes(trustedManifest)), state: 'invalid' as const };
+          this.db.prepare('UPDATE matches SET entry_json=?,state=?,imported_at=?,map=?,file_name=?,stored_bytes=? WHERE match_id=?')
+            .run(JSON.stringify(recovered), 'invalid', recovered.importedAt, recovered.map, recovered.fileName, recovered.storedBytes, row.match_id);
+        } else this.db.prepare('UPDATE matches SET state=? WHERE match_id=?').run(unsupported ? 'unsupported' : 'invalid', row.match_id);
         this.options.diagnostic?.(`Archive ${row.match_id} marked ${unsupported ? 'unsupported' : 'invalid'}`);
       }
     }
@@ -216,10 +265,21 @@ export class LocalMatchLibrary {
       const context = { matchId: manifest.matchId, directory: source };
       await this.options.phase?.('validated', context);
       abort(signal);
-      const existing = this.get(manifest.matchId);
-      if (existing) {
+      const existingRow = this.row(manifest.matchId);
+      if (existingRow) {
+        const existing = this.entry(existingRow);
         if (existing.state !== 'ready') throw new Error('已有比赛归档不可用，请先处理损坏记录。');
-        await verifyLibraryArchive(await this.archiveDirectory(manifest.matchId), { signal, mode: 'compressed' });
+        let previous;
+        try { previous = await verifyLibraryArchive(await this.archiveDirectory(manifest.matchId), { signal, mode: 'compressed' }); }
+        catch (error) {
+          if (!signal?.aborted) this.db.prepare('UPDATE matches SET state=? WHERE match_id=?').run('invalid', manifest.matchId);
+          throw error;
+        }
+        if (previous.manifestHash !== existingRow.manifest_hash
+          || !this.matchesSnapshot(existingRow, existing, previous.manifest, previous.storedBytes)) {
+          this.db.prepare('UPDATE matches SET state=? WHERE match_id=?').run('invalid', manifest.matchId);
+          throw new Error('已有比赛归档与持久索引不一致，请先处理损坏记录。');
+        }
         abort(signal);
         await this.removeDirectory(source);
         // From this synchronous notification onward Main must resolve success even
@@ -287,9 +347,19 @@ export class LocalMatchLibrary {
     const where = 'WHERE (? IS NULL OR map=?) AND (?=\'\' OR instr(lower(file_name),lower(?))>0 OR instr(lower(map),lower(?))>0)';
     const values = [query.map, query.map, query.search, query.search, query.search];
     const total = Number(this.db.prepare(`SELECT count(*) AS count FROM matches ${where}`).get(...values)?.count ?? 0);
-    const rows = this.db.prepare(`SELECT match_id,entry_json,manifest_hash,state FROM matches ${where} ORDER BY ${sort} ${direction},match_id ASC LIMIT ? OFFSET ?`)
+    const rows = this.db.prepare(`SELECT ${rowColumns} FROM matches ${where} ORDER BY ${sort} ${direction},match_id ASC LIMIT ? OFFSET ?`)
       .all(...values, query.limit, query.offset) as unknown as Row[];
-    const result: LibraryListResult = { kind: 'success', entries: rows.map(row => this.entry(row)), total, offset: query.offset, limit: query.limit };
+    const entries: MatchLibraryEntry[] = [];
+    let unreadableCount = 0;
+    for (const row of rows) {
+      try { entries.push(this.entry(row)); }
+      catch {
+        unreadableCount++;
+        this.db.prepare('UPDATE matches SET state=? WHERE match_id=?').run('invalid', row.match_id);
+        this.options.diagnostic?.(`Catalogue ${row.match_id} omitted from this page: unreadable index record`);
+      }
+    }
+    const result: LibraryListResult = { kind: 'success', entries, unreadableCount, total, offset: query.offset, limit: query.limit };
     return boundedLibraryResult(result, LIBRARY_LIST_RESPONSE_BYTES);
   }
   async storage(): Promise<LibraryStorageResult> {
