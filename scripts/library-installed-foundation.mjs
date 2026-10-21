@@ -50,7 +50,7 @@ try {
 } catch(error) {evidence.status='HOLD';evidence.error={message:error.message,stack:error.stack};process.exitCode=1;}
 finally {
   try {await scope.cleanup();}catch(error){evidence.cleanupError=error.message;process.exitCode=1;}
-  if(installed&&existsSync(join(installation,'Uninstall CS2 Analyst.exe'))) {
+  if(existsSync(join(installation,'Uninstall CS2 Analyst.exe'))) {
     try {await runInstaller(scope,join(installation,'Uninstall CS2 Analyst.exe'),['/S','/currentuser'],{label:'L1 failed-run owned uninstall',directory:installation,audit});}
     catch(error){evidence.uninstallError=error.message;process.exitCode=1;}
   }

@@ -191,7 +191,10 @@ async function analyzeDemo(filePath: string, window: BrowserWindow): Promise<Imp
   let staging: { id: string; directory: string };
   try {
     library = await libraryService();
-    if (controller.signal.aborted) return { kind: 'cancelled' };
+    if (controller.signal.aborted) {
+      if (cancelActiveImport === earlyCancel) cancelActiveImport = null;
+      return { kind: 'cancelled' };
+    }
     staging = await library.createStaging();
     if (controller.signal.aborted) { await library.discardStaging(staging.id); return { kind: 'cancelled' }; }
   } catch {
@@ -288,7 +291,11 @@ async function analyzeDemo(filePath: string, window: BrowserWindow): Promise<Imp
           if (saved.duplicate) {
             awaitingDuplicate = true;
             activationTimeout = setTimeout(() => void finish({ kind: 'error', message: '比赛已在本地库中，但打开已有档案超时。请重试打开该比赛。' }), 30_000);
-            worker.postMessage({ kind: 'restore-duplicate', archiveDirectory: await library.archiveDirectory(saved.entry.matchId), sessionId });
+            let directory: string;
+            try { directory = await library.archiveDirectory(saved.entry.matchId); }
+            catch { awaitingDuplicate = false; void finish({ kind: 'error', message: '已有比赛档案当前不可用，请检查比赛库完整性。' }); return; }
+            if (settled) return;
+            worker.postMessage({ kind: 'restore-duplicate', archiveDirectory: directory, sessionId });
           } else activate({ kind: 'success', report: message.report });
         } catch {
           void finish(controller.signal.aborted ? { kind: 'cancelled' } : { kind: 'error', message: '比赛分析完成，但无法安全保存到本地库。请检查磁盘空间和权限后重试。' });

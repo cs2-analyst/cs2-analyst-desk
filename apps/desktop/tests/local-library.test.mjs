@@ -123,6 +123,17 @@ test('bounded maximum roster still fits the catalogue row across restart', async
   assert.equal(library.list().entries[0].players.length, 64);
 }));
 
+test('multibyte roster beyond the catalogue byte budget fails before rename', async () => scope(async ({ library, root }) => {
+  const roster = Array.from({ length: 64 }, (_, index) => ({ id: `p-${index}`, nickname: '你'.repeat(512) }));
+  const oversized = input(); oversized.report.players = roster; oversized.report.selectedPlayer = roster[0].id;
+  const staged = await stage(library, oversized);
+  await assert.rejects(library.commitStaging(staged.id, undefined, staged.receipt), /索引记录超过安全大小限制/);
+  assert.equal(library.list().total, 0);
+  assert.equal(existsSync(join(root, 'matches', 'a'.repeat(64))), false, 'rejection must happen before rename');
+  assert.ok(existsSync(staged.directory), 'caller owns staging cleanup after a pre-rename rejection');
+  await library.discardStaging(staged.id);
+}));
+
 test('SHA duplicate preserves the existing snapshot and same filename never merges distinct bytes', async () => scope(async ({ library }) => {
   const first = await add(library);
   const duplicateInput = input(); duplicateInput.report.players[0].nickname = 'A changed analysis must not overwrite';

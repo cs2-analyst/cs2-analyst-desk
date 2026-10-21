@@ -96,7 +96,9 @@ try {
   app=await launch();const restartStart=performance.now();const restarted=await app.page.evaluate('window.cs2Analyst.library.list()');
   result.coldCatalogueMs=performance.now()-restartStart;assert.equal(restarted.total,1);assert.equal(restarted.entries[0].matchId,report.match.id);assert.equal(restarted.entries[0].state,'ready');
   result.checks.push('new Electron process reopens the persisted SQLite catalogue without importing or decoding historical matches');
-  assert.equal(await app.page.evaluate('typeof window.require'),'undefined');result.checks.push('Renderer remains sandboxed; library DTO contains no archive paths');
+  assert.equal(await app.page.evaluate('typeof window.require'),'undefined');
+  const catalogueJson=JSON.stringify(restarted);assert.ok(!/(?:[A-Za-z]:[\\/]|MatchLibrary|staging[\\/]|matches[\\/])/i.test(catalogueJson),'library DTO must not expose archive paths');
+  result.checks.push('Renderer remains sandboxed; library DTO contains no archive paths');
   await close(app);app=null;result.status='PASS';checkpoint('restart-passed');
 } catch(error) { result.status='FAIL';result.error={message:error.message,stack:error.stack,appLogs:app?.tracked.stderr};process.exitCode=1; }
 finally {
