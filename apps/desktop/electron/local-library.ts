@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { lstat, mkdir, readdir, realpath, rename, rm, stat } from 'node:fs/promises';
 import { realpathSync } from 'node:fs';
 import { dirname, isAbsolute, join, parse, relative, resolve, sep } from 'node:path';
-import type { LibraryListQuery, LibraryListResult, LibraryStorageResult, MatchLibraryEntry } from '@cs2-analyst/report-contract';
+import type { LibraryDeleteResult, LibraryListQuery, LibraryListResult, LibraryStorageResult, MatchLibraryEntry } from '@cs2-analyst/report-contract';
 import { LIBRARY_LIST_RESPONSE_BYTES, boundedLibraryResult, isMatchId, normalizeLibraryListQuery } from '../shared/library-ipc.ts';
 import { LIBRARY_METADATA_LIMITS, archiveManifestHash, readArchiveManifest, verifyLibraryArchive, type ArchiveManifest } from './library-archive.ts';
 
@@ -369,6 +369,43 @@ export class LocalMatchLibrary {
     const result: LibraryListResult = { kind: 'success', entries, unreadableCount, total, offset: query.offset, limit: query.limit };
     return boundedLibraryResult(result, LIBRARY_LIST_RESPONSE_BYTES);
   }
+  /**
+   * Delete catalogue rows in short transactions, then remove the owned archive
+   * directories. A directory that survives a failure has already lost its row and is
+   * therefore an orphan that the existing startup recovery removes; no other match is
+   * touched and capacities keep reflecting the files that actually remain on disk.
+   */
+  remove(matchIds: unknown): Promise<LibraryDeleteResult> {
+    return this.serial(async () => {
+      if (!Array.isArray(matchIds) || matchIds.length < 1 || matchIds.length > 100
+        || !matchIds.every(matchId => isMatchId(matchId)) || new Set(matchIds).size !== matchIds.length) {
+        return { kind: 'error', message: '无效的删除请求。' };
+      }
+      const removed: string[] = [], failed: { matchId: string; message: string }[] = [];
+      for (const matchId of matchIds as string[]) {
+        try {
+          if (!this.row(matchId)) throw new Error('比赛不存在或已被删除。');
+          this.db.exec('BEGIN IMMEDIATE');
+          try {
+            const result = this.db.prepare('DELETE FROM matches WHERE match_id=?').run(matchId);
+            if (Number(result.changes) !== 1) throw new Error('比赛索引未能删除。');
+            this.db.exec('COMMIT');
+          } catch (error) { try { this.db.exec('ROLLBACK'); } catch { /* Preserve the delete failure. */ } throw error; }
+          try {
+            await this.removeDirectory(join(this.root, 'matches', matchId));
+          } catch (error) {
+            this.options.diagnostic?.(`Removed catalogue row ${matchId}, but archive cleanup failed: ${error instanceof Error ? error.message : 'unknown'}`);
+            throw new Error('比赛索引已删除，但归档目录清理失败；重启后将自动清理。');
+          }
+          removed.push(matchId);
+        } catch (error) {
+          failed.push({ matchId, message: error instanceof Error ? error.message : '删除比赛失败。' });
+        }
+      }
+      return { kind: 'success', removed, failed };
+    });
+  }
+
   async storage(): Promise<LibraryStorageResult> {
     this.assertOpen();
     await this.directories();

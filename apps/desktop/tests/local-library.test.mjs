@@ -302,6 +302,51 @@ test('newer SQLite schema is rejected without rewriting its existing catalogue',
   library = await LocalMatchLibrary.open(root); setLibrary(library);
 }));
 
+test('remove deletes each row then its archive and reports invalid or missing ids per id', async () => scope(async ({ library }) => {
+  const first = await add(library), second = await add(library, input('b'.repeat(64)));
+  const firstDirectory = await library.archiveDirectory(first.entry.matchId);
+  const before = await library.storage();
+  for (const value of [[], ['../' + 'a'.repeat(64)], ['A'.repeat(64)], [first.entry.matchId, first.entry.matchId],
+    Array.from({ length: 101 }, (_, index) => index.toString(16).padStart(64, '0'))]) {
+    assert.equal((await library.remove(value)).kind, 'error', JSON.stringify(value).slice(0, 80));
+  }
+  assert.equal(library.list().total, 2);
+  assert.deepEqual(await library.remove([first.entry.matchId]), { kind: 'success', removed: [first.entry.matchId], failed: [] });
+  assert.equal(library.get(first.entry.matchId), null);
+  assert.equal(existsSync(firstDirectory), false);
+  assert.equal(library.list().total, 1);
+  assert.equal(library.get(second.entry.matchId).state, 'ready');
+  const after = await library.storage();
+  assert.equal(after.kind, 'success'); assert.equal(after.matchCount, 1);
+  assert.equal(after.archiveBytes, before.archiveBytes - first.entry.storedBytes, 'capacity follows actual files');
+  const missing = await library.remove([first.entry.matchId]);
+  assert.equal(missing.kind, 'success'); assert.deepEqual(missing.removed, []);
+  assert.deepEqual(missing.failed.map(item => item.matchId), [first.entry.matchId]);
+}));
+
+test('a failed archive removal is reported alone, keeps the other deletion and is recovered as an orphan on restart', async () => scope(async ({ library, root, owned, setLibrary }) => {
+  const first = await add(library), second = await add(library, input('b'.repeat(64)));
+  const firstDirectory = await library.archiveDirectory(first.entry.matchId);
+  const outside = join(owned.directory, 'outside'); mkdirSync(outside);
+  // A junction inside the owned archive makes the guarded removal refuse this match only.
+  const redirect = join(firstDirectory, 'junction'); symlinkSync(outside, redirect, 'junction');
+  const result = await library.remove([first.entry.matchId, second.entry.matchId]);
+  assert.equal(result.kind, 'success');
+  assert.deepEqual(result.removed, [second.entry.matchId]);
+  assert.deepEqual(result.failed.map(item => item.matchId), [first.entry.matchId]);
+  assert.equal(library.get(first.entry.matchId), null, 'the row is already deleted');
+  assert.ok(existsSync(firstDirectory), 'the leftover directory is an orphan, not an indexed match');
+  assert.equal(library.list().total, 0);
+  rmSync(redirect);
+  const leftover = await library.storage();
+  assert.equal(leftover.matchCount, 0); assert.ok(leftover.archiveBytes > 0, 'capacity reflects files that remain');
+  library.close();
+  library = await LocalMatchLibrary.open(root); setLibrary(library);
+  assert.equal(existsSync(firstDirectory), false, 'startup orphan cleanup removes the leftover');
+  const clean = await library.storage();
+  assert.equal(clean.archiveBytes, 0); assert.equal(clean.matchCount, 0);
+}));
+
 test('real killed writer recovers after rename and preserves commit completed before process death', async () => scope(async ({ library, root, owned, setLibrary }) => {
   const existing = await add(library); library.close();
   const template = join(owned.directory, 'template'); mkdirSync(template);
