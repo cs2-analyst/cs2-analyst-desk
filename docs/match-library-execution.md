@@ -21,7 +21,7 @@
 | L2 | `/root/l2_lead` | L1 PASS | PASS | 产品构建 `5875e92`；测试收尾 `825637b`；[证据](./match-library-l2-offline-restore-evidence.md)，51/51 聚焦、246/246 全量、Dust2/Nuke 无 DEM 重开 | 独立复核 PASS，无 P1/P2；P3：失败打开后 UI 旧会话不可交互、跨版本恢复未比对、重建/证据可追溯性 |
 | L3 | `/root/l3_lead` | L2 PASS | PASS | 产品构建 `1b812ae`；[证据](./match-library-l3-data-operations-evidence.md)，57/57 聚焦、270/270 全量、Dust2/Nuke 导出→删除→导入→无 DEM 重开 | 独立复核 PASS；P2 已修（孤儿恢复、瞬时 I/O 不降级）；P3 记录在文档 |
 | L4 | `/root/l4_lead` | L2 PASS | PASS | 产品构建 `70dbece`；[证据](./match-library-l4-navigation-evidence.md)，24/24 聚焦、261/261 全量、24 个几何状态 0px | 独立复核 PASS；P2 修复（会话泄漏、筛选丢失、禁用可辨识性、共享检查）；P3 记录 |
-| L5 | `/root/l5_lead` | L3/L4 PASS | TECHNICAL PASS / HUMAN NOT RUN | 产品构建 `cbfa566`；[验收记录](./match-library-l5-acceptance.md) / [JSON](./match-library-l5-acceptance.json)；285/285、NSIS、test-seam、升级、L2 回滚打开、50 合成库、模拟 DPI、Win32 双击 PASS | 物理 DPI/多屏、真实高对比度/Narrator、人工签收 NOT RUN；不得宣称最终发布完成 |
+| L5 | `/root/l5_lead` | L3/L4 PASS | TECHNICAL PASS / HUMAN NOT RUN | 产品构建 `14e9ed0`；[验收记录](./match-library-l5-acceptance.md) / [JSON](./match-library-l5-acceptance.json)；285/285、NSIS、test-seam、升级、L2 回滚打开、50 合成库、模拟 DPI、Win32 双击 PASS | 物理 DPI/多屏、真实高对比度/Narrator、人工签收 NOT RUN；不得宣称最终发布完成 |
 
 ## L1 收尾与证据
 
@@ -64,7 +64,7 @@
 
 ## L5 技术验收与人工待验
 
-- 生产 NSIS（`b92b21e6…68a5d19`）在自有目录完成安装、Nuke 导入、重启与卸载保留；test-seam 安装版完成导出→删除→导入→冷打开及损坏包拒绝；L1 安装包→最终包升级后旧归档 report 指纹不变；L1 列表/只读、L2 回滚打开/渲染 report 指纹一致。
+- 生产 NSIS（`ee6ba4d6…5f5226e9`）在自有目录完成安装、Nuke 导入、重启与卸载保留；test-seam 安装版完成导出→删除→导入→冷打开及损坏包拒绝；L1 安装包→最终包升级后旧归档 report 指纹不变；L1 列表/只读、L2 回滚打开/渲染 report 指纹一致。
 - 全量 Desktop 285/285、类型检查 15/15、`desktop-report-smoke` 3/3、导航 24 状态 0px、集成 Dust2/Nuke 数据操作 PASS；50 条合成库首屏、模拟 1.25/1.5 DPR/forced-colors、真实 Win32 标题栏双击 PASS；日志与证据在 `.tmp/l5/evidence/`。
 - **人工 NOT RUN**：物理 125%/150% DPI 与多屏、真实 Windows 高对比度/Narrator 走查、真实产品签收。模拟结果不能替代人工确认。
 - 保留风险：Replay 5131.302ms 历史债；打开全量校验 2.5–3.1s；删除孤儿容量；跨版本版本比对；NSIS 单用户 x64。

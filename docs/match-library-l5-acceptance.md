@@ -2,14 +2,14 @@
 
 > **结论：技术矩阵通过；人工产品验收 NOT RUN。** 本文不宣告版本发布，也不把 L0–L4 证据替代 L5 人工确认。
 >
-> 产品构建 `cbfa566`；验收记录提交 `2c49b05`。机器记录：[match-library-l5-acceptance.json](./match-library-l5-acceptance.json)；各阶段证据见 [执行台账](./match-library-execution.md)。
+> 产品构建 `14e9ed0`；验收记录提交 `14e9ed0`。机器记录：[match-library-l5-acceptance.json](./match-library-l5-acceptance.json)；各阶段证据见 [执行台账](./match-library-execution.md)。
 
 ## 1. 技术矩阵
 
 | # | 场景 | 结果 | 证据 |
 | --- | --- | --- | --- |
-| 1 | 生产 NSIS 安装 → Nuke 导入 → 重启 → 卸载保留 | PASS | 安装包 `b92b21e6…68a5d19`；导入 15,266.0ms；冷目录 0.99ms；卸载后 manifest 保留 |
-| 2 | test-seam 安装版导出/删除/导入/冷打开 | PASS | `.cs2a` 16,929,688B / 164 文件；删除后 archiveBytes=0；损坏包拒绝；`productRevision=cbfa566` |
+| 1 | 生产 NSIS 安装 → Nuke 导入 → 重启 → 卸载保留 | PASS | 安装包 `ee6ba4d6…5f5226e9`；导入 15,815.7ms；冷目录 1.63ms；卸载后 manifest 保留 |
+| 2 | test-seam 安装版导出/删除/导入/冷打开 | PASS | `.cs2a` 16,929,688B / 164 文件；删除后 archiveBytes=0；损坏包拒绝；`productRevision=14e9ed0` |
 | 3 | L1 构建 → 最终构建升级 | PASS | 旧安装包 `1d5960f2…79f75b9c`；升级后旧归档 report `e071bfa7…5771f748` 不变；卸载保留 |
 | 4 | 回滚旧构建打开/渲染 | PASS | L1 可列出 ready 归档；L2 构建可打开最终库归档并渲染相同 report `e071bfa7…` |
 | 5 | 损坏包（翻转/截断）；路径/UNC/预算 | PASS | 端到端：1 位翻转/截断拒绝、staging 为空、现有比赛可打开；遍历/绝对/UNC/重复/预算由 `library-portable.test.mjs` 单测覆盖，非安装版流程 |
