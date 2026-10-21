@@ -23,7 +23,12 @@ try {
   evidence.installer.sha256=createHash('sha256').update(readFileSync(installer)).digest('hex');
   await runInstaller(scope,installer,['/S','/D='+installation],{label:'L1 production install',directory:installation,audit});
   installed=true;assert.ok(existsSync(join(installation,'CS2 Analyst.exe')));
-  const registrations=await windowsRegistrations();assert.ok(registrations.some(item=>item.installLocation?.toLowerCase()===installation.toLowerCase()));evidence.installedRegistrations=registrations;
+  const registrations=await windowsRegistrations();
+  // electron-builder's per-user NSIS registration leaves InstallLocation empty; the
+  // uninstaller path is the authoritative owned-installation link.
+  const registeredAt=item=>[item.installLocation,item.uninstallString,item.quietUninstallString]
+    .some(value=>typeof value==='string'&&value.toLowerCase().includes(installation.toLowerCase()));
+  assert.ok(registrations.some(registeredAt));evidence.installedRegistrations=registrations;
   const startedAt=Date.now(),child=spawn(process.execPath,[join(root,'scripts/library-foundation-acceptance.mjs'),fixture,join(installation,'CS2 Analyst.exe')],
     {cwd:root,windowsHide:true,stdio:['ignore','pipe','pipe']});
   const controller=scope.track(child,'L1 installed product acceptance',startedAt);
