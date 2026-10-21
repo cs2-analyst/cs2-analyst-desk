@@ -128,22 +128,27 @@ test('library page first paint is an honest loading state without touching Repla
 });
 
 test('titlebar disabled states, accessible names and brand group', () => {
-  const disabled = render(createElement(TitlebarView, { canBack: false, canForward: false, onBack: noop, onForward: noop,
+  const disabled = render(createElement(TitlebarView, { canBack: false, canForward: false, canHome: false, onBack: noop, onForward: noop, onHome: noop,
     maximized: false, onMinimize: noop, onToggleMaximize: noop, onClose: noop }));
   assert.match(disabled, /data-nav-action="back"[^>]*aria-disabled="true"/);
   assert.match(disabled, /data-nav-action="forward"[^>]*aria-disabled="true"/);
+  assert.match(disabled, /data-nav-action="home"[^>]*aria-disabled="true"/);
   assert.match(disabled, /data-nav-action="back"[^>]*data-nav-disabled="true"/);
   assert.ok(disabled.includes('aria-label="后退"'));
   assert.ok(disabled.includes('aria-label="前进"'));
+  assert.ok(disabled.includes('aria-label="返回首页"'));
+  const actions = [...disabled.matchAll(/data-nav-action="([^"]+)"/g)].map(item => item[1]);
+  assert.deepEqual(actions, ['back', 'home', 'forward'], 'Home must be exactly between back and forward');
   assert.ok(disabled.includes('data-app-brand'));
   assert.ok(disabled.includes('CS2 Analyst'));
   assert.ok(disabled.includes('data-window-control="minimize"'));
   assert.ok(disabled.includes('data-window-control="maximize"'));
   assert.equal(disabled.includes('>还原<'), false);
-  const enabled = render(createElement(TitlebarView, { canBack: true, canForward: true, onBack: noop, onForward: noop,
+  const enabled = render(createElement(TitlebarView, { canBack: true, canForward: true, canHome: true, onBack: noop, onForward: noop, onHome: noop,
     maximized: true, onMinimize: noop, onToggleMaximize: noop, onClose: noop }));
   assert.doesNotMatch(enabled, /data-nav-action="back"[^>]*aria-disabled="true"/);
   assert.doesNotMatch(enabled, /data-nav-action="forward"[^>]*aria-disabled="true"/);
+  assert.doesNotMatch(enabled, /data-nav-action="home"[^>]*aria-disabled="true"/);
   assert.doesNotMatch(enabled, /data-nav-action="back"[^>]*data-nav-disabled="true"/);
   assert.ok(enabled.includes('aria-label="还原"'));
 });

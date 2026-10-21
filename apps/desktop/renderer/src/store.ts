@@ -42,6 +42,7 @@ export interface ReportState {
   setLibraryFilters(patch: Partial<LibraryFilters>): void;
   back(): Promise<void>;
   forward(): Promise<void>;
+  goHome(): Promise<void>;
   importDemo(): Promise<void>;
   importDroppedFile(file: File): Promise<void>;
   openMatch(matchId: string, navigationOverride?: NavigationState): Promise<void>;
@@ -129,6 +130,21 @@ export const useReport = create<ReportState>((set, get) => ({
   },
   setLibraryFilters: patch => set(state => ({ libraryFilters: { ...state.libraryFilters, ...patch } })),
   cancelImport: async () => { await window.cs2Analyst.cancelImport(); },
+  // Home pushes a history entry rather than replacing the match route. Back then
+  // reopens a fresh Utility session and restores the match's last selected view.
+  goHome: async () => {
+    const state = get();
+    if (busyState(state)) return;
+    const active = currentRoute(state.navigation);
+    if (active.kind === 'global' && active.section === 'library') return;
+    const navigation = pushRoute(state.navigation, { kind: 'global', section: 'library' });
+    if (active.kind === 'match') {
+      set({ libraryError: null, libraryNotice: null });
+      await leaveMatch(get, set, navigation);
+      return;
+    }
+    set({ navigation, error: null, libraryError: null, libraryNotice: null });
+  },
   back: async () => {
     const state = get();
     if (busyState(state) || !canBack(state.navigation)) return;
@@ -227,7 +243,7 @@ export const useReport = create<ReportState>((set, get) => ({
       if (result.kind === 'success') {
         set(current => {
           const navigation = navigationOverride ?? pushRoute(current.navigation, matchRoute(result.report.match?.id ?? matchId));
-          return activatedReport(current, result.report, navigation, true);
+          return activatedReport(current, result.report, navigation, !navigationOverride);
         });
       } else if (result.kind === 'error') {
         set({ status: 'error', error: result.message, sessionActive: hadReport });
@@ -311,3 +327,7 @@ export const activeMatchView = (state: ReportState): ViewId => {
 };
 export const navigationCanBack = (state: ReportState): boolean => canBack(state.navigation) && !busyState(state);
 export const navigationCanForward = (state: ReportState): boolean => canForward(state.navigation) && !busyState(state);
+export const navigationCanHome = (state: ReportState): boolean => {
+  const route = currentRoute(state.navigation);
+  return !(route.kind === 'global' && route.section === 'library') && !busyState(state);
+};

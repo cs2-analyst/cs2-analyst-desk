@@ -158,6 +158,13 @@ export function BackIcon(props: IconProps) {
   return <Icon {...props}><path d="M15.5 10h-11M9 4.8 3.8 10 9 15.2" /></Icon>;
 }
 
+/** 标题栏：首页（比赛数据），沿用本地单色线稿。 */
+export function HomeIcon(props: IconProps) {
+  return <Icon {...props}>
+    <path d="M3.2 9.4 10 3.8l6.8 5.6M5 8.2v8h10v-8M8 16.2v-5.2h4v5.2" />
+  </Icon>;
+}
+
 /** 标题栏：前进。 */
 export function ForwardIcon(props: IconProps) {
   return <Icon {...props}><path d="M4.5 10h11M11 4.8l5.2 5.2-5.2 5.2" /></Icon>;

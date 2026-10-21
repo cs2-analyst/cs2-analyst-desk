@@ -26,7 +26,7 @@ registerHooks({ resolve(specifier, context, nextResolve) {
   return nextLoad(url, context);
 } });
 
-const { useReport, activeMatchView, navigationCanBack, navigationCanForward } = await import('../renderer/src/store.ts');
+const { useReport, activeMatchView, navigationCanBack, navigationCanForward, navigationCanHome } = await import('../renderer/src/store.ts');
 const { HeatmapView } = await import('../renderer/src/heatmap-view.tsx');
 const { ReplayPlayer } = await import('../renderer/src/replay-player.tsx');
 const render = element => renderToStaticMarkup(createElement(SSRProvider, null, element));
@@ -100,6 +100,65 @@ test('one back exits a match after any number of tab changes; forward re-enters 
   assert.equal(activeMatchView(state), 'heatmap', 'forward restores the last selected match view');
   assert.equal(state.sessionActive, true, 'forward creates a fresh usable session');
   assert.deepEqual(calls.open, [id, id]);
+});
+
+test('Home from a match preserves history and reopens the last match view on Back', async () => {
+  const { api, calls } = bridge();
+  let generation = 0;
+  api.library.open = async id => {
+    calls.open.push(id);
+    return { kind: 'success', report: report(id, 'fresh-' + ++generation) };
+  };
+  reset();
+  assert.equal(navigationCanHome(useReport.getState()), false, 'Home is disabled on the default library page');
+
+  const id = matchId('z');
+  await useReport.getState().openMatch(id);
+  useReport.getState().setMatchView('heatmap');
+  assert.equal(navigationCanHome(useReport.getState()), true);
+  await useReport.getState().goHome();
+
+  let state = useReport.getState();
+  assert.deepEqual(state.navigation.history, [libraryRoute, matchRoute(id), libraryRoute]);
+  assert.equal(state.navigation.index, 2);
+  assert.equal(state.report, null);
+  assert.equal(state.sessionActive, false);
+  assert.deepEqual(calls.release, ['fresh-1'], 'Home releases the exact active session');
+  assert.equal(navigationCanHome(state), false);
+  await useReport.getState().goHome();
+  assert.equal(useReport.getState().navigation.history.length, 3, 'Home on home is a no-op');
+
+  await useReport.getState().back();
+  state = useReport.getState();
+  assert.deepEqual(state.navigation.history[state.navigation.index], matchRoute(id));
+  assert.equal(activeMatchView(state), 'heatmap', 'Back must restore the previous match tab');
+  assert.equal(state.report.replay.sessionId, 'fresh-2', 'Back opens a fresh Utility session');
+  assert.equal(state.sessionActive, true);
+
+  await useReport.getState().forward();
+  state = useReport.getState();
+  assert.deepEqual(state.navigation.history[state.navigation.index], libraryRoute);
+  assert.equal(state.report, null);
+  assert.deepEqual(calls.release, ['fresh-1', 'fresh-2']);
+  assert.deepEqual(calls.open, [id, id]);
+});
+
+test('Home from personal data is a history entry; busy operations guard Home', async () => {
+  const { calls } = bridge();
+  reset();
+  useReport.getState().selectSection('personal');
+  assert.equal(navigationCanHome(useReport.getState()), true);
+  await useReport.getState().goHome();
+  assert.deepEqual(useReport.getState().navigation.history, [libraryRoute, { kind: 'global', section: 'personal' }, libraryRoute]);
+  await useReport.getState().back();
+  assert.deepEqual(useReport.getState().navigation.history[useReport.getState().navigation.index], { kind: 'global', section: 'personal' });
+
+  reset({ status: 'opening', navigation: { history: [libraryRoute, matchRoute(matchId('b'))], index: 1 } });
+  const oldNavigation = useReport.getState().navigation;
+  assert.equal(navigationCanHome(useReport.getState()), false);
+  await useReport.getState().goHome();
+  assert.equal(useReport.getState().navigation, oldNavigation);
+  assert.deepEqual(calls.release, []);
 });
 
 test('library filters live in the store so back-to-list preserves search, map and sort', () => {

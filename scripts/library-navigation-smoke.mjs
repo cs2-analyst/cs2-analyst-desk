@@ -283,6 +283,20 @@ async function main() {
     evidence.history.push({ step: 'back-forward-1920x1032', selectedTab: 'heatmap-tab', pass: true });
     await measure('match 1920x1032 native expanded after history');
 
+    // Home sits between the arrows and returns to the library without discarding Back history.
+    assert.deepEqual(await evaluate("Array.from(document.querySelectorAll('[data-app-history-nav] [data-nav-action]')).map(el => el.dataset.navAction)"),
+      ['back', 'home', 'forward'], 'titlebar order must be Back / Home / Forward');
+    assert.equal(await evaluate("document.querySelector('[data-nav-action=home]').getAttribute('aria-disabled')"), 'false');
+    await evaluate("document.querySelector('[data-nav-action=home]').click()");
+    await waitFor(() => evaluate("document.querySelector('[data-app-sidebar]')?.dataset.sidebarMode === 'global' && !!document.querySelector('[data-library-page]')"),
+      30_000, 'Home navigates to library', { intervalMs: 100 });
+    assert.equal(await evaluate("document.querySelector('[data-nav-action=home]').getAttribute('aria-disabled')"), 'true');
+    await evaluate("document.querySelector('[data-nav-action=back]').click()");
+    await waitFor(() => evaluate("document.querySelector('[data-app-sidebar]')?.dataset.sidebarMode === 'match' && document.querySelector('[data-app-content]')?.dataset.status === 'success'"),
+      60_000, 'Back after Home restores match', { intervalMs: 100 });
+    assert.equal((await getState()).selectedTab, 'heatmap-tab', 'Back after Home restores the last tab');
+    evidence.history.push({ step: 'home-then-back', selectedTab: 'heatmap-tab', pass: true });
+
     assert.deepEqual(errors, [], 'no renderer exceptions during the L4 smoke');
     mkdirSync(join(repo, '.tmp'), { recursive: true });
     writeFileSync(evidencePath, JSON.stringify(evidence, null, 2) + '\n');

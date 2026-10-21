@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Button, makeStyles, mergeClasses, Tooltip } from '@fluentui/react-components';
 import { palette } from './theme';
-import { BackIcon, ForwardIcon } from './icons';
+import { BackIcon, ForwardIcon, HomeIcon } from './icons';
 import { CloseIcon, MaximizeIcon, MinimizeIcon, RestoreIcon } from './window-icons';
-import { useReport, navigationCanBack, navigationCanForward } from './store';
+import { useReport, navigationCanBack, navigationCanForward, navigationCanHome } from './store';
 import appMark from '../../resources/branding/cs2-analyst-mark.png';
 
 const useStyles = makeStyles({
@@ -49,11 +49,13 @@ const useStyles = makeStyles({
 });
 
 /** Presentational titlebar: every interactive state is a prop so it can be asserted without Electron. */
-export function TitlebarView({ canBack, canForward, onBack, onForward, maximized, onMinimize, onToggleMaximize, onClose }: {
+export function TitlebarView({ canBack, canForward, canHome, onBack, onForward, onHome, maximized, onMinimize, onToggleMaximize, onClose }: {
   canBack: boolean;
   canForward: boolean;
+  canHome: boolean;
   onBack: () => void;
   onForward: () => void;
+  onHome: () => void;
   maximized: boolean;
   onMinimize: () => void;
   onToggleMaximize: () => void;
@@ -66,6 +68,11 @@ export function TitlebarView({ canBack, canForward, onBack, onForward, maximized
         <Button appearance="transparent" className={s.navButton} data-nav-action="back"
           aria-label="后退" aria-disabled={!canBack} data-nav-disabled={!canBack ? 'true' : 'false'}
           icon={<BackIcon size={18} />} onClick={() => { if (canBack) onBack(); }} />
+      </Tooltip>
+      <Tooltip content={canHome ? '返回首页' : '当前已在首页'} relationship="description">
+        <Button appearance="transparent" className={s.navButton} data-nav-action="home"
+          aria-label="返回首页" aria-disabled={!canHome} data-nav-disabled={!canHome ? 'true' : 'false'}
+          icon={<HomeIcon size={18} />} onClick={() => { if (canHome) onHome(); }} />
       </Tooltip>
       <Tooltip content={canForward ? '前进' : '没有可前进的页面'} relationship="description">
         <Button appearance="transparent" className={s.navButton} data-nav-action="forward"
@@ -88,8 +95,10 @@ export function TitlebarView({ canBack, canForward, onBack, onForward, maximized
 export function AppTitlebar() {
   const canBack = useReport(navigationCanBack);
   const canForward = useReport(navigationCanForward);
+  const canHome = useReport(navigationCanHome);
   const back = useReport(state => state.back);
   const forward = useReport(state => state.forward);
+  const goHome = useReport(state => state.goHome);
   const [maximized, setMaximized] = useState(false);
   useEffect(() => {
     let active = true;
@@ -107,7 +116,8 @@ export function AppTitlebar() {
 
   // The drag region owns dragging; the Main-process WM_NCLBUTTONDBLCLK hook owns
   // double-click maximize/restore for this frameless caption.
-  return <TitlebarView canBack={canBack} canForward={canForward} onBack={() => void back()} onForward={() => void forward()}
+  return <TitlebarView canBack={canBack} canForward={canForward} canHome={canHome}
+    onBack={() => void back()} onHome={() => void goHome()} onForward={() => void forward()}
     maximized={maximized}
     onMinimize={() => void window.cs2Analyst.window.minimize()}
     onToggleMaximize={() => void window.cs2Analyst.window.toggleMaximize()}
