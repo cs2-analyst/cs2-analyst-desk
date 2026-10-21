@@ -153,7 +153,7 @@ Current: **v0.1 Final Acceptance FINAL PASS; P5 COMPLETE; P5.7 FINAL PASS.** 验
 
 ## Local Match Library & History（已授权，L0 PASS）
 
-> **用户于 2026-10-21 明确授权一次性实施 L0–L5，2026-10-22 L0 独立审核通过，L1 READY，L2–L5 HOLD。** [执行台账](./match-library-execution.md) · [L0 实证](./match-library-l0-storage-evidence.md)。旧的“账号 + apps/api + 服务端比赛摘要”路径已废止。P7 已封板；本阶段采用 **Windows 客户端 Local-first**，保存解析/分析完成的本机比赛归档，原 DEM 不保存、个人比赛不上传服务器。**不做账号/公共比赛历史后端**；与 P8 内部职业知识管线及 AI Coach 后端分开。
+> **用户于 2026-10-21 明确授权一次性实施 L0–L5，2026-10-22 L0 独立审核通过，L1 RUNNING，L2–L5 HOLD。** [执行台账](./match-library-execution.md) · [L0 实证](./match-library-l0-storage-evidence.md)。旧的“账号 + apps/api + 服务端比赛摘要”路径已废止。P7 已封板；本阶段采用 **Windows 客户端 Local-first**，保存解析/分析完成的本机比赛归档，原 DEM 不保存、个人比赛不上传服务器。**不做账号/公共比赛历史后端**；与 P8 内部职业知识管线及 AI Coach 后端分开。
 
 - 现有单份 `report` + 临时 Replay/Heatmap Session 不具备历史恢复能力；新增比赛库必须在不依赖原 DEM、不依赖旧 Utility Process 的情况下离线打开已有六个功能。
 - **导航已确定（2026-10-18 修订）**：全局第一层侧栏显示「个人数据」「比赛数据」等入口；选择「比赛数据」展示历史比赛列表；点击一场比赛，**同一侧栏整体切换**为现有六项比赛功能。标题栏后退**一次退出比赛**返回列表、前进可重入（六项 Tab 切换不入历史栈），不将两套菜单同时展开成树。参考 Codex 桌面端在 40px 标题栏左侧放后退/前进，**现有 mark + CS2 Analyst 名称严格以整个窗口几何中心居中**。仅 Shell 层切换菜单模式，尽量复用现有六视图不迁移重构。

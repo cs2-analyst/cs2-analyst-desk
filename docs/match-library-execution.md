@@ -17,7 +17,7 @@
 | 阶段 | 负责人 | 前置 | 状态 | 实现提交 / 测试证据 | 风险与审核决定 |
 |---|---|---|---|---|---|
 | L0 | `/root/l0_lead` | 无 | PASS | Gate 包 `481cf79`；集成 `b2f8877`；[报告](./match-library-l0-storage-evidence.md) / [JSON](./match-library-size-benchmark.json)，5/5 纯测试及真实实验 | L3 Lead 独立复核 PASS，总线复核/集成通过，限制保留 |
-| L1 | `/root/l1_lead` | L0 PASS | READY | 环境已准备；待采用最新集成基线 | SQLite 安装 ABI、持久化故障一致性必须实际验证 |
+| L1 | `/root/l1_lead` | L0 PASS | RUNNING | 基线 `1af57c8`；archive_executor / catalogue_executor 分工实施，Lead 拥有 Main/Worker/Preload 与公共契约 | SQLite 安装 ABI、持久化故障一致性必须实际验证 |
 | L2 | `/root/l2_lead` | L1 PASS | HOLD | 只读调查完成；无产品实现 | 完整热力图源、按需 Chunk、会话生命周期待冻结 |
 | L3 | `/root/l3_lead` | L2 PASS | HOLD | 只读调查完成；兼任独立 L0 Reviewer，未实现 L0 | 不可信归档边界与删除恢复待验证 |
 | L4 | `/root/l4_lead` | L2 PASS | HOLD | 只读调查已开展；无产品实现 | 互斥侧栏、历史栈与整窗品牌中心均须真实 Electron 检查 |
