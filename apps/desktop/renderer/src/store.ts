@@ -19,11 +19,6 @@ export const useReport = create<ReportState>((set, get) => ({
   // Progress only moves an in-flight import forward; a late event must not re-enter busy after success/error.
   setPhase: phase => set(state => ['selecting', 'parsing', 'analyzing'].includes(state.status) ? {
     status: phase,
-    ...(phase==='parsing'&&state.report ? {report:{...state.report,
-      ...(state.report.replay?{replay:{...state.report.replay,available:false,sessionId:null,unavailableReason:'上一次回放会话已结束；比赛报告仍可用。'}}:{}),
-      ...(state.report.heatmap?{heatmap:{...state.report.heatmap,available:false,unavailableReason:'session-ended' as const,
-        layers:{positions:{available:false,unavailableReason:'session-ended' as const},kills:{available:false,unavailableReason:'session-ended' as const},deaths:{available:false,unavailableReason:'session-ended' as const}}}}:{}),
-    }}:{}),
   } : {}),
   selectPlayer: id => { if (get().report?.players.some(p => p.id === id)) set({ playerId: id }); },
   cancelImport: async () => { await window.cs2Analyst.cancelImport(); },

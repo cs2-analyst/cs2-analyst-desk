@@ -7,6 +7,8 @@ import { constants as fsConstants } from 'node:fs';
 import type { ImportPhase, ImportResult, DesktopReplayMetadata, DesktopReplayRequest, DesktopReplayResult,
   DesktopHeatmapMetadata, DesktopHeatmapRequest, DesktopHeatmapResult } from '@cs2-analyst/report-contract';
 import { HEATMAP_MAX_PENDING, HEATMAP_TIMEOUT_MS, validateHeatmapRequest, validateHeatmapResult } from '../shared/heatmap-ipc.ts';
+import { LocalMatchLibrary } from './local-library.ts';
+import { normalizeLibraryListQuery, boundedLibraryResult, LIBRARY_LIST_RESPONSE_BYTES, LIBRARY_STORAGE_RESPONSE_BYTES } from '../shared/library-ipc.ts';
 
 /** Replaced at build time by electron.vite.config.ts. False in production installers. */
 declare const __CS2_ANALYST_TEST_SEAM__: boolean;
@@ -18,6 +20,16 @@ let activeReplay: DesktopReplayMetadata | null = null;
 let activeHeatmap: DesktopHeatmapMetadata | null = null;
 let activeSessionId: string | null = null;
 let cancelActiveImport: (() => void) | null = null;
+let libraryInstance: LocalMatchLibrary | null = null;
+let libraryOpening: Promise<LocalMatchLibrary> | null = null;
+const candidateWorkers = new Map<Electron.UtilityProcess, Promise<void>>();
+const candidateCleanups = new Set<Promise<unknown>>();
+function libraryService(): Promise<LocalMatchLibrary> {
+  if (libraryInstance) return Promise.resolve(libraryInstance);
+  if (!libraryOpening) libraryOpening = LocalMatchLibrary.open().then(value => { libraryInstance = value; return value; })
+    .catch(error => { libraryOpening = null; throw error; });
+  return libraryOpening;
+}
 let requestSequence = 0;
 const pendingChunks = new Map<number, { worker: Electron.UtilityProcess; request: DesktopReplayRequest; timer: ReturnType<typeof setTimeout>; resolve: (result: DesktopReplayResult) => void }>();
 const pendingHeatmaps = new Map<number, { worker: Electron.UtilityProcess; request: DesktopHeatmapRequest; timer: ReturnType<typeof setTimeout>; resolve: (result: DesktopHeatmapResult) => void }>();
@@ -53,11 +65,22 @@ ipcMain.handle('window:close', event => { trustedWindow(event)?.close(); });
 ipcMain.handle('window:is-maximized', event => trustedWindow(event)?.isMaximized() ?? false);
 ipcMain.handle('report:cancel', event => { if(trustedWindow(event)&&importing)cancelActiveImport?.(); });
 const releaseSession = (event: Electron.IpcMainInvokeEvent, sessionId: unknown) => {
-  if(trustedWindow(event)&&typeof sessionId==='string'&&sessionId===activeSessionId){cancelActiveImport?.();stopAnalysisWorker();}
+  if(trustedWindow(event)&&typeof sessionId==='string'&&sessionId===activeSessionId)stopAnalysisWorker();
 };
 // Legacy release has always ended the analysis worker. Both APIs retain that ownership.
 ipcMain.handle('replay:release', releaseSession);
 ipcMain.handle('session:release', releaseSession);
+ipcMain.handle('library:list', async (event, value: unknown) => {
+  const query = normalizeLibraryListQuery(value);
+  if (!trustedWindow(event) || !query) return { kind: 'error', message: '比赛库查询无效。' };
+  try { return boundedLibraryResult((await libraryService()).list(query), LIBRARY_LIST_RESPONSE_BYTES); }
+  catch { return { kind: 'error', message: '无法读取本地比赛库，请检查磁盘权限或稍后重试。' }; }
+});
+ipcMain.handle('library:storage', async event => {
+  if (!trustedWindow(event)) return { kind: 'error', message: '比赛库请求无效。' };
+  try { return boundedLibraryResult(await (await libraryService()).storage(), LIBRARY_STORAGE_RESPONSE_BYTES); }
+  catch { return { kind: 'error', message: '无法读取比赛库磁盘占用。' }; }
+});
 ipcMain.handle('heatmap:grid', (event, value: unknown): Promise<DesktopHeatmapResult> | DesktopHeatmapResult => {
   const fail = (): DesktopHeatmapResult => ({kind:'error',message:'无效、不可用或已过期的热力图请求。'});
   const metadata=activeHeatmap,worker=activeWorker;
@@ -147,33 +170,92 @@ async function rememberDemoDirectory(filePath: string): Promise<void> {
   }
 }
 
-function analyzeDemo(filePath: string, window: BrowserWindow): Promise<ImportResult> {
-  stopAnalysisWorker();
+/** Retire a candidate before removing files that it could still be writing. */
+function retireCandidate(worker: Electron.UtilityProcess): Promise<boolean> {
+  return new Promise(resolve => {
+    let ended = false;
+    const finish = (confirmed: boolean) => { if (ended) return; ended = true; clearTimeout(timer); resolve(confirmed); };
+    const timer = setTimeout(() => finish(false), 3_000);
+    worker.once('exit', () => finish(true));
+    if (worker.pid === undefined) worker.once('spawn', () => worker.kill());
+    worker.kill();
+  });
+}
+
+async function analyzeDemo(filePath: string, window: BrowserWindow): Promise<ImportResult> {
+  // The previous worker remains usable until a fully persisted candidate is ready.
+  const controller = new AbortController();
+  const earlyCancel = () => controller.abort();
+  cancelActiveImport = earlyCancel;
+  let library: LocalMatchLibrary;
+  let staging: { id: string; directory: string };
+  try {
+    library = await libraryService();
+    if (controller.signal.aborted) return { kind: 'cancelled' };
+    staging = await library.createStaging();
+    if (controller.signal.aborted) { await library.discardStaging(staging.id); return { kind: 'cancelled' }; }
+  } catch {
+    if (cancelActiveImport === earlyCancel) cancelActiveImport = null;
+    return controller.signal.aborted ? { kind: 'cancelled' } : { kind: 'error', message: '无法准备本地比赛库。请检查磁盘空间、权限，或关闭另一个应用实例后重试。' };
+  }
   return new Promise(resolve => {
     const sessionId=randomUUID();
-    const worker = utilityProcess.fork(fileURLToPath(new URL('./report-worker.js', import.meta.url)), [], { serviceName: 'CS2 DEM Analysis' });
-    activeWorker = worker;
-    activeSessionId = sessionId;
+    let worker: Electron.UtilityProcess;
+    try { worker = utilityProcess.fork(fileURLToPath(new URL('./report-worker.js', import.meta.url)), [], { serviceName: 'CS2 DEM Analysis' }); }
+    catch {
+      if (cancelActiveImport === earlyCancel) cancelActiveImport = null;
+      void library.discardStaging(staging.id).catch(error => console.error('Library staging cleanup failed', error))
+        .then(() => resolve({ kind: 'error', message: '无法启动分析进程；本地已有比赛保持可用。' }));
+      return;
+    }
+    const exited = new Promise<void>(exit => worker.once('exit', () => { candidateWorkers.delete(worker); exit(); }));
+    candidateWorkers.set(worker, exited);
     let settled = false;
-    const finish = (result: ImportResult, retain = false) => {
+    let committed = false;
+    let awaitingDuplicate = false;
+    let workerExited = false;
+    let activationTimeout: ReturnType<typeof setTimeout> | null = null;
+    const finish = async (result: ImportResult, retain = false) => {
       if (settled) return;
       settled = true;
       clearTimeout(timeout);
+      if (activationTimeout !== null) clearTimeout(activationTimeout);
       if(cancelActiveImport===cancel)cancelActiveImport=null;
-      if(!retain&&activeWorker===worker)stopAnalysisWorker();
+      let safeToClean = retain || workerExited;
+      if (!retain) { worker.removeAllListeners('message'); if (!workerExited) safeToClean = await retireCandidate(worker); }
+      // A failed candidate never removes an existing ready match. Cleanup is serialized by the service.
+      if (safeToClean) {
+        try { await library.discardStaging(staging.id); }
+        catch (error) { console.error('Library staging cleanup failed', error); }
+      } else {
+        console.error('Candidate exit was not confirmed; preserving staging until its process actually exits.');
+        const cleanup = exited.then(() => library.discardStaging(staging.id)).catch(error => console.error('Deferred staging cleanup failed', error));
+        candidateCleanups.add(cleanup);void cleanup.finally(() => candidateCleanups.delete(cleanup));
+      }
       resolve(result);
     };
-    const cancel=()=>finish({kind:'cancelled'});
+    const cancel=()=>{ if (!committed) { controller.abort(); void finish({kind:'cancelled'}); } };
     cancelActiveImport=cancel;
-    const timeout = setTimeout(() => finish({ kind: 'error', message: '分析超时（10 分钟）。请重新选择 DEM。' }), 10 * 60_000);
+    const timeout = setTimeout(() => { if (!committed) { controller.abort(); void finish({ kind: 'error', message: '分析和保存超时（10 分钟）。请重新选择 DEM。' }); } }, 10 * 60_000);
+    const activate = (report: ImportResult & { kind: 'success' }) => {
+      stopAnalysisWorker();
+      const metadata=report.report.replay,heatmap=report.report.heatmap;
+      const replayAvailable=metadata?.available===true&&metadata.sessionId===sessionId;
+      const heatmapAvailable=heatmap?.available===true&&heatmap.sessionId===sessionId;
+      activeWorker=worker;activeSessionId=sessionId;
+      candidateWorkers.delete(worker);
+      activeReplay=replayAvailable?metadata!:null;activeHeatmap=heatmapAvailable?heatmap!:null;
+      void finish(report,replayAvailable||heatmapAvailable);
+      if (!replayAvailable && !heatmapAvailable) { activeWorker=null;activeSessionId=null; }
+    };
     worker.on('spawn', () => {
-      if(activeWorker!==worker||settled){worker.kill();return;}
-      worker.postMessage({ filePath, sessionId });
+      if(settled||controller.signal.aborted){worker.kill();return;}
+      worker.postMessage({ filePath, sessionId, archiveDirectory: staging.directory });
     });
-    worker.on('message', (message) => {
-      if(activeWorker!==worker)return;
+    worker.on('message', async (message) => {
       if(!message||typeof message!=='object')return;
       if(message.kind==='heatmap-grid'){
+        if(activeWorker!==worker)return;
         const pending=pendingHeatmaps.get(message.requestId);if(!pending||pending.worker!==worker)return;
         clearTimeout(pending.timer);pendingHeatmaps.delete(message.requestId);
         // Every recognized reply ends its Promise, including malformed/error replies.
@@ -182,6 +264,7 @@ function analyzeDemo(filePath: string, window: BrowserWindow): Promise<ImportRes
         pending.resolve(valid?message.result:{kind:'error',message:'热力图响应无效或超过大小限制。'});return;
       }
       if(message.kind==='replay-chunk'){
+        if(activeWorker!==worker)return;
         const pending=pendingChunks.get(message.requestId);if(!pending||pending.worker!==worker)return;
         const result=message.result as DesktopReplayResult;
         if(result?.kind==='success'){
@@ -194,17 +277,27 @@ function analyzeDemo(filePath: string, window: BrowserWindow): Promise<ImportRes
       if(settled)return;
       if (message.kind === 'progress' && message.phase === 'analyzing') {
         if (!window.isDestroyed()) window.webContents.send('report:progress', 'analyzing');
-      } else if (message.kind === 'success') {
-        const metadata=message.report?.replay as DesktopReplayMetadata|undefined;
-        const heatmap=message.report?.heatmap as DesktopHeatmapMetadata|undefined;
-        const replayAvailable=metadata?.available===true&&metadata.sessionId===sessionId;
-        const heatmapAvailable=heatmap?.available===true&&heatmap.sessionId===sessionId;
-        activeReplay=replayAvailable?metadata!:null;
-        activeHeatmap=heatmapAvailable?heatmap!:null;
-        finish(message,replayAvailable||heatmapAvailable);
-      } else if(message.kind==='error')finish(message);
+      } else if (message.kind === 'prepared' && !committed && !awaitingDuplicate) {
+        if (!message.report || message.report.schemaVersion !== 2 || !message.receipt) {
+          void finish({ kind: 'error', message: '比赛存档响应无效。' }); return;
+        }
+        try {
+          const saved = await library.commitStaging(staging.id, controller.signal, message.receipt, () => { committed = true; });
+          if (settled) return;
+          committed = true;
+          if (saved.duplicate) {
+            awaitingDuplicate = true;
+            activationTimeout = setTimeout(() => void finish({ kind: 'error', message: '比赛已在本地库中，但打开已有档案超时。请重试打开该比赛。' }), 30_000);
+            worker.postMessage({ kind: 'restore-duplicate', archiveDirectory: await library.archiveDirectory(saved.entry.matchId), sessionId });
+          } else activate({ kind: 'success', report: message.report });
+        } catch {
+          void finish(controller.signal.aborted ? { kind: 'cancelled' } : { kind: 'error', message: '比赛分析完成，但无法安全保存到本地库。请检查磁盘空间和权限后重试。' });
+        }
+      } else if (message.kind === 'restored-duplicate' && committed && awaitingDuplicate) {
+        activate({ kind: 'success', report: message.report });
+      } else if(message.kind==='error')void finish(message);
     });
-    worker.on('exit', () => { if(!settled)finish({ kind: 'error', message: '分析进程意外退出。请重新选择 DEM。' });else if(activeWorker===worker)stopAnalysisWorker(); });
+    worker.on('exit', () => { workerExited=true;if(!settled)void finish({ kind: 'error', message: '分析进程意外退出。请重新选择 DEM。' });else if(activeWorker===worker)stopAnalysisWorker(); });
   });
 }
 
@@ -329,3 +422,19 @@ app.on('window-all-closed', () => {
     app.quit();
   }
 });
+let shutdownReady = false, shutdownRunning = false;
+app.on('before-quit', event => {
+  if (shutdownReady || (candidateWorkers.size === 0 && candidateCleanups.size === 0)) return;
+  event.preventDefault();
+  if (shutdownRunning) return;
+  shutdownRunning = true;
+  cancelActiveImport?.();stopAnalysisWorker();
+  // Keep the exclusive library writer lock until every candidate writer has really exited.
+  const pending = [...candidateWorkers.entries()];
+  for (const [worker] of pending) worker.kill();
+  void Promise.all(pending.map(([, exit]) => exit)).then(async () => {
+    await Promise.all([...candidateCleanups]);
+    libraryInstance?.close();shutdownReady = true;app.quit();
+  }).catch(error => { shutdownRunning=false;console.error('Waiting for library writers to exit failed', error); });
+});
+app.on('will-quit', () => { cancelActiveImport?.(); if (candidateWorkers.size === 0) libraryInstance?.close(); });

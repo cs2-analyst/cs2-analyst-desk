@@ -3,11 +3,13 @@ import { buildDesktopReport } from './report.js';
 import { ReplaySession } from './replay-session.ts';
 import { replayResourceId } from '../shared/replay-resource.ts';
 import { createHeatmapSession, type HeatmapSession } from './heatmap-session.ts';
-import type { DesktopReplayMetadata, DesktopReplayRequest } from '@cs2-analyst/report-contract';
+import type { ArchiveVersions, DesktopReplayMetadata, DesktopReplayRequest } from '@cs2-analyst/report-contract';
+
+declare const __CS2_ANALYST_ARCHIVE_VERSIONS__: Omit<ArchiveVersions, 'sampling' | 'mapResource'>;
 
 // Owns input and bounded replay chunks. No file path crosses back to Renderer.
 let initialized = false;
-let session: ReplaySession | null = null;
+let session: { metadata: DesktopReplayMetadata; get(request: DesktopReplayRequest): unknown; clear(): void } | null = null;
 let heatmapSession: HeatmapSession | null = null;
 let disposed = false;
 function clearSessions() {
@@ -15,7 +17,7 @@ function clearSessions() {
   heatmapSession?.clear();heatmapSession=null;
 }
 process.on('exit',clearSessions);
-process.parentPort?.on('message', async ({ data }: { data: { kind?: string; filePath?: string; sessionId?: string; requestId?: number; request?: unknown } }) => {
+process.parentPort?.on('message', async ({ data }: { data: { kind?: string; filePath?: string; sessionId?: string; requestId?: number; request?: unknown; archiveDirectory?: string } }) => {
   if(!data||typeof data!=='object')return;
   if(data.kind==='session-release'){disposed=true;clearSessions();return;}
   if(data.kind==='heatmap-grid'){
@@ -25,9 +27,35 @@ process.parentPort?.on('message', async ({ data }: { data: { kind?: string; file
     process.parentPort?.postMessage({kind:'heatmap-grid',requestId:data.requestId,result});return;
   }
   if (data.kind === 'replay-chunk' && initialized) {
-    const chunk = data.request ? session?.get(data.request as DesktopReplayRequest) : null;
+    let chunk: unknown = null;
+    try {
+      const value = data.request ? session?.get(data.request as DesktopReplayRequest) : null;
+      chunk = value && typeof (value as Promise<unknown>).then === 'function' ? await value : value;
+    } catch { /* Corrupt archived chunks fail within this request, without crashing the worker. */ }
     process.parentPort?.postMessage({ kind:'replay-chunk',requestId:data.requestId,
       result:chunk?{kind:'success',chunk}:{kind:'error',message:'回放会话或数据块已失效。'} });
+    return;
+  }
+  // Internal duplicate recovery preserves the original analysed snapshot. L2 owns the public historical-open API.
+  if (data.kind === 'restore-duplicate' && initialized && !disposed && typeof data.archiveDirectory === 'string' && typeof data.sessionId === 'string') {
+    try {
+      clearSessions();
+      const archive = await import('./library-archive.ts');
+      const { manifest } = await archive.verifyLibraryArchive(data.archiveDirectory);
+      const report = await archive.readArchiveReport(data.archiveDirectory, manifest, data.sessionId);
+      const sources = await archive.readArchiveSources(data.archiveDirectory, manifest);
+      if (disposed) return;
+      const heatmap = createHeatmapSession(sources.match, sources.replay, sources.spatial, data.sessionId);
+      heatmapSession = heatmap.session;
+      // Preserve archived capability limitations; never turn unavailable data into a new analysis.
+      if (report.heatmap?.available) report.heatmap = heatmap.metadata;
+      else { heatmapSession?.clear(); heatmapSession = null; }
+      if (report.replay?.available) {
+        const directory = data.archiveDirectory;
+        session = { metadata: report.replay, get: request => archive.readArchiveChunk(directory, manifest, request), clear() {} };
+      }
+      process.parentPort?.postMessage({ kind: 'restored-duplicate', report });
+    } catch { clearSessions(); process.parentPort?.postMessage({ kind: 'error', message: '已保存的比赛无法恢复，请检查比赛库档案完整性。' }); }
     return;
   }
   if (disposed || initialized || typeof data.filePath !== 'string' || typeof data.sessionId !== 'string') return;
@@ -40,13 +68,28 @@ process.parentPort?.on('message', async ({ data }: { data: { kind?: string; file
     let metadata:DesktopReplayMetadata={schemaVersion:1,available:false,unavailableReason:parsed.replayUnavailableReason??'回放不可用。',
       sessionId:null,matchId:parsed.match.id,map:parsed.match.map,resourceId:replayResourceId,samplingVersion:parsed.replay?.samplingVersion??'unavailable',
       tickRate:parsed.replay?.tickRate??null,maxInterpolationTicks:parsed.replay?.maxInterpolationTicks??null,perspective:'global',players:[],rounds:[],excludedRounds:[]};
-    try { if(parsed.replay){session=new ReplaySession(parsed.match,parsed.replay,data.sessionId);metadata=session.metadata;} }
+    let replaySession: ReplaySession | null = null;
+    try { if(parsed.replay){replaySession=new ReplaySession(parsed.match,parsed.replay,data.sessionId);session=replaySession;metadata=session.metadata;} }
     catch { session?.clear();session=null;metadata.unavailableReason='回放超出本机会话缓存预算；比赛报告仍可用。'; }
     report.replay=metadata;
     // Independent guarded initialization: heatmap failure never rejects a usable report/replay.
     const heatmap=createHeatmapSession(parsed.match,parsed.replay,parsed.spatial,data.sessionId);
     heatmapSession=heatmap.session;report.heatmap=heatmap.metadata;
-    process.parentPort?.postMessage({kind:'success',report});
+    if (typeof data.archiveDirectory === 'string') {
+      const archive = await import('./library-archive.ts');
+      const versions: ArchiveVersions = { ...__CS2_ANALYST_ARCHIVE_VERSIONS__, sampling: metadata.samplingVersion, mapResource: replayResourceId };
+      const written = await archive.writeLibraryArchive(data.archiveDirectory, { report, chunks: replaySession?.chunks ?? new Map(),
+        match: parsed.match, replay: parsed.replay, spatial: parsed.spatial, versions });
+      // Verify every decompressed component in Utility before Main can publish its small catalogue entry.
+      const verified = await archive.verifyLibraryArchive(data.archiveDirectory);
+      if (disposed) return;
+      if (written.manifestHash !== verified.manifestHash || written.storedBytes !== verified.storedBytes) throw new Error('Archive write verification mismatch');
+      process.parentPort?.postMessage({ kind: 'prepared', report, receipt: { manifestHash: verified.manifestHash, storedBytes: verified.storedBytes } });
+    } else {
+      // Direct worker harnesses keep testing the original independent report/replay/heatmap degradation.
+      // Main never publishes this response: real imports always require a verified staging receipt.
+      process.parentPort?.postMessage({kind:'success',report});
+    }
   } catch {
     clearSessions();
     process.parentPort?.postMessage({kind:'error',message:'无法分析此 DEM。请确认它是完整的 CS2 录像，然后重新选择。'});

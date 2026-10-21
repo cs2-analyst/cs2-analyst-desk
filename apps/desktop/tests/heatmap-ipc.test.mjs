@@ -4,6 +4,7 @@ import { EventEmitter } from 'node:events';
 import { createRequire } from 'node:module';
 import vm from 'node:vm';
 import test from 'node:test';
+import { mainLibraryRequire, tick } from './library-main-fixture.mjs';
 import { fixture } from './heatmap-fixture.mjs';
 import { HeatmapSession } from '../electron/heatmap-session.ts';
 import { HEATMAP_MAX_PENDING, HEATMAP_TIMEOUT_MS, HEATMAP_RESPONSE_BYTES } from '../shared/heatmap-ipc.ts';
@@ -18,17 +19,17 @@ async function harness() {
   }
   const app=Object.assign(new EventEmitter(),{whenReady:()=>Promise.resolve(),setAppUserModelId(){},isPackaged:false});
   const electron={app,BrowserWindow:Window,dialog:{},ipcMain:{handle:(name,fn)=>handlers.set(name,fn)},utilityProcess:{fork:()=>{
-    const worker=Object.assign(new EventEmitter(),{sent:[],killed:false,postMessage(value){this.sent.push(value);},kill(){this.killed=true;}});workers.push(worker);return worker;
+    const worker=Object.assign(new EventEmitter(),{sent:[],killed:false,postMessage(value){this.sent.push(value);},kill(){this.killed=true;this.emit('exit',0);}});workers.push(worker);return worker;
   }}};
   const file=new URL('../electron/main.ts',import.meta.url),code=transformSync(readFileSync(file,'utf8'),{loader:'ts',format:'cjs',define:{'import.meta.url':JSON.stringify(file.href),'__CS2_ANALYST_TEST_SEAM__':'false'}}).code;
-  vm.runInNewContext(code,{require:name=>name==='electron'?electron:require(name),process:{platform:'win32',env:{}},console,URL,Buffer,
+  vm.runInNewContext(code,{require:name=>name==='electron'?electron:mainLibraryRequire(name,require),process:{platform:'win32',env:{}},console,URL,Buffer,AbortController,
     setTimeout(fn,ms){const id=++timerId;timers.set(id,{fn,ms});return id;},clearTimeout(id){timers.delete(id);}});
   await new Promise(resolve=>setImmediate(resolve));const window=windows[0],trusted={sender:window.webContents,senderFrame:window.webContents.mainFrame};
   async function imported({replay=true,heatmap=true}={}) {
-    const promise=handlers.get('report:import-file')(trusted,'C:\\fixture.dem'),worker=workers.at(-1);worker.emit('spawn');
+    const promise=handlers.get('report:import-file')(trusted,'C:\\fixture.dem');await tick();const worker=workers.at(-1);worker.emit('spawn');
     const sessionId=worker.sent[0].sessionId,f=fixture(),session=new HeatmapSession(f.match,f.replay,f.spatial,sessionId);
     const metadata=structuredClone(session.metadata);metadata.available=heatmap;
-    worker.emit('message',{kind:'success',report:{replay:{available:replay,sessionId,matchId:f.match.id,rounds:[{round:1,blocks:[{index:0}]}]},heatmap:metadata}});
+    worker.emit('message',{kind:'prepared',receipt:{},report:{schemaVersion:2,replay:{available:replay,sessionId,matchId:f.match.id,rounds:[{round:1,blocks:[{index:0}]}]},heatmap:metadata}});
     const report=await promise;
     const request={schemaVersion:1,sessionId,layer:'positions',resolution:32,scope:{rounds:null,playerIds:null,side:'all',floor:null,includeFreezeTime:false,samplingSet:'all-valid'}};
     return {worker,session,sessionId,request,report};
@@ -100,6 +101,8 @@ test('replace, cancel, release, exit and close settle all pending; late worker c
       }else{
         const importing=h.handlers.get('report:import-file')(h.trusted,'C:\\next.dem');await h.handlers.get('report:cancel')(h.trusted);
         assert.equal((await importing).kind,'cancelled');
+        h.reply(first);assert.equal((await pending).kind,'success','cancelled candidate preserves active heatmap requests');
+        assert.equal(first.worker.killed,false);assert.equal(h.timers.size,0);h.window.close();continue;
       }
     }else if(action==='exit')first.worker.emit('exit',1);
     else if(action==='close')h.window.close();
@@ -118,14 +121,15 @@ test('Main retains heatmap-only worker, retains replay-only worker, drops worker
   }
 });
 
-test('cancel before Utility spawn retires a late process without starting parse',async()=>{
-  const h=await harness(),importing=h.handlers.get('report:import-file')(h.trusted,'C:\\fixture.dem'),worker=h.workers.at(-1);
+test('unconfirmed candidate exit preserves staging; a late spawn is retired without parsing',async()=>{
+  const h=await harness(),importing=h.handlers.get('report:import-file')(h.trusted,'C:\\fixture.dem');await tick();const worker=h.workers.at(-1);
   let spawned=false,kills=0;
-  worker.kill=()=>{kills++;worker.killed=spawned;return spawned;};
+  worker.kill=()=>{kills++;worker.killed=spawned;if(spawned)worker.emit('exit',0);return spawned;};
   await h.handlers.get('report:cancel')(h.trusted);
+  const [timerId,timer]=[...h.timers].find(([,timer])=>timer.ms===3000);h.timers.delete(timerId);timer.fn();
   assert.equal((await importing).kind,'cancelled');assert.equal(worker.killed,false,'pre-spawn kill cannot stop the future OS process');
   spawned=true;worker.pid=123;worker.emit('spawn');
-  assert.equal(worker.killed,true);assert.equal(kills,2);
+  assert.equal(worker.killed,true);assert.ok(kills>=2);
   assert.equal(worker.sent.some(message=>Object.hasOwn(message,'filePath')),false,'retired worker never receives a DEM');
   h.window.close();
 });

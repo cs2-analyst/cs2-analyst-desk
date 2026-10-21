@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { useReport } from '../renderer/src/store.ts';
 const oldReport=()=>({match:{id:'old'},selectedPlayer:'1',players:[{id:'1',nickname:'p'}],analytics:[{kills:3}],replay:{available:true,sessionId:'old-session'}});
-test('cancelled file dialog preserves old replay; actual parsing retires old session metadata even when cancelled',async()=>{
+test('file-dialog and candidate parsing cancellation preserve the active replay session',async()=>{
   const previous=globalThis.window;let finish;
   try{
     globalThis.window={cs2Analyst:{importDemo:()=>new Promise(r=>finish=r),cancelImport:async()=>finish({kind:'cancelled'})}};
@@ -10,7 +10,7 @@ test('cancelled file dialog preserves old replay; actual parsing retires old ses
     const dialog=useReport.getState().importDemo();finish({kind:'cancelled'});await dialog;
     assert.equal(useReport.getState().report.replay.sessionId,'old-session');
     const parsing=useReport.getState().importDemo();useReport.getState().setPhase('parsing');
-    assert.equal(useReport.getState().report.replay.available,false);assert.equal(useReport.getState().report.replay.sessionId,null);
+    assert.equal(useReport.getState().report.replay.available,true);assert.equal(useReport.getState().report.replay.sessionId,'old-session');
     await useReport.getState().cancelImport();await parsing;
     assert.equal(useReport.getState().status,'success');assert.deepEqual(useReport.getState().report.analytics,[{kills:3}]);
     assert.equal(original.replay.available,true,'old DTO is not mutated');

@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test, { after } from 'node:test';
 import vm from 'node:vm';
+import { mainLibraryRequire } from './library-main-fixture.mjs';
 
 const require = createRequire(import.meta.url), { transformSync } = createRequire(require.resolve('vite'))('esbuild');
 
@@ -32,13 +33,13 @@ async function harness({ documents, userData, env = {}, packaged = false } = {})
     app, BrowserWindow: Window,
     dialog: { showOpenDialog: async (_window, options) => { dialogs.push(options); return dialogResult; } },
     ipcMain: { handle: (name, fn) => handlers.set(name, fn) },
-    utilityProcess: { fork: () => { const worker = Object.assign(new EventEmitter(), { sent: [], killed: false, postMessage(v) { this.sent.push(v); }, kill() { this.killed = true; } }); workers.push(worker); return worker; } },
+    utilityProcess: { fork: () => { const worker = Object.assign(new EventEmitter(), { sent: [], killed: false, postMessage(v) { this.sent.push(v); }, kill() { this.killed = true; this.emit('exit',0); } }); workers.push(worker); return worker; } },
   };
   const source = new URL('../electron/main.ts', import.meta.url);
   const code = transformSync(readFileSync(source, 'utf8'), { loader: 'ts', format: 'cjs', define: {
     'import.meta.url': JSON.stringify(source.href), '__CS2_ANALYST_TEST_SEAM__': 'false',
   } }).code;
-  vm.runInNewContext(code, { require: name => name === 'electron' ? electron : require(name), process: { platform: 'win32', env, resourcesPath: join(userData, 'resources') }, console, URL, Buffer, setTimeout, clearTimeout });
+  vm.runInNewContext(code, { require: name => name === 'electron' ? electron : mainLibraryRequire(name, require), process: { platform: 'win32', env, resourcesPath: join(userData, 'resources') }, console, URL, Buffer, AbortController, setTimeout, clearTimeout });
   await new Promise(resolve => setImmediate(resolve));
   const window = windows[0], trusted = { sender: window.webContents, senderFrame: window.webContents.mainFrame };
   const finish = async promise => {
@@ -53,7 +54,7 @@ async function harness({ documents, userData, env = {}, packaged = false } = {})
     worker.__finished = true;
     worker.emit('spawn');
     const sessionId = worker.sent[0].sessionId;
-    worker.emit('message', { kind: 'success', report: { replay: { available: true, sessionId, matchId: 'match', rounds: [{ round: 1, blocks: [{ index: 0 }] }] } } });
+    worker.emit('message', { kind: 'prepared', receipt: {}, report: { schemaVersion: 2, replay: { available: true, sessionId, matchId: 'match', rounds: [{ round: 1, blocks: [{ index: 0 }] }] } } });
     const result = await promise;
     // Let the handler's finally clear the module-level import lock before the next call.
     await new Promise(resolve => setTimeout(resolve, 0));

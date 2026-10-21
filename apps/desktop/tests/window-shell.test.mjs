@@ -4,6 +4,7 @@ import { createRequire } from 'node:module';
 import { EventEmitter } from 'node:events';
 import vm from 'node:vm';
 import { test } from 'node:test';
+import { mainLibraryRequire, tick } from './library-main-fixture.mjs';
 
 const require = createRequire(import.meta.url);
 const { transformSync } = createRequire(require.resolve('vite'))('esbuild');
@@ -12,8 +13,8 @@ function execute(file, electron, extra = {}) {
   const code = transformSync(source, { loader: 'ts', format: 'cjs', define: {
     'import.meta.url': JSON.stringify(new URL(file, import.meta.url).href), '__CS2_ANALYST_TEST_SEAM__': 'false',
   } }).code;
-  vm.runInNewContext(code, { require: name => name === 'electron' ? electron : require(name),
-    process: { platform: 'win32', env: { CS2_ANALYST_DEM_PATH: 'sample.dem' } }, URL, console, setTimeout, clearTimeout, ...extra });
+  vm.runInNewContext(code, { require: name => name === 'electron' ? electron : mainLibraryRequire(name, require),
+    process: { platform: 'win32', env: { CS2_ANALYST_DEM_PATH: 'sample.dem' } }, URL, console, AbortController, setTimeout, clearTimeout, ...extra });
 }
 
 test('frameless window preserves sandbox and guards every privileged window action', async () => {
@@ -73,6 +74,7 @@ test('frameless window preserves sandbox and guards every privileged window acti
   await handlers.get('window:toggle-maximize')(trusted);
   assert.equal(window.maximized, false);
   const importing = handlers.get('report:import')(trusted);
+  await tick();
   await handlers.get('window:close')(trusted);
   assert.ok(calls.includes('kill-worker'), 'closing during analysis kills its worker');
   assert.ok(!calls.includes('quit'), 'caption close calls the window, not app.quit');
