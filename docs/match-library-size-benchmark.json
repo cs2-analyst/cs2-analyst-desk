@@ -1,0 +1,1314 @@
+{
+  "schemaVersion": 1,
+  "stage": "L0",
+  "experimentResult": "PASS",
+  "gateDecision": "REVIEW — Orchestrator independent decision pending; not L1–L5 acceptance",
+  "executedAt": "2026-10-21T15:35:23.457Z",
+  "productBaseline": "43bbd98fe42adafd501aca6e30af8c253e770e85",
+  "measurementRuntime": {
+    "node": {
+      "node": "26.3.0",
+      "acorn": "8.16.0",
+      "ada": "3.4.4",
+      "amaro": "1.1.9",
+      "ares": "1.34.6",
+      "brotli": "1.2.0",
+      "cldr": "48.0",
+      "icu": "78.3",
+      "libffi": "3.5.2",
+      "lief": "0.17.0",
+      "llhttp": "9.4.1",
+      "merve": "1.2.2",
+      "modules": "147",
+      "napi": "10",
+      "nbytes": "0.1.4",
+      "ncrypto": "0.0.1",
+      "nghttp2": "1.69.0",
+      "nghttp3": "",
+      "ngtcp2": "",
+      "openssl": "3.5.6",
+      "simdjson": "4.6.4",
+      "simdutf": "7.7.0",
+      "sqlite": "3.53.1",
+      "tz": "2026b",
+      "undici": "8.3.0",
+      "unicode": "17.0",
+      "uv": "1.52.1",
+      "uvwasi": "0.0.23",
+      "v8": "14.6.202.34-node.20",
+      "zlib": "1.3.1-e00f703",
+      "zstd": "1.5.7"
+    },
+    "os": "win32 10.0.26200 x64",
+    "cpu": "13th Gen Intel(R) Core(TM) i7-13620H",
+    "logicalCpus": 16,
+    "totalMemoryBytes": 34141691904
+  },
+  "parser": {
+    "version": "0.42.0-backport.363.1",
+    "source": {
+      "repository": "https://github.com/LaihoE/demoparser.git",
+      "baseTag": "v0.42.0",
+      "baseCommit": "d3767705dc5846d73ed29db50eaeda58778dc934",
+      "upstreamPullRequest": 363,
+      "fixCommit": "451321a517ec9c0c6be7f0103dd07e7a805c3345",
+      "fixHeadCommit": "cc214aed17d23fa996929305df5413505a7dd40b",
+      "target": "x86_64-pc-windows-msvc",
+      "rustVersion": "1.90.0",
+      "patches": {
+        "entity-handle-363.patch": "f1b4e750a0fbb38136e4e5bf29c02d974b84c7eeee2aaf45353ceb8253bec8f9",
+        "backport-363.patch": "47a9b2bfcb5fd9ee0358f1362e7a5ccc61bdd0a69e526ba1717cd70b13fc2c68",
+        "build-support.patch": "94172e708cdb487ef3ae27248554260256f3dc653a5eddd107674c458772fd97"
+      },
+      "protobufSha256": "953ad3f19e1c1bd888d8d51292ff47cb1379a979353f07fb7977a4c152e4f5b5",
+      "cargoLockSha256": "316232d192147c84050bd9b069919dc66d45e3f113ffd2e7b5508852e9f0992c",
+      "generatedSourceHashes": {
+        "src/csgoproto/src/protobuf.rs": "953ad3f19e1c1bd888d8d51292ff47cb1379a979353f07fb7977a4c152e4f5b5",
+        "src/csgoproto/src/message_type.rs": "3db1c6244d8a9f8ec8701cc980c4bd13f2aad86cdde11ea69f305dd011c986f4",
+        "src/csgoproto/src/maps.rs": "82206b2cddfafc8b8cb60d78ce8cad8e9153a9177f16ac31075a63f1d4233a07"
+      }
+    },
+    "target": "x86_64-pc-windows-msvc",
+    "binarySha256": "132d664125b60542dc80dc8bc270e2c8e181a0a55433fdac5be285ef4d9b0de1",
+    "provenance": "Native package verifies source manifest and binary SHA on loading; same fixed binding as the capture production parser."
+  },
+  "measurementGitHead": "9dae48b8c99df0d69b2c845a2b4d117d6c324f05",
+  "provenance": "Original measurements are unchanged. Capture preceded the later experimentalPipelineMs label, GC-required guard, fixture guard, all-chunk cold verification and write-cost breakdown instrumentation. The newer all-chunk cold counter / write-cost breakdown were not executed for this record and are not claimed as evidence. All chunks were codec-byte-checked at capture; cold random reads are counted separately.",
+  "realMatchCount": 2,
+  "samples": [
+    {
+      "fixture": {
+        "fileName": "dust2.dem",
+        "sha256": "db90fe85aab023a1d2c8a5996182e6120d98ef494f02a070b17982b235e4958c",
+        "bytes": 557650967
+      },
+      "reportSchemaVersion": 2,
+      "replaySchemaVersion": 1,
+      "components": {
+        "report": {
+          "count": 1,
+          "rawBytes": 366092,
+          "maxRawBytes": 366092,
+          "gzip-6": {
+            "bytes": 28782,
+            "encodeMs": 3.003899999999703,
+            "decodeMs": 0.5368999999991502,
+            "cpuUserMicroseconds": 0,
+            "cpuSystemMicroseconds": 0
+          },
+          "brotli-4": {
+            "bytes": 26868,
+            "encodeMs": 2.566100000000006,
+            "decodeMs": 0.5167999999994208,
+            "cpuUserMicroseconds": 16000,
+            "cpuSystemMicroseconds": 0
+          }
+        },
+        "match": {
+          "count": 1,
+          "rawBytes": 1027422,
+          "maxRawBytes": 1027422,
+          "gzip-6": {
+            "bytes": 89179,
+            "encodeMs": 5.998199999999997,
+            "decodeMs": 1.3402999999998428,
+            "cpuUserMicroseconds": 0,
+            "cpuSystemMicroseconds": 0
+          },
+          "brotli-4": {
+            "bytes": 84497,
+            "encodeMs": 3.806300000000192,
+            "decodeMs": 1.3245999999999185,
+            "cpuUserMicroseconds": 16000,
+            "cpuSystemMicroseconds": 0
+          }
+        },
+        "replay": {
+          "count": 1,
+          "rawBytes": 62157994,
+          "maxRawBytes": 62157994,
+          "gzip-6": {
+            "bytes": 6225825,
+            "encodeMs": 413.8624999999993,
+            "decodeMs": 80.69290000000001,
+            "cpuUserMicroseconds": 797000,
+            "cpuSystemMicroseconds": 16000
+          },
+          "brotli-4": {
+            "bytes": 5580897,
+            "encodeMs": 306.3575000000001,
+            "decodeMs": 90.1278000000002,
+            "cpuUserMicroseconds": 453000,
+            "cpuSystemMicroseconds": 16000
+          }
+        },
+        "spatial": {
+          "count": 1,
+          "rawBytes": 74993725,
+          "maxRawBytes": 74993725,
+          "gzip-6": {
+            "bytes": 4319038,
+            "encodeMs": 333.35999999999876,
+            "decodeMs": 72.31800000000112,
+            "cpuUserMicroseconds": 531000,
+            "cpuSystemMicroseconds": 0
+          },
+          "brotli-4": {
+            "bytes": 3601515,
+            "encodeMs": 235.45140000000174,
+            "decodeMs": 61.95979999999872,
+            "cpuUserMicroseconds": 500000,
+            "cpuSystemMicroseconds": 0
+          }
+        },
+        "replayChunks": {
+          "count": 159,
+          "rawBytes": 37158066,
+          "maxRawBytes": 384305,
+          "gzip-6": {
+            "bytes": 6201607,
+            "encodeMs": 402.9608000000226,
+            "decodeMs": 71.40129999999954,
+            "cpuUserMicroseconds": 502000,
+            "cpuSystemMicroseconds": 47000
+          },
+          "brotli-4": {
+            "bytes": 5889869,
+            "encodeMs": 278.70910000000913,
+            "decodeMs": 71.36400000001049,
+            "cpuUserMicroseconds": 295000,
+            "cpuSystemMicroseconds": 15000
+          }
+        }
+      },
+      "replay": {
+        "count": 159,
+        "productionCacheBytes": 37166175,
+        "maxRawBytes": 384305
+      },
+      "storage": {
+        "rawPayloadBytes": 175703299,
+        "gzipPayloadBytes": 16864431,
+        "experimentalManifestBytes": 766033,
+        "measuredGzipSnapshotLogicalBytes": 17630464,
+        "fileCount": 164,
+        "brotliCandidatePayloadBytes": 15183646,
+        "portableContainerOverhead": "Not applicable: disposable directory snapshot, not a .cs2a container. No claim of a complete persisted Brotli snapshot; individual files/codec reads validated.",
+        "excluded": "Experiment logs, restore result JSON and NTFS directory/allocation-unit overhead; no raw DEM or bundled media included."
+      },
+      "timing": {
+        "parseWithReplayMs": 7293.1524,
+        "reportAndSessionMs": 1105.3902000000007,
+        "compressionComparisonAndWriteMs": 3543.0002999999997,
+        "heatmapProjectionMs": {
+          "count": 327,
+          "min": 0.9439999999995052,
+          "p50": 2.3936000000012427,
+          "p95": 22.235499999998865,
+          "max": 37.686499999999796
+        },
+        "totalExperimentMs": 14560.3827,
+        "cpuMicroseconds": {
+          "user": 26703000,
+          "system": 2359000
+        },
+        "experimentalPipelineMs": 8398.5426,
+        "note": "Node26 experimental parse/report/session plus explicit GC; not measured first-import Electron/NSIS latency. Both codec comparisons are included in compressionComparisonAndWriteMs."
+      },
+      "captureMemory": {
+        "resourceUsage": {
+          "userCPUTime": 27187000,
+          "systemCPUTime": 2671000,
+          "maxRSS": 1677612,
+          "sharedMemorySize": 0,
+          "unsharedDataSize": 0,
+          "unsharedStackSize": 0,
+          "minorPageFault": 0,
+          "majorPageFault": 2336637,
+          "swappedOut": 0,
+          "fsRead": 9653,
+          "fsWrite": 163,
+          "ipcSent": 0,
+          "ipcReceived": 0,
+          "signalsCount": 0,
+          "voluntaryContextSwitches": 0,
+          "involuntaryContextSwitches": 0
+        },
+        "memoryUsage": {
+          "rss": 441516032,
+          "heapTotal": 315969536,
+          "heapUsed": 266457568,
+          "external": 7610035,
+          "arrayBuffers": 1395435
+        },
+        "maxRssUnit": "KiB (Node process.resourceUsage maxRSS; lifecycle peak, not a simultaneous whole-app aggregate)",
+        "classification": "Lifecycle peak of Node26 experiment including native parsing, serialization, both codecs and full projection matrix; not production Utility-only peak."
+      },
+      "experimentalGc": {
+        "explicitlyCollectedBeforeHeatmapAdmission": true,
+        "beforeCollection": {
+          "rss": 1257562112,
+          "heapTotal": 558813184,
+          "heapUsed": 384655128,
+          "external": 564011174,
+          "arrayBuffers": 557796614
+        },
+        "afterCollection": {
+          "rss": 1244925952,
+          "heapTotal": 341000192,
+          "heapUsed": 210906640,
+          "external": 564011214,
+          "arrayBuffers": 145647
+        },
+        "reason": "Node26 experiment GC timing differs from Electron24; existing 512MiB budget unchanged. Electron experiment is required separately."
+      },
+      "persistedFileVerification": {
+        "filesVerified": 163,
+        "replayChunksEqual": 159,
+        "originalTickSamplesEqual": 159,
+        "rawBytesVerified": 175703299,
+        "compressedBytesVerified": 16864431,
+        "elapsedMs": 614.766,
+        "scope": "All persisted files read, bounded-inflated and SHA checked; each replay block identity and original tick sample compared. Separate from the original cold-process random read matrix."
+      },
+      "restored": {
+        "reportHash": "e071bfa72302b05b955018158614dc90494ca9d769b3873497efc8bb5771f748",
+        "reportMs": 76.73159999999999,
+        "randomReadMs": {
+          "count": 128,
+          "min": 0.3095000000000141,
+          "p50": 1.467899999999986,
+          "p95": 2.538199999999989,
+          "max": 5.180999999999983
+        },
+        "exactRawTickFrames": 128,
+        "canonicalSourceLoadMs": 716.8454999999999,
+        "heatmapCasesEqual": 327,
+        "heatmapProjectionMs": {
+          "count": 327,
+          "min": 0.8889000000003762,
+          "p50": 2.829699999999775,
+          "p95": 26.657699999999977,
+          "max": 39.03929999999991
+        },
+        "maxMeasuredHeatmapResponseBytes": 353901,
+        "totalMs": 3975.2988,
+        "cpuMicroseconds": {
+          "user": 4344000,
+          "system": 438000
+        },
+        "memory": {
+          "resourceUsage": {
+            "userCPUTime": 4375000,
+            "systemCPUTime": 484000,
+            "maxRSS": 435428,
+            "sharedMemorySize": 0,
+            "unsharedDataSize": 0,
+            "unsharedStackSize": 0,
+            "minorPageFault": 0,
+            "majorPageFault": 286036,
+            "swappedOut": 0,
+            "fsRead": 291,
+            "fsWrite": 0,
+            "ipcSent": 0,
+            "ipcReceived": 0,
+            "signalsCount": 0,
+            "voluntaryContextSwitches": 0,
+            "involuntaryContextSwitches": 0
+          },
+          "memoryUsage": {
+            "rss": 361320448,
+            "heapTotal": 285462528,
+            "heapUsed": 229913968,
+            "external": 6856282,
+            "arrayBuffers": 610412
+          },
+          "maxRssUnit": "KiB (Node process.resourceUsage maxRSS; lifecycle peak, not a simultaneous whole-app aggregate)"
+        }
+      },
+      "electron": {
+        "openMs": 863.9685999999999,
+        "views": [
+          "report",
+          "deep-review",
+          "timeline",
+          "analysis",
+          "replay",
+          "heatmap"
+        ],
+        "playersChanged": 2,
+        "replayChecks": 10,
+        "replayEffectLabels": [
+          "effect-smoke",
+          "effect-flying",
+          "effect-explosions",
+          "effect-flashes",
+          "effect-blind",
+          "effect-fire",
+          "effect-burn"
+        ],
+        "representativeHeatmapRequests": 12,
+        "renderedUiFilters": [
+          {
+            "label": "热力图分辨率",
+            "value": "64",
+            "responseHash": "bb3f59c0462316beb4edaeb25ca9cb7c282d734ba042bbfafa81f6766f06266d"
+          },
+          {
+            "label": "热力图阵营",
+            "value": "CT",
+            "responseHash": "b3c9f850ff9228127f50f882f62dc74d4ea50febcdfaed0720e7462ff20b0789"
+          },
+          {
+            "label": "热力图采样集",
+            "value": "uniform-8hz",
+            "responseHash": "b64f6b7c5d29e5006bf0e7973abc8bc011794c87e34b3bdca954c4a3a0579db0"
+          }
+        ],
+        "originalDemAbsent": true,
+        "newSessionCreated": true,
+        "exitCode": 0,
+        "utilityObservedPeakWorkingSetBytes": 493551616,
+        "utilityInitialization": [
+          {
+            "pid": 11664,
+            "memory": {
+              "beforeHeatmap": {
+                "rss": 438374400,
+                "heapTotal": 118226944,
+                "heapUsed": 100177372,
+                "external": 219118722,
+                "arrayBuffers": 0
+              },
+              "afterHeatmap": {
+                "rss": 280211456,
+                "heapTotal": 171859968,
+                "heapUsed": 106205836,
+                "external": 2826765,
+                "arrayBuffers": 0
+              },
+              "gcForced": false
+            },
+            "readyMs": 772.2528
+          }
+        ],
+        "scope": "Actual unchanged production Renderer/preload; disposable snapshot Main/Utility host. No forced GC. Not L2 production IPC or NSIS acceptance."
+      },
+      "artifacts": {
+        "manifest": {
+          "path": ".tmp/l0/evidence/dust2/manifest.json",
+          "bytes": 766033,
+          "sha256": "20d4ae25d22531c33327cbac9a6aaec649c89c46dd62b005f5e72cffb10bcd23"
+        },
+        "restored": {
+          "path": ".tmp/l0/evidence/dust2/restore.json",
+          "bytes": 1802,
+          "sha256": "9b90052f110b76886511b67b98e35860201742c804340e6f77f1493f496f057e"
+        },
+        "screenshots": [
+          {
+            "path": ".tmp/l0/offline-electron-final-4/dust2/report.png",
+            "bytes": 112341,
+            "sha256": "9b54a8034af171a769afd0c0f65e672ada00c17b21121e347a186e93ffe7f6a5",
+            "width": 1024,
+            "height": 640
+          },
+          {
+            "path": ".tmp/l0/offline-electron-final-4/dust2/deep-review.png",
+            "bytes": 68135,
+            "sha256": "632fe9cce9cb2cb7cfdb91b121b0ad2cc6f474a9a75378dd02ecb7365f1a8428",
+            "width": 1024,
+            "height": 640
+          },
+          {
+            "path": ".tmp/l0/offline-electron-final-4/dust2/timeline.png",
+            "bytes": 74215,
+            "sha256": "37f15d6ac731898b89529972dae72a0f644e711b537c83ec7e7c8d8de0ff2925",
+            "width": 1024,
+            "height": 640
+          },
+          {
+            "path": ".tmp/l0/offline-electron-final-4/dust2/analysis.png",
+            "bytes": 52902,
+            "sha256": "0c605f1113eecdb7b1ba1b088eedfd41f996e8a0c78690d5e1695410c544eaed",
+            "width": 1024,
+            "height": 640
+          },
+          {
+            "path": ".tmp/l0/offline-electron-final-4/dust2/replay.png",
+            "bytes": 93759,
+            "sha256": "78a16e2ffac44e7ad7c067a15175d87441c4b0b3a8a6348656f564fd07f06aea",
+            "width": 1024,
+            "height": 640
+          },
+          {
+            "path": ".tmp/l0/offline-electron-final-4/dust2/heatmap.png",
+            "bytes": 116361,
+            "sha256": "6e46ba752a2da3a1dac61cbffaf3c9f5ab73b9428473565d9f26875e83931269",
+            "width": 1024,
+            "height": 640
+          }
+        ]
+      }
+    },
+    {
+      "fixture": {
+        "fileName": "nuke.dem",
+        "sha256": "dea9382b9cc263fed9ee4ed7e71fa6be8c176cf888868f05b26d850af6f5cb3c",
+        "bytes": 471606780
+      },
+      "reportSchemaVersion": 2,
+      "replaySchemaVersion": 1,
+      "components": {
+        "report": {
+          "count": 1,
+          "rawBytes": 264661,
+          "maxRawBytes": 264661,
+          "gzip-6": {
+            "bytes": 22251,
+            "encodeMs": 2.089700000000448,
+            "decodeMs": 0.5776000000005297,
+            "cpuUserMicroseconds": 0,
+            "cpuSystemMicroseconds": 0
+          },
+          "brotli-4": {
+            "bytes": 21348,
+            "encodeMs": 1.57129999999961,
+            "decodeMs": 0.4092000000000553,
+            "cpuUserMicroseconds": 0,
+            "cpuSystemMicroseconds": 0
+          }
+        },
+        "match": {
+          "count": 1,
+          "rawBytes": 800270,
+          "maxRawBytes": 800270,
+          "gzip-6": {
+            "bytes": 64075,
+            "encodeMs": 5.3879999999990105,
+            "decodeMs": 0.9106000000010681,
+            "cpuUserMicroseconds": 0,
+            "cpuSystemMicroseconds": 0
+          },
+          "brotli-4": {
+            "bytes": 60097,
+            "encodeMs": 3.050100000000384,
+            "decodeMs": 1.0111999999990076,
+            "cpuUserMicroseconds": 31000,
+            "cpuSystemMicroseconds": 0
+          }
+        },
+        "replay": {
+          "count": 1,
+          "rawBytes": 51500063,
+          "maxRawBytes": 51500063,
+          "gzip-6": {
+            "bytes": 4394723,
+            "encodeMs": 308.02579999999944,
+            "decodeMs": 79.44050000000061,
+            "cpuUserMicroseconds": 563000,
+            "cpuSystemMicroseconds": 47000
+          },
+          "brotli-4": {
+            "bytes": 3919084,
+            "encodeMs": 218.15670000000136,
+            "decodeMs": 51.88769999999931,
+            "cpuUserMicroseconds": 437000,
+            "cpuSystemMicroseconds": 31000
+          }
+        },
+        "spatial": {
+          "count": 1,
+          "rawBytes": 60748853,
+          "maxRawBytes": 60748853,
+          "gzip-6": {
+            "bytes": 3096581,
+            "encodeMs": 271.29899999999907,
+            "decodeMs": 56.70100000000093,
+            "cpuUserMicroseconds": 453000,
+            "cpuSystemMicroseconds": 16000
+          },
+          "brotli-4": {
+            "bytes": 2599649,
+            "encodeMs": 176.01940000000104,
+            "decodeMs": 44.46270000000004,
+            "cpuUserMicroseconds": 281000,
+            "cpuSystemMicroseconds": 0
+          }
+        },
+        "replayChunks": {
+          "count": 141,
+          "rawBytes": 29826961,
+          "maxRawBytes": 369522,
+          "gzip-6": {
+            "bytes": 4447789,
+            "encodeMs": 322.31470000001354,
+            "decodeMs": 54.96939999999631,
+            "cpuUserMicroseconds": 467000,
+            "cpuSystemMicroseconds": 62000
+          },
+          "brotli-4": {
+            "bytes": 4245259,
+            "encodeMs": 223.08210000000327,
+            "decodeMs": 53.14320000000953,
+            "cpuUserMicroseconds": 202000,
+            "cpuSystemMicroseconds": 15000
+          }
+        }
+      },
+      "replay": {
+        "count": 141,
+        "productionCacheBytes": 29834152,
+        "maxRawBytes": 369522
+      },
+      "storage": {
+        "rawPayloadBytes": 143140808,
+        "gzipPayloadBytes": 12025419,
+        "experimentalManifestBytes": 727235,
+        "measuredGzipSnapshotLogicalBytes": 12752654,
+        "fileCount": 146,
+        "brotliCandidatePayloadBytes": 10845437,
+        "portableContainerOverhead": "Not applicable: disposable directory snapshot, not a .cs2a container. No claim of a complete persisted Brotli snapshot; individual files/codec reads validated.",
+        "excluded": "Experiment logs, restore result JSON and NTFS directory/allocation-unit overhead; no raw DEM or bundled media included."
+      },
+      "timing": {
+        "parseWithReplayMs": 6606.0996000000005,
+        "reportAndSessionMs": 962.7973999999995,
+        "compressionComparisonAndWriteMs": 2806.439900000001,
+        "heatmapProjectionMs": {
+          "count": 426,
+          "min": 1.0324999999993452,
+          "p50": 2.7726000000002387,
+          "p95": 23.8187999999991,
+          "max": 34.72219999999834
+        },
+        "totalExperimentMs": 14068.4018,
+        "cpuMicroseconds": {
+          "user": 23031000,
+          "system": 2922000
+        },
+        "experimentalPipelineMs": 7568.897,
+        "note": "Node26 experimental parse/report/session plus explicit GC; not measured first-import Electron/NSIS latency. Both codec comparisons are included in compressionComparisonAndWriteMs."
+      },
+      "captureMemory": {
+        "resourceUsage": {
+          "userCPUTime": 23484000,
+          "systemCPUTime": 3281000,
+          "maxRSS": 1360548,
+          "sharedMemorySize": 0,
+          "unsharedDataSize": 0,
+          "unsharedStackSize": 0,
+          "minorPageFault": 0,
+          "majorPageFault": 1963952,
+          "swappedOut": 0,
+          "fsRead": 8176,
+          "fsWrite": 145,
+          "ipcSent": 0,
+          "ipcReceived": 0,
+          "signalsCount": 0,
+          "voluntaryContextSwitches": 0,
+          "involuntaryContextSwitches": 0
+        },
+        "memoryUsage": {
+          "rss": 398237696,
+          "heapTotal": 282476544,
+          "heapUsed": 233404096,
+          "external": 7612434,
+          "arrayBuffers": 1397834
+        },
+        "maxRssUnit": "KiB (Node process.resourceUsage maxRSS; lifecycle peak, not a simultaneous whole-app aggregate)",
+        "classification": "Lifecycle peak of Node26 experiment including native parsing, serialization, both codecs and full projection matrix; not production Utility-only peak."
+      },
+      "experimentalGc": {
+        "explicitlyCollectedBeforeHeatmapAdmission": true,
+        "beforeCollection": {
+          "rss": 1096708096,
+          "heapTotal": 503349248,
+          "heapUsed": 428202904,
+          "external": 477969678,
+          "arrayBuffers": 471752427
+        },
+        "afterCollection": {
+          "rss": 1066123264,
+          "heapTotal": 315842560,
+          "heapUsed": 179111040,
+          "external": 477969718,
+          "arrayBuffers": 145647
+        },
+        "reason": "Node26 experiment GC timing differs from Electron24; existing 512MiB budget unchanged. Electron experiment is required separately."
+      },
+      "persistedFileVerification": {
+        "filesVerified": 145,
+        "replayChunksEqual": 141,
+        "originalTickSamplesEqual": 141,
+        "rawBytesVerified": 143140808,
+        "compressedBytesVerified": 12025419,
+        "elapsedMs": 468.23019999999997,
+        "scope": "All persisted files read, bounded-inflated and SHA checked; each replay block identity and original tick sample compared. Separate from the original cold-process random read matrix."
+      },
+      "restored": {
+        "reportHash": "be4cf411262e7380d0890bb1fbc314636f072e0a30f5a2554b1007e6f9f643d8",
+        "reportMs": 77.297,
+        "randomReadMs": {
+          "count": 128,
+          "min": 0.4210999999999956,
+          "p50": 1.4287000000000205,
+          "p95": 2.404599999999988,
+          "max": 3.404699999999991
+        },
+        "exactRawTickFrames": 128,
+        "canonicalSourceLoadMs": 574.8671,
+        "heatmapCasesEqual": 426,
+        "heatmapProjectionMs": {
+          "count": 426,
+          "min": 1.035399999999754,
+          "p50": 2.6376000000000204,
+          "p95": 23.717200000000048,
+          "max": 39.140699999999924
+        },
+        "maxMeasuredHeatmapResponseBytes": 309561,
+        "totalMs": 4506.2017,
+        "cpuMicroseconds": {
+          "user": 4656000,
+          "system": 687000
+        },
+        "memory": {
+          "resourceUsage": {
+            "userCPUTime": 4671000,
+            "systemCPUTime": 718000,
+            "maxRSS": 438636,
+            "sharedMemorySize": 0,
+            "unsharedDataSize": 0,
+            "unsharedStackSize": 0,
+            "minorPageFault": 0,
+            "majorPageFault": 268780,
+            "swappedOut": 0,
+            "fsRead": 286,
+            "fsWrite": 0,
+            "ipcSent": 0,
+            "ipcReceived": 0,
+            "signalsCount": 0,
+            "voluntaryContextSwitches": 0,
+            "involuntaryContextSwitches": 0
+          },
+          "memoryUsage": {
+            "rss": 350433280,
+            "heapTotal": 275378176,
+            "heapUsed": 204606120,
+            "external": 6701951,
+            "arrayBuffers": 453390
+          },
+          "maxRssUnit": "KiB (Node process.resourceUsage maxRSS; lifecycle peak, not a simultaneous whole-app aggregate)"
+        }
+      },
+      "electron": {
+        "openMs": 683.3581000000004,
+        "views": [
+          "report",
+          "deep-review",
+          "timeline",
+          "analysis",
+          "replay",
+          "heatmap"
+        ],
+        "playersChanged": 2,
+        "replayChecks": 10,
+        "replayEffectLabels": [
+          "effect-flashes",
+          "effect-flying",
+          "effect-smoke",
+          "effect-fire",
+          "effect-explosions",
+          "effect-blind",
+          "effect-burn"
+        ],
+        "representativeHeatmapRequests": 12,
+        "renderedUiFilters": [
+          {
+            "label": "热力图分辨率",
+            "value": "64",
+            "responseHash": "3e69338a6a50f937347caee4116cd57e6ef36a15f0dc31511c30c4332f08ecb9"
+          },
+          {
+            "label": "热力图阵营",
+            "value": "CT",
+            "responseHash": "3b90071309eeacd24fe5f073e10e6cfb4b9eccf0a34d28c256f237eefd0e978c"
+          },
+          {
+            "label": "热力图采样集",
+            "value": "uniform-8hz",
+            "responseHash": "699b81d1d77d5aa17d0463c5389bb53528509cdafc0dcebc9829a2ddb461589d"
+          }
+        ],
+        "originalDemAbsent": true,
+        "newSessionCreated": true,
+        "exitCode": 0,
+        "utilityObservedPeakWorkingSetBytes": 438042624,
+        "utilityInitialization": [
+          {
+            "pid": 31816,
+            "memory": {
+              "beforeHeatmap": {
+                "rss": 322576384,
+                "heapTotal": 104595456,
+                "heapUsed": 84403220,
+                "external": 118065273,
+                "arrayBuffers": 0
+              },
+              "afterHeatmap": {
+                "rss": 257032192,
+                "heapTotal": 149680128,
+                "heapUsed": 113961488,
+                "external": 2812092,
+                "arrayBuffers": 0
+              },
+              "gcForced": false
+            },
+            "readyMs": 587.5700999999999
+          }
+        ],
+        "scope": "Actual unchanged production Renderer/preload; disposable snapshot Main/Utility host. No forced GC. Not L2 production IPC or NSIS acceptance."
+      },
+      "artifacts": {
+        "manifest": {
+          "path": ".tmp/l0/evidence/nuke/manifest.json",
+          "bytes": 727235,
+          "sha256": "bf0cf4fb7d780a75bd0f34cce184073b4a6b40953610d9d6f8bae6feb446bb55"
+        },
+        "restored": {
+          "path": ".tmp/l0/evidence/nuke/restore.json",
+          "bytes": 1783,
+          "sha256": "1eab358cabc841f22b906b109b1d8a4b7eefa238ea9dbab05dbb66a513e565b9"
+        },
+        "screenshots": [
+          {
+            "path": ".tmp/l0/offline-electron-final-4/nuke/report.png",
+            "bytes": 99088,
+            "sha256": "564aca43989150a6df73db18d02b54745c2c6341e5464b25bd44cdff9755ea90",
+            "width": 1024,
+            "height": 640
+          },
+          {
+            "path": ".tmp/l0/offline-electron-final-4/nuke/deep-review.png",
+            "bytes": 67205,
+            "sha256": "e026c85aacd6d5284b7ac20cd0829a9b5efd30cc5fb735bde91b340ca328991c",
+            "width": 1024,
+            "height": 640
+          },
+          {
+            "path": ".tmp/l0/offline-electron-final-4/nuke/timeline.png",
+            "bytes": 73126,
+            "sha256": "7602035019f68d2b889dd43789bdda1724fdd4ff1908665f1ec2169502b168b5",
+            "width": 1024,
+            "height": 640
+          },
+          {
+            "path": ".tmp/l0/offline-electron-final-4/nuke/analysis.png",
+            "bytes": 52163,
+            "sha256": "ddf89bb03031a7f4225f1d193f952dbafe2378300313234ac6ff9a3fcaf8a0db",
+            "width": 1024,
+            "height": 640
+          },
+          {
+            "path": ".tmp/l0/offline-electron-final-4/nuke/replay.png",
+            "bytes": 82166,
+            "sha256": "57c442b27f9171aa01c3194e42df61fcd4d3baab8de8a4e3f68b25b2b37be99f",
+            "width": 1024,
+            "height": 640
+          },
+          {
+            "path": ".tmp/l0/offline-electron-final-4/nuke/heatmap.png",
+            "bytes": 99137,
+            "sha256": "0ed9cf16be64bcf78114a7dcc943e96be59f3b01a3a6e647acbac90a8fe6da89",
+            "width": 1024,
+            "height": 640
+          }
+        ]
+      }
+    }
+  ],
+  "isolationSimulation": {
+    "realMatchCount": 2,
+    "independentCopiedArchives": 10,
+    "eachFreshProcess": true,
+    "demCopied": false,
+    "randomReadCount": 1280,
+    "totalExactHeatmapComparisons": 3765,
+    "allOriginalDemPathsAbsent": true,
+    "reopenTotalMs": {
+      "count": 10,
+      "min": 3736.8586,
+      "p50": 4135.203100000001,
+      "p95": 4850.8387999999995,
+      "max": 4850.8387999999995
+    },
+    "scope": "Ten separate snapshot directories derived from two real matches; not ten real matches and not SQLite/list scalability."
+  },
+  "independentCodecFiles": {
+    "scope": "Fresh Node process; independent compressed files with OS cache uncontrolled/warm, not physical cold-disk p95",
+    "samples": [
+      {
+        "fixture": {
+          "fileName": "dust2.dem",
+          "sha256": "db90fe85aab023a1d2c8a5996182e6120d98ef494f02a070b17982b235e4958c",
+          "bytes": 557650967
+        },
+        "encodings": {
+          "gzip-6": {
+            "chunkFiles": 159,
+            "bytes": 6201607,
+            "encodeMs": 397.36600000000016,
+            "filesystemWriteMs": 43.27860000000035
+          },
+          "brotli-4": {
+            "chunkFiles": 159,
+            "bytes": 5889869,
+            "encodeMs": 256.62779999999964,
+            "filesystemWriteMs": 42.416699999999764
+          }
+        },
+        "independentFileRandomRead": {
+          "gzip-6": {
+            "count": 128,
+            "min": 0.16599999999993997,
+            "p50": 1.4426999999998316,
+            "p95": 2.7551999999998316,
+            "max": 4.442099999999982
+          },
+          "brotli-4": {
+            "count": 128,
+            "min": 0.19209999999998217,
+            "p50": 1.384800000000041,
+            "p95": 2.602999999999838,
+            "max": 3.542900000000145
+          }
+        },
+        "cpuMicroseconds": {
+          "user": 1125000,
+          "system": 250000
+        },
+        "maxRssKiB": 120956
+      },
+      {
+        "fixture": {
+          "fileName": "nuke.dem",
+          "sha256": "dea9382b9cc263fed9ee4ed7e71fa6be8c176cf888868f05b26d850af6f5cb3c",
+          "bytes": 471606780
+        },
+        "encodings": {
+          "gzip-6": {
+            "chunkFiles": 141,
+            "bytes": 4447789,
+            "encodeMs": 301.45100000000275,
+            "filesystemWriteMs": 39.62089999999694
+          },
+          "brotli-4": {
+            "chunkFiles": 141,
+            "bytes": 4245259,
+            "encodeMs": 196.13460000000146,
+            "filesystemWriteMs": 35.13669999999843
+          }
+        },
+        "independentFileRandomRead": {
+          "gzip-6": {
+            "count": 128,
+            "min": 0.29890000000023065,
+            "p50": 1.2910999999999149,
+            "p95": 2.040100000000166,
+            "max": 3.368199999999888
+          },
+          "brotli-4": {
+            "count": 128,
+            "min": 0.25270000000000437,
+            "p50": 1.2008999999998196,
+            "p95": 2.3538000000003194,
+            "max": 4.3685999999997875
+          }
+        },
+        "cpuMicroseconds": {
+          "user": 969000,
+          "system": 203000
+        },
+        "maxRssKiB": 166064
+      }
+    ],
+    "status": "PASS"
+  },
+  "experimentalCatalogue": {
+    "status": "PASS",
+    "method": "Each measurement launches a fresh Electron Main process, opens a file database, selects summary columns ordered by indexed import time with LIMIT 50, serializes that page, and exits. No Utility or BrowserWindow is created by the experiment host.",
+    "limitations": [
+      "10 and 1000 synthetic rows; not 1000 real matches or archives.",
+      "Fresh application process for each observation; OS filesystem caches are not cleared, so this is not a cold-disk benchmark.",
+      "No archive/payload directory or files exist; successful queries establish catalogue independence only, not a production library API or Renderer list acceptance.",
+      "Development Electron runtime; packaged NSIS validation NOT RUN."
+    ],
+    "remainingOwnedProcesses": [],
+    "datasets": [
+      {
+        "simulatedRows": 10,
+        "coldProcessObservations": 20,
+        "runtime": {
+          "electron": "44.5.1",
+          "node": "24.21.0",
+          "sqlite": "3.53.4",
+          "processType": "browser",
+          "platform": "win32",
+          "arch": "x64"
+        },
+        "returnedRows": 10,
+        "listBytes": 3376,
+        "databaseBytes": 16384,
+        "timing": {
+          "processStartThroughExitMs": {
+            "count": 20,
+            "method": "nearest-rank empirical quantile",
+            "min": 139.7464,
+            "p50": 150.94550000000004,
+            "p95": 164.63959999999997,
+            "max": 205.15779999999995
+          },
+          "databaseOpenMs": {
+            "count": 20,
+            "method": "nearest-rank empirical quantile",
+            "min": 0.23869999999999436,
+            "p50": 0.26650000000000773,
+            "p95": 0.6777000000000015,
+            "max": 1.1514000000000095
+          },
+          "firstPageQueryMs": {
+            "count": 20,
+            "method": "nearest-rank empirical quantile",
+            "min": 0.05750000000000455,
+            "p50": 0.060000000000002274,
+            "p95": 0.09350000000000591,
+            "max": 0.11010000000000275
+          },
+          "openThroughFirstPageMs": {
+            "count": 20,
+            "method": "nearest-rank empirical quantile",
+            "min": 0.8191000000000059,
+            "p50": 0.8966000000000065,
+            "p95": 1.3406999999999982,
+            "max": 2.9819999999999993
+          }
+        },
+        "archiveFilesPresent": 0
+      },
+      {
+        "simulatedRows": 1000,
+        "coldProcessObservations": 20,
+        "runtime": {
+          "electron": "44.5.1",
+          "node": "24.21.0",
+          "sqlite": "3.53.4",
+          "processType": "browser",
+          "platform": "win32",
+          "arch": "x64"
+        },
+        "returnedRows": 50,
+        "listBytes": 16976,
+        "databaseBytes": 487424,
+        "timing": {
+          "processStartThroughExitMs": {
+            "count": 20,
+            "method": "nearest-rank empirical quantile",
+            "min": 139.29830000000038,
+            "p50": 147.33539999999994,
+            "p95": 162.21419999999944,
+            "max": 203.10030000000006
+          },
+          "databaseOpenMs": {
+            "count": 20,
+            "method": "nearest-rank empirical quantile",
+            "min": 0.23290000000000077,
+            "p50": 0.2627999999999986,
+            "p95": 0.38419999999999277,
+            "max": 0.4070000000000107
+          },
+          "firstPageQueryMs": {
+            "count": 20,
+            "method": "nearest-rank empirical quantile",
+            "min": 0.09859999999999047,
+            "p50": 0.10290000000000532,
+            "p95": 0.1431999999999931,
+            "max": 0.16660000000000252
+          },
+          "openThroughFirstPageMs": {
+            "count": 20,
+            "method": "nearest-rank empirical quantile",
+            "min": 0.9177999999999997,
+            "p50": 1.0056999999999903,
+            "p95": 1.3543999999999983,
+            "max": 2.9339999999999975
+          }
+        },
+        "archiveFilesPresent": 0
+      }
+    ]
+  },
+  "sqlite": {
+    "runtime": {
+      "electron": "44.5.1",
+      "node": "24.21.0",
+      "platform": "win32",
+      "arch": "x64",
+      "processType": "browser"
+    },
+    "main": {
+      "status": "PASS",
+      "sqliteVersion": "3.53.4",
+      "journalMode": "wal",
+      "synchronous": "FULL",
+      "fileDatabaseCloseReopen": true,
+      "explicitRollback": true,
+      "duplicatePrimaryKeyRejected": true,
+      "committedRows": 1
+    },
+    "utility": {
+      "status": "PASS",
+      "sqliteVersion": "3.53.4",
+      "journalMode": "wal",
+      "synchronous": "FULL",
+      "fileDatabaseCloseReopen": true,
+      "explicitRollback": true,
+      "duplicatePrimaryKeyRejected": true,
+      "committedRows": 1
+    },
+    "crashRecovery": {
+      "status": "PASS",
+      "utilityPid": 2680,
+      "killed": true,
+      "utilityExitCode": 0,
+      "integrity": "ok",
+      "committedRows": 1,
+      "uncommittedRowsAbsent": true,
+      "databaseReopenedAfterUtilityExit": true,
+      "recoveryOpenMs": 2.6200999999999794,
+      "transientOpenErrors": [],
+      "logs": ""
+    },
+    "priorSuccessfulRuns": [
+      {
+        "artifact": {
+          "path": ".tmp/l0/sqlite-probe.json",
+          "bytes": 2556,
+          "sha256": "1eae5301641246cca81091fa978257c5585e6e399fdd1dfdab14cfa72274bdec"
+        },
+        "recoveryOpenMs": 2.698400000000049,
+        "transientOpenErrors": []
+      },
+      {
+        "artifact": {
+          "path": ".tmp/l0/sqlite-probe-repeat-2.json",
+          "bytes": 2678,
+          "sha256": "ee4de8604bdf3781824515bd26835833361a3a4f2069b05a426ab59617037ebb"
+        },
+        "recoveryOpenMs": 52.34209999999999,
+        "transientOpenErrors": [
+          {
+            "attempt": 1,
+            "elapsedMs": 0.39449999999999363,
+            "message": "disk I/O error"
+          }
+        ]
+      },
+      {
+        "artifact": {
+          "path": ".tmp/l0/sqlite-probe-repeat-3.json",
+          "bytes": 2567,
+          "sha256": "182b573d435046e247265662e3f752760a31bb1af36c7bd7198315179b416124"
+        },
+        "recoveryOpenMs": 2.0365999999999644,
+        "transientOpenErrors": []
+      }
+    ],
+    "lifecycle": {
+      "timedOut": false,
+      "timeoutMs": 40000,
+      "launchError": null,
+      "cleanupError": null,
+      "resultExists": true,
+      "remainingOwnedProcesses": []
+    },
+    "limitations": [
+      "Development Electron executable; NSIS packaged/installed compatibility NOT RUN.",
+      "Process termination exercises SQLite WAL recovery, not physical power-loss or filesystem durability guarantees.",
+      "No user MatchLibrary, user settings, registry or DEM files accessed."
+    ],
+    "requiredDownstreamConstraint": "Windows Utility exit may precede release of SQLite file handles. Close failed connections and use bounded retry; preserve diagnostics. No infinite retry or swallowed corruption."
+  },
+  "faults": {
+    "status": "PASS",
+    "scope": "L0 experimental files, not production library crash-atomicity acceptance",
+    "interruptedStagingRejected": true,
+    "deletionError": "EBUSY",
+    "replacementError": "EPERM",
+    "originalBytesUnchanged": true,
+    "sourceOriginalUnchanged": true,
+    "helperExitCode": 0,
+    "directory": "E:\\cs2-analyst-l0\\.tmp\\l0\\faults-9Wg9bY"
+  },
+  "recommendations": {
+    "payload": "A: complete canonical Match + MatchReplay + MatchSpatialEvidence for every current Heatmap scope. B equivalence is not proven and must not be substituted.",
+    "codec": "Provisional gzip level 6: complete snapshot cold restoration and Electron bridge verified. Brotli quality 4 is smaller/faster in this observation and independently random-readable; adopting it requires a complete reader/writer round-trip in L1.",
+    "chunks": "Independently compressed bounded Replay chunks, remove transient sessionId on disk, generate fresh runtime UUID and preserve the original chunk and IPC budgets.",
+    "database": "Electron built-in node:sqlite, tiny indexed rows with WAL and synchronous FULL; native third-party SQLite dependency not required by this runtime. Packaged/installed compatibility still an L1/L5 gate.",
+    "localAppData": "Resolve and validate Windows LOCALAPPDATA / CS2 Analyst / MatchLibrary; keep existing Electron userData/settings unchanged. Reject symlinks/path escapes in L1.",
+    "indexing": "Library first screen must query small catalogue rows without decompressing archived matches. The experiment does not implement or benchmark a production catalogue."
+  },
+  "unchangedDebt": [
+    "P7 independent Replay query 5131.302ms exceeds 5000ms; this experiment does not resolve it.",
+    "Map/DEM resource-version matching unconfirmed.",
+    "P7 historical NOT RUN items remain NOT RUN."
+  ],
+  "notRun": [
+    "NSIS node:sqlite/package compatibility",
+    "Production L1 transaction / crash-atomic catalogue + archive behavior",
+    "Production cold-start library list/large catalogue",
+    "Physical power-loss test",
+    "Installed six-view offline restore",
+    "P8"
+  ],
+  "artifacts": {
+    "benchmark": {
+      "path": ".tmp/l0/evidence/benchmark.json",
+      "bytes": 1919721,
+      "sha256": "33e6b1f5de47a95a8fff4d0551c93c3874dc3816783d56f4c677aadf93e51833"
+    },
+    "sqlite": {
+      "path": ".tmp/l0/sqlite-probe-lifecycle-verified.json",
+      "bytes": 2753,
+      "sha256": "1b5e974faf3c8f72c14ff06d9e605b977cf51ffc1bb313890341c54a43e42c6e"
+    },
+    "electron": {
+      "path": ".tmp/l0/offline-electron-final-4/acceptance.json",
+      "bytes": 50306,
+      "sha256": "5351b138aa70b21180dcb1c35edd62da8035ae3fa7702bba4a650dc842fff0d9"
+    },
+    "codec": {
+      "path": ".tmp/l0/codec-reads-1792597077256/result.json",
+      "bytes": 2440,
+      "sha256": "6c1fdfa72b014fe390a8bdce59b27b0c32d23ffb5326821acb0737ecd9d466f0"
+    },
+    "faults": {
+      "path": ".tmp/l0/faults-9Wg9bY/result.json",
+      "bytes": 361,
+      "sha256": "6fd6ace4190a1d26bd5ae8830ffc0d359815b6a68b394babbe275227a13f769d"
+    },
+    "fullVerification": {
+      "path": ".tmp/l0/full-snapshot-verification.json",
+      "bytes": 67238,
+      "sha256": "81731b9a87873c3d28841de517c81adb36e4f54c16cdce72c7c57a602aadbb8d"
+    },
+    "catalogue": {
+      "path": ".tmp/l0/catalogue-probe-final.json",
+      "bytes": 57779,
+      "sha256": "730704a4b774c8767c03d1c4224063406200704e3c7f66205d5a53c3091df00a"
+    },
+    "initialNodeFailure": {
+      "path": ".tmp/l0/initial-capture-memory-admission.log",
+      "bytes": 386,
+      "sha256": "a1603d50d33fdd81feef4259d134e02f14570e4075b320198c806b69c5e6821b"
+    }
+  },
+  "preservedFailures": [
+    {
+      "kind": "sqlite-uncommitted-kill-first-attempt",
+      "path": ".tmp/l0/sqlite-run-bmXGQY/result.json",
+      "bytes": 1856,
+      "sha256": "cfaacbcb768c5abbccec17a73d393020081e7a10b56b26c4822132514a91e6d9"
+    },
+    {
+      "kind": "sqlite-forced-1ms-timeout-expected-failure",
+      "path": ".tmp/l0/sqlite-probe-forced-timeout.json",
+      "bytes": 922,
+      "sha256": "1a84d9c0f7878e30b9a0edb7289e67a245a2bc8184617e682e9d0cbb22b6e485"
+    },
+    {
+      "kind": "electron-hidden-compositor-screenshot-timeout",
+      "path": ".tmp/l0/offline-electron/acceptance.json",
+      "bytes": 1388,
+      "sha256": "5908e6a009e3190652207a49b11778a884ad2aa3b6ba53d591976c29bed6af7c"
+    },
+    {
+      "kind": "electron-player-name-whitespace-probe-timeout",
+      "path": ".tmp/l0/offline-electron-final/acceptance.json",
+      "bytes": 1585,
+      "sha256": "be1070199ab80d6cdbb620999e04d420f6f9ddf368fe7eb0377859b9b31968e0"
+    },
+    {
+      "kind": "electron-projection-resolution-probe-timeout",
+      "path": ".tmp/l0/offline-electron-final-3/acceptance.json",
+      "bytes": 1662,
+      "sha256": "cb8f2a0eb4ff18f3fc0c6cd91ef74ae952e1dfcd58091a2a05a502f381bd8ee2"
+    }
+  ],
+  "scripts": [
+    {
+      "path": "scripts/library-storage-spike.mjs",
+      "bytes": 14761,
+      "sha256": "39b167d3bc712844a9fbea437214f4f021b282bc0947dc701cdf325f17ddc160"
+    },
+    {
+      "path": "scripts/library-spike-core.mjs",
+      "bytes": 3940,
+      "sha256": "5d8a04a88a910a7dce1e20681347703bc2dd131e713b7b104d5978427c834e0e"
+    },
+    {
+      "path": "scripts/library-spike.test.mjs",
+      "bytes": 3564,
+      "sha256": "f6bc77a0cc7446bad3fa1d67c9447bdca5688e6672fc13fb178e33be78f16006"
+    },
+    {
+      "path": "scripts/library-spike-faults.mjs",
+      "bytes": 3430,
+      "sha256": "ab5fb2ad24f7f2214793eaab029da0c253db4ee940c87bf7f74bc94ff6ec58d5"
+    },
+    {
+      "path": "scripts/library-spike-codec-reads.mjs",
+      "bytes": 3085,
+      "sha256": "e7068ec2b09f7b1e659c4cb2540759022e395af29a14e1e5f2baa9cd8d99987d"
+    },
+    {
+      "path": "scripts/library-spike-verify-snapshots.mjs",
+      "bytes": 3173,
+      "sha256": "059117a50c2b987ef53496ace478a4e870755641e7868c98a0651c9f2a3e4387"
+    },
+    {
+      "path": "scripts/library-spike-summary.mjs",
+      "bytes": 13980,
+      "sha256": "49929918f94bbb234095e1c3a3c3a9efcc77dd85d397a0ab26cd16fce70f6054"
+    },
+    {
+      "path": "scripts/library-sqlite-probe.mjs",
+      "bytes": 3959,
+      "sha256": "f6cb86e2104595e1f7ba29b5e9b08c2660c0ce678a07a22886d410171947b432"
+    },
+    {
+      "path": "scripts/library-sqlite-electron.cjs",
+      "bytes": 6198,
+      "sha256": "66bb04f36b22d243ac05078f5c2956865225894e952ac09f6bcf0b5166bfa911"
+    },
+    {
+      "path": "scripts/library-offline-electron.mjs",
+      "bytes": 18711,
+      "sha256": "09a6d50ccccd7ab8d1a7643f61326d3e6fed17572a4b49101afb9d0a3af78c4c"
+    },
+    {
+      "path": "scripts/library-offline-host.cjs",
+      "bytes": 7487,
+      "sha256": "b068adf8d94f3f10556cc1d109ed8e413952bd9b6776cc21cc77a5361cffeda0"
+    },
+    {
+      "path": "scripts/library-catalogue-probe.mjs",
+      "bytes": 6217,
+      "sha256": "7ced57db55d8aa5cc14c14622943984ca01749c79eb019d45454661d2b5decee"
+    },
+    {
+      "path": "scripts/library-catalogue-electron.cjs",
+      "bytes": 4257,
+      "sha256": "d023f8c0bb0daeb09186db1c7c0c18d07ac7dfedd2b3e9375f09a238ba3914fd"
+    }
+  ]
+}
