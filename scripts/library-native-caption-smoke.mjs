@@ -148,15 +148,24 @@ try {
   await waitFor(async () => (await page.evaluate('window.cs2Analyst.window.isMaximized()')) === false, 7000, 'double-click restore');
   evidence.restoredAfterSecondDoubleClick = true;
   const content = await page.evaluate('(() => ({ x: Math.round(screenX + outerWidth * 0.75), y: Math.round(screenY + outerHeight * 0.6) }))()');
+  evidence.contentPoint = content;
   click(content.x, content.y);
   await new Promise(resolve => setTimeout(resolve, 700));
   assert.equal(await page.evaluate('window.cs2Analyst.window.isMaximized()'), false, 'content double-click must not maximize');
   evidence.contentDoubleClickDidNotMaximize = true;
+  const control = await page.evaluate(`(() => { const r = document.querySelector('[data-nav-action="back"]').getBoundingClientRect();
+    return { x: Math.round(screenX + r.left + r.width / 2), y: Math.round(screenY + r.top + r.height / 2) }; })()`);
+  evidence.titlebarControlPoint = control;
+  click(control.x, control.y);
+  await new Promise(resolve => setTimeout(resolve, 700));
+  assert.equal(await page.evaluate('window.cs2Analyst.window.isMaximized()'), false, 'titlebar control double-click must not maximize');
+  evidence.controlDoubleClickDidNotMaximize = true;
   evidence.checks.push('real Win32 double-click on the frameless draggable titlebar maximized and restored the window');
   evidence.checks.push('a real double-click in client content did not toggle maximize (non-client hook is scoped)');
+  evidence.checks.push('a real double-click on a titlebar no-drag control did not toggle maximize');
   evidence.status = 'PASS';
-  try { await page.evaluate('void window.cs2Analyst.window.close()'); } catch { /* CDP disconnect */ }
-  await waitFor(() => child.exitCode !== null, 15_000, 'caption close');
+  // Native-message test; process teardown is delegated to the owned ProcessScope.
+  evidence.forcedExit = 'deferred-to-scope-cleanup';
   page.socket.close(); scope.sessions.delete(page.socket);
 } catch (error) {
   evidence.status = 'FAIL'; evidence.error = { message: error.message, stack: error.stack }; process.exitCode = 1;

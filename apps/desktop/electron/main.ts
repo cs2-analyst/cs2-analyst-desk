@@ -674,26 +674,37 @@ async function createWindow() {
     // A frameless window has no native caption; WM_NCLBUTTONDBLCLK on the drag region
     // must still follow the Windows maximize/restore expectation.
     let lastCaptionDoubleClick = 0;
-    const captionDoubleClick = () => {
+    const captionDoubleClick = (clientArea: boolean) => (_wParam: Buffer, lParam: Buffer) => {
       const now = Date.now();
       if (now - lastCaptionDoubleClick < 250 || window.isDestroyed()) return;
-      // The client double-click hook fires for the whole window. Only the custom
-      // 40px titlebar (same as app-titlebar CSS) is a caption; content must not toggle.
-      const point = screen.getCursorScreenPoint();
       const bounds = window.getContentBounds();
-      if (point.x < bounds.x || point.x >= bounds.x + bounds.width
-        || point.y < bounds.y || point.y >= bounds.y + 40) return;
+      let x: number, y: number;
+      if (lParam && lParam.length >= 4) {
+        const packed = lParam.readUInt32LE(0);
+        x = packed & 0xffff; y = (packed >>> 16) & 0xffff;
+        if (clientArea) { x += bounds.x; y += bounds.y; }
+      } else {
+        const point = screen.getCursorScreenPoint(); x = point.x; y = point.y;
+      }
+      // The custom 40px titlebar is a caption, but its no-drag groups (history and
+      // window controls) are not: only the empty/brand middle may toggle the window.
+      const controlsInset = 160;
+      if (x < bounds.x + controlsInset || x >= bounds.x + bounds.width - controlsInset
+        || y < bounds.y || y >= bounds.y + 40) return;
       lastCaptionDoubleClick = now;
       if (window.isMaximized()) window.unmaximize(); else window.maximize();
     };
     // The drag region is classified as a client area on Windows, so both messages are
-    // observed; the callback above scopes the client variant to the titlebar.
-    window.hookWindowMessage(0x00A3, captionDoubleClick);
-    window.hookWindowMessage(0x0203, captionDoubleClick);
+    // observed; coordinates come from lParam and are scoped to the caption middle.
+    window.hookWindowMessage(0x00A3, captionDoubleClick(false));
+    window.hookWindowMessage(0x0203, captionDoubleClick(true));
   }
 
   mainWindow.on('closed', () => {
     cancelActiveImport?.();stopAnalysisWorker();
+    if (typeof window.unhookWindowMessage === 'function') {
+      window.unhookWindowMessage(0x00A3); window.unhookWindowMessage(0x0203);
+    }
     mainWindow = null;
   });
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
