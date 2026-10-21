@@ -8,7 +8,7 @@
 
 | # | 场景 | 结果 | 证据 |
 | --- | --- | --- | --- |
-| 1 | 生产 NSIS 安装 → Nuke 导入 → 重启 → 卸载保留 | PASS | 安装包 `d8c6b8c4…8880dec`；导入 15,568.8ms；冷目录 1.33ms；卸载后 manifest 保留 |
+| 1 | 生产 NSIS 安装 → Nuke 导入 → 重启 → 卸载保留 | PASS | 安装包 `b92b21e6…68a5d19`；导入 15,266.0ms；冷目录 0.99ms；卸载后 manifest 保留 |
 | 2 | test-seam 安装版导出/删除/导入/冷打开 | PASS | `.cs2a` 16,929,688B / 164 文件；删除后 archiveBytes=0；损坏包拒绝；`productRevision=63d6e12` |
 | 3 | L1 构建 → 最终构建升级 | PASS | 旧安装包 `1d5960f2…79f75b9c`；升级后旧归档 report `e071bfa7…5771f748` 不变；卸载保留 |
 | 4 | 回滚旧构建打开/渲染 | PASS | L1 可列出 ready 归档；L2 构建可打开最终库归档并渲染相同 report `e071bfa7…` |
@@ -17,7 +17,7 @@
 | 7 | 50+ 大库首屏 | PASS（合成） | 50 条合成归档：列表约 5ms、50 行渲染、首屏无 Replay 会话/Chunk；不是真实比赛样本 |
 | 8 | 性能 | PARTIAL | 导入 15–20s；打开 2.5–3.1s（全量校验）；列表冷读 1.3ms；Replay 5131.302ms 债未解 |
 | 9 | 隐私/网络 | PASS（代码审查） | 无自动上传；导出需用户选择；不保存 DEM |
-| 10 | 键盘/高对比度 | PARTIAL（仅模拟） | CDP forced-colors 下导航仍可见；真实 Windows 高对比度/Narrator NOT RUN |
+| 10 | 键盘/高对比度/标题栏双击 | PARTIAL（模拟+原生指针） | CDP forced-colors 下导航仍可见；真实 Win32 双击标题栏最大化/还原 PASS；真实高对比度/Narrator NOT RUN |
 | 11 | DPI 125%/150%、物理多屏 | PARTIAL（仅模拟） | CDP 1.25/1.5 DPR 下品牌 delta=0；物理 DPI/多屏 NOT RUN |
 | 12 | 人工产品验收 | NOT RUN | 需产品负责人实际打开、导航、导出/导入并签收 |
 
@@ -30,7 +30,7 @@
 - 集成导航 smoke：24 个几何状态 max delta = 0px；一次后退/前进语义通过。
 - 集成数据操作 Dust2/Nuke：PASS；test-seam 安装版 Dust2：PASS。
 - 生产安装版：PASS；升级：PASS；回滚：L1 列表/只读 + L2 打开/渲染 PASS。
-- 50 条合成库首屏、模拟 1.25/1.5 DPR 与 forced-colors：PASS；结果在 `.tmp/l5/evidence/{large-library,accessibility}.json`。
+- 50 条合成库首屏、模拟 1.25/1.5 DPR 与 forced-colors、真实 Win32 标题栏双击：PASS；结果在 `.tmp/l5/evidence/{large-library,accessibility,native-caption}.json`。
 
 ## 3. 人工验收清单（NOT RUN）
 
@@ -40,7 +40,7 @@
 2. 六个比赛视图可切换；切换多次后单击标题栏「后退」一次回到比赛数据列表；「前进」回到该场最后视图。
 3. 打开已保存比赛时源 DEM 不存在仍可用；关闭重启后仍在列表。
 4. 删除确认、导出 `.cs2a`（隐私提示）、导入 `.cs2a`、重复导入提示、损坏包错误提示。
-5. 1024×640 与 1920×1032 下标题栏品牌居中、按钮/Tooltip/键盘焦点可用；高对比度与 Narrator 走查；物理双击标题栏最大化/还原。
+5. 1024×640 与 1920×1032 下标题栏品牌居中、按钮/Tooltip/键盘焦点可用；高对比度与 Narrator 走查（物理双击标题栏已由 Win32 真实鼠标测试 PASS）。
 6. 卸载后用户比赛库仍在；重新安装后仍可打开。
 
 以上任一项未确认，L5 只能保持“技术通过、人工待验”，不得宣称最终发布完成。

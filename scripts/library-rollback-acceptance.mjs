@@ -51,6 +51,7 @@ try {
   await waitFor(() => child.exitCode !== null, 15_000, 'rollback app close');
   page.socket.close(); scope.sessions.delete(page.socket);
   await runInstaller(scope, join(installation, 'Uninstall CS2 Analyst.exe'), ['/S', '/currentuser'], { label: 'L5 rollback uninstall', directory: installation });
+  await waitFor(async () => !existsSync(join(installation, 'CS2 Analyst.exe')) && (await windowsRegistrations()).length === 0, 30_000, 'rollback uninstall');
   evidence.checks.push('rollback uninstall preserved the external LOCALAPPDATA library');
   evidence.status = 'PASS';
 } catch (error) {

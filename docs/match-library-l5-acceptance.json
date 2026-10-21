@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "stage": "L5",
-  "generatedAt": "2026-10-21T19:11:45.553Z",
-  "commit": "4fae411",
-  "productRevision": "63d6e12ad9de0352bdc38206dcc4a39d22bd19c1",
+  "generatedAt": "2026-10-21T19:38:48.216Z",
+  "commit": "cbfa566",
+  "productRevision": "cbfa56644e2eeeccfbf8cd7a32f948543b08d1b8",
   "status": "TECHNICAL_PASS_HUMAN_ACCEPTANCE_NOT_RUN",
   "tests": {
     "desktopFull": "285/285 PASS, 0 skipped",
@@ -13,13 +13,14 @@
     "fullTestLog": ".tmp/l5/evidence/desktop-full-test.log (285/285)",
     "typecheckLog": ".tmp/l5/evidence/typecheck.log (15/15)",
     "largeLibrary": "PASS (50 synthetic entries, ~5ms list, 50 rows, no chunks)",
-    "accessibility": "PASS emulated 1.25/1.5 DPR + forced-colors; physical/Narrator NOT RUN"
+    "accessibility": "PASS emulated 1.25/1.5 DPR + forced-colors; physical/Narrator NOT RUN",
+    "nativeCaption": "PASS real Win32 double-click maximize/restore"
   },
   "artifacts": {
     "productionInstaller": {
       "path": "release/0.1.0/CS2-Analyst-Setup-0.1.0.exe",
-      "sha256": "d8c6b8c481f6735179af94b1e40d42cbf4307ba57549e44e45b7884728880dec",
-      "bytes": 117232623
+      "sha256": "b92b21e69f02f83c73c4267b7965d7d90e9331261420525c32d4146cf68a5d19",
+      "bytes": 117232714
     },
     "previousL1Installer": {
       "path": "E:/cs2-analyst-l1/release/0.1.0/CS2-Analyst-Setup-0.1.0.exe",
@@ -27,12 +28,12 @@
     },
     "testSeamInstaller": {
       "path": ".tmp/test-output/0.1.0/CS2-Analyst-TestSeam-Setup-0.1.0.exe",
-      "sha256": "b052b775adc7f48befcf194b5e66135c59649dc784a27bb9b2b494d4883947b3",
-      "bytes": 117232576
+      "sha256": "fc394ec18f5b0540b616fb81b3d662f8b7ebdc83abf8c341e033a79c4bf554b4",
+      "bytes": 117232748
     },
     "productionFoundationEvidence": {
       "path": ".tmp/l5/evidence/production-foundation.json",
-      "sha256": "723243ab33b7b1fa5272db63ff50ffae567b8850ad6a0fe3bd8bb62ef990835a"
+      "sha256": "6e4f85623059aa2a4cfc209eec01c064af7dfa5a64f79c1f240aa88aaa9c2416"
     }
   },
   "matrix": [
@@ -40,7 +41,7 @@
       "id": 1,
       "item": "Production NSIS install/import/restart/uninstall retention",
       "status": "PASS",
-      "evidence": "production-installed.json; Nuke import 15,568.8ms; cold catalogue 1.33ms; manifest retained"
+      "evidence": "production-installed.json; Nuke import 15,266.0ms; cold catalogue 0.99ms; manifest retained; installed sourceRevision cbfa566"
     },
     {
       "id": 2,
@@ -94,7 +95,7 @@
       "id": 10,
       "item": "Keyboard/high contrast",
       "status": "PARTIAL (emulated forced-colors only)",
-      "evidence": "accessibility.json emulates forced-colors and checks visible nav color; real Windows high contrast/Narrator NOT RUN"
+      "evidence": "accessibility.json emulates forced-colors and checks visible nav color; native-caption.json real Win32 double-click maximized/restored; real Windows high contrast/Narrator NOT RUN"
     },
     {
       "id": 11,
@@ -112,7 +113,6 @@
   "manualNotRun": [
     "physical DPI / multi-monitor",
     "real Windows high contrast / Narrator walkthrough",
-    "physical caption double-click",
     "human product sign-off"
   ],
   "residualRisks": [
