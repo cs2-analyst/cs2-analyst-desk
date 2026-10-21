@@ -107,6 +107,22 @@ test('longest accepted version metadata stays listable across restart and longer
   await library.discardStaging(staged.id);
 }));
 
+test('bounded maximum roster still fits the catalogue row across restart', async () => scope(async ({ library, root, setLibrary }) => {
+  const roster = Array.from({ length: 64 }, (_, index) => ({ id: `player-${index}`.padEnd(256, 'x'), nickname: 'n'.repeat(512) }));
+  const largest = input();
+  largest.report.players = roster; largest.report.selectedPlayer = roster[0].id;
+  largest.report.match.fileName = 'f'.repeat(252) + '.dem';
+  largest.versions = { ...versions, application: 'v'.repeat(1024), analysis: 'v'.repeat(1024), parser: 'v'.repeat(1024) };
+  const added = await add(library, largest);
+  assert.equal(added.entry.players.length, 64);
+  assert.equal(added.entry.players[0].nickname.length, 512);
+  assert.ok(Buffer.byteLength(JSON.stringify(added.entry)) <= 65536, 'entry JSON must fit the SQLite row bound');
+  assert.equal(library.list().total, 1);
+  library.close();
+  library = await LocalMatchLibrary.open(root); setLibrary(library);
+  assert.equal(library.list().entries[0].players.length, 64);
+}));
+
 test('SHA duplicate preserves the existing snapshot and same filename never merges distinct bytes', async () => scope(async ({ library }) => {
   const first = await add(library);
   const duplicateInput = input(); duplicateInput.report.players[0].nickname = 'A changed analysis must not overwrite';

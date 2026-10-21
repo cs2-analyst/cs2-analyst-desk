@@ -15,7 +15,7 @@ export const LIBRARY_ARCHIVE_LIMITS = Object.freeze({ manifestBytes: MiB, fileCo
   totalGzipBytes: 256 * MiB, chunkBytes: MiB, replayBytes: 64 * MiB, players: 64, rounds: 1024 });
 /** Summary metadata shared with the SQLite catalogue. A written manifest must stay listable. */
 export const LIBRARY_METADATA_LIMITS = Object.freeze({ fileName: 256, map: 64, rounds: 1024,
-  players: 64, nickname: 1024, version: 1024, reason: 512 });
+  players: 64, nickname: 512, version: 1024, reason: 512 });
 const capabilityNames = ['report', 'deepReview', 'timeline', 'analysis', 'replay', 'heatmap'] as const;
 export type ArchiveFileRole = 'report' | 'heatmap-match' | 'heatmap-replay' | 'heatmap-spatial' | 'replay-chunk';
 export interface ArchiveFile { path: string; role: ArchiveFileRole; rawBytes: number; gzipBytes: number;

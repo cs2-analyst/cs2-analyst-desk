@@ -292,6 +292,10 @@ export class LocalMatchLibrary {
       }
       const target = join(this.root, 'matches', manifest.matchId);
       const entry = this.manifestEntry(manifest, storedBytes);
+      // The SQLite row check is a character bound; enforce the byte bound here so a
+      // contract-valid maximum roster cannot fail after the archive has been renamed.
+      const entryJson = JSON.stringify(entry);
+      if (Buffer.byteLength(entryJson) > 65536) throw new Error('比赛库索引记录超过安全大小限制。');
       let moved = false, committed = false;
       try {
         await this.options.phase?.('before-rename', context);
@@ -308,7 +312,7 @@ export class LocalMatchLibrary {
         this.db.exec('BEGIN IMMEDIATE');
         try {
           this.db.prepare('INSERT INTO matches(match_id,imported_at,map,file_name,stored_bytes,manifest_hash,state,entry_json) VALUES(?,?,?,?,?,?,?,?)')
-            .run(entry.matchId, entry.importedAt, entry.map, entry.fileName, entry.storedBytes, manifestHash, 'ready', JSON.stringify(entry));
+            .run(entry.matchId, entry.importedAt, entry.map, entry.fileName, entry.storedBytes, manifestHash, 'ready', entryJson);
           this.db.exec('COMMIT');
           committed = true;
           try { onCommitted?.(); } catch { this.options.diagnostic?.('Committed-import notification failed.'); }
