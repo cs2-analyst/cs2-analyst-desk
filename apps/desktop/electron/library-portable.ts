@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
-import { lstat, mkdir, open, readFile, readdir, stat, unlink } from 'node:fs/promises';
+import { lstat, mkdir, open, readFile, readdir, unlink } from 'node:fs/promises';
 import type { FileHandle } from 'node:fs/promises';
-import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { assertArchiveDirectory, LIBRARY_ARCHIVE_LIMITS, validateArchiveManifest, verifyLibraryArchive, type ArchiveManifest } from './library-archive.ts';
 
 /**
@@ -375,11 +375,4 @@ export async function writePortableArchive(sourceDirectory: string, destination:
     if (created) { try { await unlink(target); } catch { /* Caller also removes its temporary path. */ } }
     throw error;
   } finally { try { await handle?.close(); } catch { /* Already closed after a failure. */ } }
-}
-
-/** Metadata-only helper for tests/acceptance; never returns payload bytes or source paths. */
-export async function portableArchiveSize(packagePath: string): Promise<number> {
-  const path = localPath(packagePath, 'Portable archive');
-  const info = await stat(path);
-  return info.size;
 }
