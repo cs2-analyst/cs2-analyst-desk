@@ -6,6 +6,8 @@ import vm from 'node:vm';
 import test from 'node:test';
 import { mainLibraryRequire, tick } from './library-main-fixture.mjs';
 const require = createRequire(import.meta.url), { transformSync } = createRequire(require.resolve('vite'))('esbuild');
+// store.ts now imports its pure navigation module with an explicit .ts extension.
+const storeRequire = createRequire(new URL('../renderer/src/store.ts', import.meta.url));
 async function harness() {
   const handlers = new Map(), workers = [], windows = [];
   class Window extends EventEmitter { constructor() { super(); this.webContents = Object.assign(new EventEmitter(), { mainFrame: {}, send() {}, setWindowOpenHandler() {} }); windows.push(this); } isDestroyed() { return false; } removeMenu() {} async loadFile() {} close() { this.emit('closed'); } static getAllWindows() { return windows; } }
@@ -102,7 +104,7 @@ test('renderer preserves report and player on drop failure/cancel and ignores du
   const bridge = { importDroppedFile: () => { calls++; return new Promise(resolve => { complete = resolve; }); } };
   const module = { exports: {} };
   const code = transformSync(readFileSync(new URL('../renderer/src/store.ts', import.meta.url), 'utf8'), { loader: 'ts', format: 'cjs' }).code;
-  vm.runInNewContext(code, { require, module, window: { cs2Analyst: bridge } });
+  vm.runInNewContext(code, { require: storeRequire, module, window: { cs2Analyst: bridge } });
   const store = module.exports.useReport;
   const report = { selectedPlayer: 'p1', players: [{ id: 'p1' }], replay: { available: true, sessionId: 'old' } };
   store.setState({ status: 'success', report, playerId: 'p1' });
@@ -134,7 +136,7 @@ test('rejected dialog/File IPC promises preserve report, target and replay befor
     const bridge = { [method]: () => new Promise((ok, fail) => { resolve = ok; reject = fail; }) };
     const module = { exports: {} };
     const code = transformSync(readFileSync(new URL('../renderer/src/store.ts', import.meta.url), 'utf8'), { loader: 'ts', format: 'cjs' }).code;
-    vm.runInNewContext(code, { require, module, window: { cs2Analyst: bridge } });
+    vm.runInNewContext(code, { require: storeRequire, module, window: { cs2Analyst: bridge } });
     const store = module.exports.useReport;
     const report = { selectedPlayer: 'a', players: [{ id: 'a' }, { id: 'b' }], replay: { available: true, sessionId: 'old' } };
     store.setState({ status: 'success', report, playerId: 'b' });
@@ -161,7 +163,7 @@ test('only successful imports advance the UI revision, including reimporting the
     const bridge = { [method]: () => new Promise(resolve => { complete = resolve; }) };
     const module = { exports: {} };
     const code = transformSync(readFileSync(new URL('../renderer/src/store.ts', import.meta.url), 'utf8'), { loader: 'ts', format: 'cjs' }).code;
-    vm.runInNewContext(code, { require, module, window: { cs2Analyst: bridge } });
+    vm.runInNewContext(code, { require: storeRequire, module, window: { cs2Analyst: bridge } });
     const store = module.exports.useReport;
     const report = { match: { id: 'same-match' }, selectedPlayer: 'a', players: [{ id: 'a' }], replay: { available: true, sessionId: 'old' } };
     store.setState({ status: 'success', report, reportRevision: 7, playerId: 'a' });
@@ -184,7 +186,7 @@ test('candidate parsing and failure preserve the previous heatmap-only session i
   let complete;
   const bridge={importDemo:()=>new Promise(resolve=>{complete=resolve;})},module={exports:{}};
   const code=transformSync(readFileSync(new URL('../renderer/src/store.ts',import.meta.url),'utf8'),{loader:'ts',format:'cjs'}).code;
-  vm.runInNewContext(code,{require,module,window:{cs2Analyst:bridge}});
+  vm.runInNewContext(code,{require:storeRequire,module,window:{cs2Analyst:bridge}});
   const store=module.exports.useReport;
   const heatmap={available:true,sessionId:'old',layers:Object.fromEntries(['positions','kills','deaths'].map(layer=>[layer,{available:true,unavailableReason:null}]))};
   const report={selectedPlayer:'p1',players:[{id:'p1'}],heatmap};

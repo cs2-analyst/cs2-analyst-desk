@@ -18,64 +18,139 @@ registerHooks({ resolve(specifier, context, nextResolve) {
   }
   return nextResolve(specifier, context);
 }, load(url, context, nextLoad) {
-  if (url.endsWith('.svg')) return { format: 'module', shortCircuit: true, source: 'export default ' + JSON.stringify(new URL(url).pathname) + ';' };
+  if (/\.(svg|png)$/.test(url)) return { format: 'module', shortCircuit: true, source: 'export default ' + JSON.stringify(new URL(url).pathname) + ';' };
   if (url.endsWith('.tsx')) return { format: 'module', shortCircuit: true,
     source: transformSync(readFileSync(new URL(url), 'utf8'), { loader: 'tsx', jsx: 'automatic', format: 'esm' }).code };
+  if (url.endsWith('.ts')) return { format: 'module', shortCircuit: true,
+    source: transformSync(readFileSync(new URL(url), 'utf8'), { loader: 'ts', format: 'esm' }).code };
   return nextLoad(url, context);
 } });
-const { Home } = await import('../renderer/src/home.tsx');
-const { Sidebar } = await import('../renderer/src/sidebar.tsx');
+const { GlobalSidebar, MatchSidebar } = await import('../renderer/src/sidebar.tsx');
+const { LibraryList, LibraryPage, PersonalSection } = await import('../renderer/src/library-page.tsx');
+const { TitlebarView } = await import('../renderer/src/app-titlebar.tsx');
+const { brandCenterOffset, isBrandCentered } = await import('../renderer/src/titlebar-geometry.ts');
+const { toLibraryListQuery, formatBytes } = await import('../renderer/src/library-query.ts');
 const render = element => renderToStaticMarkup(createElement(SSRProvider, null, element));
 const noop = () => {};
 
-test('sidebar lists the six report views in order and disables them before a match is loaded', () => {
-  const html = render(createElement(Sidebar, { reportReady: false, busy: false, collapsed: false, activeView: 'report',
+const entries = [
+  { matchId: 'a'.repeat(64), fileName: 'dust2.dem', map: 'de_dust2', rounds: 24, score: { initialCT: 13, initialT: 11 },
+    players: [{ id: '1', nickname: 'A' }], importedAt: '2026-10-20T10:00:00.000Z', versions: {}, capabilities: {},
+    storedBytes: 12 * 1024 * 1024, state: 'ready' },
+  { matchId: 'b'.repeat(64), fileName: 'broken.cs2a', map: 'de_mirage', rounds: 0, score: null,
+    players: [], importedAt: '2026-10-19T10:00:00.000Z', versions: {}, capabilities: {},
+    storedBytes: 1024, state: 'invalid' },
+];
+
+test('global sidebar exposes exactly the two first-level entries and never the six match views', () => {
+  const html = render(createElement(GlobalSidebar, { section: 'library', collapsed: false, onSelectSection: noop, onToggleCollapsed: noop }));
+  assert.ok(html.includes('data-app-sidebar'));
+  assert.ok(html.includes('data-sidebar-mode="global"'));
+  assert.deepEqual([...html.matchAll(/id="(global-[a-z]+-tab)"/g)].map(match => match[1]), ['global-personal-tab', 'global-library-tab']);
+  for (const label of ['个人数据', '比赛数据']) assert.ok(html.includes(label), label);
+  assert.equal(html.includes('比赛报告'), false, 'global mode must not embed match views');
+  assert.equal([...html.matchAll(/role="tab"/g)].length, 2);
+  assert.equal(html.includes('data-sidebar-import'), false);
+  assert.ok(html.includes('data-sidebar-toggle'));
+});
+
+test('match sidebar keeps the six existing report views in order and preserves their ids', () => {
+  const html = render(createElement(MatchSidebar, { reportReady: false, busy: false, collapsed: false, activeView: 'report',
     importLabel: '选择 DEM', onSelectView: noop, onToggleCollapsed: noop, onImport: noop }));
-  assert.ok(html.includes('data-app-sidebar'), '侧边栏缺少桌面导航容器');
-  assert.ok(html.includes('data-collapsed="false"'), '展开态标记缺失');
+  assert.ok(html.includes('data-sidebar-mode="match"'));
   assert.deepEqual([...html.matchAll(/id="([a-z-]+-tab)"/g)].map(match => match[1]),
     ['report-tab', 'deep-review-tab', 'timeline-tab', 'analysis-tab', 'replay-tab', 'heatmap-tab']);
-  const labels = ['比赛报告', '深度复盘', '回合时间线', '分析', '比赛回放', '热力图'];
-  for (const label of labels) assert.ok(html.includes(label), '导航缺少 ' + label);
-  assert.equal(html.includes('地图回放'), false, '导航必须统一使用“比赛回放”');
+  for (const label of ['比赛报告', '深度复盘', '回合时间线', '分析', '比赛回放', '热力图']) assert.ok(html.includes(label), label);
+  assert.equal(html.includes('个人数据'), false, 'match mode must not keep the global rail');
   assert.equal([...html.matchAll(/role="tab"/g)].length, 6);
-  assert.equal([...html.matchAll(/aria-controls="/g)].length, 6, '每个导航项都要指向自己的面板');
-  assert.equal([...html.matchAll(/disabled/g)].length >= 6, true, '未导入时导航项应不可用');
-  assert.ok(html.includes('data-sidebar-toggle'), '缺少展开/折叠按钮');
-  assert.ok(html.includes('aria-label="收起导航"'), '展开态按钮应提示收起');
-  assert.ok(html.includes('data-sidebar-import'), '侧边栏缺少导入入口');
+  assert.equal([...html.matchAll(/aria-controls="/g)].length, 6);
+  assert.equal([...html.matchAll(/disabled/g)].length >= 6, true, 'no report means disabled views');
+  assert.ok(html.includes('data-sidebar-import'));
 });
 
-test('collapsed sidebar keeps every icon and hides the text labels from assistive tech', () => {
-  const html = render(createElement(Sidebar, { reportReady: true, busy: false, collapsed: true, activeView: 'replay',
-    importLabel: '重新选择 DEM', onSelectView: noop, onToggleCollapsed: noop, onImport: noop }));
-  assert.ok(html.includes('data-collapsed="true"'), '折叠态标记缺失');
-  assert.equal([...html.matchAll(/role="tab"/g)].length, 6, '折叠态仍要保留 6 个导航项');
-  assert.equal([...html.matchAll(/disabled/g)].length, 0, '已导入后导航项必须可用');
-  assert.ok(html.includes('aria-label="展开导航"'), '折叠态按钮应提示展开');
-  assert.equal(html.includes('>收起导航<'), false, '折叠态不应再渲染文字标签');
-  assert.equal(html.includes('>重新选择 DEM<'), false, '折叠态不应再渲染导入文字标签');
+test('collapsed global sidebar keeps accessible icon labels and hides text from the visual row', () => {
+  const html = render(createElement(GlobalSidebar, { section: 'personal', collapsed: true, onSelectSection: noop, onToggleCollapsed: noop }));
+  assert.ok(html.includes('data-collapsed="true"'));
+  assert.equal([...html.matchAll(/role="tab"/g)].length, 2);
+  assert.equal([...html.matchAll(/aria-label="个人数据"/g)].length, 1);
+  assert.equal([...html.matchAll(/aria-label="比赛数据"/g)].length, 1);
+  assert.ok(html.includes('aria-label="展开导航"'));
+  assert.equal(html.includes('>收起导航<'), false);
 });
 
-test('home exposes one central import card with both click and drag entry points', () => {
-  const html = render(createElement(Home, { busy: false, onImport: noop, onImportFile: noop }));
-  assert.ok(html.includes('data-import-card'), '缺少导入卡片');
-  assert.ok(html.includes('data-drag-over="false"'), '拖拽状态标记缺失');
-  assert.ok(html.includes('从一场比赛开始'), '缺少主标题');
-  assert.ok(html.includes('选择 DEM 文件'), '缺少点击导入按钮');
-  assert.ok(html.includes('也可以把 .dem 文件直接拖放到这张卡片上'), '缺少拖拽提示');
-  const busy = render(createElement(Home, { busy: true, onImport: noop, onImportFile: noop }));
-  assert.ok(/disabled/.test(busy), '导入进行中必须禁用再次点击');
+test('personal data is an honest placeholder and contains no invented statistics', () => {
+  const html = render(createElement(PersonalSection));
+  assert.ok(html.includes('个人数据视图尚未实现'));
+  assert.ok(html.includes('不会生成或展示任何个人统计'));
+  for (const fake of ['K/D', 'ADR', '胜率', 'Rating', '回合数']) assert.equal(html.includes(fake), false, fake);
 });
 
-test('sidebar import keeps its current accessible name and native disabled semantics in both states', () => {
-  for (const collapsed of [false, true]) for (const busy of [false, true]) for (const importLabel of ['选择 DEM', '重新选择 DEM']) {
-    const html = render(createElement(Sidebar, { reportReady: true, busy, collapsed, activeView: 'report',
-      importLabel, onSelectView: noop, onToggleCollapsed: noop, onImport: noop }));
-    const button = html.match(/<button[^>]*data-sidebar-import[^>]*>/)?.[0];
-    assert.ok(button);
-    assert.ok(button.includes(`aria-label="${importLabel}"`));
-    assert.equal(button.includes('disabled'), busy);
-    assert.ok(button.includes('type="button"'));
-  }
+test('saved-match list renders open/export/delete actions and disables unavailable rows', () => {
+  const html = render(createElement(LibraryList, { entries, busy: false, onOpen: noop, onExport: noop, onDelete: noop }));
+  assert.ok(html.includes('data-library-list'));
+  assert.equal([...html.matchAll(/data-library-entry="/g)].length, 2);
+  assert.ok(html.includes('dust2.dem'));
+  assert.ok(html.includes('de_dust2'));
+  assert.ok(html.includes('13 : 11'));
+  assert.ok(html.includes('24 回合'));
+  assert.ok(html.includes('当前档案不可读'));
+  const readyRow = html.slice(html.indexOf('data-library-entry="' + entries[0].matchId + '"'), html.indexOf('data-library-entry="' + entries[1].matchId + '"'));
+  assert.ok(readyRow.includes('data-library-open'));
+  assert.ok(readyRow.includes('data-library-export'));
+  assert.ok(readyRow.includes('data-library-delete'));
+  assert.equal(/data-library-open[^>]*disabled/.test(readyRow), false);
+  const brokenRow = html.slice(html.indexOf('data-library-entry="' + entries[1].matchId + '"'));
+  assert.match(brokenRow, /data-library-open[^>]*disabled/);
+  const busy = render(createElement(LibraryList, { entries, busy: true, onOpen: noop, onExport: noop, onDelete: noop }));
+  assert.equal([...busy.matchAll(/data-library-open[^>]*disabled/g)].length, 2, 'busy disables opening');
+});
+
+test('library query maps search/filter/sort into the frozen catalogue contract', () => {
+  assert.deepEqual(toLibraryListQuery({ search: ' dust2 ', map: 'de_dust2', sort: 'storedBytes', direction: 'asc' }, 25),
+    { search: 'dust2', map: 'de_dust2', sort: 'storedBytes', direction: 'asc', limit: 25 });
+  assert.deepEqual(toLibraryListQuery({ search: '   ', map: 'all', sort: 'importedAt', direction: 'desc' }),
+    { map: null, sort: 'importedAt', direction: 'desc', limit: 100 });
+  assert.equal(formatBytes(0), '0 B');
+  assert.equal(formatBytes(1536), '1.50 KiB');
+  assert.equal(formatBytes(12 * 1024 * 1024), '12.0 MiB');
+});
+
+test('library page first paint is an honest loading state without touching Replay chunks', () => {
+  const html = render(createElement(LibraryPage));
+  assert.ok(html.includes('data-library-page'));
+  assert.ok(html.includes('data-library-loading'));
+  assert.ok(html.includes('正在读取本地比赛库'));
+  assert.ok(html.includes('data-library-toolbar'));
+  assert.ok(html.includes('data-library-import-archive'));
+  assert.ok(html.includes('data-library-import-dem'));
+  assert.equal(html.includes('data-replay'), false);
+});
+
+test('titlebar disabled states, accessible names and brand group', () => {
+  const disabled = render(createElement(TitlebarView, { canBack: false, canForward: false, onBack: noop, onForward: noop,
+    maximized: false, onMinimize: noop, onToggleMaximize: noop, onClose: noop }));
+  assert.match(disabled, /data-nav-action="back"[^>]*disabled/);
+  assert.match(disabled, /data-nav-action="forward"[^>]*disabled/);
+  assert.ok(disabled.includes('aria-label="后退"'));
+  assert.ok(disabled.includes('aria-label="前进"'));
+  assert.ok(disabled.includes('data-app-brand'));
+  assert.ok(disabled.includes('CS2 Analyst'));
+  assert.ok(disabled.includes('data-window-control="minimize"'));
+  assert.ok(disabled.includes('data-window-control="maximize"'));
+  assert.equal(disabled.includes('>还原<'), false);
+  const enabled = render(createElement(TitlebarView, { canBack: true, canForward: true, onBack: noop, onForward: noop,
+    maximized: true, onMinimize: noop, onToggleMaximize: noop, onClose: noop }));
+  assert.doesNotMatch(enabled, /data-nav-action="back"[^>]*disabled/);
+  assert.doesNotMatch(enabled, /data-nav-action="forward"[^>]*disabled/);
+  assert.ok(enabled.includes('aria-label="还原"'));
+});
+
+test('brand centring uses the whole titlebar rect and honours the one-CSS-pixel budget', () => {
+  const titlebar = { left: 0, width: 1024 };
+  assert.ok(isBrandCentered({ left: 452, width: 120 }, titlebar));
+  assert.equal(brandCenterOffset({ left: 452, width: 120 }, titlebar), 0);
+  assert.ok(isBrandCentered({ left: 452.5, width: 120 }, titlebar), '0.5px is inside the 1px budget');
+  assert.equal(isBrandCentered({ left: 455, width: 120 }, titlebar), false, '3px must fail');
+  assert.ok(isBrandCentered({ left: 900, width: 120 }, { left: 0, width: 1920 }));
+  assert.equal(isBrandCentered({ left: 902, width: 120 }, { left: 0, width: 1920 }), false);
 });
