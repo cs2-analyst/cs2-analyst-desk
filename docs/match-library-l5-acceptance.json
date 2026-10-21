@@ -1,12 +1,19 @@
 {
   "schemaVersion": 1,
   "stage": "L5",
-  "generatedAt": "2026-10-21T20:09:40.219Z",
+  "generatedAt": "2026-10-21T20:19:44.691Z",
   "commit": "ea6e4e0",
   "recordCommit": "e016fa3",
   "productCommit": "ea6e4e07f1233cff074d7e5b8f408422a551a9df",
   "archiveSourceRevision": "4f42c7509ee97196ce122f586835f40ae07248a8",
-  "status": "TECHNICAL_PASS_HUMAN_ACCEPTANCE_NOT_RUN",
+  "status": "PASS",
+  "humanAcceptance": {
+    "status": "PASS",
+    "confirmedAt": "2026-10-21T20:19:36.100Z",
+    "confirmedBy": "product owner (user)",
+    "statement": "用户确认人工验收已完成且无问题，并明确授权推送 main。",
+    "scope": ["physical 125%/150% DPI and multi-monitor", "real Windows high-contrast/Narrator walkthrough", "product-owner sign-off"]
+  },
   "tests": {
     "desktopFull": "285/285 PASS, 0 skipped",
     "typecheck": "15/15 tasks PASS",
@@ -15,7 +22,7 @@
     "fullTestLog": ".tmp/l5/evidence/desktop-full-test.log (285/285)",
     "typecheckLog": ".tmp/l5/evidence/typecheck.log (15/15)",
     "largeLibrary": "PASS (50 synthetic entries, ~5ms list, 50 rows, no chunks)",
-    "accessibility": "PASS emulated 1.25/1.5 DPR + forced-colors; physical/Narrator NOT RUN",
+    "accessibility": "PASS emulated 1.25/1.5 DPR + forced-colors; user confirmed physical DPI/high-contrast/Narrator",
     "nativeCaption": "PASS real Win32 double-click maximize/restore"
   },
   "artifacts": {
@@ -96,27 +103,23 @@
     {
       "id": 10,
       "item": "Keyboard/high contrast",
-      "status": "PARTIAL (emulated forced-colors only)",
-      "evidence": "accessibility.json emulates forced-colors and checks visible nav color; native-caption.json real Win32 double-click maximized/restored; real Windows high contrast/Narrator NOT RUN"
+      "status": "PASS (user-confirmed)",
+      "evidence": "accessibility.json emulates forced-colors; native-caption.json real Win32 double-click; user confirmed real Windows high-contrast/Narrator walkthrough with no issues"
     },
     {
       "id": 11,
       "item": "DPI 125/150 and physical multi-monitor",
-      "status": "PARTIAL (CDP emulated DPI)",
-      "evidence": "accessibility.json 1.25/1.5 DPR: brand delta 0; physical DPI and multi-monitor NOT RUN"
+      "status": "PASS (user-confirmed)",
+      "evidence": "accessibility.json 1.25/1.5 DPR: brand delta 0; user confirmed physical 125%/150% DPI and multi-monitor with no issues"
     },
     {
       "id": 12,
       "item": "Human product acceptance",
-      "status": "NOT RUN",
-      "evidence": "Requires product owner to open library, navigate, export/import and sign off"
+      "status": "PASS",
+      "evidence": "User explicitly confirmed human acceptance complete with no issues on 2026-10-22 and authorized main push"
     }
   ],
-  "manualNotRun": [
-    "physical DPI / multi-monitor",
-    "real Windows high contrast / Narrator walkthrough",
-    "human product sign-off"
-  ],
+  "manualNotRun": [],
   "residualRisks": [
     "Replay independent query historical 5131.302ms > 5000ms remains unresolved",
     "Opening an archive fully verifies/decompresses all components (~2.5-3.1s for 12-17MB); large archives not stress-tested",
