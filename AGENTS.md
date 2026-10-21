@@ -61,7 +61,7 @@ Do not bypass package boundaries.
 ## Local Match Library Docs
 
 - Future client-local match library: [roadmap](docs/roadmap.md), [stage gates](docs/match-library-plan.md), [titlebar/nav](docs/match-library-navigation.md), [local archive](docs/match-library-storage.md).
-- L0–L5 implementation is explicitly authorized. **L0–L5 PASS.** Current gates and evidence: [execution ledger](docs/match-library-execution.md), [L1](docs/match-library-l1-foundation-evidence.md), [L2](docs/match-library-l2-offline-restore-evidence.md), [L3](docs/match-library-l3-data-operations-evidence.md), [L4](docs/match-library-l4-navigation-evidence.md), [L5](docs/match-library-l5-acceptance.md). Do not bypass dependencies, revive the superseded account/`apps/api` plan, start P8, or create a release without an explicit product decision.
+- L0–L5 implementation is explicitly authorized. **L0–L5 PASS.** Current gates and evidence: [execution ledger](docs/match-library-execution.md), [L1](docs/match-library-l1-foundation-evidence.md), [L2](docs/match-library-l2-offline-restore-evidence.md), [L3](docs/match-library-l3-data-operations-evidence.md), [L4](docs/match-library-l4-navigation-evidence.md), [L5](docs/match-library-l5-acceptance.md), [final report](docs/match-library-final-report.md). Do not bypass dependencies, revive the superseded account/`apps/api` plan, start P8, or create a release without an explicit product decision.
 
 ## Agent Workflow
 

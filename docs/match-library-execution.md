@@ -68,7 +68,7 @@
 - 全量 Desktop 285/285、类型检查 15/15、`desktop-report-smoke` 3/3、导航 24 状态 0px、集成 Dust2/Nuke 数据操作 PASS；50 条合成库首屏、模拟 1.25/1.5 DPR/forced-colors、真实 Win32 标题栏双击 PASS；日志与证据在 `.tmp/l5/evidence/`。
 - **人工 PASS（用户确认）**：用户于 2026-10-22 确认物理 125%/150% DPI/多屏、真实 Windows 高对比度/Narrator、实际安装/导航/导出导入均无问题，并明确授权推送 `main`。
 - 保留风险：Replay 5131.302ms 历史债；打开全量校验 2.5–3.1s；删除孤儿容量；跨版本版本比对；NSIS 单用户 x64。
-- 详见 [L5 验收记录](./match-library-l5-acceptance.md)。
+- 详见 [L5 验收记录](./match-library-l5-acceptance.md) 与 [L0–L5 总汇报](./match-library-final-report.md)。
 
 ## 文件所有权与契约
 
