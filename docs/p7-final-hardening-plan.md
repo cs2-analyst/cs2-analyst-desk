@@ -1,6 +1,8 @@
 # P7 最终补强：多楼层回放正确性 + 展示 UX（分阶段）
 
-> 最新执行状态（2026-10-19）：最新主分支基线 `f1a05b8e73a1c2e7953449ab7c288d4dc58317eb` 已包含 **S0/S1、S3、S4、S5 方案 A 实施与热力图全图层关闭修复**。S3–S5 的实际实施与专项验收见各自报告，不由本次 S2 代验：[S3](./p7-s3-collapse-motion.md)、[S4](./p7-s4-analysis-deep-review-ux.md)、[S5](./p7-s5-report-layout-implementation.md)。本次 S2 结果见 [空间语义审计](./p7-s2-spatial-semantics-audit.md)；S6 未执行，L0–L5/P8 未启动。下文保留原规划与历史门槛，不表示新增授权。原规划基线 `56cb31ec813362cb5fe7c021285ef6e44ee3101d`；S1基线 `f44141a5aaa01d140efd8486f8f99fee288fd027`。
+> **最终状态：P7 FINAL ACCEPTANCE PASS（2026-10-20），阶段封板；S0–S6 全部完成。** S6 自动化门禁及独立复审已通过，产品所有者明确签收 P7，详见 [最终统一验收与产品签收记录](./p7-s6-final-acceptance.md)。Replay 查询 5131.302ms（约 5.131 秒）仍超过 5000ms 预算；真实正式窗口内全死 UI、真实 Vertigo 与人工专项仍 NOT RUN，不因封板追认 PASS。原始验收 JSON 保持不变；L0–L5 / P8 仍未启动，须另行授权。
+>
+> 历史执行快照（2026-10-19）：当时主分支基线 `f1a05b8e73a1c2e7953449ab7c288d4dc58317eb` 已包含 **S0/S1、S3、S4、S5 方案 A 实施与热力图全图层关闭修复**。S3–S5 的实际实施与专项验收见各自报告，不由当次 S2 代验：[S3](./p7-s3-collapse-motion.md)、[S4](./p7-s4-analysis-deep-review-ux.md)、[S5](./p7-s5-report-layout-implementation.md)。S2 结果见 [空间语义审计](./p7-s2-spatial-semantics-audit.md)；当时 S6 尚未执行，该状态已由上述最终状态取代。下文保留原规划、执行顺序与历史门槛（包括当时的授权边界），不表示待办重开或新增授权。原规划基线 `56cb31ec813362cb5fe7c021285ef6e44ee3101d`；S1基线 `f44141a5aaa01d140efd8486f8f99fee288fd027`。
 >
 > 原规划产品目标：实现清晰、准确、可复现的双层地图回放；平滑可访问的 Collapse 展开/收起；分析/深度复盘视图内容分组选项卡并内部滚动；比赛报告最初仅作布局设计，后经独立授权实施方案 A，见 S5 报告。
 

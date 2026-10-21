@@ -1,8 +1,16 @@
 # P7-S6 最终统一验收
 
-日期：2026-10-20（Asia/Shanghai）。本报告只判定 P7-S6 自动化门禁是否可进入人工验收，不代表整个 P7 FINAL PASS。L0–L5 / P8 未启动，版本号、tag 和 GitHub release 未修改。
+验收日期：2026-10-20（Asia/Shanghai）。原报告判定 P7-S6 自动化门禁可进入人工验收；现根据产品所有者明确签收补记阶段封板结论，原始执行结果与未覆盖项保持不变。L0–L5 / P8 未启动，版本号、tag 和 GitHub release 未修改。
 
-> **P7-S6 AUTOMATED ACCEPTANCE PASS / READY FOR HUMAN ACCEPTANCE**
+> **P7 FINAL ACCEPTANCE PASS（2026-10-20）— 产品所有者明确签收，S0–S6 全部完成，阶段封板。** 原自动化结论为 **P7-S6 AUTOMATED ACCEPTANCE PASS / READY FOR HUMAN ACCEPTANCE**；产品签收不表示未执行检查已补跑。
+
+## 产品所有者明确签收与封板记录
+
+- 验收生效日期：**2026-10-20**；本次文档补记日期：2026-10-21（Asia/Shanghai）。
+- 签收主体及依据：产品所有者在本次文档收尾指令中明确要求将 P7 标记为 **FINAL ACCEPTANCE PASS（2026-10-20）**、S0–S6 全部完成，并补充明确签收记录。该指令作为产品签收依据，P7 阶段据此封板。
+- 签收范围：既有 P7 实施、S6 自动化验收及独立复审的已验证范围；原始验收 JSON、命令结果、初次失败和复跑记录均不修改。本次只完成文档收尾，没有新增测试执行。
+- 保留边界：Replay 独立查询 **5131.302ms（约 5.131 秒）> 5000ms** 的技术债仍未解决；真实 DEM 正式窗口内全死 UI、真实 Vertigo、Explorer 文件选择、Narrator/NVDA/系统高对比度、物理跨显示器 DPI、全 21 回合所有目标/速度穷举仍 **NOT RUN**。地图/DEM 版本仍 `unconfirmed`，其他限制保留如下。产品签收不追认这些项 PASS，也不将人工专项记为已执行。
+- 后续边界：L0–L5 / P8 仍未启动，须另行明确授权；本次不修改产品代码、版本号、tag 或 release。
 
 ## Git、隔离与输入
 
@@ -51,7 +59,7 @@ DEM 通过 ignored `.demo` junction 指向原有本地目录；native 绑定也�
 
 受控场景包括C4同tick全死、已死投掷者HE、自杀、未知攻击者、末次位置缺失、从无楼层历史；所有实际Canvas纹理/数字标记、死亡侧栏、参考提示、同tick/反向/冷定位、暂停/恢复/跨块及效果到期分别验证。受控坐标来自本轮Nuke native快照或null，生命周期为测试输入，不声称真实比赛中发生过。
 
-人工产品签收、Explorer文件选择、Narrator/NVDA/系统高对比度、物理跨显示器DPI、全21回合所有目标/速度穷举未执行。地图与DEM版本仍unconfirmed；LOS/碰撞/nav/路线可达及支援能力不在已验证能力内。真实Vertigo样本不存在，不下载替代。以上与必需自动化门禁、已知查询技术债分别记录。
+原 S6 执行时人工产品签收尚未完成；现已由上述产品所有者明确签收记录补齐。Explorer文件选择、Narrator/NVDA/系统高对比度、物理跨显示器DPI、全21回合所有目标/速度穷举仍未执行。地图与DEM版本仍unconfirmed；LOS/碰撞/nav/路线可达及支援能力不在已验证能力内。真实Vertigo样本不存在，不下载替代。以上与必需自动化门禁、已知查询技术债分别记录。
 
 ## 实际 SHA 与分支快照
 
@@ -171,6 +179,6 @@ S3、Replay visual/transport以及受控全死专项通过原生BrowserWindow尺
 
 复审同时确认完整安装套件退出0、两次QA失败保留与完整重跑、真实全死/Vertigo/人工NOT RUN、原5秒查询债及不可比p95限制均分类准确。源码零产品差异，tracked DEM为空，diff-check通过。复核后的最终化仅更新结论、复审记录和上述初跑路径映射，没有改动原始证据或测试结果。
 
-**P7-S6 AUTOMATED ACCEPTANCE PASS / READY FOR HUMAN ACCEPTANCE**
+历史自动化判定：**P7-S6 AUTOMATED ACCEPTANCE PASS / READY FOR HUMAN ACCEPTANCE**。
 
-人工产品验收仍待进行；不自行标记整个P7 FINAL PASS，不进入L0–L5或P8。报告提交后按授权fast-forward合并并推送main，准确交付SHA见最终回复及包含本报告的Git提交。
+最终产品判定：**P7 FINAL ACCEPTANCE PASS（2026-10-20），S0–S6 全部完成，阶段封板。** 产品所有者明确签收依据见本文开头；原自动化判定和未覆盖项不变，不进入 L0–L5 或 P8。原 S6 报告已在 main 提交 `d738a230e49c9c92274781ad89de87bc5eade1b4` 中交付；本次文档封板提交按授权推送 main，准确 SHA 见最终回复及 Git 提交。

@@ -112,7 +112,9 @@ Current: **v0.1 Final Acceptance FINAL PASS; P5 COMPLETE; P5.7 FINAL PASS.** 验
 - 地图版本匹配仍未确认，所有地图明确标示示意。按用户2026-10-16扩图指令，Dust2、Inferno、Mirage、Ancient、Overpass、Vertigo、Nuke、Anubis、Train、Cache十图的13张Valve PNG与10份原overview随仓库提交/推送；Nuke/Vertigo/Train双层。新增地图资源/坐标/楼层验证不代表新增真实DEM已验收；保留来源摘要与第三方分发许可未确认记录。缺图时仍可构建并浏览报告/事件。
 - 技术机制见 [P6 回放技术路线](./replay-technical-route.md)，实际范围、命令、失败历史、预算实测和限制见 [实施记录](./replay-implementation.md) / [验收JSON](./replay-acceptance.json)。P7.1/P7.2/P7.3 PASS见下文；P8未开始。
 
-## P7 地图热力图（P7.1 / P7.2 / P7.3 PASS）
+## P7 地图热力图（FINAL ACCEPTANCE PASS，2026-10-20）
+
+> **P7 — FINAL ACCEPTANCE PASS（2026-10-20），阶段封板；S0–S6 全部完成。** 产品所有者明确签收 P7，自动化门禁、独立复审与产品签收记录见 [S6 最终统一验收](./p7-s6-final-acceptance.md)。封板不追认未执行项 PASS，也不表示已知性能技术债已解决；L0–L5 与 P8 仍未启动，须另行授权。
 
 - P7 及后续研发阶段的真实 DEM 输入遵循 [DEM 样本白名单](./demo-fixtures.md)：纯地图名文件（如 `dust2.dem`）及 `demo1.dem`、`demo2.dem`、`demo.dem`；不使用带比赛名称的文件名或历史 `demo3.dem` 样本。
 
@@ -126,16 +128,17 @@ Current: **v0.1 Final Acceptance FINAL PASS; P5 COMPLETE; P5.7 FINAL PASS.** 验
   - **P7.3 Renderer 与筛选 — PASS（2026-10-17，基线 `614350988033166b575c141a834f6b0af1d0b8d8`，实现提交 `8cb39393bb63e3a599155be0e7d4ae924c59e3f4`）**：第六个「热力图」Tab、单个高DPI Canvas的三独立图层、七项筛选、两路有界请求/合并/过期保护、覆盖率/图例/缺源与图片降级已完成。真实Dust2：178514有效位置、击杀161/162、死亡162/162；54个UI DTO与实际IPC及纯函数投影一致，168请求峰值2，180个绘制样本；16/32/64绘制p95 0.5/0.8/1.4ms，DPR1/2四组尺寸181476–6656400B且始终一个Canvas。Desktop 122、唯一覆盖450、辅助9、typecheck 15/15、build 8/8、报告smoke 3场景、heatmap与replay真实smoke通过（导入13009.7ms≤15000）；生产与test-seam安装包各54案例、生命周期与卸载通过。导入耗时本机波动（P7.2 6.6s、QA 15.65s、最终13.0s）保留为性能余量风险；其他地图/个人DEM热力图与物理跨屏DPI未实测，地图版本仍unconfirmed。详见[实施与验收](./map-heatmap-feasibility.md)。
 - 验收矩阵（统计正确性 S1–S10、数据覆盖 D1–D8、回归保护 R1–R5）、风险与进入下一阶段的前置条件见该文档 §9–§11。
 
-## P7 最终补强 / 双层地图回放正确性（2026-10-18，待实施）
+## P7 最终补强 / 双层地图回放正确性（S0–S6 完成，已封板）
 
-> **用户发现 Nuke 真实 DEM 回放疑似缺帧，现有 P7 人工验收重新挂起。L0–L5 不启动，P8 仍未开始。** 这是新的真实用户观察，不抹除此前 Dust2 与单项 UI 的 PASS 记录，但此前 Dust2 通过不能代表 Nuke/Vertigo 多楼层真实回放通过。
+> 2026-10-18 的 Nuke 真实 DEM 疑似缺帧观察曾使 P7 人工验收挂起；后续补强与 S6 统一验收已完成，产品所有者明确签收，**P7 FINAL ACCEPTANCE PASS（2026-10-20）**。以下为各工作包最终状态；历史需求与门槛保留在 [最终补强计划](./p7-final-hardening-plan.md)。
 
-- **P0 S0/S1：真实 Nuke DEM 缺帧诊断及最小正确性修复**。分离 native 缺行/Chunk 缺块/播放器插值/自动楼层 Z 未知/共享阈值/Canvas 绘制等来源；必须按真实 round/tick 验证，禁止假位置、跨层直线插值或掩盖采样缺失。
-- **P0 S2：Spatial Evidence、Deep Review、Heatmap 多楼层语义审计**。已有 Nuke XYZ 真实样本与多层 synthetic 验证，不等于具备 LOS、楼梯可达性或跨层支援结论。无依据的内容保持未知；如发现确定误导，另行最小修复/coverage 测试。
-- **P2 S3：Collapse 过渡**：统一 Findings/Deep Review 的说明/证据展开、时间线等可折叠 UI 的适当高度动画，兼容 reduced motion 与键盘。
-- **P2 S4：分析页**从三张纵排卡片改为三个选项卡；**深度复盘**标题说明与数据不完整警告收敛到可聚焦 Tooltip，三个分类改成填满高度/内部滚动的 Tab，缺内容也呈现带线条图标的轻松空状态；指标与证据仍原样。
-- **S5（方案 A 设计已确认，未实施）**：用户正式选择「顶部八项 KPI + 下方 Findings / 道具与残局两列独立内部滚动」。见 [报告布局 A 的冻结约束和 B/C 备选对照](./p7-report-layout-options.md)。本次仅确认设计、**没有授权修改 Report JSX/CSS**；后续在 Nuke 回放问题得到处理后单独实施及实机验收。
-- 独立计划、具体实测数据与验收门槛见 [P7 最终补强计划](./p7-final-hardening-plan.md)；修复之前不得声明“真实 Nuke 回放完整 PASS”。历史 Replay ≤5s 性能技术债继续独立跟踪。
+- **S0 / S1 — 完成**：真实 Nuke 缺帧诊断、回放正确性修复与死亡跟随完成；S6 复核真实源、141 块 IPC、48 组播放检查与生命周期，未制造位置或扩大采样窗口。
+- **S2 — 完成**：[多楼层空间语义审计](./p7-s2-spatial-semantics-audit.md)与真实 Nuke 投影/Electron 检查完成；真实 Vertigo **NOT RUN**，不推定 LOS、可达性或跨层支援。
+- **S3 — 完成**：[Collapse 过渡](./p7-s3-collapse-motion.md)、键盘/焦点、Reduced Motion 与双尺寸 Electron 验收完成；系统辅助技术人工专项未执行。
+- **S4 — 完成**：[分析 / 深度复盘 UX](./p7-s4-analysis-deep-review-ux.md)三选项卡、Tooltip、空状态、内部滚动与证据跳转完成。
+- **S5 — 完成**：[报告方案 A](./p7-s5-report-layout-implementation.md)顶部 8 KPI、下方双列独立滚动已实施并验收；其他方案保留为历史对照。
+- **S6 — 完成**：[最终统一验收](./p7-s6-final-acceptance.md)自动化门禁及独立复审 PASS，产品所有者明确签收 P7；阶段结论为 **FINAL ACCEPTANCE PASS（2026-10-20）**。
+- **保留技术债与未覆盖项**：独立 Replay 查询 **5131.302ms（约 5.131 秒）> 5000ms**，仍超预算；真实 DEM 正式 Replay 窗口内全员阵亡 UI、真实 Vertigo、Explorer 原生文件选择、Narrator/NVDA/系统高对比度、物理跨显示器 DPI、全 21 回合所有目标/速度穷举仍 **NOT RUN**。地图与 DEM 版本仍 `unconfirmed`；产品签收不将这些项追认 PASS，不修改原始验收 JSON。
 
 ## P8 AI Coach（原 P6，未开始）
 
@@ -150,7 +153,7 @@ Current: **v0.1 Final Acceptance FINAL PASS; P5 COMPLETE; P5.7 FINAL PASS.** 验
 
 ## Future — Local Match Library & History（独立规划，未开始）
 
-> **2026-10-18 决策更新：旧的“账号 + apps/api + 服务端比赛摘要”路径已废止，不作为后续实施依据。当前 P7 新增多楼层回放正确性与 UX 补强未通过，L0–L5 继续暂停。** 产品已明确选择 **Windows 客户端 Local-first**：保存解析/分析完成的本机比赛归档，原 DEM 不保存、个人比赛不上传服务器。**不做账号/公共比赛历史后端**；这与 P8 内部职业知识管线及 AI Coach 后端是不同能力，不冲突。
+> **2026-10-18 决策更新：旧的“账号 + apps/api + 服务端比赛摘要”路径已废止，不作为后续实施依据。2026-10-20 P7 已 FINAL ACCEPTANCE PASS 并封板；L0–L5 仍未启动，须另行授权。** 产品已明确选择 **Windows 客户端 Local-first**：保存解析/分析完成的本机比赛归档，原 DEM 不保存、个人比赛不上传服务器。**不做账号/公共比赛历史后端**；这与 P8 内部职业知识管线及 AI Coach 后端是不同能力，不冲突。
 
 - 现有单份 `report` + 临时 Replay/Heatmap Session 不具备历史恢复能力；新增比赛库必须在不依赖原 DEM、不依赖旧 Utility Process 的情况下离线打开已有六个功能。
 - **导航已确定（2026-10-18 修订）**：全局第一层侧栏显示「个人数据」「比赛数据」等入口；选择「比赛数据」展示历史比赛列表；点击一场比赛，**同一侧栏整体切换**为现有六项比赛功能。标题栏后退**一次退出比赛**返回列表、前进可重入（六项 Tab 切换不入历史栈），不将两套菜单同时展开成树。参考 Codex 桌面端在 40px 标题栏左侧放后退/前进，**现有 mark + CS2 Analyst 名称严格以整个窗口几何中心居中**。仅 Shell 层切换菜单模式，尽量复用现有六视图不迁移重构。
