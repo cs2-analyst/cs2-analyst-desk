@@ -58,10 +58,10 @@ UI / AI explanation
 
 Do not bypass package boundaries.
 
-## Future Match Library Docs (planning only)
+## Local Match Library Docs
 
 - Future client-local match library: [roadmap](docs/roadmap.md), [stage gates](docs/match-library-plan.md), [titlebar/nav](docs/match-library-navigation.md), [local archive](docs/match-library-storage.md).
-- **L0–L5 are NOT STARTED.** Do not revive the superseded account/`apps/api` match-history plan or start P8 without explicit authorization.
+- L0–L5 implementation is explicitly authorized. **L0 PASS; L1 READY; L2–L5 HOLD.** Current gates and evidence: [execution ledger](docs/match-library-execution.md). Do not bypass dependencies, revive the superseded account/`apps/api` plan, or start P8.
 
 ## Agent Workflow
 

@@ -16,12 +16,12 @@
 
 | 阶段 | 负责人 | 前置 | 状态 | 实现提交 / 测试证据 | 风险与审核决定 |
 |---|---|---|---|---|---|
-| L0 | `/root/l0_lead` | 无 | RUNNING | 独立分支 `codex/l0-storage-spike`；实验进行中 | 真实容量、冷恢复和全筛选证据未齐，不放行 L1 |
-| L1 | `/root/l1_lead` | L0 PASS | HOLD | 只读调查已开展；无产品实现 | SQLite 安装 ABI、持久化故障一致性待验证 |
-| L2 | L2 Lead（按槽位启动） | L1 PASS | HOLD | 无产品实现 | 完整热力图源、按需 Chunk、会话生命周期待冻结 |
-| L3 | L3 Lead（按槽位启动） | L2 PASS | HOLD | 无产品实现 | 不可信归档边界与删除恢复待验证 |
+| L0 | `/root/l0_lead` | 无 | PASS | Gate 包 `481cf79`；集成 `b2f8877`；[报告](./match-library-l0-storage-evidence.md) / [JSON](./match-library-size-benchmark.json)，5/5 纯测试及真实实验 | L3 Lead 独立复核 PASS，总线复核/集成通过，限制保留 |
+| L1 | `/root/l1_lead` | L0 PASS | READY | 环境已准备；待采用最新集成基线 | SQLite 安装 ABI、持久化故障一致性必须实际验证 |
+| L2 | `/root/l2_lead` | L1 PASS | HOLD | 只读调查完成；无产品实现 | 完整热力图源、按需 Chunk、会话生命周期待冻结 |
+| L3 | `/root/l3_lead` | L2 PASS | HOLD | 只读调查完成；兼任独立 L0 Reviewer，未实现 L0 | 不可信归档边界与删除恢复待验证 |
 | L4 | `/root/l4_lead` | L2 PASS | HOLD | 只读调查已开展；无产品实现 | 互斥侧栏、历史栈与整窗品牌中心均须真实 Electron 检查 |
-| L5 | L5 Lead（按槽位启动） | L3/L4 PASS | HOLD | 无最终集成验收 | 人工无法执行项记 NOT RUN，不以早期证据替代最终验收 |
+| L5 | `/root/l5_lead` | L3/L4 PASS | HOLD | 只读调查完成；无最终集成验收 | 人工无法执行项记 NOT RUN，不以早期证据替代最终验收 |
 
 ## 文件所有权与契约
 
@@ -33,7 +33,18 @@
 - L4：待 L2 PASS 后拥有 Renderer Shell/Store/Sidebar/Titlebar/Library UI 及窗口断言适配，复用已有六视图。
 - L5：最终集成后的 QA 和交付文档；重型任务与安装测试受总线串行锁控制。
 
-所有接口目前均为候选，尚未冻结。Gate 流程：Lead 自验包 → 独立 Review → 总线核查/集成 → PASS → 总线 UNBLOCK。发现问题退回 FIX_REQUIRED。
+L0 已审核候选约束：完整热力图源 A、独立 gzip-6 Chunk、内置 SQLite 轻索引；生产格式/API 由 L1 审核后冻结。Gate 流程：Lead 自验包 → 独立 Review → 总线核查/集成 → PASS → 总线 UNBLOCK。发现问题退回 FIX_REQUIRED。
+
+## 恢复执行与早期审查
+
+- 2026-10-22 用户明确要求继续；前次额度中断后复用原工作树、上下文和有效证据，没有重新启动阶段或丢弃已有结果。
+- L0 执行角色 `/root/l0_lead/sqlite_executor` 已实现真实 Electron SQLite 及实验六视图恢复验证器；Lead 负责容量工具、源数据实验与报告，总线和未参与 L0 实现的 L3 Lead 独立核查。
+- 早审发现并已修复：闪光/HE 枚举导致的验证漏测、空效果集合可能误判、实验耗时命名、GC 调用真实性、SQLite 缺结果/超时诊断与归属进程清理。首轮失败保留，不改写为已通过。
+- Node 26 容量实验需要显式 GC 的结果与真实 Electron Node 24 无显式 GC 的恢复结果分开记录；生产 Heatmap 512 MiB 准入保持不变。
+- L1 独立工作树 `E:/cs2-analyst-l1` 已准备依赖和固定 native 绑定；未链接或复制 DEM，尚未获得产品实现放行。
+- QA 使用归属明确的 `LOCALAPPDATA` 子进程环境隔离本地库；默认生产路径不跟随 `--user-data-dir` 迁移，现有 userData 偏好不变。
+- L5 独立预备单元已审核提前集成：`63b8e7e` owned QA helper，`ea6a8c6` 唯一打包 staging；总线集成后 6/6 纯测试及脚本语法通过。此项不依赖归档契约，不构成 L5 正式验收或 NSIS 通过。
+- L0 独立审查最终 PASS：45 个 artifact 摘要/字节、12 PNG 尺寸一致；300 个全部 Chunk 和 10 隔离副本已核。总线复跑 SQLite 探针再现约 53ms 句柄释放窗口，集成后 5/5 核心测试通过，2026-10-22 正式 UNBLOCK L1。
 
 ## 不得遗失的历史边界
 

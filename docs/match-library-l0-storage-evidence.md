@@ -1,6 +1,6 @@
 # L0 — 容量与离线恢复实验
 
-> 实验执行：2026-10-21 至 2026-10-22（Asia/Shanghai）。**阶段状态：REVIEW，等待总线独立审核；本文不自行放行 L1。**
+> 实验执行：2026-10-21 至 2026-10-22（Asia/Shanghai）。**阶段状态：PASS（2026-10-22 总线独立审核通过），允许 L1 READY。** 受审包 `481cf79ff88c025ac6edc58207001c1a01bb30bb`，集成提交 `b2f887706604de77b023b2b33ff80dd1130bc92a`。
 >
 > 机器数据：[match-library-size-benchmark.json](./match-library-size-benchmark.json)。需求依据：[阶段计划](./match-library-plan.md)、[存储设计](./match-library-storage.md)、[导航设计](./match-library-navigation.md)、[白名单](./demo-fixtures.md)。仅新增实验、测试与文档，未实现正式比赛库、修改生产解析/统计/六视图、版本号或启动 P8。
 
@@ -178,4 +178,4 @@ node scripts/library-spike-summary.mjs .tmp/l0/evidence/benchmark.json .tmp/l0/s
 - 地图/DEM 版本匹配仍 `unconfirmed`；真实 Vertigo、正式窗口内真实全员阵亡 UI、原生 chooser、Narrator/NVDA、系统高对比度、物理跨屏 DPI 等 P7 未覆盖项未被追认 PASS。素材分发许可也未因归档解决。
 - 人工 walkthrough、标题栏几何/导航、生产系统安装验证均留待各阶段；P8 没有启动。
 
-**Gate 建议：交总线独立审核容量、完整恢复及候选契约，确认后才允许 L1 RUNNING。**
+**Gate 决定：PASS。** 未参与 L0 实现的独立 Reviewer `/root/l3_lead` 核对 45 个 artifact 的字节/SHA、12 PNG 尺寸及原始场景；复核 308 个载荷、300 Replay 块与 1540 个隔离副本文件。总线另检查源码、原始报告/截图、实际复跑 SQLite 探针和集成后 5/5 纯测试；未发现剩余阻断。所有上述证据限制和 P7 债务保留。总线放行 L1，正式事务、路径安全、取消/故障及 NSIS 兼容性必须由后续阶段实际证明。

@@ -1,6 +1,6 @@
 # CS2 Analyst · 本地比赛存储与可移植档案设计（规划）
 
-> **状态：设计决策已确定，格式/压缩参数等待真实基准冻结；尚未实现。** 与 [比赛库计划](./match-library-plan.md)、[导航设计](./match-library-navigation.md) 配套。
+> **状态：L0 证据 Gate 已通过，L1 待实施生产格式。** 完整热力图规范源 A、独立 gzip-6 分块及 Electron 内置 SQLite 作为已审核候选；具体 manifest/API/安全限额仍须 L1 验证冻结。实测见 [L0 报告](./match-library-l0-storage-evidence.md) 与 [JSON](./match-library-size-benchmark.json)。与 [比赛库计划](./match-library-plan.md)、[导航设计](./match-library-navigation.md) 配套。
 >
 > 核心决定：默认把用户主动导入的 DEM **解析后、分析后的完整可复用结果保存在 Windows 本机**；**不保存 DEM 原文件**、不建设个人比赛历史公共服务端、不要求账号、不上传个人 DEM。用户可删除、导出及导入单场归档。P8 职业知识管线/AI Coach 服务是另外一条独立路线，不与本地比赛库混淆。
 
@@ -132,4 +132,4 @@ heatmap/...         # 支持全部已实现筛选的必需证据
 - AI Coach/P8 开发、地图精确 LOS 证明、重算旧场 Analytics、跨场战力排名/推荐算法；
 - 未经产品确认的自动清理、容量限额及静默历史删改。
 
-下一步只能先授权 [L0 容量与 Round-trip Gate](./match-library-plan.md)；本文是架构与数据设计，未进入代码实施。
+用户已授权 L0–L5，L0 容量与恢复 Gate 已通过；下一步按 [执行台账](./match-library-execution.md) 放行 L1。本文保留目标设计；未通过的生产行为不得仅凭实验结果宣告完成。
