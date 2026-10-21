@@ -1,8 +1,8 @@
 # L4 · 桌面导航与本地比赛库 UI 证据
 
-> 状态：**实现完成，待 L3 数据操作接入后的真实删除/导出/导入回归。** 本阶段不改后端/Electron 服务、归档编解码或 `packages/report-contract`；不复制 DEM；不修改用户现有比赛库。
+> 状态：**L4 实现与独立复核 PASS，待 L3 数据操作合并后的真实删除/导出/导入回归。** 本阶段不改后端/Electron 服务、归档编解码或 `packages/report-contract`；不复制 DEM；不修改用户现有比赛库。
 >
-> 分支：`codex/l4-library-navigation`；实现 HEAD：`153e1d2`（父提交 `c17bcf5`，工作树从 `41926f5` 基线创建）。几何/历史证据 JSON：`.tmp/l4-library-navigation-evidence.json`（本地未跟踪）。
+> 分支：`codex/l4-library-navigation`；实现 HEAD：`58d6858`（父提交 `c17bcf5`，工作树从 `41926f5` 基线创建）。几何/历史证据 JSON：`.tmp/l4-library-navigation-evidence.json`（本地未跟踪）。
 
 ## 1. 交付范围
 
@@ -42,8 +42,8 @@ scripts/report-ux-checks.mjs                    导入后历史按钮断言
 | --- | --- |
 | `pnpm typecheck`（apps/desktop，先构建 workspace domain packages） | PASS，0 error |
 | `pnpm build`（apps/desktop） | PASS，main/preload/renderer 产物构建成功 |
-| `CS2_ANALYST_FIXTURE_ROOT=E:\cs2-analyst\.demo pnpm test` | **259 / 259 PASS，0 skipped** |
-| 新增聚焦测试（app-shell 9 + library-navigation 8） | **17 / 17 PASS** |
+| `CS2_ANALYST_FIXTURE_ROOT=E:\cs2-analyst\.demo pnpm test` | **261 / 261 PASS，0 skipped** |
+| 聚焦导航/Store/窗口测试（app-shell 9 + library-navigation 10 + store/window/replay 5） | **24 / 24 PASS** |
 | `node scripts/desktop-smoke.mjs`（dev + preview） | PASS，页面/preload/资源/关闭窗口 |
 | `CS2_ANALYST_DUST2_DEM=E:\cs2-analyst\.demo\dust2.dem node scripts/library-navigation-smoke.mjs` | **PASS**，真实 Electron CDP |
 
@@ -53,12 +53,12 @@ scripts/report-ux-checks.mjs                    导入后历史按钮断言
 
 公式：`abs(brand.left + brand.width/2 - (titlebar.left + titlebar.width/2)) <= 1 CSS px`。
 
-- 24 个测量状态（全局/比赛 × 1024×640 / 1920×1032 × 展开/收起 × 普通/最大化/恢复）**全部 delta = 0.000 px**。
-- 真实原生窗口（无 Emulation）：
+- 24 个测量状态**全部 delta = 0.000 px**：全局/比赛 × 1024×640/1920×1032，每个尺寸包含普通展开/收起、最大化展开/收起、恢复展开（没有“恢复+收起”组合）。
+- 真实原生窗口（无 Emulation；仅 3 个全局状态）：
   - 普通：1280×800，delta 0；
   - 最大化：1920×1032，delta 0，`isMaximized() === true`；
   - 恢复：1280×800，delta 0，`isMaximized() === false`。
-- 1024×640 与 1920×1032 的精确视口由 CDP Emulation 固定；在此视口下通过真实 preload `toggleMaximize` 切换原生最大化状态，`nativeMaximized` 同步为 true/false，delta 仍为 0。
+- 1024×640 与 1920×1032 的精确视口由 CDP Emulation 固定；在此视口下通过真实 preload `toggleMaximize` 切换原生最大化状态，`nativeMaximized` 同步为 true/false，delta 仍为 0。证据中标注为“native”的 match 1920×1032 历史测量仍处于 Emulation 下，不能当作第四个原生尺寸状态。
 - 1024×640 展开/收起、1920×1032 展开/收起、最大化/恢复均有记录；截图见 `.tmp/l4-navigation-shots/`。
 
 ## 5. 历史与六视图证据
@@ -70,7 +70,15 @@ scripts/report-ux-checks.mjs                    导入后历史按钮断言
 - 1920×1032 下再次执行一次后退→前进，仍恢复 `heatmap-tab`。
 - 测试期间 renderer 未捕获异常；owned `LOCALAPPDATA` 与 `--user-data-dir` 临时目录在结束后删除。
 
-## 6. 保留风险 / 未验证项
+## 6. 复核驱动修复
+
+- **报告异常回退泄漏会话**：`selectSection` 现在在离开比赛时先 `leaveMatch`（释放精确 sessionId）并用 `replaceRoute` 替换比赛历史节点；报告错误边界不再先清空 report，避免 Main 会话无法释放。
+- **返回列表丢失筛选**：搜索/地图/排序/方向移入 store `libraryFilters`，进入比赛再后退不会重置。
+- **可访问性**：每行的打开/导出/删除增加带文件名的 `aria-label`；后退/前进改为 `aria-disabled` + 点击守卫，禁用时仍可聚焦并触发 Tooltip。
+- **已删除比赛的历史**：`degradeToLibrary` 对当前 match 使用替换而非追加，后退不会重新进入已删除比赛。
+- **全局忙碌文案**：导出/导入/删除显示对应文案；只有解析/分析阶段显示“取消导入”，避免库操作时出现无效取消按钮。
+
+## 7. 保留风险 / 未验证项
 
 1. **L3 数据操作尚未合并**：当前基线没有 `library:remove`/`library:export`/`library:import` IPC handler。UI 已按冻结 preload API 实现，单元/DOM 测试用 mock 覆盖成功、取消、失败和 busy；真实删除→导出→导入→离线重开需在 L3 合并后补跑。
 2. **DPI**：本轮 devicePixelRatio = 1；125%/150% 物理 DPI 未实测，不能声称 PASS。
@@ -80,8 +88,10 @@ scripts/report-ux-checks.mjs                    导入后历史按钮断言
 6. **会话释放**：store 测试断言 `session.release(exactSessionId)` 被调用；真实 Main 侧 worker 退出未在 Renderer smoke 中直接读取进程表。
 7. **列表查询**：搜索/筛选/排序走 `library.list` 服务端查询，输入变化即时请求、无防抖；本地 SQLite 下可接受，超大库仍建议后续观察。
 8. **现有 P7 重型验收脚本**（`desktop-report-smoke` / `p7-*`）未在本次 L4 全量重跑；共享 `window-shell-checks` / `report-ux-checks` 已适配，但仍需 L5 集成时在完整 fixture 下复跑。
+9. **列表分页**：当前一次请求最多 100 条；更大库需要分页/虚拟列表，L5 压力矩阵评估。
+10. **DPI/高对比度**：见上，仍为 NOT RUN。
 
-## 7. 复现命令
+## 8. 复现命令
 
 ```powershell
 # 一次构建 workspace domain packages（新 worktree 无 dist 时）
