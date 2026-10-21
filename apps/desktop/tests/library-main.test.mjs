@@ -389,3 +389,21 @@ test('the import dialog supplies a .cs2a package, and other extensions are rejec
   assert.equal((await wrong.handlers.get('library:import')(wrong.trusted)).kind, 'error');
   assert.equal(created, 0);
 });
+
+test('destructive removal and open/import entry points cannot race each other', async () => {
+  const h = await harness();
+  let release;
+  h.service.remove = async () => { await new Promise(resolve => { release = resolve; }); return { kind: 'success', removed: [MATCH], failed: [] }; };
+  const removal = h.handlers.get('library:remove')(h.trusted, [MATCH]);
+  await tick();
+  assert.equal((await h.handlers.get('library:open')(h.trusted, MATCH)).kind, 'error', 'open must not start during removal');
+  assert.equal((await h.handlers.get('library:import')(h.trusted)).kind, 'error', 'archive import must not start during removal');
+  release();
+  assert.equal((await removal).kind, 'success');
+  const opened = h.handlers.get('library:open')(h.trusted, MATCH);
+  await tick();
+  assert.equal((await h.handlers.get('library:remove')(h.trusted, [MATCH])).kind, 'error', 'removal must not start while a saved match is opening');
+  const worker = h.workers.at(-1);
+  worker.emit('message', { kind: 'error', message: 'stop' });
+  assert.equal((await opened).kind, 'error');
+});

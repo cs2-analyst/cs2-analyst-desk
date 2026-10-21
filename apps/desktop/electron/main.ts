@@ -19,6 +19,7 @@ declare const __CS2_ANALYST_TEST_SEAM__: boolean;
 let mainWindow: BrowserWindow | null = null;
 let importing = false;
 let opening = false;
+let removing = false;
 let activeWorker: Electron.UtilityProcess | null = null;
 let activeReplay: DesktopReplayMetadata | null = null;
 let activeHeatmap: DesktopHeatmapMetadata | null = null;
@@ -173,7 +174,7 @@ ipcMain.handle('library:storage', async event => {
 });
 ipcMain.handle('library:open', async (event, matchId: unknown): Promise<ImportResult> => {
   if (!trustedWindow(event) || !isMatchId(matchId)) return { kind: 'error', message: '无效的比赛请求。' };
-  if (importing || opening) return { kind: 'error', message: '已有比赛任务正在运行。' };
+  if (importing || opening || removing) return { kind: 'error', message: '已有比赛任务正在运行。' };
   opening = true;
   try { return await openSavedMatch(matchId); }
   finally { opening = false; }
@@ -182,6 +183,8 @@ ipcMain.handle('library:remove', async (event, value: unknown): Promise<LibraryD
   if (!trustedWindow(event)) return { kind: 'error', message: '比赛库请求无效。' };
   const matchIds = normalizeMatchIds(value);
   if (!matchIds) return { kind: 'error', message: '无效的删除请求。' };
+  if (importing || opening || removing) return { kind: 'error', message: '已有比赛任务正在运行，请稍后再删除。' };
+  removing = true;
   try {
     const failed: { matchId: string; message: string }[] = [];
     let deletable = matchIds;
@@ -200,12 +203,14 @@ ipcMain.handle('library:remove', async (event, value: unknown): Promise<LibraryD
     return result.kind === 'success' ? { kind: 'success', removed: result.removed, failed: [...failed, ...result.failed] } : result;
   } catch {
     return { kind: 'error', message: '无法删除本地比赛，请稍后重试。' };
+  } finally {
+    removing = false;
   }
 });
 ipcMain.handle('library:export', async (event, matchId: unknown): Promise<LibraryExportResult> => {
   const window = trustedWindow(event);
   if (!window || !isMatchId(matchId)) return { kind: 'error', message: '无效的导出请求。' };
-  if (importing || opening) return { kind: 'error', message: '已有比赛任务正在运行，请稍后再导出。' };
+  if (importing || opening || removing) return { kind: 'error', message: '已有比赛任务正在运行，请稍后再导出。' };
   let temporary: string | null = null;
   try {
     const library = await libraryService();
@@ -245,7 +250,7 @@ ipcMain.handle('library:export', async (event, matchId: unknown): Promise<Librar
 ipcMain.handle('library:import', async (event): Promise<LibraryImportResult> => {
   const window = trustedWindow(event);
   if (!window) return { kind: 'error', message: '比赛库请求无效。' };
-  if (importing || opening) return { kind: 'error', message: '已有比赛任务正在运行。' };
+  if (importing || opening || removing) return { kind: 'error', message: '已有比赛任务正在运行。' };
   importing = true;
   try {
     let filePath: string;
@@ -586,7 +591,7 @@ ipcMain.handle('report:import', async (event): Promise<ImportResult> => {
   if (!window) {
     return { kind: 'error', message: '无效的报告请求。' };
   }
-  if (importing || opening) return { kind: 'error', message: '已有分析任务正在运行。' };
+  if (importing || opening || removing) return { kind: 'error', message: '已有分析任务正在运行。' };
   importing = true;
   const progress = (phase: ImportPhase) => { if (!window.isDestroyed()) window.webContents.send('report:progress', phase); };
   try {
@@ -619,7 +624,7 @@ ipcMain.handle('report:import-file', async (event, value: unknown): Promise<Impo
   const window = trustedWindow(event);
   if (!window) return { kind: 'error', message: '无效的报告请求。' };
   if (typeof value !== 'string' || !value.trim() || !isAbsolute(value)) return { kind: 'error', message: '无效的 DEM 路径。' };
-  if (importing || opening) return { kind: 'error', message: '已有分析任务正在运行。' };
+  if (importing || opening || removing) return { kind: 'error', message: '已有分析任务正在运行。' };
   importing = true;
   try {
     return await analyzeFromPath(value, window, true);
