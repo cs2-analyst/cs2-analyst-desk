@@ -65,7 +65,7 @@ async function launch(envExtra = {}) {
     catch { return null; }
   }, 30_000, 'L3 CDP');
   const page = await connectCdp(target.webSocketDebuggerUrl, 90_000); scope.sessions.add(page.socket);
-  await waitFor(() => page.evaluate('Boolean(window.cs2Analyst?.library && document.querySelector("[data-import-card]"))'), 30_000, 'product preload');
+  await waitFor(() => page.evaluate('Boolean(window.cs2Analyst?.library && (document.querySelector("[data-library-page]") || document.querySelector("[data-import-card]")))'), 30_000, 'product preload');
   return { child, page, tracked };
 }
 async function close(current) {

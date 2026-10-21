@@ -1,6 +1,6 @@
 # CS2 Analyst · 本地比赛库与历史持久化实施计划
 
-> **当前状态：L0–L2 PASS；L3/L4 RUNNING；L5 HOLD。** 用户已于 2026-10-21 明确授权一次性实施 L0–L5；2026-10-22 L0–L2 独立审查及总线审核通过，按依赖自动放行 L3/L4，无须逐阶段再次授权。量化证据见 [L0 报告](./match-library-l0-storage-evidence.md)、[L1 证据](./match-library-l1-foundation-evidence.md)、[L2 证据](./match-library-l2-offline-restore-evidence.md)，最新状态见 [执行台账](./match-library-execution.md)。不修改版本号/tag/release，不进入 P8。
+> **当前状态：L0–L4 PASS；L5 RUNNING。** 用户已于 2026-10-21 明确授权一次性实施 L0–L5；2026-10-22 L0–L4 独立审查及总线审核通过，进入最终验收。量化证据见 [L0 报告](./match-library-l0-storage-evidence.md)、[L1](./match-library-l1-foundation-evidence.md)、[L2](./match-library-l2-offline-restore-evidence.md)、[L3](./match-library-l3-data-operations-evidence.md)、[L4](./match-library-l4-navigation-evidence.md) 证据，最新状态见 [执行台账](./match-library-execution.md)。不修改版本号/tag/release，不进入 P8。
 >
 > 设计文档：[导航与标题栏](./match-library-navigation.md) · [存储/容量/可移植档案](./match-library-storage.md)。总路线见 [Roadmap](./roadmap.md)。
 

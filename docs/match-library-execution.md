@@ -19,9 +19,9 @@
 | L0 | `/root/l0_lead` | 无 | PASS | Gate 包 `481cf79`；集成 `b2f8877`；[报告](./match-library-l0-storage-evidence.md) / [JSON](./match-library-size-benchmark.json)，5/5 纯测试及真实实验 | L3 Lead 独立复核 PASS，总线复核/集成通过，限制保留 |
 | L1 | `/root/l1_lead` | L0 PASS | PASS | 产品构建 `9809f39`；QA 收尾 `7de1347`；[证据](./match-library-l1-foundation-evidence.md)，45/45 聚焦、240/240 全量、Dust2/Nuke 真实 Electron、NSIS 安装/卸载 | 独立复审无 P1；唯一 P2 为证据早于最终基线，已按 `9809f39` 重建并重跑；P3 记录在证据文档 |
 | L2 | `/root/l2_lead` | L1 PASS | PASS | 产品构建 `5875e92`；测试收尾 `825637b`；[证据](./match-library-l2-offline-restore-evidence.md)，51/51 聚焦、246/246 全量、Dust2/Nuke 无 DEM 重开 | 独立复核 PASS，无 P1/P2；P3：失败打开后 UI 旧会话不可交互、跨版本恢复未比对、重建/证据可追溯性 |
-| L3 | `/root/l3_lead` | L2 PASS | RUNNING | 基线 `825637b`；删除/导出/导入实施中 | `.cs2a` 容器边界、活动场删除、失败不留脏数据 |
-| L4 | `/root/l4_lead` | L2 PASS | RUNNING | 基线 `825637b`；Shell/侧栏/标题栏/库 UI 实施中 | 互斥侧栏、历史栈与整窗品牌中心均须真实 Electron 检查 |
-| L5 | `/root/l5_lead` | L3/L4 PASS | HOLD | 只读调查完成；无最终集成验收 | 人工无法执行项记 NOT RUN，不以早期证据替代最终验收 |
+| L3 | `/root/l3_lead` | L2 PASS | PASS | 产品构建 `1b812ae`；[证据](./match-library-l3-data-operations-evidence.md)，57/57 聚焦、270/270 全量、Dust2/Nuke 导出→删除→导入→无 DEM 重开 | 独立复核 PASS；P2 已修（孤儿恢复、瞬时 I/O 不降级）；P3 记录在文档 |
+| L4 | `/root/l4_lead` | L2 PASS | PASS | 产品构建 `70dbece`；[证据](./match-library-l4-navigation-evidence.md)，24/24 聚焦、261/261 全量、24 个几何状态 0px | 独立复核 PASS；P2 修复（会话泄漏、筛选丢失、禁用可辨识性、共享检查）；P3 记录 |
+| L5 | `/root/l5_lead` | L3/L4 PASS | RUNNING | 集成基线 `5abf90b`；285/285 全量，集成数据操作与导航 smoke PASS | 生产 NSIS、升级/回滚、人工项与最终矩阵待完成 |
 
 ## L1 收尾与证据
 
@@ -39,6 +39,28 @@
 - 审查驱动修复：恢复 Worker 的回包路由必须在成功后继续挂载；无效/错配 Replay 回包立即结束；恢复 Worker 崩溃时释放活动会话；补齐导入/打开互斥、失败保留旧会话、Renderer opening 状态测试。
 - 已知 P3：失败打开后 Main 会话仍存活但 Renderer 因 `status='error'` 将旧会话置为不可交互（L4 处理）；跨版本清单未比对当前构建（L5 矩阵）；打开仍完整解压校验（2.55–3.05s）。
 - 细节与机器证据见 [L2 证据文档](./match-library-l2-offline-restore-evidence.md)。
+
+## L3 收尾与证据
+
+- L3 产品构建 `1b812ae` 通过真实 Electron Dust2/Nuke：导入 → 导出 `.cs2a` → 删除活动比赛 → 导入归档 → 无 DEM 冷打开；报告、3 组热力图筛选、2 个 Replay Chunk 哈希一致，六视图渲染。
+- 包大小/文件数：Dust2 16,929,688 B / 164；Nuke 12,083,594 B / 146。损坏包（1 位翻转、截断 1 字节）被拒绝，staging 为空，现有比赛仍可打开且哈希一致。
+- 复核 P2 已修：不可清理孤儿不再让整库打不开；重复导入的瞬时 I/O 错误不再把健康行降级。导出/删除/打开/导入互斥；便携文件上限 4097（含 manifest）。
+- 保留风险：Main 全量校验 2–4 s 无进度事件（由 L4 busy 呈现）；删除目录失败时容量可能暂时计入孤儿；生产安装版原生对话框路径留 L5。
+- 细节见 [L3 证据文档](./match-library-l3-data-operations-evidence.md) 与 [.cs2a 格式](./match-library-portable-format.md)。
+
+## L4 收尾与证据
+
+- L4 产品构建 `70dbece`：全局/比赛两套互斥侧栏、六视图复用、比赛数据列表/打开/删除确认/导出/导入、标题栏后退/前进与整窗品牌居中。
+- 真实 Electron 24 个几何状态全部 delta 0px（原生 3 状态 + Emulation 精确视口）；六 Tab 可用；切换 7 次 Tab 后一次后退回列表，forward 恢复 `heatmap-tab`。
+- 复核 P2 修复：报告异常回退释放会话并替换历史；列表筛选进 store；禁用后退/前进保留可辨识低亮与可聚焦 Tooltip；共享验收改读 `aria-disabled`。
+- 保留风险：DPI 125/150、高对比度/Narrator、物理 caption 双击未测（NOT RUN）；列表最多一次 100 条；L3 数据操作的真实 UI 回归已在集成后补跑。
+- 细节见 [L4 证据文档](./match-library-l4-navigation-evidence.md)。
+
+## L3/L4 集成
+
+- main 合并 L3 `a0ed197` 与 L4 `2e8ae99`，集成提交 `5abf90b`；全量 Desktop 285/285、类型检查 15/15 任务通过。
+- 集成后真实 Electron 数据操作 Dust2/Nuke 再次 PASS（productRevision `5abf90b`）：导入/导出/活动删除/归档导入/冷打开与损坏拒绝全部复现；导航 smoke 24 状态 0px、历史语义通过。
+- 集成验证同时修正 L3 验收脚本对 L2 首页选择器的依赖，使其等待 `[data-library-page]` 或空状态。
 
 ## 文件所有权与契约
 
