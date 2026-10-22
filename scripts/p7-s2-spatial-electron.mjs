@@ -67,7 +67,13 @@ try {
     if (state?.status !== 'ready' || JSON.stringify(state.projection.scope.floor) !== JSON.stringify(s.scope.floor)) return null;
   } return s; }, 'current heatmap state');
   const shot = async name => { await settleUi(evaluate); const s = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false }); writeFileSync(join(qa, name + '.png'), Buffer.from(s.data, 'base64')); };
-  const chooseFloor = async floor => { await evaluate(`(()=>{const s=document.querySelector('[aria-label="热力图楼层"]');Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set.call(s,${JSON.stringify(floor ?? '')});s.dispatchEvent(new Event('change',{bubbles:true}));})()`); await ready(); await settleUi(evaluate); };
+  const chooseFloor = async floor => {
+    const value = floor ?? 'all';
+    await evaluate(`document.querySelector('[aria-label="热力图楼层"]').click()`);
+    await wait(() => evaluate(`Boolean([...document.querySelectorAll('[role=option]')].find(o=>o.checkVisibility()&&o.getAttribute('data-value')===${JSON.stringify(value)}))`), 'floor option ' + value);
+    await evaluate(`[...document.querySelectorAll('[role=option]')].find(o=>o.checkVisibility()&&o.getAttribute('data-value')===${JSON.stringify(value)}).click()`);
+    await ready(); await settleUi(evaluate);
+  };
   await wait(() => evaluate('Boolean(window.cs2Analyst?.heatmap&&document.querySelector("main"))'), 'production preload');
   metrics.identity = await evaluate('({url:location.href,title:document.title,content:document.querySelector("main").innerText})');
   assert.equal(metrics.identity.title, 'CS2 Analyst'); assert.equal(metrics.identity.url, pathToFileURL(join(desktop, 'dist/renderer/index.html')).href); assert.ok(metrics.identity.content.length > 10);

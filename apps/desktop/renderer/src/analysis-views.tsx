@@ -1,9 +1,10 @@
 import { Fragment, useState } from 'react';
-import { Badge, Body1, Card, Caption1, Dropdown, Option, Subtitle1, Tab, TabList, Tooltip, makeStyles, mergeClasses, tokens } from '@fluentui/react-components';
+import { Badge, Body1, Card, Caption1, Subtitle1, Tab, TabList, Tooltip, makeStyles, mergeClasses, tokens } from '@fluentui/react-components';
 import type { DesktopAnalysisViews, DesktopPlayerAnalysis } from '@cs2-analyst/report-contract';
 import { comparisonMetrics, comparisonValue, comparisonIncomplete, sortedComparison } from './analysis-metrics';
 import type { ComparisonMetricKey } from './analysis-metrics';
 import { palette } from './theme';
+import { WinSelect } from './winui-select';
 
 const useStyles = makeStyles({
   section: { display: 'flex', flexDirection: 'column', gap: '12px', height: '100%', minHeight: 0, overflow: 'hidden' },
@@ -127,10 +128,9 @@ export function AnalysisViews({ analysis, playerId }: { analysis: DesktopAnalysi
         <Card className={s.panel} aria-label="全场玩家对比">
           <div className={s.heading}>
             <Caption1 className={s.muted}>比较本场 {players.length} 名玩家的确定性指标</Caption1>
-            <div className={s.column}><Caption1>指标</Caption1><Dropdown aria-label="对比指标" value={metric.label} selectedOptions={[metricKey]} onOptionSelect={(_, data) => {
-              const choice = comparisonMetrics.find(m => m.key === data.optionValue);
-              if (choice) setMetricKey(choice.key);
-            }}>{comparisonMetrics.map(m => <Option key={m.key} value={m.key} text={m.label}>{m.label}</Option>)}</Dropdown></div>
+            <div className={s.column}><Caption1>指标</Caption1><WinSelect aria-label="对比指标" value={metricKey}
+              items={comparisonMetrics.map(m => ({ value: m.key, text: m.label }))}
+              onValueChange={value => setMetricKey(value as ComparisonMetricKey)} /></div>
           </div>
           {players.length ? <>
             <div className={s.rows} role="list" aria-label={`${metric.label} 玩家对比`}>

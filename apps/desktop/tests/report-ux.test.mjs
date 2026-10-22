@@ -33,6 +33,7 @@ const { AnalysisViews } = await import('../renderer/src/analysis-views.tsx');
 const { HeatmapView, HeatmapLayerDetails } = await import('../renderer/src/heatmap-view.tsx');
 const { ReplayPlayer } = await import('../renderer/src/replay-player.tsx');
 const { WinOption } = await import('../renderer/src/winui-option.tsx');
+const { WinSelect } = await import('../renderer/src/winui-select.tsx');
 const { fixture: heatmapFixture, map: heatmapMap } = await import('./heatmap-fixture.mjs');
 const { projectMapHeatmap } = await import('../shared/heatmap.ts');
 const { replayMapDefinitions } = await import('../shared/replay-map-geometry.ts');
@@ -48,6 +49,17 @@ test('WinUI options retain Fluent selection semantics without the default leadin
   assert.equal([...html.matchAll(/aria-selected="true"/g)].length, 1);
   assert.equal([...html.matchAll(/aria-selected="false"/g)].length, 1);
   assert.equal(html.includes('fui-Option__checkIcon'), false, 'native check icon slot is intentionally suppressed');
+});
+
+test('the shared selector renders an in-app dropdown instead of a native select', () => {
+  const html = render(createElement(WinSelect, {
+    'aria-label': '选择器', value: 'b', onValueChange: () => {},
+    items: [{ value: 'a', text: '甲' }, { value: 'b', text: '乙' }],
+  }));
+  assert.equal(html.includes('<select'), false, 'native select element must not be rendered');
+  assert.ok(html.includes('aria-label="选择器"'));
+  assert.ok(html.includes('乙'), 'the trigger shows the selected item text');
+  assert.ok(!html.includes('甲'), 'unselected options stay inside the closed listbox');
 });
 
 test('heatmap missing metadata renders independent disabled layers, all filters, and honest map/source limits', () => {

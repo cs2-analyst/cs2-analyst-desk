@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Body1, Button, Caption1, Dialog, DialogActions, DialogBody, DialogContent, DialogSurface,
-  DialogTitle, MessageBar, MessageBarBody, SearchBox, Select, Spinner, Subtitle1, Title1,
+  DialogTitle, MessageBar, MessageBarBody, SearchBox, Spinner, Subtitle1, Title1,
   Table, TableHeader, TableHeaderCell, TableBody, TableRow, TableCell, Tooltip, makeStyles, mergeClasses, tokens,
 } from '@fluentui/react-components';
 import type { MatchLibraryEntry } from '@cs2-analyst/report-contract';
@@ -11,6 +11,7 @@ import type { LibraryFilters } from './library-query.ts';
 import { ImportIcon } from './icons';
 import { palette } from './theme';
 import { RatingValue, HighlightTags, formatMetric, formatKast } from './performance-display';
+import { WinSelect } from './winui-select';
 
 const useStyles = makeStyles({
   page: { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' },
@@ -19,7 +20,15 @@ const useStyles = makeStyles({
   headerActions: { display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' },
   toolbar: { flexShrink: 0, display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', padding: '0 24px 12px' },
   search: { width: 'min(260px, 100%)' },
-  select: { minWidth: '128px' },
+  select: {
+    minWidth: '128px', maxWidth: '260px',
+    '& button': { minWidth: '128px', maxWidth: '260px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  },
+  playerSelect: {
+    minWidth: '240px', maxWidth: '240px',
+    '& button': { minWidth: '240px', maxWidth: '240px' },
+  },
+  playerMenu: { minWidth: '300px' },
   status: { padding: '0 24px 8px' },
   scroll: { flex: 1, minHeight: 0, overflow: 'auto', padding: '0 24px 20px' },
   list: { minWidth: '1052px', width: '100%', tableLayout: 'fixed', fontVariantNumeric: 'tabular-nums' },
@@ -222,23 +231,21 @@ export function LibraryPage() {
     </div>
 
     <div className={s.toolbar} data-library-toolbar>
-      <Select className={s.select} aria-label="比赛记录玩家" value={preferredPlayerId} onChange={(_, data) => selectLibraryPlayer(data.value)}>
-        <option value="">各场默认玩家</option>
-        {preferredPlayerId && !playerOptions.some(p => p.id === preferredPlayerId) ? <option value={preferredPlayerId}>已选玩家（本页无记录）</option> : null}
-        {playerOptions.map(player => <option key={player.id} value={player.id}>{player.nickname} · {player.id.slice(-6)}</option>)}
-      </Select>
+      <WinSelect className={mergeClasses(s.select, s.playerSelect)} aria-label="比赛记录玩家" value={preferredPlayerId || 'all'} listbox={{ className: s.playerMenu }}
+        items={[
+          { value: 'all', text: '各场默认玩家' },
+          ...(preferredPlayerId && !playerOptions.some(p => p.id === preferredPlayerId) ? [{ value: preferredPlayerId, text: '已选玩家（本页无记录）' }] : []),
+          ...playerOptions.map(player => ({ value: player.id, text: `${player.nickname} · ${player.id.slice(-6)}` })),
+        ]}
+        onValueChange={value => selectLibraryPlayer(value === 'all' ? '' : value)} />
       <SearchBox className={s.search} aria-label="搜索比赛" placeholder="搜索文件名或地图" value={filters.search}
         onChange={(_, data) => update({ search: data.value })} />
-      <Select className={s.select} aria-label="按地图筛选" value={filters.map} onChange={(_, data) => update({ map: data.value })}>
-        <option value="all">全部地图</option>
-        {mapOptions.map(map => <option key={map} value={map}>{map}</option>)}
-      </Select>
-      <Select className={s.select} aria-label="排序方式" value={filters.sort}
-        onChange={(_, data) => update({ sort: data.value as LibraryFilters['sort'], direction: data.value === 'map' ? 'asc' : 'desc' })}>
-        <option value="importedAt">按导入时间</option>
-        <option value="map">按地图</option>
-        <option value="storedBytes">按占用空间</option>
-      </Select>
+      <WinSelect className={s.select} aria-label="按地图筛选" value={filters.map}
+        items={[{ value: 'all', text: '全部地图' }, ...mapOptions.map(map => ({ value: map, text: map }))]}
+        onValueChange={map => update({ map })} />
+      <WinSelect className={s.select} aria-label="排序方式" value={filters.sort}
+        items={[{ value: 'importedAt', text: '按导入时间' }, { value: 'map', text: '按地图' }, { value: 'storedBytes', text: '按占用空间' }]}
+        onValueChange={sort => update({ sort: sort as LibraryFilters['sort'], direction: sort === 'map' ? 'asc' : 'desc' })} />
       <Button size="small" appearance="subtle" data-library-direction
         aria-label={filters.direction === 'desc' ? '当前降序，切换为升序' : '当前升序，切换为降序'}
         onClick={() => update({ direction: filters.direction === 'desc' ? 'asc' : 'desc' })}>

@@ -101,7 +101,12 @@ export async function checkHeatmapUx(evaluate, send, { qaDir, direct, memory = a
       await chooseRound(value ? 'R' + value : '全部回合');
       return;
     }
-    await evaluate(`(() => {const s=document.querySelector('[aria-label=${JSON.stringify('热力图' + name)}]');Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set.call(s,${JSON.stringify(String(value))});s.dispatchEvent(new Event('change',{bubbles:true}));})()`);
+    const label = '热力图' + name;
+    const optionValue = value === '' || value === null || value === undefined ? 'all' : String(value);
+    await evaluate(`document.querySelector('[aria-label=${JSON.stringify(label)}]').click()`);
+    await waitFor(() => evaluate(`Boolean([...document.querySelectorAll('[role=option]')].find(o=>o.checkVisibility()&&o.getAttribute('data-value')===${JSON.stringify(optionValue)}))`), 5000, 'heatmap option ' + label + ' ' + optionValue);
+    await evaluate(`[...document.querySelectorAll('[role=option]')].find(o=>o.checkVisibility()&&o.getAttribute('data-value')===${JSON.stringify(optionValue)}).click()`);
+    await waitFor(() => evaluate('![...document.querySelectorAll("[role=option]")].some(o=>o.checkVisibility())'), 5000, 'heatmap menu closed ' + label);
   };
   const chooseRound = async label => {
     await evaluate(`document.querySelector('[aria-label="热力图回合"]').click()`);
@@ -247,7 +252,7 @@ export async function checkHeatmapUx(evaluate, send, { qaDir, direct, memory = a
   await choose('玩家', ''); await choose('回合', ''); await choose('阵营', 'all'); await ready();
   assert.equal(await evaluate(`document.querySelector('[aria-label="目标玩家"]').textContent`), targetPlayer);
   // UI stress uses real IPC. Main's strict cap rejects any overrun; all final states must succeed.
-  await evaluate(`(() => {const s=document.querySelector('[aria-label="热力图阵营"]');for(let i=0;i<24;i++)setTimeout(()=>{s.value=i===23?'T':i%2?'CT':'all';s.dispatchEvent(new Event('change',{bubbles:true}));},i*8);})()`);
+  for (let i = 0; i < 24; i++) await choose('阵营', i === 23 ? 'T' : i % 2 ? 'CT' : 'all');
   await wait(async () => (await snapshot()).scope.side === 'T', 'last rapid filter'); await verify('rapid-last-T');
   await choose('阵营', 'all'); await choose('分辨率', 32); await ready();
   await memory('after-repeated-filters');

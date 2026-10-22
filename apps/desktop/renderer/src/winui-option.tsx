@@ -43,7 +43,7 @@ const useStyles = makeStyles({
   },
 });
 
-export function WinOption({ className, ...props }: OptionProps) {
+export function WinOption({ className, ...props }: OptionProps & { 'data-value'?: string }) {
   const styles = useStyles();
   return <Option {...props} checkIcon={null} className={[styles.option, className].filter(Boolean).join(' ')} />;
 }

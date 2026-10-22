@@ -179,6 +179,7 @@ idle → selecting → parsing → analyzing → success
 - 列表节奏：道具两个选项卡 / 残局共用同一行高（34px）与分隔线；标题层级固定为 Title1（地图）→ Title2（区块）→ Subtitle1（面板）→ Caption1（说明）；正文以中性灰为主，数值右对齐并使用等宽数字。
 - 颜色只做视觉锚点：6 个道具图标（闪光弹 `#4DB6FF`、烟雾弹 `#B9C7D9`、高爆手雷 `#FF5A36`、燃烧弹 `#FF8A1F`、燃烧瓶 `#FFB13B`、诱饵弹 `#57D68D`）、Findings severity 徽章、残局成功 / 失败徽章，以及主按钮等少量交互态。核心数值、卡片标题与正文保持白色 / 中性灰。
 - 状态语义色（MessageBar、状态徽章）继续使用 Fluent 的状态 ramp，保证错误与告警的对比度，不参与中性色重映射。
+- 选择器统一使用 `apps/desktop/renderer/src/winui-select.tsx` 的 `WinSelect`（Fluent `Dropdown` + 共享 `WinOption`）：比赛库筛选、热力图筛选、目标玩家、对比指标、回放楼层 / 倍速 / 回合都打开同一套应用内列表，不再使用 Fluent 原生 `Select` 的系统菜单样式。列表项输出 `data-value`，供 Electron 验收脚本按选项值定位。
 
 ## 回合时间线（P5.5）
 

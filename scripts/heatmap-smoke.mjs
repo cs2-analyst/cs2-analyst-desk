@@ -172,7 +172,9 @@ try {
   await evaluate(`document.getElementById('heatmap-tab').click()`);
   await liveWait(() => evaluate(`Boolean(document.querySelector('[data-heatmap-stats=positions]'))`), 'replacement UI layer');
   await evaluate(`window.cs2Analyst.session.release(document.querySelector('[data-heatmap-session]').dataset.heatmapSession)`);
-  await evaluate(`(() => {const s=document.querySelector('[aria-label="热力图阵营"]');s.value='CT';s.dispatchEvent(new Event('change',{bubbles:true}));})()`);
+  await evaluate(`document.querySelector('[aria-label="热力图阵营"]').click()`);
+  await liveWait(() => evaluate(`Boolean([...document.querySelectorAll('[role=option]')].find(o=>o.checkVisibility()&&o.getAttribute('data-value')==='CT'))`), 'side option');
+  await evaluate(`[...document.querySelectorAll('[role=option]')].find(o=>o.checkVisibility()&&o.getAttribute('data-value')==='CT').click()`);
   await liveWait(() => evaluate(`!document.querySelector('#heatmap-panel .fui-Spinner')&&[...document.querySelectorAll('#heatmap-panel button')].some(b=>b.textContent==='重试')&&!document.querySelector('[data-heatmap-stats]')`), 'ended-session request error terminates loading');
   metrics.sessionEndedUi = 'PASS: current request errors, no Spinner or stale statistics';
   await evaluate(`document.querySelector('[data-sidebar-import]').click()`);

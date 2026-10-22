@@ -162,8 +162,10 @@ try {
       observed.uiFilters = [];
       let expectedResolution = 32, expectedSide = 'all', expectedSampling = 'all-valid';
       for (const [label, value] of [['热力图分辨率', '64'], ['热力图阵营', 'CT'], ['热力图采样集', 'uniform-8hz']]) {
-        await evaluate(`(() => {const select=document.querySelector('[aria-label="${label}"]');Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set.call(select,${JSON.stringify(value)});select.dispatchEvent(new Event('change',{bubbles:true}));})()`);
-        assert.equal(await evaluate(`document.querySelector('[aria-label="${label}"]').value`), value);
+        await evaluate(`document.querySelector('[aria-label="${label}"]').click()`);
+        await wait(() => evaluate(`Boolean([...document.querySelectorAll('[role=option]')].find(o=>o.checkVisibility()&&o.getAttribute('data-value')===${JSON.stringify(value)}))`), label + ' option');
+        await evaluate(`[...document.querySelectorAll('[role=option]')].find(o=>o.checkVisibility()&&o.getAttribute('data-value')===${JSON.stringify(value)}).click()`);
+        assert.equal(await evaluate(`document.querySelector('[aria-label="${label}"]').textContent.includes(${JSON.stringify(value)})`), true);
         if (label === '热力图分辨率') expectedResolution = Number(value);
         if (label === '热力图阵营') expectedSide = value;
         if (label === '热力图采样集') expectedSampling = value;

@@ -61,8 +61,13 @@ async function library(s) {
   await click(s, '[data-nav-action=home]');
   await waitFor(() => s.evaluate('!!document.querySelector("[data-library-entry]")'), 20000, 'populated library');
 }
+async function chooseOption(s, label, value) {
+  await s.evaluate(`document.querySelector('[aria-label=${JSON.stringify(label)}]').click()`);
+  await waitFor(() => s.evaluate(`[...document.querySelectorAll('[role=option]')].some(o=>o.checkVisibility()&&o.getAttribute('data-value')===${JSON.stringify(value)})`), 5000, label + ' option ' + value);
+  await s.evaluate(`[...document.querySelectorAll('[role=option]')].find(o=>o.checkVisibility()&&o.getAttribute('data-value')===${JSON.stringify(value)}).click()`);
+}
 async function selectIdentity(s, id) {
-  await s.evaluate(`(() => {const select=document.querySelector('select[aria-label="比赛记录玩家"]'); select.value=${JSON.stringify(id)}; select.dispatchEvent(new Event('change',{bubbles:true}));})()`);
+  await chooseOption(s, '比赛记录玩家', id);
   await waitFor(() => s.evaluate(`document.querySelector('[data-library-entry]').dataset.libraryPlayer===${JSON.stringify(id)}`), 5000, 'identity changed');
 }
 async function importDemo(s, name) {
@@ -116,7 +121,10 @@ try {
   await importDemo(s, 'demo1.dem');
   const first = await verifyReportAndLibrary(s, 'demo1'); assert.equal(first.rating, '1.37');
   await selectIdentity(s, first.player);
-  const identityOptions = await s.evaluate(`[...document.querySelector('select[aria-label="比赛记录玩家"]').options].map(o=>o.value).filter(Boolean)`);
+  await s.evaluate(`document.querySelector('[aria-label="比赛记录玩家"]').click()`);
+  await waitFor(() => s.evaluate('[...document.querySelectorAll("[role=option]")].some(o=>o.checkVisibility())'), 5000, 'identity options open');
+  const identityOptions = await s.evaluate(`[...document.querySelectorAll('[role=option]')].filter(o=>o.checkVisibility()).map(o=>o.getAttribute('data-value')).filter(v=>v&&v!=='all')`);
+  await s.evaluate(`document.querySelector('[aria-label="比赛记录玩家"]').click()`);
   const alternate = identityOptions.find(id => id !== first.player); assert.ok(alternate);
   await selectIdentity(s, alternate);
   const changed = await s.evaluate(`document.querySelector('[data-library-entry] [data-rating-value]').dataset.ratingValue`);

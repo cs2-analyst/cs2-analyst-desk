@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
-import { Badge, Body1, Button, Caption1, Dropdown, Slider, Spinner, Switch, Title2, Tooltip, makeStyles, tokens } from '@fluentui/react-components';
+import { Badge, Body1, Button, Caption1, Slider, Spinner, Switch, Title2, Tooltip, makeStyles, tokens } from '@fluentui/react-components';
 import type { DesktopReplayChunk, DesktopReplayEvent, DesktopReplayFrame, DesktopReplayMetadata, DesktopReplayRoundInfo, DesktopReplayUtility } from '@cs2-analyst/report-contract';
 import { mapResourceState, radarHeading, resolveMapLayer, worldToRadar } from './replay-map';
 import type { ReplayMapDefinition } from './replay-map';
@@ -10,7 +10,7 @@ import { paintReplayArea, paintReplayHEBurst, replayEffectsAt } from './replay-e
 import type { ReplayEffectFrame } from './replay-effects';
 import { QuestionCircleIcon, PauseIcon, PlayIcon, ReplayStartIcon, ReplayEndIcon, ReplayRewindIcon, ReplayForwardIcon } from './icons';
 import { useRoundMenu } from './round-menu';
-import { WinOption as Option } from './winui-option';
+import { WinSelect } from './winui-select';
 import { palette } from './theme';
 import { replayEffectAssetUrls } from './replay-effect-assets';
 import type { ReplayEffectImages } from './replay-effect-assets';
@@ -594,7 +594,9 @@ export function ReplayPlayer({ metadata, fileName, initialPlayerId, active, jump
       <div className={s.controls}>
         <Switch className={s.switch} checked={continuous} onChange={(_,d)=>setContinuous(d.checked)} label="连续播放" />
         <Switch className={s.switch} checked={showNicknames} onChange={(_,d)=>setNicknames({sessionId:metadata.sessionId,visible:d.checked})} label="显示昵称" />
-        {map&&map.layers.length>1?<Dropdown className={s.dropdown} aria-label="回放楼层" value={floor==='auto'?'跟随玩家':map.layers.find(l=>l.id===floor)?.label} selectedOptions={[floor]} onOptionSelect={(_,d)=>{if(d.optionValue){floorHistory.current=null;seekRevision.current++;live.current.floor=d.optionValue;setFloor(d.optionValue);}}}><Option value="auto">跟随玩家</Option>{map.layers.map(l=><Option key={l.id} value={l.id}>{l.label}</Option>)}</Dropdown>:null}
+        {map&&map.layers.length>1?<WinSelect className={s.dropdown} aria-label="回放楼层" value={floor}
+          items={[{value:'auto',text:'跟随玩家'},...map.layers.map(l=>({value:l.id,text:l.label}))]}
+          onValueChange={value=>{floorHistory.current=null;seekRevision.current++;live.current.floor=value;setFloor(value);}} />:null}
       </div>
       <span className={s.spacer} />
       <Badge appearance="tint" color="warning">地图版本未确认</Badge>
@@ -642,8 +644,13 @@ export function ReplayPlayer({ metadata, fileName, initialPlayerId, active, jump
               <Tooltip content="直达最后" relationship="description" withArrow><Button appearance="subtle" className={s.transportButton} aria-label="直达最后" disabled={!active} icon={<ReplayEndIcon/>} onClick={()=>seek(info.endTick)}/></Tooltip>
             </div>
             <div className={s.selectors}>
-              <Dropdown size="small" className={s.transportDropdown} aria-label="回放倍速" value={`${speed}×`} selectedOptions={[String(speed)]} disabled={!timed} onOptionSelect={(_,d)=>{if(!d.optionValue)return;const value=Number(d.optionValue);clock.current.setSpeed(value,performance.now(),metadata.tickRate);setSpeed(value);}}>{[.25,.5,1,1.5,2,4].map(v=><Option key={v} value={String(v)}>{`${v}×`}</Option>)}</Dropdown>
-              <Dropdown size="small" ref={roundMenu.triggerRef} className={s.transportDropdown} aria-label="回放回合" value={`R${roundNumber}`} selectedOptions={[String(roundNumber)]} listbox={{className:roundMenu.listboxClassName}} positioning={roundMenu.positioning} onOpenChange={roundMenu.onOpenChange} onOptionSelect={(_,d)=>d.optionValue&&selectRound(Number(d.optionValue))}>{metadata.rounds.map(r=><Option key={r.round} value={String(r.round)}>{`R${r.round}`}</Option>)}</Dropdown>
+              <WinSelect size="small" className={s.transportDropdown} aria-label="回放倍速" value={String(speed)} disabled={!timed}
+                items={[.25,.5,1,1.5,2,4].map(v=>({value:String(v),text:`${v}×`}))}
+                onValueChange={value=>{const next=Number(value);clock.current.setSpeed(next,performance.now(),metadata.tickRate);setSpeed(next);}} />
+              <WinSelect size="small" ref={roundMenu.triggerRef} className={s.transportDropdown} aria-label="回放回合" value={String(roundNumber)}
+                items={metadata.rounds.map(r=>({value:String(r.round),text:`R${r.round}`}))}
+                listbox={{className:roundMenu.listboxClassName}} positioning={roundMenu.positioning} onOpenChange={roundMenu.onOpenChange}
+                onValueChange={value=>selectRound(Number(value))} />
             </div>
           </div>
           {error||!timed?<div className={s.transportRow}>

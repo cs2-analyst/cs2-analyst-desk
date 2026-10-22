@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
-  Badge, Body1, Button, Card, Caption1, Dropdown, FluentProvider,
+  Badge, Body1, Button, Card, Caption1, FluentProvider,
   MessageBar, MessageBarBody, Spinner, Subtitle1, Tab, TabList, Title1, Title2,
   Tooltip, makeStyles, tokens,
 } from '@fluentui/react-components';
@@ -22,7 +22,7 @@ import type { ViewId } from './sidebar';
 import { LibraryPage, PersonalSection } from './library-page';
 import { ReportSecondaryLine } from './performance-display';
 import { ReplayPlayer } from './replay-player';
-import { WinOption as Option } from './winui-option';
+import { WinSelect } from './winui-select';
 import { HeatmapView } from './heatmap-view';
 import type { ReplayJump } from './replay-player';
 import './collapse-motion.css';
@@ -443,9 +443,9 @@ function Report({ report, playerId, replayActive, activeTab, onSelectView }: {
   return <div className={s.reportFrame}>
     <div className={s.viewHeader}>
       <div className={`${s.column} ${s.reportHeaderInfo}`}><Title1>{report.match.map}</Title1><Body1>{report.match.score ? `${report.match.score.initialCT} : ${report.match.score.initialT}` : '比分不可用'} · 开局 CT 队 / 开局 T 队 · {report.match.rounds} 回合</Body1><ReportSecondaryLine fileName={report.match.fileName} rating={p.performance?.rating} /></div>
-      <div className={s.column}><Caption1>目标玩家</Caption1><Tooltip content={player.nickname} relationship="description"><Dropdown className={s.playerDropdown} listbox={{ style: { maxWidth: '250px' } }} aria-label="目标玩家" value={player.nickname} selectedOptions={[playerId]} onOptionSelect={(_, data) => data.optionValue && selectPlayer(data.optionValue)}>
-        {report.players.map(p => <Option key={p.id} value={p.id} text={p.nickname}><Tooltip content={p.nickname} relationship="description"><span className={s.playerName}>{p.nickname}</span></Tooltip></Option>)}
-      </Dropdown></Tooltip></div>
+      <div className={s.column}><Caption1>目标玩家</Caption1><Tooltip content={player.nickname} relationship="description"><WinSelect className={s.playerDropdown} listbox={{ style: { maxWidth: '250px' } }} aria-label="目标玩家" value={playerId}
+        items={report.players.map(p => ({ value: p.id, text: p.nickname, label: <Tooltip content={p.nickname} relationship="description"><span className={s.playerName}>{p.nickname}</span></Tooltip> }))}
+        onValueChange={selectPlayer} /></Tooltip></div>
     </div>
     <div id="deep-review-panel" role="tabpanel" aria-labelledby="deep-review-tab" className={s.tabPanel} hidden={activeTab !== 'deep-review'}>
       <DeepReview key={playerId} player={report.deepReview.players.find(p => p.playerId === playerId)!} onShowRounds={showRounds} onReplayRound={report.replay?.available?showReplay:undefined} />

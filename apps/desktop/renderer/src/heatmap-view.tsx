@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Badge, Body1, Button, Caption1, Checkbox, Dropdown, Field, Select, Spinner, Title2, makeStyles, tokens } from '@fluentui/react-components';
+import { Badge, Body1, Button, Caption1, Checkbox, Field, Spinner, Title2, makeStyles, tokens } from '@fluentui/react-components';
 import type { DesktopHeatmapMetadata, DesktopHeatmapScope, HeatmapLayer, HeatmapResolution, MapHeatmapProjection } from '@cs2-analyst/report-contract';
 import { replayMapDefinitions } from '../../shared/replay-map-geometry.ts';
 import { replayMapAssets } from './replay-map-assets';
@@ -7,7 +7,7 @@ import { defaultHeatmapLayers, defaultHeatmapScope, heatmapLayers, heatmapReason
 import type { HeatmapLayerState } from './heatmap-state';
 import { mountHeatmapCanvas } from './heatmap-canvas';
 import { useRoundMenu } from './round-menu';
-import { WinOption as Option } from './winui-option';
+import { WinSelect } from './winui-select';
 import type { HeatmapPaintLayer } from './heatmap-canvas';
 import { palette } from './theme';
 
@@ -27,6 +27,7 @@ const useStyles = makeStyles({
   spacer: { flex: 1 },
   controls: { flexShrink: 0, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px', padding: '10px', backgroundColor: palette.card, borderRadius: tokens.borderRadiusLarge },
   field: { minWidth: '106px', maxWidth: '180px', flex: '1 1 106px' },
+  dropdown: { width: '100%', minWidth: 0, '& button': { minWidth: 0, width: '100%' } },
   body: { flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 280px', gap: '12px' },
   map: { minWidth: 0, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: palette.replay.surface, overflow: 'hidden', position: 'relative' },
   canvas: { flexShrink: 0, maxWidth: '100%', maxHeight: '100%', ':focus-visible': { outline: `2px solid ${tokens.colorBrandStroke1}`, outlineOffset: '-2px' } },
@@ -102,13 +103,27 @@ export function HeatmapView({ metadata, players, active, sessionActive }: {
       <Badge appearance="tint" color="warning">{url ? '地图版本未确认' : '地图映射或资源不可用'}</Badge>
     </div>
     <div className={s.controls} aria-label="热力图筛选">
-      <Field label="玩家" className={s.field}><Select aria-label="热力图玩家" value={scope.playerIds?.[0] ?? ''} onChange={(_, data) => change({ playerIds: data.value ? [data.value] : null })}>
-        <option value="">全部玩家</option>{metadata?.playerIds.map(id => <option key={id} value={id}>{players.find(player => player.id === id)?.nickname ?? '已登记玩家'}</option>)}</Select></Field>
-      <Field label="阵营" className={s.field}><Select aria-label="热力图阵营" value={scope.side} onChange={(_, data) => change({ side: data.value as DesktopHeatmapScope['side'] })}><option value="all">全部阵营</option><option>CT</option><option>T</option></Select></Field>
-      <Field label="回合" className={s.field}><Dropdown ref={roundMenu.triggerRef} aria-label="热力图回合" value={scope.rounds?.[0] !== undefined ? `R${scope.rounds[0]}` : '全部回合'} selectedOptions={[scope.rounds?.[0] !== undefined ? String(scope.rounds[0]) : 'all']} listbox={{ className: roundMenu.listboxClassName }} positioning={roundMenu.positioning} onOpenChange={roundMenu.onOpenChange} onOptionSelect={(_, data) => { if (!data.optionValue) return; change({ rounds: data.optionValue === 'all' ? null : [Number(data.optionValue)] }); }}><Option value="all" text="全部回合">全部回合</Option>{metadata?.rounds.map(round => <Option key={round} value={String(round)} text={`R${round}`}>R{round}</Option>)}</Dropdown></Field>
-      <Field label="楼层" className={s.field}><Select aria-label="热力图楼层" value={scope.floor ?? ''} onChange={(_, data) => change({ floor: data.value || null })}><option value="">全部楼层</option>{map?.layers.filter(layer => metadata?.floors.includes(layer.id)).map(layer => <option key={layer.id} value={layer.id}>{layer.label}</option>)}</Select></Field>
-      <Field label="网格" className={s.field}><Select aria-label="热力图分辨率" value={resolution} onChange={(_, data) => { setResolution(Number(data.value) as HeatmapResolution); setCellIndex(null); }}>{[16, 32, 64].map(n => <option key={n} value={n}>{n}×{n}</option>)}</Select></Field>
-      <Field label="采样集" className={s.field}><Select aria-label="热力图采样集" value={scope.samplingSet} onChange={(_, data) => change({ samplingSet: data.value as DesktopHeatmapScope['samplingSet'] })}><option>all-valid</option><option>uniform-8hz</option></Select></Field>
+      <Field label="玩家" className={s.field}><WinSelect className={s.dropdown} aria-label="热力图玩家"
+        value={scope.playerIds?.[0] ?? 'all'}
+        items={[{ value: 'all', text: '全部玩家' }, ...(metadata?.playerIds ?? []).map(id => ({ value: id, text: players.find(player => player.id === id)?.nickname ?? '已登记玩家' }))]}
+        onValueChange={value => change({ playerIds: value === 'all' ? null : [value] })} /></Field>
+      <Field label="阵营" className={s.field}><WinSelect className={s.dropdown} aria-label="热力图阵营" value={scope.side}
+        items={[{ value: 'all', text: '全部阵营' }, { value: 'CT', text: 'CT' }, { value: 'T', text: 'T' }]}
+        onValueChange={value => change({ side: value as DesktopHeatmapScope['side'] })} /></Field>
+      <Field label="回合" className={s.field}><WinSelect className={s.dropdown} ref={roundMenu.triggerRef} aria-label="热力图回合"
+        value={scope.rounds?.[0] !== undefined ? String(scope.rounds[0]) : 'all'}
+        items={[{ value: 'all', text: '全部回合' }, ...(metadata?.rounds ?? []).map(round => ({ value: String(round), text: `R${round}` }))]}
+        listbox={{ className: roundMenu.listboxClassName }} positioning={roundMenu.positioning} onOpenChange={roundMenu.onOpenChange}
+        onValueChange={value => change({ rounds: value === 'all' ? null : [Number(value)] })} /></Field>
+      <Field label="楼层" className={s.field}><WinSelect className={s.dropdown} aria-label="热力图楼层" value={scope.floor ?? 'all'}
+        items={[{ value: 'all', text: '全部楼层' }, ...(map?.layers.filter(layer => metadata?.floors.includes(layer.id)) ?? []).map(layer => ({ value: layer.id, text: layer.label }))]}
+        onValueChange={value => change({ floor: value === 'all' ? null : value })} /></Field>
+      <Field label="网格" className={s.field}><WinSelect className={s.dropdown} aria-label="热力图分辨率" value={String(resolution)}
+        items={[16, 32, 64].map(n => ({ value: String(n), text: `${n}×${n}` }))}
+        onValueChange={value => { setResolution(Number(value) as HeatmapResolution); setCellIndex(null); }} /></Field>
+      <Field label="采样集" className={s.field}><WinSelect className={s.dropdown} aria-label="热力图采样集" value={scope.samplingSet}
+        items={[{ value: 'all-valid', text: 'all-valid' }, { value: 'uniform-8hz', text: 'uniform-8hz' }]}
+        onValueChange={value => change({ samplingSet: value as DesktopHeatmapScope['samplingSet'] })} /></Field>
       <Checkbox label="包含冻结时间" checked={scope.includeFreezeTime} onChange={(_, data) => change({ includeFreezeTime: data.checked === true })} />
     </div>
     <div className={s.body}>
