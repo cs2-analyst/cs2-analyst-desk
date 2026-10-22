@@ -161,12 +161,12 @@ test('Home from personal data is a history entry; busy operations guard Home', a
   assert.deepEqual(calls.release, []);
 });
 
-test('library filters live in the store so back-to-list preserves search, map and sort', () => {
+test('library filters live in the store so back-to-list preserves map and sort', () => {
   bridge();
   reset();
-  useReport.getState().setLibraryFilters({ search: 'dust2', map: 'de_dust2', sort: 'map', direction: 'asc' });
+  useReport.getState().setLibraryFilters({ map: 'de_dust2', sort: 'map', direction: 'asc' });
   const state = useReport.getState();
-  assert.deepEqual(state.libraryFilters, { search: 'dust2', map: 'de_dust2', sort: 'map', direction: 'asc' });
+  assert.deepEqual(state.libraryFilters, { map: 'de_dust2', sort: 'map', direction: 'asc' });
   assert.deepEqual(state.libraryFilters, useReport.getState().libraryFilters, 'filters survive page unmount because they are store state');
 });
 

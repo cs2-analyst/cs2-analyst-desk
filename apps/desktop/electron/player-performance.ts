@@ -3,7 +3,7 @@ import type { PlayerPerformanceInput } from '@cs2-analyst/analytics';
 import type { DesktopMatchReport, DesktopPlayerPerformance, LibraryPlayerSummary } from '@cs2-analyst/report-contract';
 
 /** Independent from report/archive schema: derived data may be discarded and rebuilt. */
-export const PERFORMANCE_CACHE_VERSION = 'hltv-2.0-community-approx-v1/highlights-v1/adapter-v2';
+export const PERFORMANCE_CACHE_VERSION = 'hltv-2.0-community-approx-v1/highlights-v1/adapter-v3';
 const object = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
 const number = (value: unknown): number | null => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
 const count = (value: unknown): number | null => Number.isSafeInteger(value) ? number(value) : null;
@@ -54,29 +54,31 @@ export function upgradeReportPerformance(report: DesktopMatchReport): DesktopMat
   return report;
 }
 
-/** A complete player-relative timeline proves the result without guessing stable teams. */
-function playerOutcome(report: DesktopMatchReport, playerId: string): LibraryPlayerSummary['outcome'] {
+/** A complete player-relative timeline proves the result and stable team without guessing. */
+function playerResult(report: DesktopMatchReport, playerId: string): Pick<LibraryPlayerSummary, 'outcome' | 'team'> {
   const rounds = report.timeline.find(t => t?.playerId === playerId)?.rounds;
   if (!Array.isArray(rounds) || !report.match.score || rounds.length === 0 || rounds.length !== report.match.rounds
     || report.match.score.initialCT + report.match.score.initialT !== rounds.length
     || new Set(rounds.map(r => r?.round)).size !== rounds.length
-    || rounds.some(r => !r || (r.result !== 'win' && r.result !== 'loss'))) return 'unknown';
+    || rounds.some(r => !r || (r.result !== 'win' && r.result !== 'loss'))) return { outcome: 'unknown', team: null };
   let previous = { initialCT: 0, initialT: 0 };
   let team: 'initialCT' | 'initialT' | null = null;
   for (const round of [...rounds].sort((a, b) => a.round - b.round)) {
     const score = round.scoreAfter;
-    if (!score) return 'unknown';
+    if (!score) return { outcome: 'unknown', team: null };
     const ct = score.initialCT - previous.initialCT, t = score.initialT - previous.initialT;
-    if (!((ct === 1 && t === 0) || (ct === 0 && t === 1))) return 'unknown';
+    if (!((ct === 1 && t === 0) || (ct === 0 && t === 1))) return { outcome: 'unknown', team: null };
     const winner = ct === 1 ? 'initialCT' : 'initialT';
     const currentTeam = round.result === 'win' ? winner : winner === 'initialCT' ? 'initialT' : 'initialCT';
-    if (team !== null && team !== currentTeam) return 'unknown';
+    if (team !== null && team !== currentTeam) return { outcome: 'unknown', team: null };
     team = currentTeam;
     previous = score;
   }
-  if (previous.initialCT !== report.match.score.initialCT || previous.initialT !== report.match.score.initialT || !team) return 'unknown';
+  if (previous.initialCT !== report.match.score.initialCT || previous.initialT !== report.match.score.initialT || !team) {
+    return { outcome: 'unknown', team: null };
+  }
   const own = report.match.score[team], opponent = report.match.score[team === 'initialCT' ? 'initialT' : 'initialCT'];
-  return own > opponent ? 'win' : own < opponent ? 'loss' : 'draw';
+  return { team, outcome: own > opponent ? 'win' : own < opponent ? 'loss' : 'draw' };
 }
 
 export interface CachedPlayerSummaries { selectedPlayer: string; playerSummaries: LibraryPlayerSummary[] }
@@ -87,8 +89,9 @@ export function reportPlayerSummaries(report: DesktopMatchReport): CachedPlayerS
     const p = analytics.get(player.id);
     const fallback = computePlayerPerformance({ kills: null, deaths: null, assists: null, validRounds: null, adr: null,
       kastPercent: null, kastEligibleRounds: null, kastComplete: false, roundsAligned: false, countsComplete: false });
+    const result = playerResult(report, player.id);
     return { playerId: player.id, kills: count(p?.kills), deaths: count(p?.deaths), assists: count(p?.assists), adr: number(p?.adr),
-      kastPercentage: number(p?.kast?.percentage), outcome: playerOutcome(report, player.id), performance: p?.performance ?? fallback };
+      kastPercentage: number(p?.kast?.percentage), outcome: result.outcome, team: result.team, performance: p?.performance ?? fallback };
   }) };
 }
 
@@ -102,6 +105,7 @@ export function validCachedPlayerSummaries(value: unknown, playerIds: readonly s
     seen.add(p.playerId);
     return ['kills', 'deaths', 'assists'].every(key => p[key] === null || count(p[key]) !== null)
       && ['adr', 'kastPercentage'].every(key => p[key] === null || number(p[key]) !== null)
-      && ['win', 'loss', 'draw', 'unknown'].includes(p.outcome as string) && isPlayerPerformance(p.performance);
+      && ['win', 'loss', 'draw', 'unknown'].includes(p.outcome as string)
+      && (p.team === null || p.team === 'initialCT' || p.team === 'initialT') && isPlayerPerformance(p.performance);
   });
 }

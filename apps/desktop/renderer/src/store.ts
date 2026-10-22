@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { DesktopMatchReport, ImportPhase } from '@cs2-analyst/report-contract';
+import type { DesktopMatchReport, ImportPhase, ImportPlayerChoice } from '@cs2-analyst/report-contract';
 import type { ViewId } from './sidebar';
 import {
   backTarget, canBack, canForward, currentRoute, degradeToLibrary, forwardTarget, initialNavigation,
@@ -11,7 +11,7 @@ import type { LibraryFilters } from './library-query.ts';
 
 type Status = 'idle' | ImportPhase | 'opening' | 'success' | 'error';
 export type LibraryOperation = 'remove' | 'export' | 'importArchive';
-const IN_FLIGHT: Status[] = ['selecting', 'parsing', 'analyzing', 'opening'];
+const IN_FLIGHT: Status[] = ['selecting', 'parsing', 'awaiting-player', 'analyzing', 'opening'];
 const isInFlight = (status: Status) => IN_FLIGHT.includes(status);
 
 export interface ReportState {
@@ -21,6 +21,10 @@ export interface ReportState {
   playerId: string;
   /** A SteamID preference only; statistics remain isolated by match and player. */
   preferredPlayerId: string;
+  /** The persisted "who am I" identity of the open match; null means not chosen. */
+  selfPlayerId: string | null;
+  /** Non-null only while the DEM import waits for the user to choose themselves. */
+  importPlayers: ImportPlayerChoice[] | null;
   error: string | null;
   /**
    * Explicit "the current report's Replay/Heatmap IPC session is usable" signal.
@@ -39,7 +43,9 @@ export interface ReportState {
   libraryNotice: string | null;
   setPhase(phase: ImportPhase): void;
   selectPlayer(id: string): void;
-  selectLibraryPlayer(id: string): void;
+  selectSelfPlayer(id: string | null): Promise<void>;
+  setImportPlayers(players: ImportPlayerChoice[]): void;
+  chooseImportPlayer(id: string | null): Promise<void>;
   selectSection(section: GlobalSection): void;
   setMatchView(view: ViewId): void;
   setLibraryFilters(patch: Partial<LibraryFilters>): void;
@@ -84,29 +90,34 @@ function savePlayerPreference(id: string): void {
 async function leaveMatch(get: Getter, set: Setter, navigation: NavigationState): Promise<void> {
   const report = get().report;
   set({
-    report: null, sessionActive: false, status: 'idle', playerId: '', error: null,
+    report: null, sessionActive: false, status: 'idle', playerId: '', selfPlayerId: null, importPlayers: null, error: null,
     navigation,
   });
   await releaseSession(report);
 }
 
 /** Common tail of every successful report activation. */
-function activatedReport(state: ReportState, report: DesktopMatchReport, navigation: NavigationState, resetView: boolean): Partial<ReportState> {
+function activatedReport(state: ReportState, report: DesktopMatchReport, navigation: NavigationState,
+  resetView: boolean, selfPlayerId: string | null = null): Partial<ReportState> {
   const matchId = matchIdOf(report);
-  const playerId = report.players.some(p => p.id === state.preferredPlayerId) ? state.preferredPlayerId : report.selectedPlayer;
+  const self = selfPlayerId && report.players.some(p => p.id === selfPlayerId) ? selfPlayerId : null;
+  const playerId = report.players.some(p => p.id === state.preferredPlayerId) ? state.preferredPlayerId
+    : self && report.players.some(p => p.id === self) ? self : report.selectedPlayer;
   savePlayerPreference(playerId);
   const views = resetView && matchId
     ? { ...state.matchViews, [matchId]: 'report' as ViewId }
     : state.matchViews;
   return {
     status: 'success', report, reportRevision: state.reportRevision + 1,
-    playerId, preferredPlayerId: playerId,
+    playerId, preferredPlayerId: playerId, selfPlayerId: self, importPlayers: null,
     error: null, sessionActive: true, navigation, matchViews: views,
   };
 }
 
+let selfSelectionSequence = 0;
 export const useReport = create<ReportState>((set, get) => ({
-  status: 'idle', report: null, reportRevision: 0, playerId: '', preferredPlayerId: readPlayerPreference(), error: null,
+  status: 'idle', report: null, reportRevision: 0, playerId: '', preferredPlayerId: readPlayerPreference(),
+  selfPlayerId: null, importPlayers: null, error: null,
   sessionActive: false,
   navigation: initialNavigation(),
   matchViews: {},
@@ -116,7 +127,7 @@ export const useReport = create<ReportState>((set, get) => ({
   libraryError: null,
   libraryNotice: null,
   // Progress only moves an in-flight import forward; a late event must not re-enter busy after success/error.
-  setPhase: phase => set(state => ['selecting', 'parsing', 'analyzing'].includes(state.status) ? {
+  setPhase: phase => set(state => ['selecting', 'parsing', 'awaiting-player', 'analyzing'].includes(state.status) ? {
     status: phase,
   } : {}),
   selectPlayer: id => {
@@ -124,7 +135,35 @@ export const useReport = create<ReportState>((set, get) => ({
       savePlayerPreference(id); set({ playerId: id, preferredPlayerId: id });
     }
   },
-  selectLibraryPlayer: id => { savePlayerPreference(id); set({ preferredPlayerId: id }); },
+  selectSelfPlayer: async id => {
+    const state = get();
+    const report = state.report, matchId = matchIdOf(report);
+    if (!report || !matchId) return;
+    if (id !== null && !report.players.some(p => p.id === id)) return;
+    const previous = state.selfPlayerId, sequence = ++selfSelectionSequence;
+    set({ selfPlayerId: id, error: null });
+    try {
+      const result = await window.cs2Analyst.library.setSelfPlayer(matchId, id);
+      if (sequence !== selfSelectionSequence) return;
+      if (result.kind === 'error') { set({ selfPlayerId: previous, error: result.message }); return; }
+      set({ libraryRevision: get().libraryRevision + 1 });
+      if (id) get().selectPlayer(id);
+    } catch {
+      if (sequence === selfSelectionSequence) set({ selfPlayerId: previous, error: '无法保存玩家身份，请稍后重试。' });
+    }
+  },
+  setImportPlayers: players => set({ importPlayers: players.length ? players : null }),
+  chooseImportPlayer: async id => {
+    const players = get().importPlayers;
+    if (!players) return;
+    set({ importPlayers: null });
+    try {
+      const result = await window.cs2Analyst.selectImportPlayer(id);
+      if (result.kind === 'error') set({ error: result.message, importPlayers: players });
+    } catch {
+      set({ error: '无法提交玩家选择，请重试。', importPlayers: players });
+    }
+  },
   selectSection: section => {
     const state = get();
     if (busyState(state)) return;
@@ -192,11 +231,11 @@ export const useReport = create<ReportState>((set, get) => ({
       return;
     }
     const matchId = target.route.matchId;
-    set({ status: 'opening', error: null, sessionActive: false, libraryError: null });
+    set({ status: 'opening', error: null, sessionActive: false, libraryError: null, importPlayers: null });
     try {
       const result = await window.cs2Analyst.library.open(matchId);
       if (result.kind === 'success') {
-        set(current => activatedReport(current, result.report, target.navigation, false));
+        set(current => activatedReport(current, result.report, target.navigation, false, result.selfPlayerId ?? null));
         return;
       }
       // Deleted/invalid/missing target: drop the forward branch and land on the list.
@@ -218,18 +257,18 @@ export const useReport = create<ReportState>((set, get) => ({
     const state = get();
     if (busyState(state)) return;
     const hadReport = Boolean(state.report);
-    set({ status: 'selecting', error: null, libraryError: null, libraryNotice: null, sessionActive: false });
+    set({ status: 'selecting', error: null, libraryError: null, libraryNotice: null, sessionActive: false, importPlayers: null });
     try {
       const result = await window.cs2Analyst.importDemo();
-      if (result.kind === 'cancelled') set({ status: hadReport ? 'success' : 'idle', sessionActive: hadReport });
-      else if (result.kind === 'error') set({ status: 'error', error: result.message, sessionActive: hadReport });
+      if (result.kind === 'cancelled') set({ status: hadReport ? 'success' : 'idle', sessionActive: hadReport, importPlayers: null });
+      else if (result.kind === 'error') set({ status: 'error', error: result.message, sessionActive: hadReport, importPlayers: null });
       else set(current => {
         const matchId = matchIdOf(result.report);
         const navigation = matchId ? pushRoute(current.navigation, matchRoute(matchId)) : current.navigation;
-        return activatedReport(current, result.report, navigation, true);
+        return activatedReport(current, result.report, navigation, true, result.selfPlayerId ?? null);
       });
     } catch {
-      set({ status: 'error', error: '桌面分析连接失败。请重新选择 DEM；若仍失败，请重启应用。', sessionActive: hadReport });
+      set({ status: 'error', error: '桌面分析连接失败。请重新选择 DEM；若仍失败，请重启应用。', sessionActive: hadReport, importPlayers: null });
     }
   },
   // Preload owns the disk path; Main progress invalidates old replay only when analysis starts.
@@ -237,31 +276,31 @@ export const useReport = create<ReportState>((set, get) => ({
     const state = get();
     if (busyState(state)) return;
     const hadReport = Boolean(state.report);
-    set({ status: 'selecting', error: null, libraryError: null, libraryNotice: null, sessionActive: false });
+    set({ status: 'selecting', error: null, libraryError: null, libraryNotice: null, sessionActive: false, importPlayers: null });
     try {
       const result = await window.cs2Analyst.importDroppedFile(file);
-      if (result.kind === 'cancelled') set({ status: hadReport ? 'success' : 'idle', sessionActive: hadReport });
-      else if (result.kind === 'error') set({ status: 'error', error: result.message, sessionActive: hadReport });
+      if (result.kind === 'cancelled') set({ status: hadReport ? 'success' : 'idle', sessionActive: hadReport, importPlayers: null });
+      else if (result.kind === 'error') set({ status: 'error', error: result.message, sessionActive: hadReport, importPlayers: null });
       else set(current => {
         const matchId = matchIdOf(result.report);
         const navigation = matchId ? pushRoute(current.navigation, matchRoute(matchId)) : current.navigation;
-        return activatedReport(current, result.report, navigation, true);
+        return activatedReport(current, result.report, navigation, true, result.selfPlayerId ?? null);
       });
     } catch {
-      set({ status: 'error', error: '桌面分析连接失败。请重新选择 DEM；若仍失败，请重启应用。', sessionActive: hadReport });
+      set({ status: 'error', error: '桌面分析连接失败。请重新选择 DEM；若仍失败，请重启应用。', sessionActive: hadReport, importPlayers: null });
     }
   },
   openMatch: async (matchId, navigationOverride) => {
     const state = get();
     if (busyState(state)) return;
     const hadReport = Boolean(state.report);
-    set({ status: 'opening', error: null, libraryError: null, libraryNotice: null, sessionActive: false });
+    set({ status: 'opening', error: null, libraryError: null, libraryNotice: null, sessionActive: false, importPlayers: null });
     try {
       const result = await window.cs2Analyst.library.open(matchId);
       if (result.kind === 'success') {
         set(current => {
           const navigation = navigationOverride ?? pushRoute(current.navigation, matchRoute(result.report.match?.id ?? matchId));
-          return activatedReport(current, result.report, navigation, !navigationOverride);
+          return activatedReport(current, result.report, navigation, !navigationOverride, result.selfPlayerId ?? null);
         });
       } else if (result.kind === 'error') {
         set({ status: 'error', error: result.message, sessionActive: hadReport });

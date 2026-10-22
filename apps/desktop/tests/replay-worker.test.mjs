@@ -12,6 +12,7 @@ test('replay cache failure degrades independently after the successful unchanged
   vm.runInNewContext(code,{process:{parentPort:port,on(){}},require:name=>{
     if(name==='@cs2-analyst/dem-parser')return {Demoparser2Provider:class {async parseWithReplay(){reads++;return {match:{id:'id',map:'map'},spatial:{},replay:{},replayUnavailableReason:null};}}};
     if(name==='./report.js')return {buildDesktopReport:()=>report};
+    if(name==='./player-name.ts')return {displayPlayerName:(_id,nickname)=>nickname?.trim()?nickname:'未知玩家'};
     if(name==='./replay-session.ts')return {ReplaySession:class {constructor(){throw new Error('budget');}}};
     if(name==='../shared/replay-resource.ts')return {replayResourceId:'resource'};
     if(name==='./heatmap-session.ts')return {createHeatmapSession:()=>({session:null,metadata:{available:false}})};

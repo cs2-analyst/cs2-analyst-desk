@@ -1,12 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
-  Badge, Body1, Button, Card, Caption1, FluentProvider,
-  MessageBar, MessageBarBody, Spinner, Subtitle1, Tab, TabList, Title1, Title2,
-  Tooltip, makeStyles, tokens,
+  Badge, Body1, Button, Card, Caption1, Dialog, DialogActions, DialogBody, DialogContent,
+  DialogSurface, DialogTitle, FluentProvider, MessageBar, MessageBarBody, Spinner, Subtitle1,
+  Tab, TabList, Title1, Title2, Tooltip, makeStyles, tokens,
 } from '@fluentui/react-components';
 import type {
-  DesktopMatchReport, DesktopPlayerAnalytics, DesktopRoundTimeline, DesktopTimelineEvent,
+  DesktopMatchReport, DesktopPlayerAnalytics, DesktopRoundTimeline, DesktopTimelineEvent, ImportPlayerChoice,
 } from '@cs2-analyst/report-contract';
 import { KillFeedEvent } from './killfeed-event';
 import { AnalysisViews } from './analysis-views';
@@ -133,6 +133,9 @@ const useStyles = makeStyles({
   timelineTime: { color: tokens.colorNeutralForeground3, fontVariantNumeric: 'tabular-nums' },
   playerName: { display: 'block', minWidth: 0, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   playerDropdown: { maxWidth: '250px', '& button': { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } },
+  identityRow: { display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end', gap: '8px', flexWrap: 'wrap' },
+  selfDropdown: { minWidth: '190px', maxWidth: '190px', '& button': { minWidth: '190px', maxWidth: '190px' } },
+  importPlayerSelect: { width: '100%', marginTop: '8px' },
 });
 
 /** Display-only number rules: counts 0, ADR/seconds 2, percentages 1, KAST integer. */
@@ -399,6 +402,8 @@ function Report({ report, playerId, replayActive, activeTab, onSelectView }: {
 }) {
   const s = useStyles();
   const selectPlayer = useReport(state => state.selectPlayer);
+  const selfPlayerId = useReport(state => state.selfPlayerId);
+  const selectSelfPlayer = useReport(state => state.selectSelfPlayer);
   const player = report.players.find(p => p.id === playerId)!;
   const p = report.analytics.find(a => a.playerId === playerId)!;
   const timeline = report.timeline.find(t => t.playerId === playerId)?.rounds ?? [];
@@ -443,9 +448,29 @@ function Report({ report, playerId, replayActive, activeTab, onSelectView }: {
   return <div className={s.reportFrame}>
     <div className={s.viewHeader}>
       <div className={`${s.column} ${s.reportHeaderInfo}`}><Title1>{report.match.map}</Title1><Body1>{report.match.score ? `${report.match.score.initialCT} : ${report.match.score.initialT}` : '比分不可用'} · 开局 CT 队 / 开局 T 队 · {report.match.rounds} 回合</Body1><ReportSecondaryLine fileName={report.match.fileName} rating={p.performance?.rating} /></div>
-      <div className={s.column}><Caption1>目标玩家</Caption1><Tooltip content={player.nickname} relationship="description"><WinSelect className={s.playerDropdown} listbox={{ style: { maxWidth: '250px' } }} aria-label="目标玩家" value={playerId}
-        items={report.players.map(p => ({ value: p.id, text: p.nickname, label: <Tooltip content={p.nickname} relationship="description"><span className={s.playerName}>{p.nickname}</span></Tooltip> }))}
-        onValueChange={selectPlayer} /></Tooltip></div>
+      <div className={s.identityRow}>
+        <div className={s.column}>
+          <Caption1>自己是谁</Caption1>
+          <WinSelect
+            className={s.selfDropdown}
+            aria-label="自己是谁"
+            data-match-self
+            value={selfPlayerId && report.players.some(p => p.id === selfPlayerId) ? selfPlayerId : "none"}
+            items={[
+              { value: "none", text: "未指定" },
+              ...report.players.map(p => ({
+                value: p.id,
+                text: p.nickname,
+                label: <Tooltip content={`${p.nickname} · SteamID ${p.id}`} relationship="description"><span className={s.playerName}>{p.nickname}</span></Tooltip>,
+              })),
+            ]}
+            onValueChange={(value) => void selectSelfPlayer(value === "none" ? null : value)}
+          />
+        </div>
+        <div className={s.column}><Caption1>目标玩家</Caption1><Tooltip content={player.nickname} relationship="description"><WinSelect className={s.playerDropdown} listbox={{ style: { maxWidth: '250px' } }} aria-label="目标玩家" value={playerId}
+          items={report.players.map(p => ({ value: p.id, text: p.nickname, label: <Tooltip content={p.nickname} relationship="description"><span className={s.playerName}>{p.nickname}</span></Tooltip> }))}
+          onValueChange={selectPlayer} /></Tooltip></div>
+      </div>
     </div>
     <div id="deep-review-panel" role="tabpanel" aria-labelledby="deep-review-tab" className={s.tabPanel} hidden={activeTab !== 'deep-review'}>
       <DeepReview key={playerId} player={report.deepReview.players.find(p => p.playerId === playerId)!} onShowRounds={showRounds} onReplayRound={report.replay?.available?showReplay:undefined} />
@@ -519,6 +544,40 @@ function Report({ report, playerId, replayActive, activeTab, onSelectView }: {
   </div>;
 }
 
+/** Import-time identity prompt. The import promise stays pending until the user answers. */
+function ImportPlayerDialog({ players, onChoose }: {
+  players: ImportPlayerChoice[] | null;
+  onChoose: (playerId: string | null) => Promise<void>;
+}) {
+  const s = useStyles();
+  const [selected, setSelected] = useState("");
+  useEffect(() => { setSelected(""); }, [players]);
+  return (
+    <Dialog open={players !== null} onOpenChange={(_, data) => { if (!data.open) void onChoose(null); }}>
+      <DialogSurface data-import-player-dialog>
+        <DialogBody>
+          <DialogTitle>选择你自己</DialogTitle>
+          <DialogContent>
+            <Body1>本场记录会保存你所选玩家的赛后数据。也可以稍后选择。</Body1>
+            {players?.length ? <WinSelect
+              className={s.importPlayerSelect}
+              aria-label="选择你自己"
+              value={selected}
+              items={players.map(player => ({ value: player.id, text: `${player.nickname} · ${player.id.slice(-6)}` }))}
+              onValueChange={setSelected}
+            /> : null}
+            <Caption1 className={s.muted}>稍后可在比赛首页的「自己是谁」中设置。</Caption1>
+          </DialogContent>
+          <DialogActions>
+            <Button appearance="secondary" data-import-player-later onClick={() => void onChoose(null)}>稍后选择</Button>
+            <Button appearance="primary" data-import-player-confirm disabled={!selected} onClick={() => void onChoose(selected)}>确定</Button>
+          </DialogActions>
+        </DialogBody>
+      </DialogSurface>
+    </Dialog>
+  );
+}
+
 function App() {
   const s = useStyles();
   const status = useReport(state => state.status);
@@ -532,16 +591,24 @@ function App() {
   const libraryBusy = useReport(state => state.libraryBusy);
   const importDemo = useReport(state => state.importDemo);
   const setPhase = useReport(state => state.setPhase);
+  const setImportPlayers = useReport(state => state.setImportPlayers);
+  const importPlayers = useReport(state => state.importPlayers);
+  const chooseImportPlayer = useReport(state => state.chooseImportPlayer);
   const cancelImport = useReport(state => state.cancelImport);
   const selectSection = useReport(state => state.selectSection);
   const setMatchView = useReport(state => state.setMatchView);
   useEffect(() => window.cs2Analyst.onProgress(setPhase), [setPhase]);
-  const importBusy = status === 'selecting' || status === 'parsing' || status === 'analyzing' || status === 'opening';
+  useEffect(() => window.cs2Analyst.onImportPlayers(setImportPlayers), [setImportPlayers]);
+  const importBusy = status === 'selecting' || status === 'parsing' || status === 'awaiting-player'
+    || status === 'analyzing' || status === 'opening';
   const busy = importBusy || libraryBusy !== null;
   const phase = libraryBusy === 'export' ? '正在导出比赛归档…' : libraryBusy === 'importArchive' ? '正在导入比赛归档…'
     : libraryBusy === 'remove' ? '正在删除比赛…'
-    : status === 'opening' ? '正在打开已保存比赛…' : status === 'selecting' ? '正在选择 DEM…' : status === 'parsing' ? '正在后台解析 DEM…' : '正在生成指标与深度复盘…';
-  const busyHint = libraryBusy !== null ? '请稍候，操作完成前不要关闭应用。' : '大型录像可能需要数十秒，请保持应用打开。';
+    : status === 'opening' ? '正在打开已保存比赛…' : status === 'selecting' ? '正在选择 DEM…' : status === 'parsing' ? '正在后台解析 DEM…'
+    : status === 'awaiting-player' ? '正在等待你选择自己…' : '正在生成指标与深度复盘…';
+  const busyHint = libraryBusy !== null ? '请稍候，操作完成前不要关闭应用。'
+    : status === 'awaiting-player' ? '请在弹窗中选择你自己，或点击「稍后选择」继续分析。'
+    : '大型录像可能需要数十秒，请保持应用打开。';
   const [collapsed, setCollapsed] = useState(false);
   const matchMode = route.kind === 'match';
   return <>
@@ -578,6 +645,7 @@ function App() {
         {route.section === 'personal' ? <PersonalSection /> : <LibraryPage />}
       </>}
     </main>
+    <ImportPlayerDialog players={importPlayers} onChoose={chooseImportPlayer} />
   </>;
 }
 

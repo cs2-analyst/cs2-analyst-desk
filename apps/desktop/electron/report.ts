@@ -287,11 +287,13 @@ function presentDeepFinding(f: DeepReviewFinding): DesktopDeepReviewFinding {
 }
 
 export function buildDesktopReport(match: Match, filePath: string, spatial?: MatchSpatialEvidence,
-  onDeepReview?: (elapsedMs: number) => void): DesktopMatchReport {
+  onDeepReview?: (elapsedMs: number) => void, selfPlayerId?: string | null): DesktopMatchReport {
   const a = analyzeMatch(match);
   const valid = a.players.filter(p => p.steamId && p.roundsPlayed > 0);
   if (!valid.length) throw new Error('DEM 没有可报告的有效玩家或完整回合。');
-  const selected = valid.find(p => p.nickname?.toLowerCase() === 'twinkle') ?? valid[0];
+  // An explicit "who am I" choice wins over the historical nickname heuristic.
+  const selected = (selfPlayerId ? valid.find(p => p.steamId === selfPlayerId) : undefined)
+    ?? valid.find(p => p.nickname?.toLowerCase() === 'twinkle') ?? valid[0];
   const clutchIneligible = Boolean(a.coverage.issues['clutch-round-ineligible']);
   const roundTime = roundTimeLookup(match);
   const scores = roundScoreLookup(match);

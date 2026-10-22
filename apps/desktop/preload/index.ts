@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
-import type { DesktopApi, ImportPhase } from '@cs2-analyst/report-contract';
+import type { DesktopApi, ImportPhase, ImportPlayerChoice } from '@cs2-analyst/report-contract';
 
 const api: DesktopApi = {
   version: '0.1.0',
@@ -10,6 +10,7 @@ const api: DesktopApi = {
     remove: matchIds => ipcRenderer.invoke('library:remove', matchIds),
     exportMatch: matchId => ipcRenderer.invoke('library:export', matchId),
     importArchive: () => ipcRenderer.invoke('library:import'),
+    setSelfPlayer: (matchId, playerId) => ipcRenderer.invoke('library:set-self-player', matchId, playerId),
   },
   window: {
     minimize: () => ipcRenderer.invoke('window:minimize'),
@@ -30,6 +31,12 @@ const api: DesktopApi = {
     catch { return { kind: 'error', message: '无法读取拖入文件的位置，请改用点击选择。' }; }
     if (!filePath) return { kind: 'error', message: '无法读取拖入文件的位置，请改用点击选择。' };
     return ipcRenderer.invoke('report:import-file', filePath);
+  },
+  selectImportPlayer: playerId => ipcRenderer.invoke('report:select-player', playerId),
+  onImportPlayers: listener => {
+    const handler = (_event: Electron.IpcRendererEvent, players: ImportPlayerChoice[]) => listener(players);
+    ipcRenderer.on('report:import-players', handler);
+    return () => ipcRenderer.removeListener('report:import-players', handler);
   },
   cancelImport: () => ipcRenderer.invoke('report:cancel'),
   replay: {

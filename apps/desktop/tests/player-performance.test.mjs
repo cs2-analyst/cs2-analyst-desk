@@ -109,6 +109,9 @@ test('legacy headshot data lacks complete sample evidence, so precision is never
 test('summary result requires every player-relative round; ties are distinguished from unknown', () => {
   const r = report(); const summaries = reportPlayerSummaries(r);
   assert.deepEqual(summaries.playerSummaries.map(p => p.outcome), ['win', 'loss']);
+  assert.deepEqual(summaries.playerSummaries.map(p => p.team), ['initialCT', 'initialT']);
+  assert.equal(validCachedPlayerSummaries(summaries, ['one', 'two']), true);
+  summaries.playerSummaries[0].team = null;
   assert.equal(validCachedPlayerSummaries(summaries, ['one', 'two']), true);
   r.match.score = { initialCT: 12, initialT: 12 };
   for (const timeline of r.timeline) timeline.rounds.forEach((round, index) => {

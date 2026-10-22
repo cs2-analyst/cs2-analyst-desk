@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { lstat, mkdir, readdir, realpath, rename, rm, stat } from 'node:fs/promises';
 import { realpathSync } from 'node:fs';
 import { dirname, isAbsolute, join, parse, relative, resolve, sep } from 'node:path';
-import type { LibraryDeleteResult, LibraryListQuery, LibraryListResult, LibraryStorageResult, MatchLibraryEntry } from '@cs2-analyst/report-contract';
+import type { LibraryDeleteResult, LibraryListQuery, LibraryListResult, LibrarySelfPlayerResult, LibraryStorageResult, MatchLibraryEntry } from '@cs2-analyst/report-contract';
 import { LIBRARY_LIST_RESPONSE_BYTES, boundedLibraryResult, isMatchId, normalizeLibraryListQuery } from '../shared/library-ipc.ts';
 import { LIBRARY_METADATA_LIMITS, archiveManifestHash, readArchiveManifest, readArchiveReport, verifyLibraryArchive, type ArchiveManifest } from './library-archive.ts';
 import { PERFORMANCE_CACHE_VERSION, reportPlayerSummaries, validCachedPlayerSummaries } from './player-performance.ts';
@@ -29,8 +29,8 @@ interface Options {
   diagnostic?: (message: string) => void;
 }
 interface Row { match_id: string; entry_json: string; manifest_hash: string; state: string;
-  imported_at: string; map: string; file_name: string; stored_bytes: number }
-const rowColumns = 'match_id,entry_json,manifest_hash,state,imported_at,map,file_name,stored_bytes';
+  imported_at: string; map: string; file_name: string; stored_bytes: number; self_player_id: string | null }
+const rowColumns = 'match_id,entry_json,manifest_hash,state,imported_at,map,file_name,stored_bytes,self_player_id';
 const record = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value);
 const shortText = (value: unknown, max = 256): value is string => typeof value === 'string' && value.length > 0 && value.length <= max && !/[\u0000-\u001f]/.test(value);
 const nonnegative = (value: unknown, max = Number.MAX_SAFE_INTEGER): value is number => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 && value <= max;
@@ -143,14 +143,15 @@ export class LocalMatchLibrary {
         db = new DatabaseSync(database);
         db.exec('PRAGMA busy_timeout=100; PRAGMA locking_mode=EXCLUSIVE; PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL;');
         const version = db.prepare('PRAGMA user_version').get()?.user_version;
-        if (version !== 0 && version !== 1) throw new Error('比赛库由不受支持的版本创建。');
+        if (version !== 0 && version !== 1 && version !== 2) throw new Error('比赛库由不受支持的版本创建。');
         db.exec(`BEGIN IMMEDIATE;
           CREATE TABLE IF NOT EXISTS matches (
             match_id TEXT PRIMARY KEY CHECK(length(match_id)=64),
             imported_at TEXT NOT NULL, map TEXT NOT NULL, file_name TEXT NOT NULL,
             stored_bytes INTEGER NOT NULL CHECK(stored_bytes>=0),
             manifest_hash TEXT NOT NULL, state TEXT NOT NULL CHECK(state IN ('ready','invalid','unsupported')),
-            entry_json TEXT NOT NULL CHECK(length(entry_json)<=65536)
+            entry_json TEXT NOT NULL CHECK(length(entry_json)<=65536),
+            self_player_id TEXT
           );
           CREATE INDEX IF NOT EXISTS matches_imported_at ON matches(imported_at);
           CREATE INDEX IF NOT EXISTS matches_map ON matches(map);
@@ -158,8 +159,12 @@ export class LocalMatchLibrary {
             match_id TEXT PRIMARY KEY, manifest_hash TEXT NOT NULL, cache_version TEXT NOT NULL,
             summary_json TEXT NOT NULL CHECK(length(summary_json)<=262144)
           );
-          PRAGMA user_version=1;
           COMMIT;`);
+        // v2 adds the mutable per-match "who am I" preference without touching the
+        // immutable archive manifest or the catalogue snapshot.
+        const columns = db.prepare('PRAGMA table_info(matches)').all().map(column => column.name);
+        if (!columns.includes('self_player_id')) db.exec('ALTER TABLE matches ADD COLUMN self_player_id TEXT');
+        db.exec('PRAGMA user_version=2');
         break;
       } catch (error) {
         try { db?.close(); } catch { /* Release a failed opening handle before retry. */ }
@@ -202,7 +207,9 @@ export class LocalMatchLibrary {
     catch { throw new Error('比赛库索引记录损坏。'); }
     if (!validEntry(entry) || entry.matchId !== row.match_id
       || !['ready', 'invalid', 'unsupported'].includes(row.state)) throw new Error('比赛库索引记录损坏。');
-    return { ...entry, state: row.state as MatchLibraryEntry['state'] };
+    const selfPlayerId = typeof row.self_player_id === 'string'
+      && entry.players.some(player => player.id === row.self_player_id) ? row.self_player_id : null;
+    return { ...entry, selfPlayerId, state: row.state as MatchLibraryEntry['state'] };
   }
   private storedBytes(manifest: ArchiveManifest): number {
     return Buffer.byteLength(JSON.stringify(manifest)) + manifest.files.reduce((sum, file) => sum + file.gzipBytes, 0);
@@ -279,9 +286,10 @@ export class LocalMatchLibrary {
     });
   }
 
-  commitStaging(id: string, signal?: AbortSignal, receipt?: { manifestHash: string; storedBytes: number }, onCommitted?: () => void): Promise<{ entry: MatchLibraryEntry; duplicate: boolean }> {
+  commitStaging(id: string, signal?: AbortSignal, receipt?: { manifestHash: string; storedBytes: number }, onCommitted?: () => void, requestedSelfPlayerId?: string | null): Promise<{ entry: MatchLibraryEntry; duplicate: boolean }> {
     return this.serial(async () => {
       if (!stagingId.test(id)) throw new Error('无效的比赛暂存标识。');
+      const requestedSelf = typeof requestedSelfPlayerId === 'string' && requestedSelfPlayerId ? requestedSelfPlayerId : null;
       await this.directories();
       const source = join(this.root, 'staging', id);
       abort(signal);
@@ -311,6 +319,12 @@ export class LocalMatchLibrary {
           throw new Error('已有比赛归档与持久索引不一致，请先处理损坏记录。');
         }
         abort(signal);
+        // A duplicate import may still tell us who the user is. Never erase an existing
+        // choice when the new import only chose "later".
+        if (requestedSelf && existing.players.some(player => player.id === requestedSelf) && existing.selfPlayerId !== requestedSelf) {
+          this.db.prepare('UPDATE matches SET self_player_id=? WHERE match_id=?').run(requestedSelf, manifest.matchId);
+          existing.selfPlayerId = requestedSelf;
+        }
         await this.removeDirectory(source);
         // From this synchronous notification onward Main must resolve success even
         // if a cancellation message arrives before the Promise continuation runs.
@@ -318,7 +332,9 @@ export class LocalMatchLibrary {
         return { entry: existing, duplicate: true };
       }
       const target = join(this.root, 'matches', manifest.matchId);
-      const entry = this.manifestEntry(manifest, storedBytes);
+      const selfPlayerId = requestedSelf && manifest.summary.players.some(player => player.id === requestedSelf)
+        ? requestedSelf : null;
+      const entry = { ...this.manifestEntry(manifest, storedBytes), selfPlayerId };
       // The SQLite row check is a character bound; enforce the byte bound here so a
       // contract-valid maximum roster cannot fail after the archive has been renamed.
       const entryJson = JSON.stringify(entry);
@@ -338,8 +354,8 @@ export class LocalMatchLibrary {
         // No awaits between BEGIN and COMMIT: commit is the cancellation linearization point.
         this.db.exec('BEGIN IMMEDIATE');
         try {
-          this.db.prepare('INSERT INTO matches(match_id,imported_at,map,file_name,stored_bytes,manifest_hash,state,entry_json) VALUES(?,?,?,?,?,?,?,?)')
-            .run(entry.matchId, entry.importedAt, entry.map, entry.fileName, entry.storedBytes, manifestHash, 'ready', entryJson);
+          this.db.prepare('INSERT INTO matches(match_id,imported_at,map,file_name,stored_bytes,manifest_hash,state,entry_json,self_player_id) VALUES(?,?,?,?,?,?,?,?,?)')
+            .run(entry.matchId, entry.importedAt, entry.map, entry.fileName, entry.storedBytes, manifestHash, 'ready', entryJson, entry.selfPlayerId);
           this.db.exec('COMMIT');
           committed = true;
           try { onCommitted?.(); } catch { this.options.diagnostic?.('Committed-import notification failed.'); }
@@ -378,8 +394,8 @@ export class LocalMatchLibrary {
     // SQL text is selected from fixed constants. User strings are always bound values.
     const sort = { importedAt: 'imported_at', map: 'map', storedBytes: 'stored_bytes' }[query.sort];
     const direction = query.direction === 'asc' ? 'ASC' : 'DESC';
-    const where = 'WHERE (? IS NULL OR map=?) AND (?=\'\' OR instr(lower(file_name),lower(?))>0 OR instr(lower(map),lower(?))>0)';
-    const values = [query.map, query.map, query.search, query.search, query.search];
+    const where = 'WHERE (? IS NULL OR map=?)';
+    const values = [query.map, query.map];
     const total = Number(this.db.prepare(`SELECT count(*) AS count FROM matches ${where}`).get(...values)?.count ?? 0);
     const rows = this.db.prepare(`SELECT ${rowColumns} FROM matches ${where} ORDER BY ${sort} ${direction},match_id ASC LIMIT ? OFFSET ?`)
       .all(...values, query.limit, query.offset) as unknown as Row[];
@@ -488,6 +504,26 @@ export class LocalMatchLibrary {
         }
       }
       return { kind: 'success', removed, failed };
+    });
+  }
+
+  /** Persist "who am I" for one saved match; null clears the choice. */
+  setSelfPlayer(matchId: unknown, playerId: unknown): Promise<LibrarySelfPlayerResult> {
+    return this.serial(async () => {
+      try {
+        if (!isMatchId(matchId)) return { kind: 'error', message: '无效的比赛标识。' };
+        const row = this.row(matchId);
+        if (!row) return { kind: 'error', message: '比赛不存在或已被删除。' };
+        const entry = this.entry(row);
+        if (entry.state !== 'ready') return { kind: 'error', message: '该比赛档案当前不可用。' };
+        if (playerId !== null && (typeof playerId !== 'string' || !entry.players.some(player => player.id === playerId))) {
+          return { kind: 'error', message: '所选玩家不属于这场比赛。' };
+        }
+        this.db.prepare('UPDATE matches SET self_player_id=? WHERE match_id=?').run(playerId, matchId);
+        return { kind: 'success', selfPlayerId: playerId };
+      } catch {
+        return { kind: 'error', message: '无法保存玩家身份，请稍后重试。' };
+      }
     });
   }
 

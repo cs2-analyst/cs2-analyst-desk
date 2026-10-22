@@ -24,5 +24,7 @@ export interface LibraryPlayerSummary {
   adr: number | null;
   kastPercentage: number | null;
   outcome: 'win' | 'loss' | 'draw' | 'unknown';
+  /** Stable initial team of this player; null when the match cannot prove it. */
+  team: 'initialCT' | 'initialT' | null;
   performance: DesktopPlayerPerformance;
 }

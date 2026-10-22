@@ -271,6 +271,13 @@ test('timeline filters to high-value events, maps nicknames and computes round t
   assert.deepEqual(buildDesktopReport(match, 'synthetic.dem'), report, 'same input yields the same timeline');
 });
 
+test('an explicit self player overrides the default target only when it belongs to the report', () => {
+  const match = syntheticMatch();
+  assert.equal(buildDesktopReport(match, 'synthetic.dem', undefined, undefined, '2').selectedPlayer, '2');
+  assert.equal(buildDesktopReport(match, 'synthetic.dem', undefined, undefined, 'absent').selectedPlayer, '1');
+  assert.equal(buildDesktopReport(match, 'synthetic.dem').selectedPlayer, '1');
+});
+
 test('timeline omits round time instead of guessing when the tick rate is unknown', () => {
   const match = syntheticMatch();
   delete match.tickRate;

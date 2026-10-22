@@ -15,6 +15,7 @@ async function harness({replay=true,spatial=true,replayFailure=false,heatmapFail
   vm.runInNewContext(code,{process:{parentPort:port,on:(...args)=>processEvents.on(...args)},require:name=>{
     if(name==='@cs2-analyst/dem-parser')return {Demoparser2Provider:class {async parseWithReplay(){parses++;if(defer)await new Promise(resolve=>{complete=resolve;});return {...f,replay:replay?f.replay:null,spatial:spatial?f.spatial:null};}}};
     if(name==='./report.js')return {buildDesktopReport:()=>({schemaVersion:2,match:{id:f.match.id},analytics:[{kills:4}]})};
+    if(name==='./player-name.ts')return {displayPlayerName:(_id,nickname)=>nickname?.trim()?nickname:'未知玩家'};
     if(name==='./replay-session.ts')return {ReplaySession:class {
       constructor(){if(replayFailure)throw new Error('budget');this.metadata={available:true,sessionId:'session'};}
       clear(){replayClears++;} get(){return {frames:[]};}

@@ -3,7 +3,8 @@ import { buildDesktopReport } from './report.js';
 import { ReplaySession } from './replay-session.ts';
 import { replayResourceId } from '../shared/replay-resource.ts';
 import { createHeatmapSession, type HeatmapSession } from './heatmap-session.ts';
-import type { ArchiveVersions, DesktopReplayMetadata, DesktopReplayRequest } from '@cs2-analyst/report-contract';
+import { displayPlayerName } from './player-name.ts';
+import type { ArchiveVersions, DesktopReplayMetadata, DesktopReplayRequest, ImportPlayerChoice } from '@cs2-analyst/report-contract';
 
 declare const __CS2_ANALYST_ARCHIVE_VERSIONS__: Omit<ArchiveVersions, 'sampling' | 'mapResource'>;
 
@@ -12,6 +13,11 @@ let initialized = false;
 let session: { metadata: DesktopReplayMetadata; get(request: DesktopReplayRequest): unknown; clear(): void } | null = null;
 let heatmapSession: HeatmapSession | null = null;
 let disposed = false;
+let pendingPlayerSelection: ((playerId: string | null) => void) | null = null;
+let offeredPlayerIds = new Set<string>();
+function waitForPlayerSelection(): Promise<string | null> {
+  return new Promise(resolve => { pendingPlayerSelection = resolve; });
+}
 function clearSessions() {
   session?.clear();session=null;
   heatmapSession?.clear();heatmapSession=null;
@@ -35,9 +41,17 @@ async function restoreArchived(directory: string, sessionId: string) {
   }
   return report;
 }
-process.parentPort?.on('message', async ({ data }: { data: { kind?: string; filePath?: string; sessionId?: string; requestId?: number; request?: unknown; archiveDirectory?: string } }) => {
+process.parentPort?.on('message', async ({ data }: { data: { kind?: string; filePath?: string; sessionId?: string; requestId?: number; request?: unknown; archiveDirectory?: string; playerId?: string | null } }) => {
   if(!data||typeof data!=='object')return;
-  if(data.kind==='session-release'){disposed=true;clearSessions();return;}
+  if (data.kind === 'player-selection' && pendingPlayerSelection) {
+    const resolve = pendingPlayerSelection;
+    pendingPlayerSelection = null;
+    const playerId = typeof data.playerId === 'string' && offeredPlayerIds.has(data.playerId) ? data.playerId : null;
+    offeredPlayerIds = new Set();
+    resolve(playerId);
+    return;
+  }
+  if(data.kind==='session-release'){disposed=true;clearSessions();pendingPlayerSelection?.(null);pendingPlayerSelection=null;return;}
   if(data.kind==='heatmap-grid'){
     let result;
     try {result=heatmapSession?.get(data.request)??{kind:'error',message:'热力图会话或图层不可用。'};}
@@ -70,8 +84,26 @@ process.parentPort?.on('message', async ({ data }: { data: { kind?: string; file
   try {
     const parsed = await new Demoparser2Provider().parseWithReplay(data.filePath);
     if(disposed)return;
+    const offered: ImportPlayerChoice[] = [];
+    const seen = new Set<string>();
+    for (const player of Array.isArray(parsed.match.players) ? parsed.match.players : []) {
+      if (!player.steamId || seen.has(player.steamId)) continue;
+      seen.add(player.steamId);
+      offered.push({ id: player.steamId, nickname: displayPlayerName(player.steamId, player.nickname) });
+    }
+    let selfPlayerId: string | null = null;
+    if (typeof data.archiveDirectory === 'string') {
+      // The user is asked only for the real import path. Direct harnesses keep the
+      // original non-interactive worker protocol.
+      offeredPlayerIds = new Set(offered.map(player => player.id));
+      process.parentPort?.postMessage({ kind:'players', players: offered });
+      selfPlayerId = await waitForPlayerSelection();
+      if (disposed) return;
+      offeredPlayerIds = new Set();
+    }
     process.parentPort?.postMessage({ kind:'progress',phase:'analyzing' });
-    const report = buildDesktopReport(parsed.match,data.filePath,parsed.spatial);
+    const report = buildDesktopReport(parsed.match,data.filePath,parsed.spatial,undefined,selfPlayerId);
+    const validSelfPlayerId = selfPlayerId && report.players.some(player => player.id === selfPlayerId) ? selfPlayerId : null;
     let metadata:DesktopReplayMetadata={schemaVersion:1,available:false,unavailableReason:parsed.replayUnavailableReason??'回放不可用。',
       sessionId:null,matchId:parsed.match.id,map:parsed.match.map,resourceId:replayResourceId,samplingVersion:parsed.replay?.samplingVersion??'unavailable',
       tickRate:parsed.replay?.tickRate??null,maxInterpolationTicks:parsed.replay?.maxInterpolationTicks??null,perspective:'global',players:[],rounds:[],excludedRounds:[]};
@@ -91,11 +123,11 @@ process.parentPort?.on('message', async ({ data }: { data: { kind?: string; file
       const verified = await archive.verifyLibraryArchive(data.archiveDirectory);
       if (disposed) return;
       if (written.manifestHash !== verified.manifestHash || written.storedBytes !== verified.storedBytes) throw new Error('Archive write verification mismatch');
-      process.parentPort?.postMessage({ kind: 'prepared', report, receipt: { manifestHash: verified.manifestHash, storedBytes: verified.storedBytes } });
+      process.parentPort?.postMessage({ kind: 'prepared', report, receipt: { manifestHash: verified.manifestHash, storedBytes: verified.storedBytes }, selfPlayerId: validSelfPlayerId });
     } else {
       // Direct worker harnesses keep testing the original independent report/replay/heatmap degradation.
       // Main never publishes this response: real imports always require a verified staging receipt.
-      process.parentPort?.postMessage({kind:'success',report});
+      process.parentPort?.postMessage({kind:'success',report,selfPlayerId:validSelfPlayerId});
     }
   } catch {
     clearSessions();

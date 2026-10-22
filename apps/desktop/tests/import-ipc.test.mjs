@@ -70,7 +70,7 @@ test('preload resolves Files privately and never exposes a path import capabilit
       throw new TypeError('Not a File');
     } },
   }) });
-  assert.deepEqual(Object.keys(api).sort(), ['library', 'cancelImport', 'importDemo', 'importDroppedFile', 'onProgress', 'replay', 'heatmap', 'session', 'version', 'window'].sort());
+  assert.deepEqual(Object.keys(api).sort(), ['library', 'cancelImport', 'importDemo', 'importDroppedFile', 'selectImportPlayer', 'onImportPlayers', 'onProgress', 'replay', 'heatmap', 'session', 'version', 'window'].sort());
   for (const input of [syntheticFile, 'C:\\arbitrary.dem', { path: 'C:\\arbitrary.dem' }, null]) {
     const result = await api.importDroppedFile(input);
     assert.equal(result.kind, 'error');

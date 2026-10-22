@@ -37,7 +37,10 @@ const noop = () => {};
 
 const entries = [
   { matchId: 'a'.repeat(64), fileName: 'dust2.dem', map: 'de_dust2', rounds: 24, score: { initialCT: 13, initialT: 11 },
-    players: [{ id: '1', nickname: 'A' }], importedAt: '2026-10-20T10:00:00.000Z', versions: {}, capabilities: {},
+    players: [{ id: '1', nickname: 'A' }], selfPlayerId: '1',
+    playerSummaries: [{ playerId: '1', kills: 20, deaths: 10, assists: 5, adr: 80, kastPercentage: 70, outcome: 'win', team: 'initialCT',
+      performance: { rating: { value: 1.2, algorithm: 'test', status: 'available', reason: null }, highlights: [] } }],
+    importedAt: '2026-10-20T10:00:00.000Z', versions: {}, capabilities: {},
     storedBytes: 12 * 1024 * 1024, state: 'ready' },
   { matchId: 'b'.repeat(64), fileName: 'broken.cs2a', map: 'de_mirage', rounds: 0, score: null,
     players: [], importedAt: '2026-10-19T10:00:00.000Z', versions: {}, capabilities: {},
@@ -101,6 +104,8 @@ test('saved-match list renders open/export/delete actions and disables unavailab
   assert.ok(readyRow.includes('data-library-open'));
   assert.ok(readyRow.includes('data-library-export'));
   assert.ok(readyRow.includes('data-library-delete'));
+  assert.ok(readyRow.includes('tabindex="0"'), 'a ready row is keyboard-openable');
+  assert.ok(readyRow.includes('aria-label="打开 dust2.dem"'));
   assert.equal(/data-library-open[^>]*disabled/.test(readyRow), false);
   const brokenRow = html.slice(html.indexOf('data-library-entry="' + entries[1].matchId + '"'));
   assert.match(brokenRow, /data-library-open[^>]*disabled/);
@@ -109,25 +114,25 @@ test('saved-match list renders open/export/delete actions and disables unavailab
 });
 
 const rating = value => ({ value, algorithm: 'hltv-2.0-community-approx-v1', status: 'available', reason: null });
-test('record table columns, formats and precomputed outcomes follow the selected identity', () => {
-  const entry = { ...entries[0], selectedPlayer: '1', playerSummaries: [
-    { playerId: '1', kills: 25, deaths: 20, assists: 4, adr: 91.38, kastPercentage: 75, outcome: 'win',
+test('record table columns, formats and self-player outcomes use the persisted identity only', () => {
+  const base = { ...entries[0], selectedPlayer: '1', playerSummaries: [
+    { playerId: '1', kills: 25, deaths: 20, assists: 4, adr: 91.38, kastPercentage: 75, outcome: 'win', team: 'initialCT',
       performance: { rating: rating(1.423456), highlights: [{ type: 'opening', label: '突', color: 'blue', tooltip: '突破表现：本场首杀 4 次，首死 0 次', evidence: { kills: 4, deaths: 0 } }] } },
-    { playerId: '2', kills: 10, deaths: 22, assists: 3, adr: 40, kastPercentage: 50, outcome: 'loss', performance: { rating: rating(0.654), highlights: [] } },
+    { playerId: '2', kills: 10, deaths: 22, assists: 3, adr: 40, kastPercentage: 50, outcome: 'loss', team: 'initialT', performance: { rating: rating(0.654), highlights: [] } },
   ] };
-  const htmlFor = playerId => render(createElement(LibraryList, { entries: [entry], playerId, busy: false, onOpen: noop, onExport: noop, onDelete: noop }));
-  const html = htmlFor('1');
+  const renderEntry = (selfPlayerId) => render(createElement(LibraryList, { entries: [{ ...base, selfPlayerId }], busy: false, onOpen: noop, onExport: noop, onDelete: noop }));
+  const html = renderEntry('1');
   const headings = [...html.matchAll(/<th\b[^>]*>(.*?)<\/th>/gs)].map(m => m[1].replace(/<[^>]*>/g, ''));
   assert.deepEqual(headings, ['日期 · 导入', '地图', '胜/负', '比分', 'K/D/A', 'ADR', 'Rating', 'KAST', '高光', '操作']);
   for (const removed of ['RWS', '>WE<', 'Rating Pro', '级别']) assert.equal(html.includes(removed), false);
-  for (const expected of ['25/20/4', '91.4', '75.0%', 'data-rating-value="1.42"', 'data-library-outcome="win"', 'data-highlight="opening"', '首杀 4 次，首死 0 次']) assert.ok(html.includes(expected), expected);
-  const switched = htmlFor('2');
-  for (const expected of ['10/22/3', '50.0%', 'data-rating-value="0.65"', 'data-library-outcome="loss"', 'data-highlight-empty']) assert.ok(switched.includes(expected), expected);
+  for (const expected of ['25/20/4', '91.4', '75.0%', 'data-rating-value="1.42"', 'data-library-outcome="win"', 'data-highlight="opening"', '首杀 4 次，首死 0 次', '13 : 11', 'SteamID 1']) assert.ok(html.includes(expected), expected);
+  const switched = renderEntry('2');
+  for (const expected of ['10/22/3', '50.0%', 'data-rating-value="0.65"', 'data-library-outcome="loss"', '11 : 13']) assert.ok(switched.includes(expected), expected);
+  assert.equal(switched.includes('data-highlight-tags'), false);
   assert.equal(switched.includes('data-highlight="opening"'), false);
-  const absent = htmlFor('not-in-match');
-  assert.ok(absent.includes('data-rating-value="—"'));
-  assert.ok(absent.includes('data-library-outcome="unknown"'));
-  assert.equal(absent.includes('25/20/4'), false);
+  const absent = renderEntry(null);
+  for (const expected of ['data-rating-empty', 'data-library-outcome="unknown"', '未设置自己']) assert.ok(absent.includes(expected), expected);
+  for (const hidden of ['25/20/4', '91.4', 'data-rating-value="1.42"', 'data-highlight="opening"']) assert.equal(absent.includes(hidden), false, hidden);
 });
 
 test('shared rating formatter handles missing values, preserves precision and explains unavailable results', () => {
@@ -157,8 +162,7 @@ test('library player preference is reused on activation and never reuses another
   try {
     const source = { match: { id: 'c'.repeat(64) }, selectedPlayer: '1', players: [{ id: '1' }, { id: '2' }] };
     globalThis.window = { cs2Analyst: { library: { open: async () => ({ kind: 'success', report: source }) } } };
-    useReport.setState({ status: 'idle', report: null, playerId: '', preferredPlayerId: '', libraryBusy: null });
-    useReport.getState().selectLibraryPlayer('2');
+    useReport.setState({ status: 'idle', report: null, playerId: '', preferredPlayerId: '2', libraryBusy: null, selfPlayerId: null });
     await useReport.getState().openMatch(source.match.id);
     assert.equal(useReport.getState().playerId, '2');
     useReport.getState().selectPlayer('1');
@@ -168,10 +172,54 @@ test('library player preference is reused on activation and never reuses another
   } finally { useReport.setState(original); globalThis.window = oldWindow; }
 });
 
-test('library query maps search/filter/sort into the frozen catalogue contract', () => {
-  assert.deepEqual(toLibraryListQuery({ search: ' dust2 ', map: 'de_dust2', sort: 'storedBytes', direction: 'asc' }, 25),
-    { search: 'dust2', map: 'de_dust2', sort: 'storedBytes', direction: 'asc', limit: 25 });
-  assert.deepEqual(toLibraryListQuery({ search: '   ', map: 'all', sort: 'importedAt', direction: 'desc' }),
+test('match self identity persists through the library bridge and reuses the existing player preference', async () => {
+  const original = useReport.getState();
+  const oldWindow = globalThis.window;
+  const calls = [];
+  try {
+    const report = { match: { id: 'd'.repeat(64) }, selectedPlayer: '1', players: [{ id: '1' }, { id: '2' }], analytics: [], findings: [], timeline: [],
+      analysis: { players: [], perPlayer: [] }, deepReview: { available: false, players: [] } };
+    globalThis.window = { cs2Analyst: { library: { setSelfPlayer: async (matchId, playerId) => {
+      calls.push([matchId, playerId]);
+      return playerId === '1' ? { kind: 'error', message: '该玩家不属于这场比赛。' } : { kind: 'success', selfPlayerId: playerId };
+    } } } };
+    useReport.setState({ status: 'success', report, playerId: '1', preferredPlayerId: '', selfPlayerId: null,
+      libraryRevision: 5, error: null, importPlayers: null });
+    await useReport.getState().selectSelfPlayer('2');
+    assert.deepEqual(calls[0], [report.match.id, '2']);
+    assert.equal(useReport.getState().selfPlayerId, '2');
+    assert.equal(useReport.getState().playerId, '2', 'choosing yourself also targets your report');
+    assert.equal(useReport.getState().libraryRevision, 6);
+    await useReport.getState().selectSelfPlayer('1');
+    assert.equal(useReport.getState().selfPlayerId, '2', 'a rejected identity never replaces the saved one');
+    assert.equal(useReport.getState().error, '该玩家不属于这场比赛。');
+  } finally { useReport.setState(original); globalThis.window = oldWindow; }
+});
+
+test('import prompt answers are forwarded and an IPC failure reopens the prompt', async () => {
+  const original = useReport.getState();
+  const oldWindow = globalThis.window;
+  const calls = [];
+  try {
+    globalThis.window = { cs2Analyst: { selectImportPlayer: async playerId => {
+      calls.push(playerId);
+      return calls.length === 1 ? { kind: 'success' } : { kind: 'error', message: '当前没有等待中的玩家选择。' };
+    } } };
+    const players = [{ id: '1', nickname: 'A' }, { id: '2', nickname: 'B' }];
+    useReport.setState({ importPlayers: players, error: null });
+    await useReport.getState().chooseImportPlayer('2');
+    assert.deepEqual(calls, ['2']); assert.equal(useReport.getState().importPlayers, null);
+    useReport.setState({ importPlayers: players });
+    await useReport.getState().chooseImportPlayer(null);
+    assert.deepEqual(calls, ['2', null]); assert.deepEqual(useReport.getState().importPlayers, players);
+    assert.equal(useReport.getState().error, '当前没有等待中的玩家选择。');
+  } finally { useReport.setState(original); globalThis.window = oldWindow; }
+});
+
+test('library query maps map/sort into the frozen catalogue contract without a text search', () => {
+  assert.deepEqual(toLibraryListQuery({ map: 'de_dust2', sort: 'storedBytes', direction: 'asc' }, 25),
+    { map: 'de_dust2', sort: 'storedBytes', direction: 'asc', limit: 25 });
+  assert.deepEqual(toLibraryListQuery({ map: 'all', sort: 'importedAt', direction: 'desc' }),
     { map: null, sort: 'importedAt', direction: 'desc', limit: 100 });
   assert.equal(formatBytes(0), '0 B');
   assert.equal(formatBytes(1536), '1.50 KiB');
@@ -186,6 +234,9 @@ test('library page first paint is an honest loading state without touching Repla
   assert.ok(html.includes('data-library-toolbar'));
   assert.ok(html.includes('data-library-import-archive'));
   assert.ok(html.includes('data-library-import-dem'));
+  assert.equal(html.includes('aria-label="比赛记录玩家"'), false, 'the player filter is removed');
+  assert.equal(html.includes('搜索文件名或地图'), false, 'the filename/map search is removed');
+  assert.equal(html.includes('aria-label="按地图筛选"'), true, 'the independent map filter remains');
   assert.equal(html.includes('data-replay'), false);
 });
 

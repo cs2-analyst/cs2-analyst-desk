@@ -4,9 +4,10 @@ import { basename, dirname, extname, isAbsolute, join, resolve } from 'node:path
 import { randomUUID } from 'node:crypto';
 import { access, mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { constants as fsConstants } from 'node:fs';
-import type { ImportPhase, ImportResult, DesktopReplayMetadata, DesktopReplayRequest, DesktopReplayResult,
+import type { ImportPhase, ImportResult, ImportPlayerChoice, ImportPlayerSelectionResult,
+  DesktopReplayMetadata, DesktopReplayRequest, DesktopReplayResult,
   DesktopHeatmapMetadata, DesktopHeatmapRequest, DesktopHeatmapResult,
-  LibraryDeleteResult, LibraryExportResult, LibraryImportResult } from '@cs2-analyst/report-contract';
+  LibraryDeleteResult, LibraryExportResult, LibraryImportResult, LibrarySelfPlayerResult } from '@cs2-analyst/report-contract';
 import { HEATMAP_MAX_PENDING, HEATMAP_TIMEOUT_MS, validateHeatmapRequest, validateHeatmapResult } from '../shared/heatmap-ipc.ts';
 import { LocalMatchLibrary } from './local-library.ts';
 import { verifyLibraryArchive } from './library-archive.ts';
@@ -29,8 +30,37 @@ let activeMatchId: string | null = null;
 let cancelActiveImport: (() => void) | null = null;
 let libraryInstance: LocalMatchLibrary | null = null;
 let libraryOpening: Promise<LocalMatchLibrary> | null = null;
+interface PendingPlayerPrompt { playerIds: Set<string>; resolve: (playerId: string | null) => void; timer: ReturnType<typeof setTimeout> }
+let pendingPlayerPrompt: PendingPlayerPrompt | null = null;
 const candidateWorkers = new Map<Electron.UtilityProcess, Promise<void>>();
 const candidateCleanups = new Set<Promise<unknown>>();
+function finishPlayerPrompt(playerId: string | null): boolean {
+  const pending = pendingPlayerPrompt;
+  if (!pending) return false;
+  pendingPlayerPrompt = null;
+  clearTimeout(pending.timer);
+  pending.resolve(playerId);
+  return true;
+}
+/** Ask the Renderer who the local user is, after the DEM player list is known. */
+function askImportPlayer(window: BrowserWindow, players: ImportPlayerChoice[], signal: AbortSignal): Promise<string | null> {
+  if (window.isDestroyed()) return Promise.resolve(null);
+  return new Promise(resolve => {
+    const prompt: PendingPlayerPrompt = {
+      playerIds: new Set(players.map(player => player.id)),
+      resolve: playerId => { signal.removeEventListener('abort', abort); resolve(playerId); },
+      timer: setTimeout(() => finishPlayerPrompt(null), 10 * 60_000),
+    };
+    const abort = () => {
+      if (pendingPlayerPrompt === prompt) finishPlayerPrompt(null);
+    };
+    pendingPlayerPrompt = prompt;
+    signal.addEventListener('abort', abort, { once: true });
+    if (signal.aborted) { finishPlayerPrompt(null); return; }
+    window.webContents.send('report:import-players', players);
+    window.webContents.send('report:progress', 'awaiting-player');
+  });
+}
 function libraryService(): Promise<LocalMatchLibrary> {
   if (libraryInstance) return Promise.resolve(libraryInstance);
   if (!libraryOpening) libraryOpening = LocalMatchLibrary.open().then(value => { libraryInstance = value; return value; })
@@ -157,6 +187,17 @@ ipcMain.handle('window:toggle-maximize', event => {
 ipcMain.handle('window:close', event => { trustedWindow(event)?.close(); });
 ipcMain.handle('window:is-maximized', event => trustedWindow(event)?.isMaximized() ?? false);
 ipcMain.handle('report:cancel', event => { if(trustedWindow(event)&&importing)cancelActiveImport?.(); });
+ipcMain.handle('report:select-player', (event, playerId: unknown): ImportPlayerSelectionResult => {
+  if (!trustedWindow(event)) return { kind: 'error', message: '无效的玩家选择请求。' };
+  if (playerId !== null && (typeof playerId !== 'string' || !playerId || playerId.length > 256)) {
+    return { kind: 'error', message: '无效的玩家选择。' };
+  }
+  const pending = pendingPlayerPrompt;
+  if (!pending) return { kind: 'error', message: '当前没有等待中的玩家选择。' };
+  if (playerId !== null && !pending.playerIds.has(playerId)) return { kind: 'error', message: '所选玩家不属于本场比赛。' };
+  finishPlayerPrompt(playerId);
+  return { kind: 'success' };
+});
 const releaseSession = (event: Electron.IpcMainInvokeEvent, sessionId: unknown) => {
   if(trustedWindow(event)&&typeof sessionId==='string'&&sessionId===activeSessionId)stopAnalysisWorker();
 };
@@ -208,6 +249,15 @@ ipcMain.handle('library:remove', async (event, value: unknown): Promise<LibraryD
   } finally {
     removing = false;
   }
+});
+ipcMain.handle('library:set-self-player', async (event, matchId: unknown, playerId: unknown): Promise<LibrarySelfPlayerResult> => {
+  if (!trustedWindow(event) || !isMatchId(matchId)) return { kind: 'error', message: '无效的玩家身份请求。' };
+  if (playerId !== null && (typeof playerId !== 'string' || !playerId || playerId.length > 256)) {
+    return { kind: 'error', message: '无效的玩家身份。' };
+  }
+  if (importing || opening || removing || exporting) return { kind: 'error', message: '已有比赛任务正在运行，请稍后再设置玩家。' };
+  try { return await (await libraryService()).setSelfPlayer(matchId, playerId); }
+  catch { return { kind: 'error', message: '无法保存玩家身份，请稍后重试。' }; }
 });
 ipcMain.handle('library:export', async (event, matchId: unknown): Promise<LibraryExportResult> => {
   const window = trustedWindow(event);
@@ -432,11 +482,15 @@ async function analyzeDemo(filePath: string, window: BrowserWindow): Promise<Imp
     let settled = false;
     let committed = false;
     let awaitingDuplicate = false;
+    let awaitingPlayers = false;
     let workerExited = false;
+    let selectedSelfPlayerId: string | null = null;
+    let duplicateSelfPlayerId: string | null = null;
     let activationTimeout: ReturnType<typeof setTimeout> | null = null;
     const finish = async (result: ImportResult, retain = false) => {
       if (settled) return;
       settled = true;
+      finishPlayerPrompt(null);
       clearTimeout(timeout);
       if (activationTimeout !== null) clearTimeout(activationTimeout);
       if(cancelActiveImport===cancel)cancelActiveImport=null;
@@ -477,6 +531,32 @@ async function analyzeDemo(filePath: string, window: BrowserWindow): Promise<Imp
       if(message.kind==='heatmap-grid'){ routeHeatmapReply(worker,message);return; }
       if(message.kind==='replay-chunk'){ routeReplayReply(worker,message);return; }
       if(settled)return;
+      if (message.kind === 'players' && !awaitingPlayers) {
+        const offered = Array.isArray(message.players) ? message.players : null;
+        if (!offered || offered.length < 1 || offered.length > 64) {
+          void finish({ kind: 'error', message: 'DEM 玩家列表无效，无法询问你的身份。' }); return;
+        }
+        const players: ImportPlayerChoice[] = [];
+        const seen = new Set<string>();
+        for (const item of offered) {
+          if (!item || typeof item !== 'object' || Array.isArray(item)
+            || typeof item.id !== 'string' || !item.id || item.id.length > 256 || seen.has(item.id)
+            || typeof item.nickname !== 'string' || item.nickname.length > 512 || item.nickname.includes('\0')) {
+            void finish({ kind: 'error', message: 'DEM 玩家列表无效，无法询问你的身份。' }); return;
+          }
+          seen.add(item.id); players.push({ id: item.id, nickname: item.nickname });
+        }
+        awaitingPlayers = true;
+        void (async () => {
+          const choice = await askImportPlayer(window, players, controller.signal);
+          awaitingPlayers = false;
+          if (settled) return;
+          selectedSelfPlayerId = choice;
+          try { worker.postMessage({ kind: 'player-selection', playerId: choice }); }
+          catch { void finish({ kind: 'error', message: '无法继续分析：分析进程不可用。' }); }
+        })();
+        return;
+      }
       if (message.kind === 'progress' && message.phase === 'analyzing') {
         if (!window.isDestroyed()) window.webContents.send('report:progress', 'analyzing');
       } else if (message.kind === 'prepared' && !committed && !awaitingDuplicate) {
@@ -484,10 +564,16 @@ async function analyzeDemo(filePath: string, window: BrowserWindow): Promise<Imp
           void finish({ kind: 'error', message: '比赛存档响应无效。' }); return;
         }
         try {
-          const saved = await library.commitStaging(staging.id, controller.signal, message.receipt, () => { committed = true; });
+          const candidateSelf = message.selfPlayerId === undefined ? selectedSelfPlayerId : message.selfPlayerId;
+          const validSelf = typeof candidateSelf === 'string' && Array.isArray(message.report.players)
+            && message.report.players.some((player: { id?: unknown }) => player?.id === candidateSelf) ? candidateSelf : null;
+          selectedSelfPlayerId = validSelf;
+          const saved = await library.commitStaging(staging.id, controller.signal, message.receipt, () => { committed = true; }, validSelf);
           if (settled) return;
           committed = true;
+          const savedSelf = saved.entry.selfPlayerId ?? validSelf;
           if (saved.duplicate) {
+            duplicateSelfPlayerId = savedSelf;
             awaitingDuplicate = true;
             activationTimeout = setTimeout(() => void finish({ kind: 'error', message: '比赛已在本地库中，但打开已有档案超时。请重试打开该比赛。' }), 30_000);
             let directory: string;
@@ -495,12 +581,12 @@ async function analyzeDemo(filePath: string, window: BrowserWindow): Promise<Imp
             catch { awaitingDuplicate = false; void finish({ kind: 'error', message: '已有比赛档案当前不可用，请检查比赛库完整性。' }); return; }
             if (settled) return;
             worker.postMessage({ kind: 'restore-duplicate', archiveDirectory: directory, sessionId });
-          } else activate({ kind: 'success', report: message.report });
+          } else activate({ kind: 'success', report: message.report, selfPlayerId: savedSelf });
         } catch {
           void finish(controller.signal.aborted ? { kind: 'cancelled' } : { kind: 'error', message: '比赛分析完成，但无法安全保存到本地库。请检查磁盘空间和权限后重试。' });
         }
       } else if (message.kind === 'restored-duplicate' && committed && awaitingDuplicate) {
-        activate({ kind: 'success', report: message.report });
+        activate({ kind: 'success', report: message.report, selfPlayerId: duplicateSelfPlayerId });
       } else if(message.kind==='error')void finish(message);
     });
     worker.on('exit', () => { workerExited=true;if(!settled)void finish({ kind: 'error', message: '分析进程意外退出。请重新选择 DEM。' });else if(activeWorker===worker)stopAnalysisWorker(); });
@@ -510,10 +596,12 @@ async function analyzeDemo(filePath: string, window: BrowserWindow): Promise<Imp
 /** Reopen a saved archive in a fresh Utility worker; the old session survives until success. */
 async function openSavedMatch(matchId: string): Promise<ImportResult> {
   let directory: string;
+  let selfPlayerId: string | null = null;
   try {
     const library = await libraryService();
     const entry = library.get(matchId);
     if (!entry || entry.state !== 'ready') return { kind: 'error', message: '该比赛当前不可用。' };
+    selfPlayerId = entry.selfPlayerId ?? null;
     directory = await library.archiveDirectory(matchId);
   } catch {
     return { kind: 'error', message: '无法读取已保存的比赛，请检查比赛库完整性。' };
@@ -570,7 +658,9 @@ async function openSavedMatch(matchId: string): Promise<ImportResult> {
           void finish({ kind: 'error', message: '已保存比赛的报告无效；当前比赛保持可用。' });
           return;
         }
-        void finish({ kind: 'success', report }, true);
+        const validSelf = selfPlayerId && Array.isArray(report.players)
+          && report.players.some((player: { id?: unknown }) => player?.id === selfPlayerId) ? selfPlayerId : null;
+        void finish({ kind: 'success', report, selfPlayerId: validSelf }, true);
       } else if (message.kind === 'error') void finish(message);
     });
     worker.on('exit', () => {

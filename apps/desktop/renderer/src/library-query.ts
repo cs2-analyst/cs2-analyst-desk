@@ -4,20 +4,17 @@ export type LibrarySort = 'importedAt' | 'map' | 'storedBytes';
 export type SortDirection = 'asc' | 'desc';
 
 export interface LibraryFilters {
-  search: string;
   /** 'all' means no map filter. */
   map: string;
   sort: LibrarySort;
   direction: SortDirection;
 }
 
-export const defaultLibraryFilters: LibraryFilters = { search: '', map: 'all', sort: 'importedAt', direction: 'desc' };
+export const defaultLibraryFilters: LibraryFilters = { map: 'all', sort: 'importedAt', direction: 'desc' };
 
 /** One place that turns UI filter state into the frozen catalogue query. */
 export function toLibraryListQuery(filters: LibraryFilters, limit = 100): LibraryListQuery {
-  const search = filters.search.trim();
   return {
-    ...(search ? { search } : {}),
     map: filters.map === 'all' ? null : filters.map,
     sort: filters.sort,
     direction: filters.direction,

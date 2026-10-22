@@ -68,8 +68,6 @@ test('durable catalogue is WAL/FULL, survives close/reopen, lists and sorts smal
   assert.equal(first.duplicate, false); assert.equal(second.duplicate, false);
   assert.equal(library.list().total, 2);
   assert.equal(library.list({ map: 'de_nuke' }).entries[0].matchId, 'b'.repeat(64));
-  assert.equal(library.list({ search: 'SAME' }).total, 2);
-  assert.equal(library.list({ search: "' OR 1=1 --" }).total, 0);
   assert.equal(library.list({ sort: 'map', direction: 'asc', limit: 1, offset: 1 }).entries[0].map, 'de_nuke');
   const path = await library.archiveDirectory(first.entry.matchId);
   // Listing still works when a payload is inaccessible: it never reads or decompresses it.
@@ -85,10 +83,39 @@ test('durable catalogue is WAL/FULL, survives close/reopen, lists and sorts smal
   const raw = new DatabaseSync(join(root, 'library.db'));
   assert.equal(raw.prepare('PRAGMA journal_mode').get().journal_mode, 'wal');
   // synchronous is per connection; the product opening path always sets FULL (2).
-  assert.equal(raw.prepare('PRAGMA user_version').get().user_version, 1); raw.close();
+  assert.equal(raw.prepare('PRAGMA user_version').get().user_version, 2); raw.close();
   library = await LocalMatchLibrary.open(root); setLibrary(library);
   assert.deepEqual(library.get(first.entry.matchId), first.entry);
   assert.equal(library.list().total, 2);
+}));
+
+test('self-player selection is catalogue state, survives restart and never rewrites the archive snapshot', async () => scope(async ({ library, root, setLibrary }) => {
+  const staged = await stage(library);
+  const added = await library.commitStaging(staged.id, undefined, staged.receipt, undefined, '1');
+  assert.equal(added.entry.selfPlayerId, '1');
+  assert.equal(library.list().entries[0].selfPlayerId, '1');
+  assert.deepEqual(await library.setSelfPlayer(added.entry.matchId, null), { kind: 'success', selfPlayerId: null });
+  assert.equal(library.get(added.entry.matchId).selfPlayerId, null);
+  assert.equal((await library.setSelfPlayer(added.entry.matchId, 'other')).kind, 'error');
+  assert.equal((await library.setSelfPlayer('../outside', '1')).kind, 'error');
+  assert.deepEqual(await library.setSelfPlayer(added.entry.matchId, '1'), { kind: 'success', selfPlayerId: '1' });
+  library.close();
+  library = await LocalMatchLibrary.open(root); setLibrary(library);
+  assert.equal(library.get(added.entry.matchId).selfPlayerId, '1');
+  // The archive manifest is immutable; selection only lives in the catalogue row.
+  const manifest = await readArchiveManifest(await library.archiveDirectory(added.entry.matchId));
+  assert.equal(Object.hasOwn(manifest, 'selfPlayerId'), false);
+}));
+
+test('v1 catalogue migrates in place by adding the self-player column without losing matches', async () => scope(async ({ library, root, setLibrary }) => {
+  const added = await add(library); library.close();
+  const raw = new DatabaseSync(join(root, 'library.db'));
+  raw.exec('ALTER TABLE matches DROP COLUMN self_player_id; PRAGMA user_version=1;'); raw.close();
+  library = await LocalMatchLibrary.open(root); setLibrary(library);
+  assert.deepEqual(library.get(added.entry.matchId), added.entry);
+  assert.equal(library.list().total, 1);
+  assert.equal(library.db.prepare('PRAGMA user_version').get().user_version, 2);
+  assert.ok(library.db.prepare('PRAGMA table_info(matches)').all().some(column => column.name === 'self_player_id'));
 }));
 
 test('longest accepted version metadata stays listable across restart and longer input is rejected', async () => scope(async ({ library, root, setLibrary }) => {
@@ -205,7 +232,7 @@ test('unrecoverable bad rows are omitted per page with a visible count and contr
 }));
 
 test('invalid IDs, malformed queries and forged writer receipts cannot reach another directory', async () => scope(async ({ library }) => {
-  for (const query of [{ limit: 101 }, { offset: -1 }, { search: 'a'.repeat(129) }, { sort: 'match_id;DROP TABLE matches' }, { arbitrary: 'path' }])
+  for (const query of [{ limit: 101 }, { offset: -1 }, { search: 'removed' }, { sort: 'match_id;DROP TABLE matches' }, { arbitrary: 'path' }])
     assert.equal(library.list(query).kind, 'error');
   assert.throws(() => library.get('../outside'));
   await assert.rejects(library.discardStaging('../outside'));
@@ -298,7 +325,7 @@ test('newer SQLite schema is rejected without rewriting its existing catalogue',
   const inspection = new DatabaseSync(join(root, 'library.db'));
   assert.equal(inspection.prepare('PRAGMA user_version').get().user_version, 999);
   assert.equal(inspection.prepare('SELECT count(*) AS n FROM matches').get().n, 1);
-  inspection.exec('PRAGMA user_version=1'); inspection.close();
+  inspection.exec('PRAGMA user_version=2'); inspection.close();
   library = await LocalMatchLibrary.open(root); setLibrary(library);
 }));
 

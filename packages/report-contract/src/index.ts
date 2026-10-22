@@ -1,7 +1,7 @@
 import type { Finding, FindingEvidence } from '@cs2-analyst/findings';
 import type { DesktopReplayMetadata, DesktopReplayRequest, DesktopReplayResult } from './replay.js';
 import type { DesktopHeatmapMetadata, DesktopHeatmapRequest, DesktopHeatmapResult } from './heatmap.js';
-import type { LibraryDeleteResult, LibraryExportResult, LibraryImportResult, LibraryListQuery, LibraryListResult, LibraryStorageResult } from './library.js';
+import type { ImportPlayerSelectionResult, LibraryDeleteResult, LibraryExportResult, LibraryImportResult, LibraryListQuery, LibraryListResult, LibrarySelfPlayerResult, LibraryStorageResult } from './library.js';
 import type { DesktopPlayerPerformance } from './performance.js';
 export type * from './performance.js';
 export type * from './replay.js';
@@ -189,8 +189,12 @@ export interface DesktopDeepReviewPlayer {
   contexts: DesktopDeepReviewFinding[];
   coverage: { status: 'complete' | 'partial' | 'unavailable' };
 }
-export type ImportPhase = 'selecting' | 'parsing' | 'analyzing';
-export type ImportResult = { kind: 'success'; report: DesktopMatchReport } | { kind: 'cancelled' } | { kind: 'error'; message: string };
+export type ImportPhase = 'selecting' | 'parsing' | 'awaiting-player' | 'analyzing';
+export type ImportResult = { kind: 'success'; report: DesktopMatchReport; selfPlayerId?: string | null }
+  | { kind: 'cancelled' }
+  | { kind: 'error'; message: string };
+/** One participant offered by the import-time "who am I" prompt. */
+export interface ImportPlayerChoice { id: string; nickname: string }
 export interface DesktopApi {
   version: string;
   library: {
@@ -203,6 +207,8 @@ export interface DesktopApi {
     exportMatch(matchId: string): Promise<LibraryExportResult>;
     /** Main owns the open dialog and validates the portable package before commit. */
     importArchive(): Promise<LibraryImportResult>;
+    /** Persist the local user's player identity for one saved match. */
+    setSelfPlayer(matchId: string, playerId: string | null): Promise<LibrarySelfPlayerResult>;
   };
   window: {
     minimize(): Promise<void>;
@@ -214,6 +220,9 @@ export interface DesktopApi {
   importDemo(): Promise<ImportResult>;
   /** Resolve a disk-backed File and submit it inside preload, without exposing its path. */
   importDroppedFile(file: File): Promise<ImportResult>;
+  /** Answer the import-time "who am I" prompt; null continues without a selection. */
+  selectImportPlayer(playerId: string | null): Promise<ImportPlayerSelectionResult>;
+  onImportPlayers(listener: (players: ImportPlayerChoice[]) => void): () => void;
   cancelImport(): Promise<void>;
   replay: {
     getChunk(request: DesktopReplayRequest): Promise<DesktopReplayResult>;

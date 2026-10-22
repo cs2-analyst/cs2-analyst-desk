@@ -18,6 +18,11 @@ export interface MatchLibraryEntry {
   matchId: string;
   /** Derived local cache, keyed by archive digest and rule version; absent in legacy rows. */
   playerSummaries?: LibraryPlayerSummary[];
+  /**
+   * The local user's SteamID for this match. Mutable catalogue preference, never part of
+   * the immutable archive; absent/null until the user chooses "who am I".
+   */
+  selfPlayerId?: string | null;
   selectedPlayer?: string;
   fileName: string;
   map: string;
@@ -33,7 +38,6 @@ export interface MatchLibraryEntry {
 export interface LibraryListQuery {
   offset?: number;
   limit?: number;
-  search?: string;
   map?: string | null;
   sort?: 'importedAt' | 'map' | 'storedBytes';
   direction?: 'asc' | 'desc';
@@ -55,5 +59,13 @@ export type LibraryExportResult =
 export type LibraryImportResult =
   | { kind: 'success'; entry: MatchLibraryEntry; duplicate: boolean }
   | { kind: 'cancelled' }
+  | { kind: 'error'; message: string };
+/** Persisted "who am I" selection for one saved match. */
+export type LibrarySelfPlayerResult =
+  | { kind: 'success'; selfPlayerId: string | null }
+  | { kind: 'error'; message: string };
+/** Renderer reply to the import-time self-player prompt. */
+export type ImportPlayerSelectionResult =
+  | { kind: 'success' }
   | { kind: 'error'; message: string };
 

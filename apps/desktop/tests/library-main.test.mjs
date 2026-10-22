@@ -42,11 +42,11 @@ function realEntry(overrides = {}) {
       .map(name => [name, { status: 'unavailable', reason: 'test' }])), storedBytes: 1, ...overrides };
 }
 async function harness(options={}) {
-  const handlers=new Map(),workers=[],timers=new Map(),service=createLibraryDouble(),app=new EventEmitter();let window,timerSequence=0;
+  const handlers=new Map(),workers=[],timers=new Map(),messages=[],service=createLibraryDouble(),app=new EventEmitter();let window,timerSequence=0;
   service.discarded=[];service.discardStaging=async id=>{service.discarded.push(id);};service.closed=false;service.close=()=>{service.closed=true;};
   Object.assign(app,{whenReady:()=>Promise.resolve(),isPackaged:options.isPackaged??false,setAppUserModelId(){},getPath:()=> 'C:/owned-test/documents',quit(){this.emit('will-quit');}});
   class Window extends EventEmitter {
-    constructor(){super();window=this;this.webContents=Object.assign(new EventEmitter(),{mainFrame:{},send(){},setWindowOpenHandler(){}});}
+    constructor(){super();window=this;this.webContents=Object.assign(new EventEmitter(),{mainFrame:{},send(channel,...args){messages.push({channel,args});},setWindowOpenHandler(){}});}
     isDestroyed(){return false;}removeMenu(){}async loadFile(){}static getAllWindows(){return [window];}
   }
   const electron={app,BrowserWindow:Window,dialog:options.dialog??{},ipcMain:{handle:(name,fn)=>handlers.set(name,fn)},utilityProcess:{fork(){
@@ -60,7 +60,7 @@ async function harness(options={}) {
   const start=async()=>{const promise=handlers.get('report:import-file')(trusted,'C:\\local\\dust2.dem');await tick();const worker=workers.at(-1);worker?.emit('spawn');return {promise,worker};};
   const prepared=worker=>{const sessionId=worker.sent[0].sessionId;worker.emit('message',{kind:'prepared',receipt:{manifestHash:'x',storedBytes:100},report:{schemaVersion:2,match:{id:MATCH},replay:{available:true,sessionId,matchId:MATCH,rounds:[{round:1,blocks:[{index:0}]}]}}});};
   const open=async(matchId)=>{const promise=handlers.get('library:open')(trusted,matchId);await tick();const worker=workers.at(-1);worker?.emit('spawn');return {promise,worker};};
-  return {handlers,service,app,trusted,start,prepared,open,workers,timers};
+  return {handlers,service,app,trusted,start,prepared,open,workers,timers,messages};
 }
 
 test('catalogue privileged routes reject foreign frames, invalid limits and oversized service responses',async()=>{
@@ -80,6 +80,54 @@ test('a candidate cannot publish success before catalogue commit and precommit c
   let completed=false;current.promise.then(()=>{completed=true;});await tick();assert.equal(completed,false);
   await h.handlers.get('report:cancel')(h.trusted);release();assert.equal((await current.promise).kind,'cancelled');assert.equal(seen.aborted,true);
 });
+test('DEM import asks the Renderer for the local player and persists the chosen identity', async () => {
+  const h = await harness();
+  let committedSelf = 'unset';
+  h.service.commitStaging = async (_id, _signal, _receipt, onCommitted, selfPlayerId) => {
+    committedSelf = selfPlayerId;
+    onCommitted?.();
+    return { entry: { matchId: MATCH, selfPlayerId: selfPlayerId ?? null }, duplicate: false };
+  };
+  const current = await h.start();
+  current.worker.emit('message', { kind: 'players', players: [{ id: '1', nickname: 'A' }, { id: '2', nickname: 'B' }] });
+  await tick();
+  const prompt = h.messages.find(message => message.channel === 'report:import-players');
+  assert.ok(prompt); assert.deepEqual(JSON.parse(JSON.stringify(prompt.args[0])), [{ id: '1', nickname: 'A' }, { id: '2', nickname: 'B' }]);
+  assert.equal((await h.handlers.get('report:select-player')(h.trusted, '9')).kind, 'error');
+  assert.equal((await h.handlers.get('report:select-player')(h.trusted, '2')).kind, 'success');
+  assert.deepEqual(JSON.parse(JSON.stringify(current.worker.sent.at(-1))), { kind: 'player-selection', playerId: '2' });
+  const sessionId = current.worker.sent[0].sessionId;
+  current.worker.emit('message', { kind: 'prepared', receipt: { manifestHash: 'x', storedBytes: 100 },
+    selfPlayerId: '2', report: { schemaVersion: 2, match: { id: MATCH }, players: [{ id: '1' }, { id: '2' }],
+      replay: { available: true, sessionId, matchId: MATCH, rounds: [{ round: 1, blocks: [{ index: 0 }] }] } } });
+  const result = await current.promise;
+  assert.equal(result.kind, 'success'); assert.equal(result.selfPlayerId, '2'); assert.equal(committedSelf, '2');
+});
+
+test('cancelling while the player prompt is open ends the import and kills the candidate', async () => {
+  const h = await harness();
+  const current = await h.start();
+  current.worker.emit('message', { kind: 'players', players: [{ id: '1', nickname: 'A' }] });
+  await tick();
+  await h.handlers.get('report:cancel')(h.trusted);
+  assert.equal((await current.promise).kind, 'cancelled');
+  assert.equal(current.worker.killed, true);
+  assert.equal(h.messages.some(message => message.channel === 'report:import-players'), true);
+});
+
+test('saved-match self identity is validated and persisted through the catalogue service', async () => {
+  const h = await harness(), calls = [];
+  h.service.setSelfPlayer = async (matchId, playerId) => { calls.push([matchId, playerId]); return { kind: 'success', selfPlayerId: playerId }; };
+  assert.equal((await h.handlers.get('library:set-self-player')({}, MATCH, '1')).kind, 'error');
+  assert.equal((await h.handlers.get('library:set-self-player')(h.trusted, '../bad', '1')).kind, 'error');
+  assert.equal((await h.handlers.get('library:set-self-player')(h.trusted, MATCH, 7)).kind, 'error');
+  assert.deepEqual(JSON.parse(JSON.stringify(await h.handlers.get('library:set-self-player')(h.trusted, MATCH, '1'))),
+    { kind: 'success', selfPlayerId: '1' });
+  assert.deepEqual(JSON.parse(JSON.stringify(await h.handlers.get('library:set-self-player')(h.trusted, MATCH, null))),
+    { kind: 'success', selfPlayerId: null });
+  assert.deepEqual(calls, [[MATCH, '1'], [MATCH, null]]);
+});
+
 test('cancellation after the synchronous durable commit notification still returns success',async()=>{
   const h=await harness();let release;
   h.service.commitStaging=async(_id,_signal,_receipt,onCommitted)=>{onCommitted();await new Promise(resolve=>{release=resolve;});return {entry:{matchId:MATCH},duplicate:false};};
@@ -113,7 +161,7 @@ test('import cannot start while a saved match is opening', async () => {
 
 test('saved-match open restores a fresh session from the archive directory', async () => {
   const h = await harness(), id = 'a'.repeat(64);
-  assert.deepEqual(await h.service.get(id), { matchId: id, state: 'ready' });
+  assert.deepEqual(await h.service.get(id), { matchId: id, state: 'ready', selfPlayerId: null });
   const opened = await h.open(id);
   assert.equal(opened.worker.sent[0].kind, 'restore');
   assert.equal(opened.worker.sent[0].archiveDirectory, 'C:/owned-test/archive-' + id);
