@@ -68,6 +68,12 @@ const useStyles = makeStyles({
     ':focus-visible': { outline: `2px solid ${tokens.colorBrandStroke1}`, outlineOffset: '2px' },
   },
   reportHeaderInfo: { minWidth: 0, flex: 1 },
+  mapTitleRow: { display: 'flex', alignItems: 'flex-end', gap: '10px', minWidth: 0 },
+  mapTitle: { flexShrink: 0, whiteSpace: 'nowrap' },
+  headerFileName: {
+    minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+    paddingBottom: '3px', color: tokens.colorNeutralForeground3,
+  },
   statValueCompact: { fontVariantNumeric: 'tabular-nums' },
   // Timeline owns no view-level scroll: only the round card's inner list scrolls.
   timelinePanel: { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '20px 24px 32px', '&[hidden]': { display: 'none' } },
@@ -447,7 +453,16 @@ function Report({ report, playerId, replayActive, activeTab, onSelectView }: {
   useEffect(() => () => { if (highlightTimer.current !== undefined) window.clearTimeout(highlightTimer.current); }, []);
   return <div className={s.reportFrame}>
     <div className={s.viewHeader}>
-      <div className={`${s.column} ${s.reportHeaderInfo}`}><Title1>{report.match.map}</Title1><Body1>{report.match.score ? `${report.match.score.initialCT} : ${report.match.score.initialT}` : '比分不可用'} · 开局 CT 队 / 开局 T 队 · {report.match.rounds} 回合</Body1><ReportSecondaryLine fileName={report.match.fileName} rating={p.performance?.rating} /></div>
+      <div className={`${s.column} ${s.reportHeaderInfo}`}>
+        <div className={s.mapTitleRow}>
+          <Title1 className={s.mapTitle}>{report.match.map}</Title1>
+          <Tooltip content={report.match.fileName} relationship="description">
+            <Caption1 className={s.headerFileName} tabIndex={0} data-report-filename title={report.match.fileName}>{report.match.fileName}</Caption1>
+          </Tooltip>
+        </div>
+        <Body1>{report.match.score ? `${report.match.score.initialCT} : ${report.match.score.initialT}` : '比分不可用'} · 开局 CT 队 / 开局 T 队 · {report.match.rounds} 回合</Body1>
+        <ReportSecondaryLine rating={p.performance?.rating} />
+      </div>
       <div className={s.identityRow}>
         <div className={s.column}>
           <Caption1>自己是谁</Caption1>

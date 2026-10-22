@@ -29,7 +29,7 @@ import type { MatchLibraryEntry } from "@cs2-analyst/report-contract";
 import { useReport } from "./store";
 import { formatBytes, formatImportedAt, toLibraryListQuery } from "./library-query.ts";
 import type { LibraryFilters } from "./library-query.ts";
-import { ImportIcon } from "./icons";
+import { DeleteIcon, ExportIcon, ImportIcon, OpenIcon } from "./icons";
 import { palette } from "./theme";
 import { RatingValue, HighlightTags, formatMetric, formatKast } from "./performance-display";
 import { WinSelect } from "./winui-select";
@@ -221,7 +221,7 @@ export function LibraryList({
     ["Rating", 76],
     ["KAST", 78],
     ["高光", 100],
-    ["操作", 188],
+    ["操作", 116],
   ] as const;
   return (
     <Table
@@ -373,36 +373,39 @@ function LibraryRow({
       </TableCell>
       <TableCell className={s.cell} onClick={stop} onKeyDown={stop}>
         <div className={s.actions}>
-          <Button
-            size="small"
-            appearance="subtle"
-            data-library-open
-            aria-label={`打开 ${entry.fileName}`}
-            disabled={busy || entry.state !== "ready"}
-            onClick={() => onOpen(entry.matchId)}
-          >
-            打开
-          </Button>
-          <Button
-            size="small"
-            appearance="subtle"
-            data-library-export
-            aria-label={`导出 ${entry.fileName}`}
-            disabled={busy || entry.state !== "ready"}
-            onClick={() => onExport(entry.matchId)}
-          >
-            导出
-          </Button>
-          <Button
-            size="small"
-            appearance="subtle"
-            data-library-delete
-            aria-label={`删除 ${entry.fileName}`}
-            disabled={busy}
-            onClick={() => onDelete(entry)}
-          >
-            删除
-          </Button>
+          <Tooltip content="打开比赛" relationship="label">
+            <Button
+              size="small"
+              appearance="subtle"
+              icon={<OpenIcon size={16} />}
+              data-library-open
+              aria-label={`打开 ${entry.fileName}`}
+              disabled={busy || entry.state !== "ready"}
+              onClick={() => onOpen(entry.matchId)}
+            />
+          </Tooltip>
+          <Tooltip content="导出比赛归档" relationship="label">
+            <Button
+              size="small"
+              appearance="subtle"
+              icon={<ExportIcon size={16} />}
+              data-library-export
+              aria-label={`导出 ${entry.fileName}`}
+              disabled={busy || entry.state !== "ready"}
+              onClick={() => onExport(entry.matchId)}
+            />
+          </Tooltip>
+          <Tooltip content="删除比赛" relationship="label">
+            <Button
+              size="small"
+              appearance="subtle"
+              icon={<DeleteIcon size={16} />}
+              data-library-delete
+              aria-label={`删除 ${entry.fileName}`}
+              disabled={busy}
+              onClick={() => onDelete(entry)}
+            />
+          </Tooltip>
         </div>
       </TableCell>
     </TableRow>

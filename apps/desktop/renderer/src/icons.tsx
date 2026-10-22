@@ -114,6 +114,31 @@ export function ReplayIcon(props: IconProps) {
   </Icon>;
 }
 
+/** 比赛记录：打开（外链箭头）。 */
+export function OpenIcon(props: IconProps) {
+  return <Icon {...props}>
+    <path d="M4 6.5v8A1.5 1.5 0 0 0 5.5 16h8a1.5 1.5 0 0 0 1.5-1.5V10" />
+    <path d="M9.5 4H16v6.5M15.8 4.2 8.5 11.5" />
+  </Icon>;
+}
+
+/** 比赛记录：导出（箭头离开托盘）。 */
+export function ExportIcon(props: IconProps) {
+  return <Icon {...props}>
+    <path d="M10 12.5V3.8M6.9 6.9 10 3.8l3.1 3.1" />
+    <path d="M4 12.8v2.2a1.5 1.5 0 0 0 1.5 1.5h9a1.5 1.5 0 0 0 1.5-1.5v-2.2" />
+  </Icon>;
+}
+
+/** 比赛记录：删除（垃圾桶）。 */
+export function DeleteIcon(props: IconProps) {
+  return <Icon {...props}>
+    <path d="M4.5 6h11M8 6V4.6h4V6" />
+    <path d="m6.1 6 .7 9.1a1.5 1.5 0 0 0 1.5 1.4h3.4a1.5 1.5 0 0 0 1.5-1.4L14 6" />
+    <path d="M8.6 9v4.6M11.4 9v4.6" />
+  </Icon>;
+}
+
 /** 首页与侧边栏底栏：导入 DEM（箭头落入托盘）。 */
 export function ImportIcon(props: IconProps) {
   return <Icon {...props}>

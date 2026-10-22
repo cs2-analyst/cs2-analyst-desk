@@ -43,11 +43,11 @@ export function HighlightTags({ highlights }: { highlights?: DesktopPlayerHighli
       data-highlight={tag.type} aria-label={tag.tooltip} style={{ backgroundColor: tagColors[tag.color] }}>{tag.label}</span></Tooltip>)}</div> : <span data-highlight-empty>—</span>;
 }
 
-/** The filename and rating share the same bounded row at every window width. */
-export function ReportSecondaryLine({ fileName, rating }: { fileName: string; rating?: DesktopPlayerRating }) {
+/** Optional filename and rating share the same bounded row at every window width. */
+export function ReportSecondaryLine({ fileName, rating }: { fileName?: string; rating?: DesktopPlayerRating }) {
   const s = useStyles();
   return <div className={s.meta} data-report-secondary>
-    <Tooltip content={fileName} relationship="description"><Caption1 className={s.file} tabIndex={0} data-report-filename title={fileName}>{fileName}</Caption1></Tooltip>
+    {fileName ? <Tooltip content={fileName} relationship="description"><Caption1 className={s.file} tabIndex={0} data-report-filename title={fileName}>{fileName}</Caption1></Tooltip> : null}
     <span className={s.prominent}><RatingValue rating={rating} prefix /></span>
   </div>;
 }
