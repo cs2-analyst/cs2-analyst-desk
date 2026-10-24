@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-25",
+  "reviewedThroughRevision": "a6915538a453d4093472f318e7a5309047e79e7d",
+  "reviewType": "Independent read-only implementation review and targeted verification",
+  "status": "pass-with-measurements-pending",
+  "runtime": "Node 26.3.0; these are code-level tests, not bundled Electron production performance measurements",
+  "tests": {
+    "firstIndependentRegression": { "passed": 104, "failed": 0, "skipped": 0 },
+    "postMemoryFixCodecAndOptimizationRegression": { "passed": 15, "failed": 0, "skipped": 0 },
+    "additionalSyntheticBombAndSubdivisionCheck": {
+      "trials": 40,
+      "byteExactChunks": 610,
+      "comparison": "Full normalized Chunk JSON bytes; exclude only temporary sessionId",
+      "method": "Varied bomb actions, same-tick conflicts, irregular event ticks, forced recursive subdivision and reverse block order",
+      "scope": "One-off independent synthetic check; not a real DEM result or a committed regression suite"
+    }
+  },
+  "findings": [
+    {
+      "id": "serialization-tail-payload-retention",
+      "priority": "P2",
+      "status": "fixed-and-independently-reverified",
+      "fixRevision": "a6915538a453d4093472f318e7a5309047e79e7d",
+      "summary": "The resolved serial queue Promise retained the last decoded Chunk outside the LRU, including after clear. The queue now resolves to undefined.",
+      "verification": "Directly asserted queue result is undefined both before and after clear without explicit GC"
+    },
+    {
+      "id": "verification-source-memory-risk",
+      "priority": "performance-review-point",
+      "status": "implementation-mitigated-runtime-measurements-pending",
+      "fixRevision": "7b1b6da81f86abf3b249ec9fff30edc7dac38ee7",
+      "summary": "Verification no longer retains Match/Spatial unnecessarily; owned tuple input is consumed after complete preflight; canonical byte accounting avoids whole-source JSON strings."
+    }
+  ],
+  "checkedBoundaries": [
+    "v1 gzip and v2 Brotli descriptors, paths, digests and budgets",
+    "strict tuple identity, value, property presence/order and preallocation expansion limits",
+    "saved presentation templates and fixed frame/bomb projection decoder",
+    "random block generation, LRU eviction, stale work and release",
+    "portable v1/v2 inner and outer inventory/version checks",
+    "SQLite v3 generation replacement, cancellation, crash recovery, preserved preferences and corrupt-pointer protection"
+  ],
+  "blockingFindingsRemaining": 0,
+  "notClaimed": [
+    "Four-fixture real DEM performance or complete acceptance matrix",
+    "Actual GUI Main/Utility/Renderer process memory and latency",
+    "Installer UI, cross-display DPI or physical power-loss validation",
+    "Unknown future application version interoperability"
+  ],
+  "measurementCautions": [
+    "Exclude strict equivalence fingerprint overhead from production open timing",
+    "Measure portable import/export Main memory, not only Utility open memory",
+    "New-process first open does not imply cleared OS filesystem cache",
+    "Do not use explicit GC to pass production budgets"
+  ]
+}
