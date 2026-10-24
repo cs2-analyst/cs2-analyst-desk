@@ -421,9 +421,10 @@ async function launchTrial(config, benchmark, version, trial, name) {
     catch (error) { cleanupError = error; result.cleanupError = { message: error.message, stack: error.stack }; }
     writeFileSync(join(directory, 'electron.stdout.log'), tracked.stdout);
     writeFileSync(join(directory, 'electron.stderr.log'), tracked.stderr);
-    if (cleanupError && result.status !== 'FAIL') { result.status = 'FAIL'; result.error = result.cleanupError; }
+    const primaryFailed = result.status === 'FAIL';
+    if (cleanupError && !primaryFailed) { result.status = 'FAIL'; result.error = result.cleanupError; }
     save(run, join(directory, 'result.json'), result);
-    if (cleanupError && !result.error) throw cleanupError;
+    if (cleanupError && !primaryFailed) throw cleanupError;
   }
   return result;
 }
