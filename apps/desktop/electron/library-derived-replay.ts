@@ -129,7 +129,8 @@ export class DerivedReplaySession {
       this.cache.set(key, json); this.bytes += size;
       return chunk;
     });
-    this.pending = run.catch(() => undefined);
+    // The serialisation tail must not retain the last parsed chunk outside the LRU.
+    this.pending = run.then(() => undefined, () => undefined);
     return run;
   }
   clear() { ++this.sequence; this.cache.clear(); this.bytes = 0; this.replay = null; this.loader = null; }
