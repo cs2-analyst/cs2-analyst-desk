@@ -38,12 +38,13 @@ export interface ArchiveWriteInput { report: DesktopMatchReport; chunks: Readonl
   /** Trusted original import timestamp when explicitly reanalysing an existing match. */
   createdAt?: string }
 export interface ArchiveWriteResult { manifest: ArchiveManifest; manifestHash: string; storedBytes: number }
-interface ArchiveOptions { signal?: AbortSignal; mode?: 'full' | 'compressed' }
+interface ArchiveOptions { signal?: AbortSignal; mode?: 'full' | 'compressed'; retainSources?: boolean }
 type JsonObject = Record<string, unknown>;
 function fail(reason: string): never { throw new Error(`Invalid match archive: ${reason}`); }
 function unsupportedVersion(value: unknown): boolean {
   if (!plain(value) || value.format !== 'cs2-analyst-match') return false;
   if (integer(value.schemaVersion, 1) && ![1, 2].includes(value.schemaVersion)) return true;
+  if (plain(value.versions) && integer(value.versions.archive, 1) && ![1, 2].includes(value.versions.archive)) return true;
   return plain(value.versions) && Object.entries({ report: 2, replay: 1 }).some(([key, supported]) =>
     integer((value.versions as JsonObject)[key], 1) && (value.versions as JsonObject)[key] !== supported);
 }
@@ -297,7 +298,7 @@ function validateAvailability(report: DesktopMatchReport, replay: boolean, spati
   if ((report.heatmap?.layers.kills.available || report.heatmap?.layers.deaths.available) && !spatial) fail('Heatmap events lack canonical source');
 }
 
-async function decodeFile(directory: string, file: ArchiveFile, options?: ArchiveOptions): Promise<unknown> {
+async function decodeFile(directory: string, file: ArchiveFile, options?: ArchiveOptions, onCanonicalBytes?: (bytes: number) => void): Promise<unknown> {
   aborted(options);
   const compressed = await readBounded(directory, file.path, LIBRARY_ARCHIVE_LIMITS.componentBytes, archiveCompressedBytes(file));
   if (hash(compressed) !== archiveCompressedHash(file)) fail('compressed digest mismatch');
@@ -306,7 +307,9 @@ async function decodeFile(directory: string, file: ArchiveFile, options?: Archiv
   if (raw.length !== file.rawBytes || hash(raw) !== file.sha256) fail('payload digest or size mismatch');
   let value: unknown;
   try { value = JSON.parse(raw.toString('utf8')); } catch { return fail('payload JSON'); }
-  return 'encoding' in file && file.encoding === 'replay-tuples-v1' ? decodeStoredReplay(value) : value;
+  if ('encoding' in file && file.encoding === 'replay-tuples-v1') return decodeStoredReplay(value, { consume: true, onCanonicalBytes });
+  onCanonicalBytes?.(file.rawBytes);
+  return value;
 }
 
 async function verifyCompressedFile(directory: string, file: ArchiveFile, options?: ArchiveOptions): Promise<void> {
@@ -371,13 +374,18 @@ export async function loadLibraryArchive(directory: string, options?: ArchiveOpt
   let report: DesktopMatchReport | null = null;
   const sources = new Set<ArchiveFileRole>();
   const values = new Map<ArchiveFileRole, unknown>();
+  let canonicalBytes = 0;
   for (const file of manifest.files) {
     if (options?.mode === 'compressed') { await verifyCompressedFile(directory, file, options); continue; }
     if (file.role === 'replay-projection') continue;
-    const value = await decodeFile(directory, file, options);
+    const value = await decodeFile(directory, file, options, bytes => { canonicalBytes += bytes; });
     if (file.role === 'report') { validateReport(value, manifest); report = value; }
     else if (file.role === 'replay-chunk') validateChunk(value, manifest, file);
-    else { validateSource(value, manifest, file.role); values.set(file.role, value); if (value !== null) sources.add(file.role); }
+    else {
+      validateSource(value, manifest, file.role);
+      if (options?.retainSources !== false || (manifest.schemaVersion === 2 && file.role === 'heatmap-replay')) values.set(file.role, value);
+      if (value !== null) sources.add(file.role);
+    }
   }
   if (report) validateAvailability(report, sources.has('heatmap-replay'), sources.has('heatmap-spatial'));
   let replayBytes = 0;
@@ -398,17 +406,16 @@ export async function loadLibraryArchive(directory: string, options?: ArchiveOpt
   }
   if (report && manifest.schemaVersion === 2) {
     // Packed bytes are not a licence to expand the canonical-source/Replay budgets.
-    const canonicalBytes = [...values.values()].reduce<number>((sum, value) => sum + Buffer.byteLength(JSON.stringify(value)), 0);
-    if (canonicalBytes + Buffer.byteLength(JSON.stringify(report)) + replayBytes > LIBRARY_ARCHIVE_LIMITS.totalRawBytes) fail('restored archive budget');
+    if (canonicalBytes + replayBytes > LIBRARY_ARCHIVE_LIMITS.totalRawBytes) fail('restored archive budget');
   }
   return { manifest, manifestHash: archiveManifestHash(manifest),
     storedBytes: Buffer.byteLength(JSON.stringify(manifest)) + manifest.files.reduce((sum, file) => sum + archiveCompressedBytes(file), 0),
-    report, sources: values.size ? { match: values.get('heatmap-match') as Match, replay: values.get('heatmap-replay') as MatchReplay | null,
+    report, sources: options?.retainSources !== false && values.size ? { match: values.get('heatmap-match') as Match, replay: values.get('heatmap-replay') as MatchReplay | null,
       spatial: values.get('heatmap-spatial') as MatchSpatialEvidence | null } : null };
 }
 
 export async function verifyLibraryArchive(directory: string, options?: ArchiveOptions): Promise<ArchiveWriteResult> {
-  const { manifest, manifestHash, storedBytes } = await loadLibraryArchive(directory, options);
+  const { manifest, manifestHash, storedBytes } = await loadLibraryArchive(directory, { ...options, retainSources: false });
   return { manifest, manifestHash, storedBytes };
 }
 
@@ -468,8 +475,9 @@ export async function writeLibraryArchive(directory: string, input: ArchiveWrite
     if (manifest.files.length > LIBRARY_ARCHIVE_LIMITS.fileCount
       || manifest.files.reduce((sum, file) => sum + file.rawBytes, 0) > LIBRARY_ARCHIVE_LIMITS.totalRawBytes
       || manifest.files.reduce((sum, file) => sum + archiveCompressedBytes(file), 0) > LIBRARY_ARCHIVE_LIMITS.totalGzipBytes) fail('writer archive budget');
-    const packed = JSON.parse(raw.toString('utf8'));
-    const stored = version === 2 && role === 'heatmap-replay' ? decodeStoredReplay(packed) : packed;
+    // The encoder has already validated every tuple. Validate the original canonical
+    // source instead of allocating a second full sample tree alongside the parser result.
+    const stored = version === 2 && role === 'heatmap-replay' ? value : JSON.parse(raw.toString('utf8'));
     if (role === 'replay-chunk') validateChunk(stored, manifest, file);
     else if (role === 'replay-projection') {
       if (!report.replay || !input.replay) fail('projection requires source');
