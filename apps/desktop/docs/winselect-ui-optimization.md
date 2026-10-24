@@ -81,3 +81,22 @@ export type WinSelectGroup = { label?: string; items: readonly WinSelectItem[] }
 额外尝试 `node scripts/desktop-report-smoke.mjs`：**FAIL，未进入 DEM 报告场景**。`scripts/window-shell-checks.mjs:40` 仍断言标题栏导航仅有 `back/forward`，当前 HEAD 的 `app-titlebar.tsx` 已包含 `back/home/forward`。这两处均未被本次修改；不放宽旧断言、不把该 smoke 记作通过。上述真实 DEM 定向检查独立通过。本次不包含安装版、原生 Explorer 拖放或跨显示器 DPI 验收。
 
 分组回归测试：`apps/desktop/tests/player-select-groups.test.mjs`，覆盖 12/12 换边、时间线倒序、后续多数阵营与开局不同，以及缺失/未知开局证据。
+
+## 2026-10-25：限高列表保留选项行高
+
+问题：只验证列表 `max-height` / `overflow-y` 或分组玩家列表，不足以保证未分组选项的行高。`WinOption` 的 `overflow: hidden` 使其在纵向 Flex 列表中的自动最小高度不再保护内容，默认 `flex-shrink: 1` 会压缩长列表；18 项回合菜单实测行高仅约 15.4px，列表 `scrollHeight === clientHeight === 320`，没有实际滚动范围。
+
+修复：共享 `WinOption` 设置 `flexShrink: 0`，保留 Fluent 默认 32px 自然行高，不另设固定高度。列表仍使用原默认高度上限及内部滚动，自定义高度、文本省略、Tooltip、选中竖条和 Fluent 键盘行为不变。
+
+排查：Renderer 的所有选择器均使用 `WinSelect` / `WinOption`。回放及热力图回合、热力图玩家、自己是谁、导入身份选择和比赛库地图筛选等未分组列表在项数较多或窗口较矮时均可能受影响，共享修复统一覆盖；已分组的目标玩家列表原先行高正常，继续验证其行为。
+
+本次验证：
+
+- `pnpm --filter @cs2-analyst/desktop build`：PASS，包含类型检查、13/13 地图资源校验及 Main/preload/Renderer 构建。
+- `node --test apps/desktop/tests/player-select-groups.test.mjs apps/desktop/tests/report-ux.test.mjs apps/desktop/tests/app-shell.test.mjs`：PASS，35/35，0 skip。
+- 真实 TSX 组件在 Electron/Chromium 中实测：1024×768 / 800×360，18/40 项回合、11/10/6 项普通列表及 40 项分组列表全部保持 32px；超出实际列表高度时滚动，End 显示末项、Enter 选择末项、Escape 关闭均通过。默认/自定义/slot/class 高度、Tooltip 及鼠标选择回归通过，无应用异常或控制台错误/警告。
+- 已构建应用及本地 `.demo/demo1.dem`：回放 24 项、热力图 25 项回合列表均保持 32px，320px 列表内滚动；比赛库地图筛选/排序、导入身份选择、自己是谁、目标玩家、对比指标、回放倍速和所有热力图筛选器逐一验证行高、末项显示及 Escape。页面身份、非空内容、无 Vite 错误遮罩及无未捕获异常均通过。
+
+本次会话没有 Browser skill，沿用项目既有 Electron CDP 验证设施，没有新增浏览器依赖。临时脚本 `cs2-winselect-height-qa.mjs` / `cs2-winselect-height-report-qa.mjs` 和截图存放在系统临时目录，不进入仓库。未执行安装包、多显示器 DPI 或多楼层 DEM 验收；修复仅涉及 Renderer 共用样式，不改变领域包、IPC 或 DEM 数据。
+
+最终本机证据目录：`%TEMP%/cs2-winselect-qa-dQUl2g/`（组件/矮窗口）及 `%TEMP%/cs2-winselect-report-qa-mjn7KO/`（真实应用回放、热力图及 `selector-metrics.json`）。

@@ -10,6 +10,8 @@ import { useRef, useState, useEffect } from 'react';
 const useStyles = makeStyles({
   option: {
     position: 'relative',
+    // Ellipsis removes the flex item's intrinsic minimum height; scroll the list instead of shrinking rows.
+    flexShrink: 0,
     // Reserve identical space for every row, selected or not.
     paddingLeft: '24px !important',
     overflow: 'hidden',
