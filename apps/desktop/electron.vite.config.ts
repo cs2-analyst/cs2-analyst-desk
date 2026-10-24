@@ -9,7 +9,7 @@ const packageVersion = (path: string) => JSON.parse(readFileSync(resolvePath(pat
 const sourceRevision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: resolvePath('../../'), encoding: 'utf8', windowsHide: true }).trim();
 const sourceDirty = execFileSync('git', ['status', '--porcelain', '--untracked-files=no'], { cwd: resolvePath('../../'), encoding: 'utf8', windowsHide: true }).trim() !== '';
 const archiveVersions = {
-  application: packageVersion('./package.json'), archive: 1, report: 2, replay: 1,
+  application: packageVersion('./package.json'), archive: 2, report: 2, replay: 1,
   analysis: `analytics:${packageVersion('../../packages/analytics/package.json')};findings:${packageVersion('../../packages/findings/package.json')};deep-review:${packageVersion('../../packages/deep-review/package.json')};heatmap:p7.1-v1;source:${sourceRevision}${sourceDirty ? ':dirty' : ''}`,
   parser: packageVersion('../../packages/dem-parser/package.json'),
   native: packageVersion('../../packages/demoparser-native/package.json'),

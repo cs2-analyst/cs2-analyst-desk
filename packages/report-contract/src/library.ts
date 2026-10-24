@@ -2,7 +2,7 @@ import type { LibraryPlayerSummary } from './performance.js';
 /** Small, JSON-only catalogue contracts. Disk paths and archive payloads stay in Main/Utility. */
 export interface ArchiveVersions {
   application: string;
-  archive: 1;
+  archive: 1 | 2;
   report: 2;
   replay: 1;
   analysis: string;

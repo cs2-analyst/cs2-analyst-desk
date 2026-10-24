@@ -1,6 +1,7 @@
 import { Demoparser2Provider } from '@cs2-analyst/dem-parser';
 import { buildDesktopReport } from './report.js';
 import { ReplaySession } from './replay-session.ts';
+import { DerivedReplaySession, createReplayProjections } from './library-derived-replay.ts';
 import { replayResourceId } from '../shared/replay-resource.ts';
 import { createHeatmapSession, type HeatmapSession } from './heatmap-session.ts';
 import { displayPlayerName } from './player-name.ts';
@@ -27,9 +28,15 @@ async function restoreArchived(directory: string, sessionId: string) {
   clearSessions();
   const archive = await import('./library-archive.ts');
   // Full verification decompresses every component; historical open never trusts a summary.
-  const { manifest } = await archive.verifyLibraryArchive(directory);
-  const report = await archive.readArchiveReport(directory, manifest, sessionId);
-  const sources = await archive.readArchiveSources(directory, manifest);
+  const loaded = await archive.loadLibraryArchive(directory);
+  const { manifest, sources } = loaded;
+  if (!loaded.report || !sources) throw new Error('Missing verified archive sources');
+  // Hydrate verified bytes once; full verification already decoded the canonical sources.
+  const report = loaded.report;
+  if (report.replay) report.replay.sessionId = report.replay.available ? sessionId : null;
+  if (report.heatmap) report.heatmap.sessionId = sessionId;
+  const { upgradeReportPerformance } = await import('./player-performance.ts');
+  upgradeReportPerformance(report);
   if (disposed) throw new Error('Worker disposed during restore');
   const heatmap = createHeatmapSession(sources.match, sources.replay, sources.spatial, sessionId);
   heatmapSession = heatmap.session;
@@ -37,7 +44,9 @@ async function restoreArchived(directory: string, sessionId: string) {
   if (report.heatmap?.available) report.heatmap = heatmap.metadata;
   else { heatmapSession?.clear(); heatmapSession = null; }
   if (report.replay?.available) {
-    session = { metadata: report.replay, get: request => archive.readArchiveChunk(directory, manifest, request), clear() {} };
+    session = manifest.schemaVersion === 2 && sources.replay
+      ? new DerivedReplaySession(sources.replay, report.replay, round => archive.readArchiveProjection(directory, manifest, round))
+      : { metadata: report.replay, get: request => archive.readArchiveChunk(directory, manifest, request), clear() {} };
   }
   return report;
 }
@@ -59,11 +68,13 @@ process.parentPort?.on('message', async ({ data }: { data: { kind?: string; file
     process.parentPort?.postMessage({kind:'heatmap-grid',requestId:data.requestId,result});return;
   }
   if (data.kind === 'replay-chunk' && initialized) {
+    const activeSession = session;
     let chunk: unknown = null;
     try {
-      const value = data.request ? session?.get(data.request as DesktopReplayRequest) : null;
+      const value = data.request ? activeSession?.get(data.request as DesktopReplayRequest) : null;
       chunk = value && typeof (value as Promise<unknown>).then === 'function' ? await value : value;
     } catch { /* Corrupt archived chunks fail within this request, without crashing the worker. */ }
+    if (disposed || session !== activeSession) return;
     process.parentPort?.postMessage({ kind:'replay-chunk',requestId:data.requestId,
       result:chunk?{kind:'success',chunk}:{kind:'error',message:'回放会话或数据块已失效。'} });
     return;
@@ -129,6 +140,17 @@ process.parentPort?.on('message', async ({ data }: { data: { kind?: string; file
       const written = await archive.writeLibraryArchive(data.archiveDirectory, { report, chunks: replaySession?.chunks ?? new Map(),
         match: parsed.match, replay: parsed.replay, spatial: parsed.spatial, versions,
         ...(data.expectedMatchId !== undefined ? { createdAt: data.createdAt } : {}) });
+      if (written.manifest.schemaVersion === 2 && parsed.replay && replaySession) {
+        // Staging is renamed on commit. Retain only small immutable projection context,
+        // never a loader pointing at the old staging path or the eager full-match cache.
+        const projections = createReplayProjections(replaySession.chunks);
+        session = new DerivedReplaySession(parsed.replay, metadata, async round => {
+          const projection = projections.get(round);
+          if (!projection) throw new Error('Missing replay projection');
+          return projection;
+        });
+        replaySession.clear(); replaySession = null;
+      }
       // Verify every decompressed component in Utility before Main can publish its small catalogue entry.
       const verified = await archive.verifyLibraryArchive(data.archiveDirectory);
       if (disposed) return;

@@ -14,6 +14,7 @@ async function reanalysisHarness({ expectedMatchId = 'a'.repeat(64), selfPlayerI
     if (name === './report.js') return { buildDesktopReport: (_m, _p, _s, _t, self) => { identities.push(self); return { schemaVersion: 2, players: [{ id: 'self' }], match: { id: 'a'.repeat(64) } }; } };
     if (name === './player-name.ts') return { displayPlayerName: (_id, name) => name };
     if (name === './replay-session.ts') return { ReplaySession: class {} };
+    if (name === './library-derived-replay.ts') return {};
     if (name === '../shared/replay-resource.ts') return { replayResourceId: 'resource' };
     if (name === './heatmap-session.ts') return { createHeatmapSession: () => ({ session: null, metadata: { available: false } }) };
     throw new Error(name);
@@ -52,6 +53,7 @@ test('replay cache failure degrades independently after the successful unchanged
     if(name==='./report.js')return {buildDesktopReport:()=>report};
     if(name==='./player-name.ts')return {displayPlayerName:(_id,nickname)=>nickname?.trim()?nickname:'未知玩家'};
     if(name==='./replay-session.ts')return {ReplaySession:class {constructor(){throw new Error('budget');}}};
+    if(name==='./library-derived-replay.ts')return {};
     if(name==='../shared/replay-resource.ts')return {replayResourceId:'resource'};
     if(name==='./heatmap-session.ts')return {createHeatmapSession:()=>({session:null,metadata:{available:false}})};
     throw new Error(name);

@@ -2,13 +2,16 @@ import { createHash } from 'node:crypto';
 import { lstat, mkdir, open, readdir, realpath } from 'node:fs/promises';
 import { basename, dirname, isAbsolute, join, parse, relative, resolve, sep } from 'node:path';
 import { promisify } from 'node:util';
-import { gzip as gzipCallback, gunzip as gunzipCallback } from 'node:zlib';
+import { gzip as gzipCallback, gunzip as gunzipCallback, brotliCompress as brotliCallback, brotliDecompress as unbrotliCallback, constants } from 'node:zlib';
 import type { Match, MatchReplay, MatchSpatialEvidence } from '@cs2-analyst/match-model';
 import type { ArchiveVersions, ArchiveCapabilities, LibraryCapability, DesktopMatchReport, DesktopReplayChunk, DesktopReplayRequest } from '@cs2-analyst/report-contract';
 import { upgradeReportPerformance } from './player-performance.ts';
+import { encodeStoredReplay, decodeStoredReplay } from './library-replay-codec.ts';
+import { createReplayProjections, validateReplayProjection, restoreProjectedChunk, type ReplayProjection } from './library-derived-replay.ts';
 export type { ArchiveVersions, ArchiveCapabilities } from '@cs2-analyst/report-contract';
 
 const gzip = promisify(gzipCallback), gunzip = promisify(gunzipCallback);
+const brotli = promisify(brotliCallback), unbrotli = promisify(unbrotliCallback);
 const MiB = 1024 * 1024;
 const restoredSessionBytes = Buffer.byteLength(',"sessionId":"00000000-0000-0000-0000-000000000000"');
 export const LIBRARY_ARCHIVE_LIMITS = Object.freeze({ manifestBytes: MiB, fileCount: 4096,
@@ -18,11 +21,14 @@ export const LIBRARY_ARCHIVE_LIMITS = Object.freeze({ manifestBytes: MiB, fileCo
 export const LIBRARY_METADATA_LIMITS = Object.freeze({ fileName: 256, map: 64, rounds: 1024,
   players: 64, nickname: 512, version: 1024, reason: 512 });
 const capabilityNames = ['report', 'deepReview', 'timeline', 'analysis', 'replay', 'heatmap'] as const;
-export type ArchiveFileRole = 'report' | 'heatmap-match' | 'heatmap-replay' | 'heatmap-spatial' | 'replay-chunk';
-export interface ArchiveFile { path: string; role: ArchiveFileRole; rawBytes: number; gzipBytes: number;
-  sha256: string; gzipSha256: string; round?: number; block?: number }
+export type ArchiveFileRole = 'report' | 'heatmap-match' | 'heatmap-replay' | 'heatmap-spatial' | 'replay-chunk' | 'replay-projection';
+interface FileBase { path: string; role: ArchiveFileRole; rawBytes: number; sha256: string; round?: number; block?: number }
+export type ArchiveFile = FileBase & ({ gzipBytes: number; gzipSha256: string } | {
+  codec: 'brotli'; encoding: 'json-v1' | 'replay-tuples-v1' | 'replay-projection-v1'; compressedBytes: number; compressedSha256: string });
+export const archiveCompressedBytes = (file: ArchiveFile): number => 'gzipBytes' in file ? file.gzipBytes : file.compressedBytes;
+export const archiveCompressedHash = (file: ArchiveFile): string => 'gzipSha256' in file ? file.gzipSha256 : file.compressedSha256;
 export interface ArchiveManifest {
-  format: 'cs2-analyst-match'; schemaVersion: 1; matchId: string; createdAt: string;
+  format: 'cs2-analyst-match'; schemaVersion: 1 | 2; matchId: string; createdAt: string;
   summary: { fileName: string; map: string; rounds: number; score: { initialCT: number; initialT: number } | null;
     players: { id: string; nickname: string }[] };
   versions: ArchiveVersions; capabilities: ArchiveCapabilities; files: ArchiveFile[];
@@ -37,8 +43,8 @@ type JsonObject = Record<string, unknown>;
 function fail(reason: string): never { throw new Error(`Invalid match archive: ${reason}`); }
 function unsupportedVersion(value: unknown): boolean {
   if (!plain(value) || value.format !== 'cs2-analyst-match') return false;
-  if (integer(value.schemaVersion, 1) && value.schemaVersion !== 1) return true;
-  return plain(value.versions) && Object.entries({ archive: 1, report: 2, replay: 1 }).some(([key, supported]) =>
+  if (integer(value.schemaVersion, 1) && ![1, 2].includes(value.schemaVersion)) return true;
+  return plain(value.versions) && Object.entries({ report: 2, replay: 1 }).some(([key, supported]) =>
     integer((value.versions as JsonObject)[key], 1) && (value.versions as JsonObject)[key] !== supported);
 }
 const hash = (bytes: string | Uint8Array) => createHash('sha256').update(bytes).digest('hex');
@@ -120,7 +126,7 @@ function validSummary(value: unknown): boolean {
 }
 function validVersions(value: unknown): value is ArchiveVersions {
   return keys(value, ['application', 'archive', 'report', 'replay', 'analysis', 'parser', 'native', 'sampling', 'mapResource', 'sourceRevision'])
-    && value.archive === 1 && value.report === 2 && value.replay === 1
+    && (value.archive === 1 || value.archive === 2) && value.report === 2 && value.replay === 1
     && ['application', 'analysis', 'parser', 'native', 'sampling', 'mapResource'].every(key => text(value[key], LIBRARY_METADATA_LIMITS.version))
     && typeof value.sourceRevision === 'string' && /^[a-f0-9]{40}$/.test(value.sourceRevision);
 }
@@ -131,7 +137,20 @@ function validCapabilities(value: unknown): value is ArchiveCapabilities {
       && (item.reason === null || text(item.reason, LIBRARY_METADATA_LIMITS.reason)) && (item.status === 'available' || item.reason !== null);
   });
 }
-function validFile(file: unknown): file is ArchiveFile {
+function validFile(file: unknown, version: 1 | 2): file is ArchiveFile {
+  if (version === 2) {
+    if (!keys(file, ['path', 'role', 'rawBytes', 'compressedBytes', 'sha256', 'compressedSha256', 'codec', 'encoding'], ['round'])
+      || file.codec !== 'brotli' || !integer(file.rawBytes, 1, LIBRARY_ARCHIVE_LIMITS.componentBytes)
+      || !integer(file.compressedBytes, 1, LIBRARY_ARCHIVE_LIMITS.componentBytes) || !sha(file.sha256) || !sha(file.compressedSha256)) return false;
+    if (file.role === 'replay-projection') return file.encoding === 'replay-projection-v1'
+      && integer(file.round, 1, LIBRARY_ARCHIVE_LIMITS.rounds) && file.path === `replay/r${file.round}.json.br`
+      && file.rawBytes <= LIBRARY_ARCHIVE_LIMITS.replayBytes;
+    const paths: Record<string, string> = { report: 'report.json.br', 'heatmap-match': 'heatmap/match.json.br',
+      'heatmap-replay': 'heatmap/replay.json.br', 'heatmap-spatial': 'heatmap/spatial.json.br' };
+    return typeof file.role === 'string' && Object.hasOwn(paths, file.role) && file.path === paths[file.role]
+      && file.encoding === (file.role === 'heatmap-replay' ? 'replay-tuples-v1' : 'json-v1')
+      && !Object.hasOwn(file, 'round') && (file.role !== 'report' || file.rawBytes <= LIBRARY_ARCHIVE_LIMITS.reportBytes);
+  }
   if (!keys(file, ['path', 'role', 'rawBytes', 'gzipBytes', 'sha256', 'gzipSha256'], ['round', 'block'])
     || !integer(file.rawBytes, 1, LIBRARY_ARCHIVE_LIMITS.componentBytes) || !integer(file.gzipBytes, 1, LIBRARY_ARCHIVE_LIMITS.componentBytes)
     || !sha(file.sha256) || !sha(file.gzipSha256)) return false;
@@ -147,17 +166,18 @@ function validFile(file: unknown): file is ArchiveFile {
 /** The manifest is small, exact-keyed and independent from report/replay schema versions. */
 export function validateArchiveManifest(value: unknown): value is ArchiveManifest {
   if (!keys(value, ['format', 'schemaVersion', 'matchId', 'createdAt', 'summary', 'versions', 'capabilities', 'files'])
-    || value.format !== 'cs2-analyst-match' || value.schemaVersion !== 1 || !sha(value.matchId)
+    || value.format !== 'cs2-analyst-match' || (value.schemaVersion !== 1 && value.schemaVersion !== 2) || !sha(value.matchId)
     || typeof value.createdAt !== 'string' || !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/.test(value.createdAt)
     || !Number.isFinite(Date.parse(value.createdAt)) || new Date(value.createdAt).toISOString() !== value.createdAt
-    || !validSummary(value.summary) || !validVersions(value.versions)
+    || !validSummary(value.summary) || !validVersions(value.versions) || value.versions.archive !== value.schemaVersion
     || !validCapabilities(value.capabilities) || !Array.isArray(value.files) || value.files.length < 4
-    || value.files.length > LIBRARY_ARCHIVE_LIMITS.fileCount || !value.files.every(validFile)) return false;
+    || value.files.length > LIBRARY_ARCHIVE_LIMITS.fileCount || !value.files.every(file => validFile(file, value.schemaVersion as 1 | 2))) return false;
   const files = value.files as ArchiveFile[];
   return new Set(files.map(file => file.path)).size === files.length
     && ['report', 'heatmap-match', 'heatmap-replay', 'heatmap-spatial'].every(role => files.filter(file => file.role === role).length === 1)
     && files.reduce((sum, file) => sum + file.rawBytes, 0) <= LIBRARY_ARCHIVE_LIMITS.totalRawBytes
-    && files.reduce((sum, file) => sum + file.gzipBytes, 0) <= LIBRARY_ARCHIVE_LIMITS.totalGzipBytes
+    && files.reduce((sum, file) => sum + archiveCompressedBytes(file), 0) <= LIBRARY_ARCHIVE_LIMITS.totalGzipBytes
+    && files.filter(file => file.role === 'replay-projection').reduce((sum, file) => sum + file.rawBytes, 0) <= LIBRARY_ARCHIVE_LIMITS.replayBytes
     && files.filter(file => file.role === 'replay-chunk').reduce((sum, file) => sum + file.rawBytes + restoredSessionBytes, 0) <= LIBRARY_ARCHIVE_LIMITS.replayBytes;
 }
 
@@ -223,7 +243,13 @@ function validateReport(value: unknown, manifest: ArchiveManifest): asserts valu
     }
   }
   const files = manifest.files.filter(file => file.role === 'replay-chunk');
-  if (advertised.size !== files.length || files.some(file => !advertised.has(`${file.round}:${file.block}`))) fail('replay catalogue mismatch');
+  if (manifest.schemaVersion === 1) {
+    if (advertised.size !== files.length || files.some(file => !advertised.has(`${file.round}:${file.block}`))) fail('replay catalogue mismatch');
+  } else {
+    const rounds = manifest.files.filter(file => file.role === 'replay-projection').map(file => file.round);
+    const expected = plain(replay) && replay.available ? (replay.rounds as { round: number; blocks: unknown[] }[]).filter(r => r.blocks.length).map(r => r.round) : [];
+    if (rounds.length !== expected.length || rounds.some(round => !expected.includes(round!))) fail('replay catalogue mismatch');
+  }
   const heatmap = value.heatmap;
   if (heatmap !== undefined && (!plain(heatmap) || heatmap.schemaVersion !== 1 || heatmap.matchId !== manifest.matchId
     || typeof heatmap.available !== 'boolean' || !plain(heatmap.layers))) fail('heatmap metadata');
@@ -273,12 +299,14 @@ function validateAvailability(report: DesktopMatchReport, replay: boolean, spati
 
 async function decodeFile(directory: string, file: ArchiveFile, options?: ArchiveOptions): Promise<unknown> {
   aborted(options);
-  const compressed = await readBounded(directory, file.path, LIBRARY_ARCHIVE_LIMITS.componentBytes, file.gzipBytes);
-  if (hash(compressed) !== file.gzipSha256) fail('compressed digest mismatch');
-  const raw = await gunzip(compressed, { maxOutputLength: file.rawBytes });
+  const compressed = await readBounded(directory, file.path, LIBRARY_ARCHIVE_LIMITS.componentBytes, archiveCompressedBytes(file));
+  if (hash(compressed) !== archiveCompressedHash(file)) fail('compressed digest mismatch');
+  const raw = await ('codec' in file ? unbrotli : gunzip)(compressed, { maxOutputLength: file.rawBytes });
   aborted(options);
   if (raw.length !== file.rawBytes || hash(raw) !== file.sha256) fail('payload digest or size mismatch');
-  try { return JSON.parse(raw.toString('utf8')); } catch { return fail('payload JSON'); }
+  let value: unknown;
+  try { value = JSON.parse(raw.toString('utf8')); } catch { return fail('payload JSON'); }
+  return 'encoding' in file && file.encoding === 'replay-tuples-v1' ? decodeStoredReplay(value) : value;
 }
 
 async function verifyCompressedFile(directory: string, file: ArchiveFile, options?: ArchiveOptions): Promise<void> {
@@ -286,7 +314,7 @@ async function verifyCompressedFile(directory: string, file: ArchiveFile, option
   const target = join(directory, ...file.path.split('/'));
   await assertArchiveDirectory(directory, dirname(target));
   const before = await lstat(target);
-  if (!before.isFile() || before.isSymbolicLink() || before.nlink > 1 || before.size !== file.gzipBytes
+  if (!before.isFile() || before.isSymbolicLink() || before.nlink > 1 || before.size !== archiveCompressedBytes(file)
     || !await safeFileRealpath(target)) fail('compressed file or size');
   const handle = await open(target, 'r');
   try {
@@ -296,13 +324,13 @@ async function verifyCompressedFile(directory: string, file: ArchiveFile, option
     let position = 0;
     while (true) {
       aborted(options);
-      const { bytesRead } = await handle.read(buffer, 0, Math.min(buffer.length, file.gzipBytes - position + 1), position);
+      const { bytesRead } = await handle.read(buffer, 0, Math.min(buffer.length, archiveCompressedBytes(file) - position + 1), position);
       if (!bytesRead) break;
       position += bytesRead;
-      if (position > file.gzipBytes) fail('compressed file grew');
+      if (position > archiveCompressedBytes(file)) fail('compressed file grew');
       digest.update(buffer.subarray(0, bytesRead));
     }
-    if (position !== file.gzipBytes || digest.digest('hex') !== file.gzipSha256 || !await safeFileRealpath(target)) fail('compressed digest mismatch');
+    if (position !== archiveCompressedBytes(file) || digest.digest('hex') !== archiveCompressedHash(file) || !await safeFileRealpath(target)) fail('compressed digest mismatch');
   } finally { await handle.close(); }
 }
 function requiredFile(manifest: ArchiveManifest, role: ArchiveFileRole): ArchiveFile {
@@ -314,7 +342,7 @@ function requiredFile(manifest: ArchiveManifest, role: ArchiveFileRole): Archive
 async function validateInventory(directory: string, manifest: ArchiveManifest): Promise<void> {
   await assertArchiveDirectory(directory, directory);
   const expected = new Set(['manifest.json', ...manifest.files.map(file => file.path)]);
-  const directories = new Set(['heatmap', ...(manifest.files.some(file => file.role === 'replay-chunk') ? ['replay'] : [])]);
+  const directories = new Set(['heatmap', ...(manifest.files.some(file => file.role === 'replay-chunk' || file.role === 'replay-projection') ? ['replay'] : [])]);
   let count = 0;
   for (const rootEntry of await readdir(directory, { withFileTypes: true })) {
     if (rootEntry.isSymbolicLink()) fail('archive symlink');
@@ -334,22 +362,54 @@ async function validateInventory(directory: string, manifest: ArchiveManifest): 
 }
 
 /** Full validation belongs in the Utility Process; the Main catalogue only reads the small manifest. */
-export async function verifyLibraryArchive(directory: string, options?: ArchiveOptions): Promise<ArchiveWriteResult> {
+export async function loadLibraryArchive(directory: string, options?: ArchiveOptions): Promise<ArchiveWriteResult & {
+  report: DesktopMatchReport | null; sources: { match: Match; replay: MatchReplay | null; spatial: MatchSpatialEvidence | null } | null;
+}> {
   aborted(options);
   const manifest = await readArchiveManifest(directory);
   await validateInventory(directory, manifest);
   let report: DesktopMatchReport | null = null;
   const sources = new Set<ArchiveFileRole>();
+  const values = new Map<ArchiveFileRole, unknown>();
   for (const file of manifest.files) {
     if (options?.mode === 'compressed') { await verifyCompressedFile(directory, file, options); continue; }
+    if (file.role === 'replay-projection') continue;
     const value = await decodeFile(directory, file, options);
     if (file.role === 'report') { validateReport(value, manifest); report = value; }
     else if (file.role === 'replay-chunk') validateChunk(value, manifest, file);
-    else { validateSource(value, manifest, file.role); if (value !== null) sources.add(file.role); }
+    else { validateSource(value, manifest, file.role); values.set(file.role, value); if (value !== null) sources.add(file.role); }
   }
   if (report) validateAvailability(report, sources.has('heatmap-replay'), sources.has('heatmap-spatial'));
+  let replayBytes = 0;
+  if (report && manifest.schemaVersion === 2) {
+    for (const file of manifest.files.filter(f => f.role === 'replay-projection')) {
+      const projection = await decodeFile(directory, file, options);
+      if (!report.replay || !values.get('heatmap-replay')) fail('derived replay lacks source');
+      validateReplayProjection(projection, report.replay, file.round!);
+      for (const block of projection.blocks) {
+        aborted(options);
+        const chunk = restoreProjectedChunk(values.get('heatmap-replay') as MatchReplay, projection, block.template.block, '00000000-0000-0000-0000-000000000000');
+        const { sessionId: _sessionId, ...stored } = chunk;
+        validateChunk(stored, manifest, { ...file, block: block.template.block });
+        replayBytes += Buffer.byteLength(JSON.stringify(chunk));
+        if (replayBytes > LIBRARY_ARCHIVE_LIMITS.replayBytes) fail('derived replay total budget');
+      }
+    }
+  }
+  if (report && manifest.schemaVersion === 2) {
+    // Packed bytes are not a licence to expand the canonical-source/Replay budgets.
+    const canonicalBytes = [...values.values()].reduce<number>((sum, value) => sum + Buffer.byteLength(JSON.stringify(value)), 0);
+    if (canonicalBytes + Buffer.byteLength(JSON.stringify(report)) + replayBytes > LIBRARY_ARCHIVE_LIMITS.totalRawBytes) fail('restored archive budget');
+  }
   return { manifest, manifestHash: archiveManifestHash(manifest),
-    storedBytes: Buffer.byteLength(JSON.stringify(manifest)) + manifest.files.reduce((sum, file) => sum + file.gzipBytes, 0) };
+    storedBytes: Buffer.byteLength(JSON.stringify(manifest)) + manifest.files.reduce((sum, file) => sum + archiveCompressedBytes(file), 0),
+    report, sources: values.size ? { match: values.get('heatmap-match') as Match, replay: values.get('heatmap-replay') as MatchReplay | null,
+      spatial: values.get('heatmap-spatial') as MatchSpatialEvidence | null } : null };
+}
+
+export async function verifyLibraryArchive(directory: string, options?: ArchiveOptions): Promise<ArchiveWriteResult> {
+  const { manifest, manifestHash, storedBytes } = await loadLibraryArchive(directory, options);
+  return { manifest, manifestHash, storedBytes };
 }
 
 async function writeExclusive(directory: string, path: string, bytes: Buffer, options?: ArchiveOptions): Promise<void> {
@@ -379,7 +439,8 @@ export async function writeLibraryArchive(directory: string, input: ArchiveWrite
   validateAvailability(report, input.replay !== null, input.spatial !== null);
   const heatmapAvailable = report.heatmap?.available === true;
   const heatmapLayers = report.heatmap?.layers;
-  const manifest: ArchiveManifest = { format: 'cs2-analyst-match', schemaVersion: 1, matchId: input.match.id,
+  const version = input.versions.archive;
+  const manifest: ArchiveManifest = { format: 'cs2-analyst-match', schemaVersion: version, matchId: input.match.id,
     createdAt, summary: { ...report.match, players: report.players } as ArchiveManifest['summary'],
     versions: { ...input.versions }, capabilities: { report: available(), timeline: available(), analysis: available(),
       deepReview: report.deepReview.available ? available() : missing('deep-review-unavailable'),
@@ -391,29 +452,44 @@ export async function writeLibraryArchive(directory: string, input: ArchiveWrite
   manifest.summary = { fileName: report.match.fileName, map: report.match.map, rounds: report.match.rounds,
     score: report.match.score, players: report.players };
   if (!validSummary(manifest.summary)) fail('writer summary');
-  const add = async (path: string, role: ArchiveFileRole, value: unknown, coordinates?: { round: number; block: number }) => {
+  const add = async (path: string, role: ArchiveFileRole, value: unknown, coordinates?: { round: number; block?: number }) => {
     aborted(options);
-    const raw = serializeStored(value);
+    const raw = serializeStored(version === 2 && role === 'heatmap-replay' ? encodeStoredReplay(value as MatchReplay | null) : value);
     const maximum = role === 'replay-chunk' ? LIBRARY_ARCHIVE_LIMITS.chunkBytes
       : role === 'report' ? LIBRARY_ARCHIVE_LIMITS.reportBytes : LIBRARY_ARCHIVE_LIMITS.componentBytes;
     if (!raw.length || raw.length > maximum) fail('writer component budget');
-    const encoded = await gzip(raw, { level: 6 });
+    const encoded = version === 2 ? await brotli(raw, { params: { [constants.BROTLI_PARAM_QUALITY]: 6 } }) : await gzip(raw, { level: 6 });
     aborted(options);
-    const file: ArchiveFile = { path, role, rawBytes: raw.length, gzipBytes: encoded.length, sha256: hash(raw), gzipSha256: hash(encoded), ...coordinates };
+    const file: ArchiveFile = { path, role, rawBytes: raw.length, sha256: hash(raw), ...coordinates,
+      ...(version === 2 ? { codec: 'brotli' as const, encoding: role === 'heatmap-replay' ? 'replay-tuples-v1' as const
+        : role === 'replay-projection' ? 'replay-projection-v1' as const : 'json-v1' as const,
+        compressedBytes: encoded.length, compressedSha256: hash(encoded) } : { gzipBytes: encoded.length, gzipSha256: hash(encoded) }) };
     manifest.files.push(file);
     if (manifest.files.length > LIBRARY_ARCHIVE_LIMITS.fileCount
       || manifest.files.reduce((sum, file) => sum + file.rawBytes, 0) > LIBRARY_ARCHIVE_LIMITS.totalRawBytes
-      || manifest.files.reduce((sum, file) => sum + file.gzipBytes, 0) > LIBRARY_ARCHIVE_LIMITS.totalGzipBytes) fail('writer archive budget');
-    const stored = JSON.parse(raw.toString('utf8'));
+      || manifest.files.reduce((sum, file) => sum + archiveCompressedBytes(file), 0) > LIBRARY_ARCHIVE_LIMITS.totalGzipBytes) fail('writer archive budget');
+    const packed = JSON.parse(raw.toString('utf8'));
+    const stored = version === 2 && role === 'heatmap-replay' ? decodeStoredReplay(packed) : packed;
     if (role === 'replay-chunk') validateChunk(stored, manifest, file);
-    else if (role !== 'report') validateSource(stored, manifest, role);
+    else if (role === 'replay-projection') {
+      if (!report.replay || !input.replay) fail('projection requires source');
+      validateReplayProjection(stored, report.replay, coordinates!.round);
+      for (const block of stored.blocks) {
+        const chunk = restoreProjectedChunk(input.replay, stored, block.template.block, '00000000-0000-0000-0000-000000000000');
+        const { sessionId: _sessionId, ...permanent } = chunk;
+        validateChunk(permanent, manifest, { ...file, block: block.template.block });
+      }
+    } else if (role !== 'report') validateSource(stored, manifest, role);
     await writeExclusive(directory, path, encoded, options);
   };
-  await add('report.json.gz', 'report', report);
-  await add('heatmap/match.json.gz', 'heatmap-match', input.match);
-  await add('heatmap/replay.json.gz', 'heatmap-replay', input.replay);
-  await add('heatmap/spatial.json.gz', 'heatmap-spatial', input.spatial);
-  for (const [key, json] of input.chunks) {
+  const extension = version === 2 ? 'br' : 'gz';
+  await add(`report.json.${extension}`, 'report', report);
+  await add(`heatmap/match.json.${extension}`, 'heatmap-match', input.match);
+  await add(`heatmap/replay.json.${extension}`, 'heatmap-replay', input.replay);
+  await add(`heatmap/spatial.json.${extension}`, 'heatmap-spatial', input.spatial);
+  if (version === 2) {
+    for (const [round, projection] of createReplayProjections(input.chunks)) await add(`replay/r${round}.json.br`, 'replay-projection', projection, { round });
+  } else for (const [key, json] of input.chunks) {
     if (!/^[1-9]\d*:(?:0|[1-9]\d*)$/.test(key)) fail('writer replay key');
     const [round, block] = key.split(':').map(Number);
     await add(`replay/r${round}-b${block}.json.gz`, 'replay-chunk', JSON.parse(json), { round, block });
@@ -423,7 +499,7 @@ export async function writeLibraryArchive(directory: string, input: ArchiveWrite
   const bytes = Buffer.from(JSON.stringify(manifest));
   if (bytes.length > LIBRARY_ARCHIVE_LIMITS.manifestBytes) fail('writer manifest budget');
   await writeExclusive(directory, 'manifest.json', bytes, options);
-  return { manifest, manifestHash: hash(bytes), storedBytes: bytes.length + manifest.files.reduce((sum, file) => sum + file.gzipBytes, 0) };
+  return { manifest, manifestHash: hash(bytes), storedBytes: bytes.length + manifest.files.reduce((sum, file) => sum + archiveCompressedBytes(file), 0) };
 }
 
 export async function readArchiveReport(directory: string, manifest: ArchiveManifest, sessionId: string): Promise<DesktopMatchReport> {
@@ -443,6 +519,11 @@ export async function readArchiveChunk(directory: string, manifest: ArchiveManif
   const value = await decodeFile(directory, file);
   validateChunk(value, manifest, file);
   return { ...value, sessionId: request.sessionId };
+}
+export async function readArchiveProjection(directory: string, manifest: ArchiveManifest, round: number): Promise<ReplayProjection> {
+  const file = manifest.files.find(f => f.role === 'replay-projection' && f.round === round);
+  if (!file) fail('unknown replay projection');
+  return await decodeFile(directory, file) as ReplayProjection;
 }
 export async function readArchiveSources(directory: string, manifest: ArchiveManifest): Promise<{ match: Match; replay: MatchReplay | null; spatial: MatchSpatialEvidence | null }> {
   if (!validateArchiveManifest(manifest)) fail('read source manifest');

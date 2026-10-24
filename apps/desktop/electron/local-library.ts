@@ -5,7 +5,7 @@ import { realpathSync } from 'node:fs';
 import { dirname, isAbsolute, join, parse, relative, resolve, sep } from 'node:path';
 import type { LibraryDeleteResult, LibraryListQuery, LibraryListResult, LibrarySelfPlayerResult, LibraryStorageResult, MatchLibraryEntry } from '@cs2-analyst/report-contract';
 import { LIBRARY_LIST_RESPONSE_BYTES, boundedLibraryResult, isMatchId, normalizeLibraryListQuery } from '../shared/library-ipc.ts';
-import { LIBRARY_METADATA_LIMITS, archiveManifestHash, readArchiveManifest, readArchiveReport, verifyLibraryArchive, type ArchiveManifest } from './library-archive.ts';
+import { LIBRARY_METADATA_LIMITS, archiveManifestHash, archiveCompressedBytes, readArchiveManifest, readArchiveReport, verifyLibraryArchive, type ArchiveManifest } from './library-archive.ts';
 import { PERFORMANCE_CACHE_VERSION, reportPlayerSummaries, validCachedPlayerSummaries } from './player-performance.ts';
 
 const stagingId = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/;
@@ -56,7 +56,7 @@ function validEntry(value: unknown): value is MatchLibraryEntry {
   if (!value.players.every(player => record(player) && shortText(player.id) && typeof player.nickname === 'string'
     && player.nickname.length <= LIBRARY_METADATA_LIMITS.nickname && !player.nickname.includes('\0'))) return false;
   const versions = value.versions;
-  if (versions.archive !== 1 || versions.report !== 2 || versions.replay !== 1
+  if ((versions.archive !== 1 && versions.archive !== 2) || versions.report !== 2 || versions.replay !== 1
     || !['application', 'analysis', 'parser', 'native', 'sampling', 'mapResource'].every(key => shortText(versions[key], LIBRARY_METADATA_LIMITS.version))
     || typeof versions.sourceRevision !== 'string' || !/^[a-f0-9]{40}$/.test(versions.sourceRevision)) return false;
   const capabilities = value.capabilities;
@@ -230,7 +230,7 @@ export class LocalMatchLibrary {
     return { ...entry, selfPlayerId, state: row.state as MatchLibraryEntry['state'] };
   }
   private storedBytes(manifest: ArchiveManifest): number {
-    return Buffer.byteLength(JSON.stringify(manifest)) + manifest.files.reduce((sum, file) => sum + file.gzipBytes, 0);
+    return Buffer.byteLength(JSON.stringify(manifest)) + manifest.files.reduce((sum, file) => sum + archiveCompressedBytes(file), 0);
   }
   private matchesSnapshot(row: Row, entry: MatchLibraryEntry, manifest: ArchiveManifest, storedBytes: number): boolean {
     const expected = this.manifestEntry(manifest, storedBytes);

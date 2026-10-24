@@ -21,7 +21,7 @@ const versions = { application: '0.2.0', archive: 1, report: 2, replay: 1, analy
   sampling: 'test', mapResource: 'test', sourceRevision: '1'.repeat(40) };
 function input({ id = MATCH, generation = 'old', playerId = '1', createdAt = DATE } = {}) {
   return { match: { id, map: 'de_dust2', players: [{ steamId: playerId }], rounds: [] }, replay: null, spatial: null, chunks: new Map(),
-    versions: { ...versions, analysis: 'analysis-' + generation }, createdAt,
+    versions: { ...versions, archive: generation === 'old' ? 1 : 2, analysis: 'analysis-' + generation }, createdAt,
     report: { schemaVersion: 2, match: { id, fileName: 'demo2.dem', map: 'de_dust2', rounds: 0, score: null }, selectedPlayer: playerId,
       players: [{ id: playerId, nickname: 'Player ' + generation }], analytics: [], findings: [], timeline: [],
       analysis: { players: [], perPlayer: [] }, deepReview: { available: false, players: [] } } };
@@ -87,7 +87,7 @@ test('replacement includes new full canonical sources, chunks and capabilities',
   const heatmap = createHeatmapSession(f.match, f.replay, f.spatial, sessionId, { map });
   const playerId = f.match.players[0].steamId;
   assert.equal((await s.library.setSelfPlayer(MATCH, null)).kind, 'success');
-  const data = { ...f, createdAt: DATE, versions, chunks: replay.chunks,
+  const data = { ...f, createdAt: DATE, versions: { ...versions, archive: 2 }, chunks: replay.chunks,
     report: { schemaVersion: 2, match: { id: MATCH, fileName: 'demo2.dem', map: f.match.map, rounds: f.match.rounds.length, score: null },
       selectedPlayer: playerId, players: f.match.players.map(p => ({ id: p.steamId, nickname: p.nickname ?? p.steamId })),
       analytics: [], findings: [], timeline: [], analysis: { players: [], perPlayer: [] }, deepReview: { available: true, players: [] },
@@ -96,7 +96,8 @@ test('replacement includes new full canonical sources, chunks and capabilities',
   const result = await s.library.replaceStaging(candidate.id, MATCH, undefined, candidate.receipt);
   assert.equal(result.entry.selfPlayerId, null, 'an unselected identity stays unselected');
   const directory = await s.library.archiveDirectory(MATCH), verified = await verifyLibraryArchive(directory);
-  assert.equal(verified.manifest.files.filter(f => f.role === 'replay-chunk').length, replay.chunks.size);
+  assert.equal(verified.manifest.schemaVersion, 2);
+  assert.equal(verified.manifest.files.filter(f => f.role === 'replay-projection').length, replay.metadata.rounds.length);
   assert.equal(verified.manifest.capabilities.heatmap.status, 'available');
   assert.equal(verified.manifest.capabilities.replay.status, 'available');
   assert.deepEqual((await readArchiveSources(directory, verified.manifest)).match, f.match);
