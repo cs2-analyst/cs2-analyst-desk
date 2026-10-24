@@ -215,6 +215,8 @@ export function readObservations(directory) {
   }
   return rows.sort((a, b) => a.at - b.at);
 }
+const analysisUtility = value => value.type === 'Utility'
+  && (/^CS2 /.test(value.name ?? '') || /^CS2 /.test(value.serviceName ?? ''));
 export function summarizeMemory(rows, renderer, phases) {
   const nodeFields = ['rss', 'heapTotal', 'heapUsed', 'external', 'arrayBuffers'];
   const rendererFields = ['usedSize', 'totalSize', 'embedderHeapUsedSize', 'backingStorageSize'];
@@ -231,7 +233,7 @@ export function summarizeMemory(rows, renderer, phases) {
   const metricRows = rows.filter(row => row.processes);
   const workingSets = metricRows.map(row => ({ at: row.at, roles: {
     Main: row.processes.filter(p => p.type === 'Browser'), Renderer: row.processes.filter(p => p.type === 'Tab'),
-    Utility: row.processes.filter(p => p.type === 'Utility' && /^CS2 /.test(p.serviceName ?? p.name ?? '')),
+    Utility: row.processes.filter(analysisUtility),
   } }));
   // Electron memory-info is KiB. Keep observer logs as returned and convert only this summary.
   const concurrentWorkingSet = (values, role) => values.map(row => row.roles[role].reduce((n, p) => n + p.memory.workingSetSize * 1024, 0));
@@ -441,7 +443,7 @@ async function launchTrial(config, benchmark, version, trial, name) {
     const released = rows.filter(row => row.processes && row.at >= phases.find(item => item.label === 'released-idle').at
       && row.at < (phases.find(item => item.label === 'actual-six-view-ui')?.at ?? phases.find(item => item.label === 'before-close').at));
     assert.ok(released.length, 'No release memory observations');
-    assert.ok(released.slice(-2).every(row => !row.processes.some(p => /^CS2 /.test(p.serviceName ?? p.name ?? ''))), 'Analysis Utility survives release');
+    assert.ok(released.slice(-2).every(row => !row.processes.some(analysisUtility)), 'Analysis Utility survives release');
     result.staleAfterReopenRejected = true; result.staleAfterSwitchRejected = true; result.releasedUtilityExited = true;
     result.status = 'PASS';
   } catch (error) {
@@ -516,9 +518,29 @@ async function execute(config, benchmark, configPath) {
     throw error;
   }
 }
+/** Recompute derived telemetry without changing immutable raw observations or timed samples. */
+function correctMemory(configPath) {
+  const config = readGuiConfig(configPath), originalPath = join(config.owner.directory, 'results.json'), original = json(originalPath);
+  const results = original.results.map(result => {
+    assertOwnedPath(config.runs[result.version], result.outputDirectory);
+    const rows = readObservations(result.outputDirectory), index = result.phases.findIndex(phase => phase.label === 'released-idle');
+    assert.ok(index >= 0);
+    const from = result.phases[index].at, to = result.phases[index + 1]?.at ?? Infinity;
+    const released = rows.filter(row => row.processes && row.at >= from && row.at < to);
+    assert.ok(released.length >= 2, 'Release interval needs at least two Main process-metric samples');
+    assert.ok(released.slice(-2).every(row => !row.processes.some(analysisUtility)), 'Analysis Utility survives confirmed release');
+    return { ...result, memory: summarizeMemory(rows, result.rendererHeapObservations, result.phases),
+      releasedUtilityExitedFromCorrectedMetrics: true };
+  });
+  const path = join(config.owner.directory, 'results-memory-corrected.json');
+  save(config.owner, path, { ...original, memoryClassificationVersion: 2, rawResults: originalPath,
+    correction: 'Electron names analysis Utilities in name; serviceName can be generic node.mojom.NodeService. Both are matched. Raw metrics and original timing/results are preserved unchanged. Release exit is independently rechecked in each released-idle phase.', results });
+  console.log(JSON.stringify({ success: true, correctedResults: path }));
+}
 if (process.argv[1] && resolve(process.argv[1]) === here) {
   const [mode, ...args] = process.argv.slice(2);
   if (mode === '$seed') await seed(...args);
+  else if (mode === '$summarize') correctMemory(resolve(args[0]));
   else if (mode === '$resume') {
     const path = resolve(args[0]), config = readGuiConfig(path);
     assert.equal(existsSync(join(config.owner.directory, 'results.json')), false, 'Completed runs must not be modified');

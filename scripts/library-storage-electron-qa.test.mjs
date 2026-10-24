@@ -3,7 +3,8 @@ import test from 'node:test';
 import { summarizeMemory } from './library-storage-electron-qa.mjs';
 
 const memory = (rss, heapUsed = rss / 2) => ({ rss, heapTotal: heapUsed + 1, heapUsed, external: 3, arrayBuffers: 2 });
-const process = (pid, type, workingSetSize) => ({ pid, type, serviceName: type === 'Utility' ? 'CS2 Saved Match Restore' : undefined,
+const process = (pid, type, workingSetSize) => ({ pid, type, serviceName: type === 'Utility' ? 'node.mojom.NodeService' : undefined,
+  name: type === 'Utility' ? 'CS2 Saved Match Restore' : undefined,
   memory: { workingSetSize, peakWorkingSetSize: workingSetSize + 5 } });
 const main = (at, processes, rss = 100) => ({ at, role: 'Main', pid: 1, memory: memory(rss), lifetimeMaxRssBytes: 200, processes });
 const utility = (at, pid, rss) => ({ at, role: 'Utility', pid, memory: memory(rss), lifetimeMaxRssBytes: rss + 10 });
