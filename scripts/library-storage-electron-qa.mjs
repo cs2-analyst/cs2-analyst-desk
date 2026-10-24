@@ -111,11 +111,12 @@ function observer(role) {
 import { appendFileSync as __storageQaAppend } from 'node:fs';
 ${role === 'Main' ? "import { app as __storageQaApp } from 'electron';" : ''}
 const __storageQaDirectory = process.env.CS2_STORAGE_QA_OBSERVATIONS;
-const __storageQaTake = reason => {
+const __storageQaTake = (reason, childProcess) => {
   if (!__storageQaDirectory) return;
   try {
     const row = { at: Date.now(), role: ${JSON.stringify(role)}, pid: process.pid, reason,
       memory: process.memoryUsage(), lifetimeMaxRssBytes: process.resourceUsage().maxRSS * 1024 };
+    if (childProcess) row.childProcess = childProcess;
     ${role === 'Main' ? 'if (__storageQaApp.isReady()) row.processes = __storageQaApp.getAppMetrics();' : ''}
     __storageQaAppend(__storageQaDirectory + '/observer-${role}-' + process.pid + '.jsonl', JSON.stringify(row) + '\\n');
   } catch { /* Observers must not change product behavior. Missing evidence fails in the controller. */ }
@@ -123,7 +124,7 @@ const __storageQaTake = reason => {
 __storageQaTake('observer-start');
 const __storageQaTimer = setInterval(() => __storageQaTake('interval'), 100); __storageQaTimer.unref();
 process.on('exit', () => __storageQaTake('exit'));
-${role === 'Utility' ? "process.parentPort?.on('message', () => __storageQaTake('parent-message'));" : ''}
+${role !== 'Main' ? "process.parentPort?.on('message', () => __storageQaTake('parent-message'));" : "__storageQaApp.on('child-process-gone', (_event, details) => __storageQaTake('child-process-gone', details));"}
 `;
 }
 function prepareApp(owner) {
@@ -145,7 +146,9 @@ function prepareApp(owner) {
   // Module dependencies keep their installed ABI; the junction is never recursively removed by this tool.
   symlinkSync(realpathSync(join(desktop, 'node_modules')), join(target, 'node_modules'), 'junction');
   const instrumentation = [];
-  for (const [file, role] of [['electron/main.js', 'Main'], ['electron/report-worker.js', 'Utility']]) {
+  const entries = [['electron/main.js', 'Main'], ['electron/report-worker.js', 'Utility']];
+  if (original['electron/archive-verifier.js']) entries.push(['electron/archive-verifier.js', 'VerificationUtility']);
+  for (const [file, role] of entries) {
     const path = join(target, 'dist', ...file.split('/')), originalBytes = readFileSync(path), extra = observer(role);
     assert.equal(digest(originalBytes), original[file].sha256);
     appendFileSync(path, extra);
@@ -153,7 +156,7 @@ function prepareApp(owner) {
     instrumentation.push({ path: file, appendedBytes: Buffer.byteLength(extra), sha256: digest(readFileSync(path)) });
   }
   return { directory: target, sourceDist, original, instrumentation,
-    note: 'All built files copied exactly. Only main.js and report-worker.js receive an appended 100ms memory observer. No production source, preload, Renderer, archive decoder, or budget is replaced.' };
+    note: 'All built files copied exactly. Main, report-worker and (when bundled) archive-verifier entries receive an appended 100ms memory observer. No production source, preload, Renderer, archive decoder, or budget is replaced.' };
 }
 async function freePort() {
   const server = createServer(); await new Promise(done => server.listen(0, '127.0.0.1', done));
@@ -216,7 +219,7 @@ function same(actual, expected, label) {
 }
 export function readObservations(directory) {
   const rows = [];
-  for (const file of readdirSync(directory).filter(name => /^observer-(Main|Utility)-\d+\.jsonl$/.test(name))) {
+  for (const file of readdirSync(directory).filter(name => /^observer-(Main|Utility|VerificationUtility)-\d+\.jsonl$/.test(name))) {
     const raw = readFileSync(join(directory, file), 'utf8');
     const lines = raw.split('\n');
     if (lines.at(-1) === '') lines.pop();
@@ -224,29 +227,38 @@ export function readObservations(directory) {
   }
   return rows.sort((a, b) => a.at - b.at);
 }
-const analysisUtility = value => value.type === 'Utility'
+const libraryUtility = value => value.type === 'Utility'
   && (/^CS2 /.test(value.name ?? '') || /^CS2 /.test(value.serviceName ?? ''));
+const verificationUtility = value => value.type === 'Utility'
+  && (value.name === 'CS2 Archive Verification' || value.serviceName === 'CS2 Archive Verification');
+const analysisUtility = value => libraryUtility(value) && !verificationUtility(value);
 export function summarizeMemory(rows, renderer, phases) {
   const nodeFields = ['rss', 'heapTotal', 'heapUsed', 'external', 'arrayBuffers'];
+  const processRoles = ['Main', 'Renderer', 'Utility', 'AnalysisUtility', 'VerificationUtility'];
+  const nodeRoles = ['Main', 'Utility', 'AnalysisUtility', 'VerificationUtility'];
+  const nodeFor = (values, role) => values.filter(row => role === 'Utility' ? ['Utility', 'VerificationUtility'].includes(row.role)
+    : row.role === (role === 'AnalysisUtility' ? 'Utility' : role));
   const rendererFields = ['usedSize', 'totalSize', 'embedderHeapUsedSize', 'backingStorageSize'];
   const maximum = values => values.length ? Math.max(...values) : null;
   const peakFields = (values, fields, select = value => value) => values.length ? Object.fromEntries(fields.map(key => [key,
     maximum(values.map(value => select(value)[key]).filter(Number.isFinite))])) : null;
   const node = {};
-  for (const role of ['Main', 'Utility']) {
-    const subset = rows.filter(row => row.role === role); assert.ok(subset.length, `Missing ${role} observer`);
-    node[role] = { processes: [...new Set(subset.map(row => row.pid))], samples: subset.length,
+  for (const role of nodeRoles) {
+    const subset = nodeFor(rows, role);
+    if (['Main', 'Utility'].includes(role)) assert.ok(subset.length, `Missing ${role} observer`);
+    node[role] = subset.length ? { processes: [...new Set(subset.map(row => row.pid))], samples: subset.length,
       peakSingleProcess: peakFields(subset, nodeFields, row => row.memory),
-      lifetimeMaxRssBytes: Math.max(...subset.map(row => row.lifetimeMaxRssBytes)) };
+      lifetimeMaxRssBytes: Math.max(...subset.map(row => row.lifetimeMaxRssBytes)) } : null;
   }
   const metricRows = rows.filter(row => row.processes);
   const workingSets = metricRows.map(row => ({ at: row.at, roles: {
     Main: row.processes.filter(p => p.type === 'Browser'), Renderer: row.processes.filter(p => p.type === 'Tab'),
-    Utility: row.processes.filter(analysisUtility),
+    Utility: row.processes.filter(libraryUtility), AnalysisUtility: row.processes.filter(analysisUtility),
+    VerificationUtility: row.processes.filter(verificationUtility),
   } }));
   // Electron memory-info is KiB. Keep observer logs as returned and convert only this summary.
   const concurrentWorkingSet = (values, role) => values.map(row => row.roles[role].reduce((n, p) => n + p.memory.workingSetSize * 1024, 0));
-  const byRole = Object.fromEntries(['Main', 'Renderer', 'Utility'].map(role => [role, {
+  const byRole = Object.fromEntries(processRoles.map(role => [role, {
     peakConcurrentWorkingSetBytes: maximum(concurrentWorkingSet(workingSets, role)),
     peakProcessWorkingSetBytes: maximum(workingSets.flatMap(row => row.roles[role].map(p => p.memory.peakWorkingSetSize * 1024))),
   }]));
@@ -257,20 +269,36 @@ export function summarizeMemory(rows, renderer, phases) {
     const nodes = rows.filter(row => row.at >= phase.at && row.at < end);
     return { phase: phase.label, matchId: phase.matchId ?? null, at: phase.at, endAt: Number.isFinite(end) ? end : null,
       samples: values.length, rendererSamples: heaps.length,
-      peakWorkingSetBytes: values.length ? Object.fromEntries(['Main', 'Renderer', 'Utility'].map(role => [role,
+      peakWorkingSetBytes: values.length ? Object.fromEntries(processRoles.map(role => [role,
         maximum(concurrentWorkingSet(values, role))])) : null,
-      peakNodeMemory: Object.fromEntries(['Main', 'Utility'].map(role => [role,
-        peakFields(nodes.filter(row => row.role === role), nodeFields, row => row.memory)])),
+      peakNodeMemory: Object.fromEntries(nodeRoles.map(role => [role, peakFields(nodeFor(nodes, role), nodeFields, row => row.memory)])),
       peakRendererHeap: peakFields(heaps, rendererFields),
-      lastWorkingSetBytes: values.length ? Object.fromEntries(['Main', 'Renderer', 'Utility'].map(role => [role,
+      lastWorkingSetBytes: values.length ? Object.fromEntries(processRoles.map(role => [role,
         values.at(-1).roles[role].reduce((n, p) => n + p.memory.workingSetSize * 1024, 0)])) : null,
-      lastNodeMemory: Object.fromEntries(['Main', 'Utility'].map(role => [role,
-        nodes.filter(row => row.role === role).at(-1)?.memory ?? null])),
+      lastNodeMemory: Object.fromEntries(nodeRoles.map(role => [role, nodeFor(nodes, role).at(-1)?.memory ?? null])),
       lastRendererHeap: heaps.at(-1) ?? null };
   });
-  return { unit: 'bytes', observerIntervalMs: 100, node, workingSet: byRole, phases: windows,
+  const lifecycle = new Map();
+  for (const row of metricRows) {
+    const present = new Set();
+    for (const p of row.processes.filter(libraryUtility)) {
+      const key = `${p.pid}:${p.creationTime ?? 'unknown'}`; present.add(key);
+      let state = lifecycle.get(key);
+      if (!state) { state = { pid: p.pid, processCreationTime: p.creationTime ?? null, name: p.name ?? null,
+        serviceName: p.serviceName ?? null, role: verificationUtility(p) ? 'VerificationUtility' : 'AnalysisUtility',
+        firstObservedAt: row.at, lastObservedAt: row.at, firstAbsentAfterLastObservationAt: null }; lifecycle.set(key, state); }
+      state.lastObservedAt = row.at; state.firstAbsentAfterLastObservationAt = null;
+    }
+    for (const [key, state] of lifecycle) if (!present.has(key) && state.firstAbsentAfterLastObservationAt === null)
+      state.firstAbsentAfterLastObservationAt = row.at;
+  }
+  const utilityLifecycle = [...lifecycle.values()].map(state => ({ ...state,
+    nodeObserverStartedAt: rows.find(row => row.pid === state.pid && row.reason === 'observer-start')?.at ?? null,
+    nodeObserverExitAt: rows.find(row => row.pid === state.pid && row.reason === 'exit')?.at ?? null }));
+  return { unit: 'bytes', observerIntervalMs: 100, node, workingSet: byRole, phases: windows, utilityLifecycle,
+    childProcessGoneEvents: rows.filter(row => row.childProcess).map(row => ({ at: row.at, ...row.childProcess })),
     rendererHeapPeak: peakFields(renderer, rendererFields),
-    interpretation: 'Node RSS and JS heap are different measurements. Node peaks are per-process role high waters; working-set values sum simultaneous processes within each role, including overlapping old/new Utilities during a switch. external includes native-bound objects; arrayBuffers is a subset and must not be added to it. Chromium backingStorage/embedder values are CDP observations, not a complete native heap. Working sets come from app.getAppMetrics; Node lifetime maxRSS catches RSS spikes between timers. No GC is requested. Brief JS heap spikes during blocking work can fall between samples. A phase with no observations returns null; an observed working-set sample with no active analysis Utility is measured zero. Whole-flow peaks include the alternate match; use the named phases and matchId for per-match open/seek/release comparisons.' };
+    interpretation: 'Node RSS and JS heap are different measurements. Utility totals include AnalysisUtility and VerificationUtility; their separate columns expose transferred verification work. Node peaks are per-process role high waters; working-set values sum simultaneous processes within each role, including overlapping old/new Utilities during a switch. external includes native-bound objects; arrayBuffers is a subset and must not be added to it. Chromium backingStorage/embedder values are CDP observations, not a complete native heap. Working sets come from app.getAppMetrics; Node lifetime maxRSS catches RSS spikes between timers. No GC is requested. Brief JS heap spikes during blocking work can fall between samples. A phase with no observations returns null; an observed working-set sample with no active library Utility is measured zero. Lifecycle creationTime is the OS timestamp, first/last/absence are 100ms observations, and nodeObserverExitAt is present only when the normal Node exit observer ran. Whole-flow peaks include the alternate match; use the named phases and matchId for per-match open/seek/release comparisons.' };
 }
 
 async function sixViews(page, directory, matchId) {
@@ -453,7 +481,7 @@ async function launchTrial(config, benchmark, version, trial, name, { forcePorta
     const released = rows.filter(row => row.processes && row.at >= phases.find(item => item.label === 'released-idle').at
       && row.at < (phases.find(item => item.label === 'actual-six-view-ui')?.at ?? phases.find(item => item.label === 'before-close').at));
     assert.ok(released.length, 'No release memory observations');
-    assert.ok(released.slice(-2).every(row => !row.processes.some(analysisUtility)), 'Analysis Utility survives release');
+    assert.ok(released.slice(-2).every(row => !row.processes.some(libraryUtility)), 'Library Utility survives release');
     result.staleAfterReopenRejected = true; result.staleAfterSwitchRejected = true; result.releasedUtilityExited = true;
     result.status = 'PASS';
   } catch (error) {
@@ -494,7 +522,8 @@ async function main(args) {
   const app = prepareApp(owner);
   const sourceRevision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repository, encoding: 'utf8', windowsHide: true }).trim();
   const sourceWorktreeDirty = execFileSync('git', ['status', '--porcelain', '--untracked-files=no'], { cwd: repository, encoding: 'utf8', windowsHide: true }).trim().length > 0;
-  const builtEntryFingerprints = { main: app.original['electron/main.js'], reportWorker: app.original['electron/report-worker.js'] };
+  const builtEntryFingerprints = { main: app.original['electron/main.js'], reportWorker: app.original['electron/report-worker.js'],
+    archiveVerifier: app.original['electron/archive-verifier.js'] ?? null };
   const config = { schemaVersion: 1, owner, repository, benchmark: benchmark.configPath, trials, requests, runs, app,
     sourceRevision, sourceWorktreeDirty, builtEntryFingerprints,
     buildPrecondition: 'Caller must build before running. repo HEAD/dirty state is recorded at run creation; the original dist fingerprints identify the exact measured bytes and do not independently prove which source revision built them.',
@@ -538,7 +567,7 @@ function correctMemory(configPath) {
     const from = result.phases[index].at, to = result.phases[index + 1]?.at ?? Infinity;
     const released = rows.filter(row => row.processes && row.at >= from && row.at < to);
     assert.ok(released.length >= 2, 'Release interval needs at least two Main process-metric samples');
-    assert.ok(released.slice(-2).every(row => !row.processes.some(analysisUtility)), 'Analysis Utility survives confirmed release');
+    assert.ok(released.slice(-2).every(row => !row.processes.some(libraryUtility)), 'Library Utility survives confirmed release');
     return { ...result, memory: summarizeMemory(rows, result.rendererHeapObservations, result.phases),
       releasedUtilityExitedFromCorrectedMetrics: true };
   });
@@ -550,6 +579,7 @@ function correctMemory(configPath) {
 async function portableRepeats(configPath, name = 'nuke.dem', { samples = 2, includeOriginal = true } = {}) {
   assert.ok(Number.isInteger(samples) && samples >= 1 && samples <= 10);
   const config = readGuiConfig(configPath), benchmark = readBenchmark(config.benchmark), formal = formalGuiResults(config);
+  assert.equal(existsSync(join(config.owner.directory, '.pause-portable-probes')), false, 'Portable probes paused before launching another GUI process');
   assert.ok(benchmark.fixtures.includes(name));
   assert.equal(formal.results.length, config.trials * benchmark.fixtures.length * 2);
   assert.ok(formal.results.every(result => result.status === 'PASS'));
@@ -588,7 +618,8 @@ function refreeze(configPath) {
   const app = prepareApp(owner), sourceRevision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repository, encoding: 'utf8', windowsHide: true }).trim();
   const config = { ...previous, owner, app, sourceRevision, sourceWorktreeDirty:
     execFileSync('git', ['status', '--porcelain', '--untracked-files=no'], { cwd: repository, encoding: 'utf8', windowsHide: true }).trim().length > 0,
-    builtEntryFingerprints: { main: app.original['electron/main.js'], reportWorker: app.original['electron/report-worker.js'] },
+    builtEntryFingerprints: { main: app.original['electron/main.js'], reportWorker: app.original['electron/report-worker.js'],
+      archiveVerifier: app.original['electron/archive-verifier.js'] ?? null },
     seededFrom: originalConfigPath, previousMeasurementConfig: configPath,
     formalResultsFrom: join(originalConfig.owner.directory, 'results.json'), createdAt: new Date().toISOString(),
     purpose: 'New frozen built app for supplemental Main portable/reanalysis checks. Reuses the same owned seeded libraries and profiles; does not rewrite original configs/results or benchmark archives. Formal 24 open/seek evidence retains its original build identity.' };
