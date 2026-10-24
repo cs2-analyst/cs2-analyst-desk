@@ -105,6 +105,14 @@ function countJsonBytes(value: unknown, add: (bytes: number) => void, depth = 0)
   for (const name of names) { add(stringBytes(name) + 1); countJsonBytes(value[name], add, depth + 1); }
 }
 
+/** Count validated parsed archive JSON without a second whole-component string or Buffer. */
+export function canonicalArchiveJsonBytes(value: unknown, maximum = STORED_REPLAY_MAX_CANONICAL_BYTES): number {
+  if (!Number.isSafeInteger(maximum) || maximum < 1 || maximum > STORED_REPLAY_MAX_CANONICAL_BYTES) fail('canonical byte budget');
+  let bytes = 0;
+  countJsonBytes(value, count => { bytes += count; if (bytes > maximum) fail('canonical byte budget'); });
+  return bytes;
+}
+
 /** Call on the canonical JSON source; no mutation, rounding, normalization or field whitelist. */
 export function encodeStoredReplay(value: MatchReplay | null): unknown {
   const schemas: string[][] = [], ids = new Map<string, number>();
@@ -129,7 +137,8 @@ export function encodeStoredReplay(value: MatchReplay | null): unknown {
  * consume is only for a freshly JSON-parsed envelope exclusively owned by the archive reader:
  * after complete preflight it replaces tuple slots in place, releasing their references as it goes.
  */
-export function decodeStoredReplay(value: unknown, options: { maxCanonicalBytes?: number; consume?: boolean } = {}): MatchReplay | null {
+export function decodeStoredReplay(value: unknown, options: { maxCanonicalBytes?: number; consume?: boolean;
+  onCanonicalBytes?: (bytes: number) => void } = {}): MatchReplay | null {
   const maximum = options.maxCanonicalBytes ?? STORED_REPLAY_MAX_CANONICAL_BYTES;
   if (!Number.isSafeInteger(maximum) || maximum < 4 || maximum > STORED_REPLAY_MAX_CANONICAL_BYTES) fail('canonical byte budget');
   record(value);
@@ -162,6 +171,7 @@ export function decodeStoredReplay(value: unknown, options: { maxCanonicalBytes?
   if (used.size !== schemas.length) fail('unused schema');
   // Object = tuple bytes + per-reference key expansion. This counts every unchanged field too.
   countJsonBytes(value.source, add);
+  options.onCanonicalBytes?.(canonicalBytes);
   const source = transform(value.source, row => {
     const tuple = row as unknown[], names = schemas[tuple[0] as number];
     // fromEntries defines own properties; it never invokes a prototype setter.
