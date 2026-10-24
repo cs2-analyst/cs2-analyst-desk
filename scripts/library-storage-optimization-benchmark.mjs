@@ -186,15 +186,12 @@ function shuffled(values, seed = 0x2c52a) {
 function sameFingerprint(actual, expected, label) {
   assert.deepEqual(fingerprint(actual), { bytes: expected.bytes, sha256: expected.sha256 }, label);
 }
-async function openOne(config, name, version, directory, memory, allHeatmaps, label) {
+async function openOne(config, name, version, directory, memory, allHeatmaps, label, verifyCanonical = true) {
   const api = await imports(), expected = json(join(dataDirectory(config, name), 'expected.json'));
   const sessionId = randomUUID(); memory.phase(`${label}-load`); const start = performance.now();
   let loaded = await api.archive.loadLibraryArchive(directory);
   assert.ok(loaded.report && loaded.sources);
   const loadMs = performance.now() - start;
-  sameFingerprint(loaded.report, expected.report, 'Full report JSON must match');
-  for (const role of ['match', 'replay', 'spatial']) sameFingerprint(loaded.sources[role], expected.sources[role], `Full ${role} JSON must match`);
-  sameFingerprint(loaded.report.replay, expected.replayMetadata, 'Replay metadata must match');
   const metadata = { ...loaded.report.replay, sessionId }, manifest = loaded.manifest;
   let loads = 0;
   let replay = version === 2 ? new api.derived.DerivedReplaySession(loaded.sources.replay, metadata, async round => {
@@ -203,7 +200,6 @@ async function openOne(config, name, version, directory, memory, allHeatmaps, la
   memory.phase(`${label}-heatmap-admission`); const atHeatmap = performance.now();
   let heatmap = api.heatmap.createHeatmapSession(loaded.sources.match, loaded.sources.replay, loaded.sources.spatial, sessionId);
   assert.ok(heatmap.session && heatmap.metadata.available, `Restored Heatmap admission failed: ${JSON.stringify(heatmap.metadata)}`);
-  sameFingerprint(heatmap.metadata, expected.heatmapMetadata, 'Heatmap capabilities must match');
   const openMs = performance.now() - start, heatmapInitMs = performance.now() - atHeatmap;
   memory.phase(`${label}-seek`);
   const miss = [], hit = []; let cachePeakBytes = 0, frames = 0, utilities = 0;
@@ -223,18 +219,26 @@ async function openOne(config, name, version, directory, memory, allHeatmaps, la
     const result = heatmap.session.get({ ...item.request, sessionId });
     assert.equal(result.kind, 'success'); sameFingerprint(result, item, 'Full filtered Heatmap result'); verifiedHeatmapCases++;
   }
+  // Large canonical JSON comparisons run only in the separate portable/integrity
+  // process, after timed seeks. They cannot pollute open/seek latency or admission.
+  memory.phase(`${label}-verify-fingerprints`);
+  sameFingerprint(loaded.report, expected.report, 'Full report JSON must match');
+  if (verifyCanonical) for (const role of ['match', 'replay', 'spatial']) sameFingerprint(loaded.sources[role], expected.sources[role], `Full ${role} JSON must match`);
+  sameFingerprint(loaded.report.replay, expected.replayMetadata, 'Replay metadata must match');
+  sameFingerprint(heatmap.metadata, expected.heatmapMetadata, 'Heatmap capabilities must match');
   memory.phase(`${label}-release`); replay.clear(); heatmap.session.clear();
   assert.equal(replay.bytes, 0); replay = null; heatmap = null; loaded = null;
   await delay(200); memory.snapshot(`${label}-released-200ms`);
   return { loadMs, openMs, heatmapInitMs, chunks: miss.length, frames, utilities, verifiedHeatmapCases,
     uniqueBlockRequestsMs: quantiles(miss), immediateRepeatedBlockRequestsMs: quantiles(hit), cachePeakBytes, projectionLoads: loads,
     cacheInterpretation: version === 2 ? 'Unique requests miss the Derived LRU; immediate repeats hit it.' : 'v1 reads and decompresses on every call; immediate repeat is OS-cache-warm, not an application-cache hit.',
-    canonicalJsonByteExact: true, reportJsonByteExact: true, chunksJsonByteExact: true, metadataJsonByteExact: true };
+    canonicalJsonByteExact: verifyCanonical ? true : null, canonicalVerifiedByArchiveReader: true,
+    reportJsonByteExact: true, chunksJsonByteExact: true, metadataJsonByteExact: true };
 }
 async function probe(config, name, version, trial, memory) {
   const directory = join(dataDirectory(config, name), `v${version}`);
-  const cold = await openOne(config, name, version, directory, memory, trial === 0, 'new-process-first-open');
-  const repeated = await openOne(config, name, version, directory, memory, false, 'same-process-reopen');
+  const cold = await openOne(config, name, version, directory, memory, trial === 0, 'new-process-first-open', false);
+  const repeated = await openOne(config, name, version, directory, memory, false, 'same-process-reopen', false);
   return { version, trial, cold, repeated, osFileCacheCleared: false, processStartupExcludedFromOpenMs: true,
     coldDefinition: 'New Electron run-as-node process, production archive and session algorithms. The operating system file cache is not cleared; this is not a cold-disk test.' };
 }
