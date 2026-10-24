@@ -3,7 +3,7 @@
 // The caller builds first. This tool never builds, parses/copies a DEM, forces GC, or clears OS caches.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { spawn } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { appendFileSync, copyFileSync, cpSync, existsSync, mkdirSync, readFileSync,
   readdirSync, realpathSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -198,7 +198,7 @@ function targets(metadata, minimum) {
 function same(actual, expected, label) {
   assert.deepEqual(actual, { bytes: expected.bytes, sha256: expected.sha256 }, label);
 }
-function readObservations(directory) {
+export function readObservations(directory) {
   const rows = [];
   for (const file of readdirSync(directory).filter(name => /^observer-(Main|Utility)-\d+\.jsonl$/.test(name))) {
     const raw = readFileSync(join(directory, file), 'utf8');
@@ -208,13 +208,17 @@ function readObservations(directory) {
   }
   return rows.sort((a, b) => a.at - b.at);
 }
-function summarizeMemory(rows, renderer, phases) {
+export function summarizeMemory(rows, renderer, phases) {
   const nodeFields = ['rss', 'heapTotal', 'heapUsed', 'external', 'arrayBuffers'];
+  const rendererFields = ['usedSize', 'totalSize', 'embedderHeapUsedSize', 'backingStorageSize'];
+  const maximum = values => values.length ? Math.max(...values) : null;
+  const peakFields = (values, fields, select = value => value) => values.length ? Object.fromEntries(fields.map(key => [key,
+    maximum(values.map(value => select(value)[key]).filter(Number.isFinite))])) : null;
   const node = {};
   for (const role of ['Main', 'Utility']) {
     const subset = rows.filter(row => row.role === role); assert.ok(subset.length, `Missing ${role} observer`);
     node[role] = { processes: [...new Set(subset.map(row => row.pid))], samples: subset.length,
-      peakSingleProcess: Object.fromEntries(nodeFields.map(key => [key, Math.max(...subset.map(row => row.memory[key]))])),
+      peakSingleProcess: peakFields(subset, nodeFields, row => row.memory),
       lifetimeMaxRssBytes: Math.max(...subset.map(row => row.lifetimeMaxRssBytes)) };
   }
   const metricRows = rows.filter(row => row.processes);
@@ -223,23 +227,32 @@ function summarizeMemory(rows, renderer, phases) {
     Utility: row.processes.filter(p => p.type === 'Utility' && /^CS2 /.test(p.serviceName ?? p.name ?? '')),
   } }));
   // Electron memory-info is KiB. Keep observer logs as returned and convert only this summary.
+  const concurrentWorkingSet = (values, role) => values.map(row => row.roles[role].reduce((n, p) => n + p.memory.workingSetSize * 1024, 0));
   const byRole = Object.fromEntries(['Main', 'Renderer', 'Utility'].map(role => [role, {
-    peakConcurrentWorkingSetBytes: Math.max(0, ...workingSets.map(row => row.roles[role].reduce((n, p) => n + p.memory.workingSetSize * 1024, 0))),
-    peakProcessWorkingSetBytes: Math.max(0, ...workingSets.flatMap(row => row.roles[role].map(p => p.memory.peakWorkingSetSize * 1024))),
+    peakConcurrentWorkingSetBytes: maximum(concurrentWorkingSet(workingSets, role)),
+    peakProcessWorkingSetBytes: maximum(workingSets.flatMap(row => row.roles[role].map(p => p.memory.peakWorkingSetSize * 1024))),
   }]));
   const windows = phases.map((phase, index) => {
     const end = phases[index + 1]?.at ?? Infinity;
     const values = workingSets.filter(row => row.at >= phase.at && row.at < end);
     const heaps = renderer.filter(row => row.at >= phase.at && row.at < end);
-    return { phase: phase.label, at: phase.at, samples: values.length,
+    const nodes = rows.filter(row => row.at >= phase.at && row.at < end);
+    return { phase: phase.label, matchId: phase.matchId ?? null, at: phase.at, endAt: Number.isFinite(end) ? end : null,
+      samples: values.length, rendererSamples: heaps.length,
+      peakWorkingSetBytes: values.length ? Object.fromEntries(['Main', 'Renderer', 'Utility'].map(role => [role,
+        maximum(concurrentWorkingSet(values, role))])) : null,
+      peakNodeMemory: Object.fromEntries(['Main', 'Utility'].map(role => [role,
+        peakFields(nodes.filter(row => row.role === role), nodeFields, row => row.memory)])),
+      peakRendererHeap: peakFields(heaps, rendererFields),
       lastWorkingSetBytes: values.length ? Object.fromEntries(['Main', 'Renderer', 'Utility'].map(role => [role,
         values.at(-1).roles[role].reduce((n, p) => n + p.memory.workingSetSize * 1024, 0)])) : null,
+      lastNodeMemory: Object.fromEntries(['Main', 'Utility'].map(role => [role,
+        nodes.filter(row => row.role === role).at(-1)?.memory ?? null])),
       lastRendererHeap: heaps.at(-1) ?? null };
   });
   return { unit: 'bytes', observerIntervalMs: 100, node, workingSet: byRole, phases: windows,
-    rendererHeapPeak: Object.fromEntries(['usedSize', 'totalSize', 'embedderHeapUsedSize', 'backingStorageSize'].map(key => [key,
-      Math.max(0, ...renderer.map(row => row[key] ?? 0))])),
-    interpretation: 'Node RSS and JS heap are different measurements. external includes native-bound objects; arrayBuffers is a subset and must not be added to it. Chromium backingStorage/embedder values are CDP observations, not a complete native heap. Working sets come from app.getAppMetrics; Node lifetime maxRSS catches RSS spikes between timers. No GC is requested. Brief JS heap spikes during blocking work can fall between samples.' };
+    rendererHeapPeak: peakFields(renderer, rendererFields),
+    interpretation: 'Node RSS and JS heap are different measurements. Node peaks are per-process role high waters; working-set values sum simultaneous processes within each role, including overlapping old/new Utilities during a switch. external includes native-bound objects; arrayBuffers is a subset and must not be added to it. Chromium backingStorage/embedder values are CDP observations, not a complete native heap. Working sets come from app.getAppMetrics; Node lifetime maxRSS catches RSS spikes between timers. No GC is requested. Brief JS heap spikes during blocking work can fall between samples. A phase with no observations returns null; an observed working-set sample with no active analysis Utility is measured zero. Whole-flow peaks include the alternate match; use the named phases and matchId for per-match open/seek/release comparisons.' };
 }
 
 async function sixViews(page, directory, matchId) {
@@ -270,10 +283,13 @@ async function launchTrial(config, benchmark, version, trial, name) {
   const expected = json(join(benchmark.owner.directory, basename(name, '.dem'), 'expected.json'));
   const phases = [], observations = [], consoleMessages = [], errors = [];
   const result = { name, version, trial, primary, alternate, phases, startupAt: Date.now(),
+    sourceRevision: config.sourceRevision, sourceWorktreeDirty: config.sourceWorktreeDirty,
+    builtEntryFingerprints: config.builtEntryFingerprints,
     coldDefinition: 'First archive open in a new GUI Electron process. OS filesystem cache is not cleared; profile is reused within this format.',
     baselineDefinition: 'v1 and v2 both use the current common production reader/worker. This isolates format differences; it is not the original 9318ed9 worker with its former repeated source decoding.',
     directIpcExcludesReactRendering: true, explicitGc: false, osFileCacheCleared: false };
-  const phase = label => phases.push({ label, at: Date.now() });
+  let phaseMatchId = primary.matchId;
+  const phase = (label, matchId = phaseMatchId) => { phaseMatchId = matchId; phases.push({ label, matchId, at: Date.now() }); };
   const scope = new ProcessScope(), port = await freePort(), options = qaLaunchOptions(run), env = { ...options.env,
     CS2_STORAGE_QA_OBSERVATIONS: directory };
   for (const key of Object.keys(env)) if (['ELECTRON_RUN_AS_NODE', 'ELECTRON_RENDERER_URL'].includes(key)
@@ -318,9 +334,13 @@ async function launchTrial(config, benchmark, version, trial, name) {
         .finally(() => { polling = null; });
     };
     timer = setInterval(poll, 100); poll();
+    phase('shared-library-storage-before');
+    const storageBefore = await page.evaluate('window.cs2Analyst.library.storage()'); assert.equal(storageBefore.kind, 'success');
+    result.storage = { before: storageBefore, sharedIndexBytesBefore: storageBefore.indexBytes, persistentReplayCacheBytes: 0,
+      note: 'SQLite/WAL is a shared catalogue for all seeded matches, not a per-match archive cost. storage() enumerates library metadata before the first timed open. Exported portable files are outside the library and are not a persistent replay cache.' };
     phase('idle-before-open'); await delay(300);
     const open = async (id, label, expectedReport) => {
-      phase(label);
+      phase(label, id);
       const opened = await page.evaluate(`window.__storageQaOpen(${JSON.stringify(id)})`);
       assert.ok(opened.metadata?.available && opened.heatmapAvailable, 'GUI restore must retain Replay and Heatmap');
       if (expectedReport) same(opened.report, expectedReport, label + ' full report');
@@ -361,9 +381,13 @@ async function launchTrial(config, benchmark, version, trial, name) {
       return {ms:releasedAt-at,releasedAt,replies,staleKind:stale.kind};
     })()`);
     assert.equal(result.release.staleKind, 'error');
+    assert.ok(result.release.replies.every(reply => reply.kind !== 'success' || reply.at <= result.release.releasedAt),
+      'A successful burst reply arrived after release confirmation');
+    result.release.allSuccessfulRepliesPrecededReleaseConfirmation = true;
+    result.release.directRepliesWereNotInsertedIntoUiCache = true;
     phase('released-idle'); await delay(1500);
     if (trial === 0) {
-      phase('portable-export-in-main');
+      phase('portable-export-in-main', primary.matchId);
       result.portable = await page.evaluate(`(async()=>{const at=performance.now();const reply=await window.cs2Analyst.library.exportMatch(${JSON.stringify(primary.matchId)});return {exportMs:performance.now()-at,export:reply};})()`);
       assert.equal(result.portable.export.kind, 'success', JSON.stringify(result.portable.export));
       assert.ok(existsSync(env.CS2_ANALYST_EXPORT_PATH));
@@ -383,9 +407,12 @@ async function launchTrial(config, benchmark, version, trial, name) {
       phase('portable-released-idle'); await delay(1000);
     }
     if (trial === 0 && name === benchmark.fixtures[0]) {
-      phase('actual-six-view-ui'); result.views = await sixViews(page, directory, primary.matchId);
+      phase('actual-six-view-ui', primary.matchId); result.views = await sixViews(page, directory, primary.matchId);
       phase('ui-returned-home'); await delay(500);
     }
+    phase('shared-library-storage-after');
+    const storageAfter = await page.evaluate('window.cs2Analyst.library.storage()'); assert.equal(storageAfter.kind, 'success');
+    result.storage.after = storageAfter; result.storage.sharedIndexBytesAfter = storageAfter.indexBytes;
     const overlay = await page.evaluate('Boolean(document.querySelector("vite-error-overlay,#webpack-dev-server-client-overlay,[data-nextjs-dialog]"))');
     assert.equal(overlay, false);
     result.console = consoleMessages;
@@ -443,8 +470,14 @@ async function main(args) {
   assert.ok(Number.isInteger(requests) && requests >= 40 && requests <= 512);
   const owner = createOwnedTempDirectory('storage-electron-qa', { parent: realpathSync(tmpdir()) });
   const runs = Object.fromEntries([1, 2].map(version => [version, createOwnedQaRun(`storage-gui-v${version}`, { parent: owner.directory })]));
-  const config = { schemaVersion: 1, owner, repository, benchmark: benchmark.configPath, trials, requests, runs,
-    app: prepareApp(owner), createdAt: new Date().toISOString() };
+  const app = prepareApp(owner);
+  const sourceRevision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repository, encoding: 'utf8', windowsHide: true }).trim();
+  const sourceWorktreeDirty = execFileSync('git', ['status', '--porcelain', '--untracked-files=no'], { cwd: repository, encoding: 'utf8', windowsHide: true }).trim().length > 0;
+  const builtEntryFingerprints = { main: app.original['electron/main.js'], reportWorker: app.original['electron/report-worker.js'] };
+  const config = { schemaVersion: 1, owner, repository, benchmark: benchmark.configPath, trials, requests, runs, app,
+    sourceRevision, sourceWorktreeDirty, builtEntryFingerprints,
+    buildPrecondition: 'Caller must build before running. repo HEAD/dirty state is recorded at run creation; the original dist fingerprints identify the exact measured bytes and do not independently prove which source revision built them.',
+    createdAt: new Date().toISOString() };
   const configPath = join(owner.directory, 'gui-run.json'); save(owner, configPath, config);
   console.log(JSON.stringify({ guiRun: owner.directory, benchmark: benchmark.configPath, trials, requests, serial: true }));
   const electron = require('electron'), results = [];
@@ -456,6 +489,7 @@ async function main(args) {
       results.push(await launchTrial(config, benchmark, version, trial, name));
     }
     save(owner, join(owner.directory, 'results.json'), { schemaVersion: 1, createdAt: config.createdAt, benchmark: benchmark.configPath,
+      sourceRevision, sourceWorktreeDirty, builtEntryFingerprints, buildPrecondition: config.buildPrecondition,
       trials, requests, serial: true, explicitGc: false, osFileCacheCleared: false,
       scope: 'Built desktop GUI with current Main/preload/Renderer/Utility code plus passive QA-only memory observers. Both formats use the current common production reader; original 9318ed9 worker speed is not measured. New-process open is not cold disk; direct IPC timings exclude React UI rendering. Each fixture/format performs a Main portable export/delete/import in trial 0. One real row open and six rendered views are separately checked per format.',
       results });
@@ -465,6 +499,8 @@ async function main(args) {
     throw error;
   }
 }
-const [mode, ...args] = process.argv.slice(2);
-if (mode === '$seed') await seed(...args);
-else await main(mode ? [mode, ...args] : []);
+if (process.argv[1] && resolve(process.argv[1]) === here) {
+  const [mode, ...args] = process.argv.slice(2);
+  if (mode === '$seed') await seed(...args);
+  else await main(mode ? [mode, ...args] : []);
+}

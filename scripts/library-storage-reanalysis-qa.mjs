@@ -3,16 +3,18 @@
 // Four original whitelist DEMs, four real Utility parses, no DEM copy/rename/download or explicit GC.
 import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
-import { spawn } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { createReadStream, existsSync, mkdirSync, readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { createServer } from 'node:net';
 import { basename, dirname, join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { setTimeout as delay } from 'node:timers/promises';
 import { assertOwnedDirectory, assertOwnedPath, createOwnedTempDirectory, qaLaunchOptions } from './owned-qa-run.mjs';
 import { ProcessScope } from './installed-smoke-lifecycle.mjs';
 import { connectCdp, waitFor } from './smoke-runtime.mjs';
+import { readObservations, summarizeMemory } from './library-storage-electron-qa.mjs';
 
 const here = fileURLToPath(import.meta.url), repository = resolve(dirname(here), '..');
 const require = createRequire(join(repository, 'apps/desktop/package.json'));
@@ -166,9 +168,13 @@ async function guiCase(state, sample, offline) {
     env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
   const tracked = scope.track(process, `real ${offline ? 'offline reopen' : 'reanalysis'}/${sample.name}`, startedAt);
   const observed = { name: sample.name, initialArchiveVersion: sample.version, offline, startedAt, phases: [],
+    sourceRevisionAtReanalysisRun: state.sourceRevision, measuredAppRunRevision: state.gui.sourceRevision,
+    builtEntryFingerprints: state.gui.builtEntryFingerprints ?? {
+      main: state.gui.app.original['electron/main.js'], reportWorker: state.gui.app.original['electron/report-worker.js'] },
     sourceDemInjected: !offline, noExplicitGc: true, console: [], rendererExceptions: [] };
-  const phase = label => observed.phases.push({ label, at: Date.now() });
-  let page;
+  const phase = label => observed.phases.push({ label, matchId: sample.matchId, at: Date.now() });
+  const renderer = [];
+  let page, timer, polling = null, closing = false;
   try {
     await scope.live();
     const target = await waitFor(async () => {
@@ -189,19 +195,35 @@ async function guiCase(state, sample, offline) {
     await page.send('Network.emulateNetworkConditions', { offline: true, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
     await waitFor(() => page.evaluate('Boolean(window.cs2Analyst?.library)'), 30_000, 'reanalysis preload');
     await page.evaluate(helpers);
+    const poll = () => {
+      if (polling || closing) return;
+      polling = page.send('Runtime.getHeapUsage').then(value => renderer.push({ at: Date.now(), ...value }))
+        .catch(error => { if (!closing) observed.rendererExceptions.push({ observer: 'renderer-heap', message: error.message }); })
+        .finally(() => { polling = null; });
+    };
+    timer = setInterval(poll, 100); poll();
     const before = json(join(sample.directory, 'before.json'));
     const listed = await page.evaluate('window.cs2Analyst.library.list({limit:100})');
     assert.equal(listed.kind, 'success'); const entry = listed.entries.find(entry => entry.matchId === sample.matchId); assert.ok(entry);
     assert.equal(entry.importedAt, before.entry.importedAt); assert.equal(entry.selfPlayerId ?? null, before.selfPlayerId);
+    phase('shared-library-storage-before');
+    const storageBefore = await page.evaluate('window.cs2Analyst.library.storage()'); assert.equal(storageBefore.kind, 'success');
+    observed.storage = { before: storageBefore, sharedIndexBytesBefore: storageBefore.indexBytes, persistentReplayCacheBytes: 0,
+      note: 'SQLite/WAL is shared by all four matches. Per-match archive size is not the shared catalogue size.' };
     phase(offline ? 'offline-open' : 'old-generation-open');
     let opened = await page.evaluate(`window.cs2Analyst.library.open(${JSON.stringify(sample.matchId)}).then(window.__reanalysisQaReport)`);
     same(opened.report, sample.expected.report, 'entire opened report');
     const oldSession = opened.replay.sessionId;
     if (!offline) {
+      await page.evaluate(`(() => {window.__reanalysisQaProgress=[];
+        window.__reanalysisQaStopProgress=window.cs2Analyst.onProgress(label=>window.__reanalysisQaProgress.push({label:'reanalyze-'+label,matchId:${JSON.stringify(sample.matchId)},at:Date.now()}));})()`);
       phase('real-dem-parse-save-and-activate');
       const reply = await page.evaluate(`(async()=>{const at=performance.now();const reply=await window.cs2Analyst.library.reanalyze(${JSON.stringify(sample.matchId)});return {ms:performance.now()-at,kind:reply.kind,message:reply.message,savedMatchId:reply.savedMatchId,
         result:reply.kind==='success'?await window.__reanalysisQaReport(reply):null};})()`);
       observed.reanalysisMs = reply.ms;
+      observed.phases.push(...await page.evaluate('window.__reanalysisQaProgress'));
+      observed.phases.sort((a, b) => a.at - b.at);
+      await page.evaluate('window.__reanalysisQaStopProgress();window.__reanalysisQaStopProgress=null');
       // Preserve a durable-save/activation failure exactly; never describe it as a rollback.
       observed.reply = { kind: reply.kind, message: reply.message, savedMatchId: reply.savedMatchId };
       assert.equal(reply.kind, 'success', JSON.stringify(reply)); opened = reply.result;
@@ -237,17 +259,26 @@ async function guiCase(state, sample, offline) {
     phase('released'); await page.evaluate(`window.cs2Analyst.session.release(${JSON.stringify(opened.replay.sessionId)})`);
     const request = { ...targets[0], sessionId: opened.replay.sessionId };
     assert.equal((await page.evaluate(`window.cs2Analyst.replay.getChunk(${JSON.stringify(request)})`)).kind, 'error');
+    await delay(500);
+    phase('shared-library-storage-after');
+    const storageAfter = await page.evaluate('window.cs2Analyst.library.storage()'); assert.equal(storageAfter.kind, 'success');
+    observed.storage.after = storageAfter; observed.storage.sharedIndexBytesAfter = storageAfter.indexBytes;
     assert.deepEqual(observed.rendererExceptions, []);
     observed.knownDevelopmentWarnings = observed.console.filter(item => /Insecure Content-Security-Policy/.test(item.text));
     assert.deepEqual(observed.console.filter(item => !observed.knownDevelopmentWarnings.includes(item)), []);
+    phase('before-close'); closing = true; clearInterval(timer); timer = null; if (polling) await polling;
     try { await page.evaluate('void window.cs2Analyst.window.close()'); } catch { /* Must prove actual exit below. */ }
     await waitFor(() => process.exitCode !== null, 20_000, 'reanalysis GUI close', { diagnostics: () => ({ stderr: tracked.stderr }) });
-    assert.equal(process.exitCode, 0, tracked.stderr); observed.status = 'PASS';
+    assert.equal(process.exitCode, 0, tracked.stderr);
+    observed.memory = summarizeMemory(readObservations(output), renderer, observed.phases);
+    observed.rendererHeapObservations = renderer;
+    observed.status = 'PASS';
   } catch (error) {
     observed.status = 'FAIL'; observed.error = { message: error.message, stack: error.stack };
     if (page) { try { const shot = await page.send('Page.captureScreenshot', { format: 'png' }); writeFileSync(join(output, 'failure.png'), Buffer.from(shot.data, 'base64')); } catch {} }
     throw error;
   } finally {
+    closing = true; if (timer) clearInterval(timer); if (polling) await polling;
     page?.socket.close(); let cleanupError;
     try { await scope.cleanup(); } catch (error) { cleanupError = error; observed.cleanupError = { message: error.message, stack: error.stack }; }
     const primaryFailed = observed.status === 'FAIL';
@@ -268,6 +299,7 @@ async function main(path) {
   const loaded = input(path), owner = createOwnedTempDirectory('storage-reanalysis-qa', { parent: realpathSync(tmpdir()) });
   const cases = allowed.map((name, index) => ({ name, version: index < 2 ? 1 : 2, self: index % 2 === 0 ? 'null' : 'selected-player' }));
   const state = { schemaVersion: 1, owner, repository, guiConfig: loaded.configPath, cases, createdAt: new Date().toISOString() };
+  state.sourceRevision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repository, encoding: 'utf8', windowsHide: true }).trim();
   const configPath = join(owner.directory, 'run.json'); save(owner, configPath, state);
   console.log(JSON.stringify({ run: owner.directory, guiRun: loaded.configPath, cases }));
   const results = [];
@@ -288,9 +320,13 @@ async function main(path) {
       results.push({ name: sample.name, sourceSha256: beforeHash, fromArchiveVersion: sample.version, toArchiveVersion: 2,
         self: item.self, reanalysisMs: reanalyzed.reanalysisMs, canonical: json(join(sample.directory, 'verify.json')),
         offlineChunks: offline.checkedChunks, offlineHeatmapCases: offline.checkedHeatmaps,
+        memory: { nativeReanalysis: reanalyzed.memory, offline: offline.memory },
+        sharedStorage: { nativeReanalysis: reanalyzed.storage, offline: offline.storage },
         importedAtAndSelfPreserved: true, generationChanged: true, sourceDemUnmodified: true, status: 'PASS' });
     }
     save(owner, join(owner.directory, 'results.json'), { schemaVersion: 1, createdAt: state.createdAt, guiRun: state.guiConfig,
+      sourceRevisionAtReanalysisRun: state.sourceRevision, measuredAppRunRevision: loaded.gui.sourceRevision,
+      builtEntryFingerprints: loaded.gui.builtEntryFingerprints,
       serial: true, nativeDemParses: 4, explicitGc: false, demCopiedRenamedOrDownloaded: false, results,
       limits: ['Development built app with the existing Main DEM-dialog seam; no packaged native-dialog automation.',
         'Original DEMs remain in place. Offline opens have no DEM path injection and use library.open; no claim of OS-level access denial.',
