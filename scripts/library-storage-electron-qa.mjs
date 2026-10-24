@@ -283,7 +283,7 @@ async function sixViews(page, directory, matchId) {
   return views;
 }
 
-async function launchTrial(config, benchmark, version, trial, name) {
+async function launchTrial(config, benchmark, version, trial, name, { forcePortable = false } = {}) {
   const run = config.runs[version], base = join(run.output, `${basename(name, '.dem')}-trial-${trial}`);
   let directory = assertOwnedPath(run, base), attempt = 1;
   while (existsSync(directory)) { assert.ok(attempt < 20, 'Too many preserved trial attempts'); directory = assertOwnedPath(run, base + '-attempt-' + ++attempt); }
@@ -294,6 +294,7 @@ async function launchTrial(config, benchmark, version, trial, name) {
   const expected = json(join(benchmark.owner.directory, basename(name, '.dem'), 'expected.json'));
   const phases = [], observations = [], consoleMessages = [], errors = [];
   const result = { name, version, trial, attempt, outputDirectory: directory, primary, alternate, phases, startupAt: Date.now(),
+    supplementalPortableProbe: forcePortable,
     sourceRevision: config.sourceRevision, sourceWorktreeDirty: config.sourceWorktreeDirty,
     builtEntryFingerprints: config.builtEntryFingerprints,
     coldDefinition: 'First archive open in a new GUI Electron process. OS filesystem cache is not cleared; profile is reused within this format.',
@@ -397,7 +398,7 @@ async function launchTrial(config, benchmark, version, trial, name) {
     result.release.allSuccessfulRepliesPrecededReleaseConfirmation = true;
     result.release.directRepliesWereNotInsertedIntoUiCache = true;
     phase('released-idle'); await delay(1500);
-    if (trial === 0) {
+    if (trial === 0 || forcePortable) {
       phase('portable-export-in-main', primary.matchId);
       result.portable = await page.evaluate(`(async()=>{const at=performance.now();const reply=await window.cs2Analyst.library.exportMatch(${JSON.stringify(primary.matchId)});return {exportMs:performance.now()-at,export:reply};})()`);
       assert.equal(result.portable.export.kind, 'success', JSON.stringify(result.portable.export));
@@ -537,10 +538,40 @@ function correctMemory(configPath) {
     correction: 'Electron names analysis Utilities in name; serviceName can be generic node.mojom.NodeService. Both are matched. Raw metrics and original timing/results are preserved unchanged. Release exit is independently rechecked in each released-idle phase.', results });
   console.log(JSON.stringify({ success: true, correctedResults: path }));
 }
+async function portableRepeats(configPath, name = 'nuke.dem') {
+  const config = readGuiConfig(configPath), benchmark = readBenchmark(config.benchmark), formal = json(join(config.owner.directory, 'results.json'));
+  assert.ok(benchmark.fixtures.includes(name));
+  assert.equal(formal.results.length, config.trials * benchmark.fixtures.length * 2);
+  assert.ok(formal.results.every(result => result.status === 'PASS'));
+  for (const [file, fingerprint] of Object.entries(config.app.original))
+    assert.equal(digest(readFileSync(join(desktop, 'dist', ...file.split('/')))), fingerprint.sha256, 'Portable repeats require unchanged production dist');
+  const extra = [];
+  try {
+    for (let trial = config.trials; trial < config.trials + 2; trial++) for (const version of [1, 2]) {
+      console.log(JSON.stringify({ phase: 'supplemental-portable', name, version, trial }));
+      const checkpoint = join(config.owner.directory, `portable-extra-v${version}-${basename(name, '.dem')}-${trial}.json`);
+      if (existsSync(checkpoint)) { const result = json(checkpoint); assert.equal(result.status, 'PASS'); extra.push(result); continue; }
+      const result = await launchTrial(config, benchmark, version, trial, name, { forcePortable: true });
+      save(config.owner, checkpoint, result); extra.push(result);
+    }
+    const original = formal.results.filter(result => result.name === name && result.trial === 0)
+      .map(result => ({ ...result, memory: summarizeMemory(readObservations(result.outputDirectory), result.rendererHeapObservations, result.phases) }));
+    assert.equal(original.length, 2);
+    const path = join(config.owner.directory, `portable-repeated-${basename(name, '.dem')}.json`);
+    save(config.owner, path, { schemaVersion: 1, name, observationsPerFormat: 3,
+      formalTimingsRemainUnchanged: true, originalFormalTrialZero: original, supplemental: extra,
+      interpretation: 'Two additional independent GUI processes per format, each repeating the same full open/seek/switch/release and Main export/delete/import flow. These samples supplement portable-memory evidence and are excluded from the formal 24 open/seek timing samples. No explicit GC, OS cache clearing or production-code changes.' });
+    console.log(JSON.stringify({ success: true, portableRepeatedResults: path }));
+  } catch (error) {
+    save(config.owner, join(config.owner.directory, `portable-extra-failure-${Date.now()}.json`), { message: error.message, stack: error.stack, completed: extra.length });
+    throw error;
+  }
+}
 if (process.argv[1] && resolve(process.argv[1]) === here) {
   const [mode, ...args] = process.argv.slice(2);
   if (mode === '$seed') await seed(...args);
   else if (mode === '$summarize') correctMemory(resolve(args[0]));
+  else if (mode === '$portable-repeats') await portableRepeats(resolve(args[0]), args[1]);
   else if (mode === '$resume') {
     const path = resolve(args[0]), config = readGuiConfig(path);
     assert.equal(existsSync(join(config.owner.directory, 'results.json')), false, 'Completed runs must not be modified');
