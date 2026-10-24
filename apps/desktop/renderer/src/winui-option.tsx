@@ -1,5 +1,6 @@
-import { Option, makeStyles, tokens } from '@fluentui/react-components';
+import { Option, makeStyles, tokens, Tooltip } from '@fluentui/react-components';
 import type { OptionProps } from '@fluentui/react-components';
+import { useRef, useState, useEffect } from 'react';
 
 /**
  * WinUI-inspired single-select Option: use an accent bar instead of Fluent's
@@ -11,6 +12,9 @@ const useStyles = makeStyles({
     position: 'relative',
     // Reserve identical space for every row, selected or not.
     paddingLeft: '24px !important',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
     '::before': {
       content: '""',
       position: 'absolute',
@@ -41,9 +45,43 @@ const useStyles = makeStyles({
       },
     },
   },
+  content: {
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    minWidth: 0,
+    display: 'block',
+  },
 });
 
-export function WinOption({ className, ...props }: OptionProps & { 'data-value'?: string }) {
+export function WinOption({ className, children, text, ...props }: OptionProps & { 'data-value'?: string }) {
   const styles = useStyles();
-  return <Option {...props} checkIcon={null} className={[styles.option, className].filter(Boolean).join(' ')} />;
+  const contentRef = useRef<HTMLSpanElement>(null);
+  const [isOverflowing, setIsOverflowing] = useState(false);
+  const [tooltipVisible, setTooltipVisible] = useState(false);
+  const optionText = text ?? (typeof children === 'string' || typeof children === 'number' ? String(children) : '');
+
+  useEffect(() => {
+    const element = contentRef.current;
+    if (!element) return;
+
+    const checkOverflow = () => {
+      setIsOverflowing(element.scrollWidth > element.clientWidth);
+    };
+
+    checkOverflow();
+    const observer = new ResizeObserver(checkOverflow);
+    observer.observe(element);
+
+    return () => observer.disconnect();
+  }, [children, optionText]);
+
+  // Keep the Option mounted when overflow changes, preserving Fluent's option registration.
+  return <Tooltip content={optionText ?? ''} relationship="description" withArrow
+    visible={isOverflowing && !!optionText && tooltipVisible}
+    onVisibleChange={(_, data) => setTooltipVisible(data.visible)}>
+    <Option {...props} text={optionText} checkIcon={null} className={[styles.option, className].filter(Boolean).join(' ')}>
+      <span ref={contentRef} className={styles.content}>{children}</span>
+    </Option>
+  </Tooltip>;
 }

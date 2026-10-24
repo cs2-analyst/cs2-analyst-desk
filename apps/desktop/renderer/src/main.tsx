@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   Badge, Body1, Button, Card, Caption1, Dialog, DialogActions, DialogBody, DialogContent,
@@ -23,6 +23,7 @@ import { LibraryPage, PersonalSection } from './library-page';
 import { ReportSecondaryLine } from './performance-display';
 import { ReplayPlayer } from './replay-player';
 import { WinSelect } from './winui-select';
+import { playerSelectGroups } from './player-select-groups';
 import { HeatmapView } from './heatmap-view';
 import type { ReplayJump } from './replay-player';
 import './collapse-motion.css';
@@ -413,6 +414,7 @@ function Report({ report, playerId, replayActive, activeTab, onSelectView }: {
   const player = report.players.find(p => p.id === playerId)!;
   const p = report.analytics.find(a => a.playerId === playerId)!;
   const timeline = report.timeline.find(t => t.playerId === playerId)?.rounds ?? [];
+  const playerGroups = useMemo(() => playerSelectGroups(report), [report.players, report.timeline]);
   const [replayJump,setReplayJump]=useState<ReplayJump|null>(null);
   const [replayNotice,setReplayNotice]=useState<string|null>(null);
   const [unavailableReplayRound,setUnavailableReplayRound]=useState<number|null>(null);
@@ -483,7 +485,7 @@ function Report({ report, playerId, replayActive, activeTab, onSelectView }: {
           />
         </div>
         <div className={s.column}><Caption1>目标玩家</Caption1><Tooltip content={player.nickname} relationship="description"><WinSelect className={s.playerDropdown} listbox={{ style: { maxWidth: '250px' } }} aria-label="目标玩家" value={playerId}
-          items={report.players.map(p => ({ value: p.id, text: p.nickname, label: <Tooltip content={p.nickname} relationship="description"><span className={s.playerName}>{p.nickname}</span></Tooltip> }))}
+          items={playerGroups}
           onValueChange={selectPlayer} /></Tooltip></div>
       </div>
     </div>
