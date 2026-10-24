@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { encodeStoredReplay, decodeStoredReplay, STORED_REPLAY_ENCODING } from '../electron/library-replay-codec.ts';
+import { encodeStoredReplay, decodeStoredReplay, STORED_REPLAY_ENCODING,
+  STORED_REPLAY_MAX_CANONICAL_BYTES } from '../electron/library-replay-codec.ts';
 
 const json = value => JSON.stringify(value);
 const canonicalRoundTrip = source => {
@@ -117,4 +118,53 @@ test('structural budgets reject excessive rounds, frames, players, fields and sc
     const copy = encodeStoredReplay(replay()); mutate(copy);
     assert.throws(() => decodeStoredReplay(copy), /Invalid stored Replay/);
   }
+});
+
+test('canonical byte budget is exact for Unicode, escapes, numbers, empty data and every unchanged field', () => {
+  const sources = [null, replay()];
+  const empty = replay(); empty.rounds = []; sources.push(empty);
+  const unicode = replay();
+  unicode.rounds[0].frames[0].players[0]['escaped\n\t"\\键😀\ud800'] =
+    ['\u0000\u0001\b\t\n\f\r"\\/中文😀\ud800\udc00\ud800X\udc00', 1e-30, -1.23e30, -0];
+  unicode.futureSourceField = { '控制\u0000😀': [true, false, null, {}, []] };
+  // JSON normalization is the archive boundary (e.g. -0 serializes as 0).
+  sources.push(JSON.parse(json(unicode)));
+  for (const source of sources) {
+    const bytes = Buffer.byteLength(json(source)), packed = encodeStoredReplay(source);
+    assert.equal(json(decodeStoredReplay(packed, { maxCanonicalBytes: bytes })), json(source));
+    assert.throws(() => decodeStoredReplay(packed, { maxCanonicalBytes: bytes - 1 }), /canonical byte budget/);
+  }
+  const packed = encodeStoredReplay(null);
+  for (const maximum of [0, -1, NaN, Infinity, 1.5, STORED_REPLAY_MAX_CANONICAL_BYTES + 1]) {
+    assert.throws(() => decodeStoredReplay(packed, { maxCanonicalBytes: maximum }), /canonical byte budget/);
+  }
+});
+
+test('small tuple dictionary cannot expand past the ordinary component ceiling before output allocation', () => {
+  const schema = Array.from({ length: 128 }, (_, index) => `${index}`.padEnd(512, 'x'));
+  const tuple = [0, ...Array(128).fill(null)], source = replay();
+  source.rounds[0].frames = Array.from({ length: 65 }, (_, index) => ({ requestedTick: index,
+    players: Array(64).fill(tuple) }));
+  const packed = { encoding: STORED_REPLAY_ENCODING, schemas: [schema], source };
+  assert.ok(Buffer.byteLength(json(packed)) < 3 * 1024 * 1024, 'encoded payload stays small');
+  let valueReads = 0;
+  Object.defineProperty(tuple, '1', { enumerable: true, get() { valueReads++; throw new Error('output allocation started'); } });
+  assert.throws(() => decodeStoredReplay(packed), /canonical byte budget/);
+  assert.equal(valueReads, 0, 'key expansion is rejected before copying or reading any sample value');
+});
+
+test('owned-reader consumption reuses the parsed source only after complete successful preflight', () => {
+  const original = replay(), packed = encodeStoredReplay(original), oldSource = packed.source;
+  const oldFrames = oldSource.rounds[0].frames, oldPlayers = oldFrames[0].players;
+  const before = json(packed);
+  assert.equal(json(decodeStoredReplay(packed)), json(original));
+  assert.equal(json(packed), before, 'default decoding does not mutate caller input');
+  assert.throws(() => decodeStoredReplay(packed, { consume: true, maxCanonicalBytes: 10 }), /canonical byte budget/);
+  assert.equal(json(packed), before, 'failed preflight leaves even an owned input intact');
+  const restored = decodeStoredReplay(packed, { consume: true });
+  assert.equal(restored, oldSource);
+  assert.equal(restored.rounds[0].frames, oldFrames);
+  assert.equal(restored.rounds[0].frames[0].players, oldPlayers);
+  assert.equal(json(restored), json(original));
+  assert.equal(decodeStoredReplay(encodeStoredReplay(null), { consume: true }), null);
 });
