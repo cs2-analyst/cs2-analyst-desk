@@ -12,6 +12,10 @@ export interface LibraryFilters {
 
 export const defaultLibraryFilters: LibraryFilters = { map: 'all', sort: 'importedAt', direction: 'desc' };
 
+/** Stable filter options, independent of the currently loaded catalogue page. */
+export const libraryMapOptions = ['dust2', 'mirage', 'inferno', 'anubis', 'ancient', 'nuke', 'overpass', 'train', 'cache']
+  .map(map => ({ value: `de_${map}`, text: map }));
+
 /** One place that turns UI filter state into the frozen catalogue query. */
 export function toLibraryListQuery(filters: LibraryFilters, limit = 100): LibraryListQuery {
   return {
@@ -34,5 +38,11 @@ export function formatImportedAt(value: string): string {
   const date = new Date(value);
   if (!Number.isFinite(date.getTime())) return '导入时间未知';
   const pad = (n: number) => String(n).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+}
+
+export function formatImportedDate(value: string): string {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return '未知';
+  return `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }

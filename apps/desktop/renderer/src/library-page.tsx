@@ -11,6 +11,11 @@ import {
   DialogTitle,
   MessageBar,
   MessageBarBody,
+  Menu,
+  MenuItem,
+  MenuList,
+  MenuPopover,
+  MenuTrigger,
   Spinner,
   Subtitle1,
   Title1,
@@ -27,9 +32,9 @@ import {
 } from "@fluentui/react-components";
 import type { MatchLibraryEntry } from "@cs2-analyst/report-contract";
 import { useReport } from "./store";
-import { formatBytes, formatImportedAt, toLibraryListQuery } from "./library-query.ts";
+import { formatBytes, formatImportedAt, formatImportedDate, libraryMapOptions, toLibraryListQuery } from "./library-query.ts";
 import type { LibraryFilters } from "./library-query.ts";
-import { DeleteIcon, ExportIcon, ImportIcon, OpenIcon } from "./icons";
+import { BackIcon, DeleteIcon, ExportIcon, ForwardIcon, ImportIcon, MoreIcon } from "./icons";
 import { palette } from "./theme";
 import { RatingValue, HighlightTags, formatMetric, formatKast } from "./performance-display";
 import { WinSelect } from "./winui-select";
@@ -67,8 +72,8 @@ const useStyles = makeStyles({
   },
   rowClickable: { cursor: "pointer", ":focus-visible": { outline: `1px solid ${palette.currentPlayer}`, outlineOffset: "-2px" } },
   status: { padding: "0 24px 8px" },
-  scroll: { flex: 1, minHeight: 0, overflow: "auto", padding: "0 24px 20px" },
-  list: { minWidth: "1052px", width: "100%", tableLayout: "fixed", fontVariantNumeric: "tabular-nums" },
+  scroll: { flex: 1, minHeight: 0, overflow: "auto", padding: "0 24px 16px" },
+  list: { width: "100%", tableLayout: "fixed", fontVariantNumeric: "tabular-nums" },
   tableHead: {
     "& .fui-TableHeaderCell__button": { justifyContent: "center" },
     height: "36px",
@@ -79,7 +84,7 @@ const useStyles = makeStyles({
     backgroundColor: palette.pageTop,
   },
   cell: {
-    padding: "0 10px",
+    padding: "0 6px",
     textAlign: "center",
     whiteSpace: "nowrap",
     overflow: "hidden",
@@ -109,7 +114,7 @@ const useStyles = makeStyles({
   fileName: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
   playerLine: { display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
   muted: { color: tokens.colorNeutralForeground3 },
-  actions: { display: "flex", alignItems: "center", gap: "4px", flexWrap: "nowrap", justifyContent: "flex-end" },
+  deleteAction: { color: tokens.colorPaletteRedForeground1 },
   empty: {
     display: "flex",
     flexDirection: "column",
@@ -142,7 +147,20 @@ const useStyles = makeStyles({
     gap: "12px",
     padding: "24px",
   },
-  storage: { flexShrink: 0, display: "flex", justifyContent: "flex-end", padding: "0 24px 16px" },
+  storage: {
+    flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between",
+    gap: "12px", flexWrap: "wrap", margin: "0 24px", padding: "12px 0 16px",
+    borderTop: `1px solid ${palette.rowDivider}`,
+  },
+  storageSummary: { display: "flex", alignItems: "center", gap: "12px", color: tokens.colorNeutralForeground3 },
+  pagination: { display: "flex", alignItems: "center", gap: "12px", marginLeft: "auto", fontVariantNumeric: "tabular-nums" },
+  pageRange: { color: tokens.colorNeutralForeground3, whiteSpace: "nowrap" },
+  pageControls: { display: "flex", alignItems: "center", gap: "4px" },
+  pageNumber: {
+    minWidth: "56px", height: "32px", boxSizing: "border-box", padding: "0 10px",
+    display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px",
+    backgroundColor: palette.raised, borderRadius: tokens.borderRadiusMedium, fontSize: "13px",
+  },
   placeholder: {
     flex: 1,
     minHeight: 0,
@@ -212,16 +230,16 @@ export function LibraryList({
 }) {
   const s = useStyles();
   const columns = [
-    ["日期", 148],
-    ["地图", 142],
-    ["胜/负", 58],
-    ["比分", 78],
-    ["K/D/A", 100],
-    ["ADR", 64],
-    ["Rating", 76],
-    ["KAST", 78],
-    ["高光", 100],
-    ["操作", 116],
+    ["日期", 8],
+    ["地图", 22],
+    ["胜/负", 6],
+    ["比分", 9],
+    ["K/D/A", 12],
+    ["ADR", 8],
+    ["Rating", 8],
+    ["KAST", 9],
+    ["高光", 12],
+    ["操作", 6],
   ] as const;
   return (
     <Table
@@ -237,11 +255,11 @@ export function LibraryList({
             <TableHeaderCell
               key={label}
               className={mergeClasses(s.tableHead, s.cell, label === "地图" && s.mapCell)}
-              style={{ width }}
+              style={{ width: `${width}%` }}
             >
               {label === "日期" ? (
                 <Tooltip content="当前 DEM 未提供可信比赛日期，下方日期为本机导入时间。" relationship="description">
-                  <span tabIndex={0}>日期 · 导入</span>
+                  <span tabIndex={0}>导入日期</span>
                 </Tooltip>
               ) : (
                 label
@@ -301,6 +319,8 @@ function LibraryRow({
     : null;
   const playerHint = player ? `${player.nickname} · SteamID ${player.id}`
     : selfId ? "本场无此玩家" : "未设置自己";
+  const playerLabel = player ? player.nickname === player.id ? "已选择玩家" : player.nickname
+    : selfId ? "本场无此玩家" : "未设置自己";
   const status =
     entry.state === "invalid"
       ? "当前档案不可读，只能删除或导出尝试。"
@@ -321,6 +341,7 @@ function LibraryRow({
       aria-label={openable ? `打开 ${entry.fileName}` : undefined}
       onClick={open}
       onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
         if (event.key !== "Enter" && event.key !== " ") return;
         event.preventDefault();
         open();
@@ -329,27 +350,27 @@ function LibraryRow({
       <TableCell className={s.cell}>
         <Tooltip content={`导入时间：${formatImportedAt(entry.importedAt)}。比赛日期未知。`} relationship="description">
           <time tabIndex={0} dateTime={entry.importedAt}>
-            {formatImportedAt(entry.importedAt)}
+            {formatImportedDate(entry.importedAt)}
           </time>
         </Tooltip>
       </TableCell>
-      <TableCell className={mergeClasses(s.cell, s.mapCell)} title={description}>
+      <TableCell className={mergeClasses(s.cell, s.mapCell)}>
         <Tooltip content={description} relationship="description">
-          <div className={s.fileName} tabIndex={0}>
-            {entry.map}
+          <div className={s.info} tabIndex={0}>
+            <span className={s.fileName}>{entry.map}</span>
+            <Caption1 className={mergeClasses(s.muted, s.playerLine)}>{playerLabel}</Caption1>
           </div>
         </Tooltip>
-        <Caption1 className={mergeClasses(s.muted, s.playerLine)} title={playerHint}>{playerHint}</Caption1>
       </TableCell>
       <TableCell className={s.cell}>
-        <span
+        <Tooltip content={outcome === "unknown" ? "尚未选择自己或胜负证据不可用" : outcome === "win" ? "胜利" : outcome === "loss" ? "失利" : "平局"} relationship="description"><span
           className={s.result}
           data-library-outcome={outcome}
           style={{ backgroundColor: result[1], color: outcome === "unknown" ? palette.textMuted : "#111821" }}
-          title={outcome === "unknown" ? "尚未选择自己或胜负证据不可用" : undefined}
+          tabIndex={0}
         >
           {result[0]}
-        </span>
+        </span></Tooltip>
       </TableCell>
       <TableCell className={s.cell} data-library-score>
         {ownScore ?? DASH}
@@ -363,7 +384,7 @@ function LibraryRow({
       <TableCell className={s.cell}>
         {summary?.performance.rating.status === "available"
           ? <RatingValue rating={summary.performance.rating} />
-          : <span data-rating-empty title={summary?.performance.rating.reason ?? "尚未选择自己"}>{DASH}</span>}
+          : <Tooltip content={summary?.performance.rating.reason ?? "尚未选择自己"} relationship="description"><span data-rating-empty tabIndex={0}>{DASH}</span></Tooltip>}
       </TableCell>
       <TableCell className={s.cell} data-library-kast>
         {summary?.kastPercentage !== null && summary?.kastPercentage !== undefined ? formatKast(summary.kastPercentage) : DASH}
@@ -372,41 +393,22 @@ function LibraryRow({
         {summary?.performance.highlights?.length ? <HighlightTags highlights={summary.performance.highlights} /> : DASH}
       </TableCell>
       <TableCell className={s.cell} onClick={stop} onKeyDown={stop}>
-        <div className={s.actions}>
-          <Tooltip content="打开比赛" relationship="label">
-            <Button
-              size="small"
-              appearance="subtle"
-              icon={<OpenIcon size={16} />}
-              data-library-open
-              aria-label={`打开 ${entry.fileName}`}
-              disabled={busy || entry.state !== "ready"}
-              onClick={() => onOpen(entry.matchId)}
-            />
-          </Tooltip>
-          <Tooltip content="导出比赛归档" relationship="label">
-            <Button
-              size="small"
-              appearance="subtle"
-              icon={<ExportIcon size={16} />}
-              data-library-export
-              aria-label={`导出 ${entry.fileName}`}
-              disabled={busy || entry.state !== "ready"}
-              onClick={() => onExport(entry.matchId)}
-            />
-          </Tooltip>
-          <Tooltip content="删除比赛" relationship="label">
-            <Button
-              size="small"
-              appearance="subtle"
-              icon={<DeleteIcon size={16} />}
-              data-library-delete
-              aria-label={`删除 ${entry.fileName}`}
-              disabled={busy}
-              onClick={() => onDelete(entry)}
-            />
-          </Tooltip>
-        </div>
+        <Menu>
+          <MenuTrigger disableButtonEnhancement>
+            <Tooltip content="更多操作" relationship="description">
+              <Button size="small" appearance="subtle" icon={<MoreIcon size={18} />}
+                data-library-more aria-label={`更多操作：${entry.fileName}`} disabled={busy} />
+            </Tooltip>
+          </MenuTrigger>
+          <MenuPopover>
+            <MenuList>
+              <MenuItem icon={<ExportIcon size={18} />} data-library-export disabled={busy || entry.state !== "ready"}
+                onClick={() => onExport(entry.matchId)}>导出比赛归档</MenuItem>
+              <MenuItem icon={<DeleteIcon size={18} />} className={s.deleteAction} data-library-delete disabled={busy}
+                onClick={() => onDelete(entry)}>删除比赛</MenuItem>
+            </MenuList>
+          </MenuPopover>
+        </Menu>
       </TableCell>
     </TableRow>
   );
@@ -438,7 +440,6 @@ export function LibraryPage() {
   const [pageSize, setPageSize] = useState(25);
   const [pageOffsets, setPageOffsets] = useState<number[]>([]);
   const [unreadable, setUnreadable] = useState(0);
-  const [mapOptions, setMapOptions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
   const [storage, setStorage] = useState<{ matchCount: number; totalBytes: number } | null>(null);
@@ -463,18 +464,15 @@ export function LibraryPage() {
           setUnreadable(0);
           return;
         }
-        if (result.total > 0 && result.offset >= result.total) {
-          setOffset(pageOffsets.at(-1) ?? 0);
-          setPageOffsets(pageOffsets.slice(0, -1));
+        if (result.offset > 0 && result.offset >= result.total) {
+          setOffset(result.total === 0 ? 0 : pageOffsets.at(-1) ?? 0);
+          setPageOffsets(result.total === 0 ? [] : pageOffsets.slice(0, -1));
           return;
         }
         setEntries(result.entries);
         setTotal(result.total);
         setPageSize(result.limit);
         setUnreadable(result.unreadableCount);
-        setMapOptions((previous) =>
-          Array.from(new Set([...previous, ...result.entries.map((entry) => entry.map)])).sort(),
-        );
       })
       .catch(() => {
         if (requestId !== requestRef.current) return;
@@ -558,7 +556,7 @@ export function LibraryPage() {
           className={s.select}
           aria-label="按地图筛选"
           value={filters.map}
-          items={[{ value: "all", text: "全部地图" }, ...mapOptions.map((map) => ({ value: map, text: map }))]}
+          items={[{ value: "all", text: "全部地图" }, ...libraryMapOptions]}
           onValueChange={(map) => update({ map })}
         />
         <WinSelect
@@ -629,7 +627,7 @@ export function LibraryPage() {
         </div>
       ) : null}
 
-      <div className={s.scroll}>
+      <div className={s.scroll} aria-busy={loading}>
         {loading && entries.length === 0 ? (
           <div className={s.center} role="status" data-library-loading>
             <Spinner size="large" label="正在读取本地比赛库…" />
@@ -677,37 +675,39 @@ export function LibraryPage() {
       </div>
 
       <div className={s.storage} data-library-storage>
-        <Button
-          size="small"
-          appearance="subtle"
-          aria-label="上一页比赛"
-          disabled={loading || busy || offset === 0}
-          onClick={() => {
-            setOffset(pageOffsets.at(-1) ?? 0);
-            setPageOffsets(pageOffsets.slice(0, -1));
-          }}
-        >
-          上一页
-        </Button>
-        <Button
-          size="small"
-          appearance="subtle"
-          aria-label="下一页比赛"
-          disabled={loading || busy || offset + pageSize >= total}
-          onClick={() => {
-            setPageOffsets([...pageOffsets, offset]);
-            setOffset(offset + pageSize);
-          }}
-        >
-          下一页
-        </Button>
-        <Caption1 className={s.muted}>
+        <Caption1 className={s.storageSummary}>
           {storage
-            ? `本机占用 ${formatBytes(storage.totalBytes)} · ${storage.matchCount} 场比赛 · 当前显示 ${total ? offset + 1 : 0}–${Math.min(offset + pageSize, total)} / ${total}`
+            ? <><span>已保存 {storage.matchCount} 场</span><span>本机占用 {formatBytes(storage.totalBytes)}</span></>
             : storageError
               ? "暂时无法读取本机占用"
               : "正在读取本机占用…"}
         </Caption1>
+        <nav className={s.pagination} aria-label="比赛列表分页">
+          <Caption1 className={s.pageRange} aria-live="polite" data-library-page-range>
+            {total ? `${offset + 1}–${Math.min(offset + pageSize, total)} / ${total} 场` : "0 场比赛"}
+          </Caption1>
+          <div className={s.pageControls}>
+            <Tooltip content="上一页" relationship="description">
+              <Button appearance="subtle" icon={<BackIcon size={16} />} aria-label="上一页比赛"
+                disabled={loading || busy || offset === 0}
+                onClick={() => {
+                  setOffset(pageOffsets.at(-1) ?? 0);
+                  setPageOffsets(pageOffsets.slice(0, -1));
+                }} />
+            </Tooltip>
+            <span className={s.pageNumber} data-library-page-number>
+              {total ? <>第 <strong>{pageOffsets.length + 1}</strong> 页</> : "—"}
+            </span>
+            <Tooltip content="下一页" relationship="description">
+              <Button appearance="subtle" icon={<ForwardIcon size={16} />} aria-label="下一页比赛"
+                disabled={loading || busy || offset + pageSize >= total}
+                onClick={() => {
+                  setPageOffsets([...pageOffsets, offset]);
+                  setOffset(offset + pageSize);
+                }} />
+            </Tooltip>
+          </div>
+        </nav>
       </div>
 
       <Dialog

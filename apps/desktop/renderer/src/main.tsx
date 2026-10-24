@@ -457,7 +457,7 @@ function Report({ report, playerId, replayActive, activeTab, onSelectView }: {
         <div className={s.mapTitleRow}>
           <Title1 className={s.mapTitle}>{report.match.map}</Title1>
           <Tooltip content={report.match.fileName} relationship="description">
-            <Caption1 className={s.headerFileName} tabIndex={0} data-report-filename title={report.match.fileName}>{report.match.fileName}</Caption1>
+            <Caption1 className={s.headerFileName} tabIndex={0} data-report-filename>{report.match.fileName}</Caption1>
           </Tooltip>
         </div>
         <Body1>{report.match.score ? `${report.match.score.initialCT} : ${report.match.score.initialT}` : '比分不可用'} · 开局 CT 队 / 开局 T 队 · {report.match.rounds} 回合</Body1>

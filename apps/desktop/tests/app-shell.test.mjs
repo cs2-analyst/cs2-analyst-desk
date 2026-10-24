@@ -29,7 +29,7 @@ const { GlobalSidebar, MatchSidebar } = await import('../renderer/src/sidebar.ts
 const { LibraryList, LibraryPage, PersonalSection } = await import('../renderer/src/library-page.tsx');
 const { TitlebarView } = await import('../renderer/src/app-titlebar.tsx');
 const { brandCenterOffset, isBrandCentered } = await import('../renderer/src/titlebar-geometry.ts');
-const { toLibraryListQuery, formatBytes } = await import('../renderer/src/library-query.ts');
+const { toLibraryListQuery, formatBytes, formatImportedAt, formatImportedDate, libraryMapOptions } = await import('../renderer/src/library-query.ts');
 const { RatingValue, ReportSecondaryLine, formatRating, formatKast } = await import('../renderer/src/performance-display.tsx');
 const { useReport } = await import('../renderer/src/store.ts');
 const render = element => renderToStaticMarkup(createElement(SSRProvider, null, element));
@@ -91,26 +91,28 @@ test('personal data is an honest placeholder and contains no invented statistics
   for (const fake of ['K/D', 'ADR', '胜率', 'Rating', '回合数']) assert.equal(html.includes(fake), false, fake);
 });
 
-test('saved-match list renders open/export/delete actions and disables unavailable rows', () => {
+test('saved-match list opens from the row and keeps only a more-menu trigger in the actions column', () => {
   const html = render(createElement(LibraryList, { entries, busy: false, onOpen: noop, onExport: noop, onDelete: noop }));
   assert.ok(html.includes('data-library-list'));
   assert.equal([...html.matchAll(/data-library-entry="/g)].length, 2);
   assert.ok(html.includes('dust2.dem'));
   assert.ok(html.includes('de_dust2'));
   assert.ok(html.includes('13 : 11'));
-  assert.ok(html.includes('24 回合'));
-  assert.ok(html.includes('当前档案不可读'));
+  assert.ok(html.includes('broken.cs2a'));
   const readyRow = html.slice(html.indexOf('data-library-entry="' + entries[0].matchId + '"'), html.indexOf('data-library-entry="' + entries[1].matchId + '"'));
-  assert.ok(readyRow.includes('data-library-open'));
-  assert.ok(readyRow.includes('data-library-export'));
-  assert.ok(readyRow.includes('data-library-delete'));
+  assert.ok(readyRow.includes('data-library-more'));
+  assert.equal(html.includes('data-library-open'), false, 'row click replaces the redundant open button');
+  assert.equal(html.includes('role="menuitem"'), false, 'actions stay in a closed menu until requested');
+  assert.equal(html.includes(' title='), false, 'Fluent Tooltip is the only hover tip');
   assert.ok(readyRow.includes('tabindex="0"'), 'a ready row is keyboard-openable');
   assert.ok(readyRow.includes('aria-label="打开 dust2.dem"'));
-  assert.equal(/data-library-open[^>]*disabled/.test(readyRow), false);
+  assert.equal(/data-library-more[^>]*disabled/.test(readyRow), false);
   const brokenRow = html.slice(html.indexOf('data-library-entry="' + entries[1].matchId + '"'));
-  assert.match(brokenRow, /data-library-open[^>]*disabled/);
+  assert.equal(brokenRow.includes('aria-label="打开 broken.cs2a"'), false, 'broken rows cannot be opened');
+  assert.ok(brokenRow.includes('data-library-more'), 'broken rows retain access to deletion');
   const busy = render(createElement(LibraryList, { entries, busy: true, onOpen: noop, onExport: noop, onDelete: noop }));
-  assert.equal([...busy.matchAll(/data-library-open[^>]*disabled/g)].length, 2, 'busy disables opening');
+  assert.equal([...busy.matchAll(/data-library-more[^>]*disabled/g)].length, 2, 'busy disables action menus');
+  assert.equal(busy.includes('aria-label="打开 dust2.dem"'), false, 'busy disables row opening');
 });
 
 const rating = value => ({ value, algorithm: 'hltv-2.0-community-approx-v1', status: 'available', reason: null });
@@ -123,9 +125,12 @@ test('record table columns, formats and self-player outcomes use the persisted i
   const renderEntry = (selfPlayerId) => render(createElement(LibraryList, { entries: [{ ...base, selfPlayerId }], busy: false, onOpen: noop, onExport: noop, onDelete: noop }));
   const html = renderEntry('1');
   const headings = [...html.matchAll(/<th\b[^>]*>(.*?)<\/th>/gs)].map(m => m[1].replace(/<[^>]*>/g, ''));
-  assert.deepEqual(headings, ['日期 · 导入', '地图', '胜/负', '比分', 'K/D/A', 'ADR', 'Rating', 'KAST', '高光', '操作']);
+  assert.deepEqual(headings, ['导入日期', '地图', '胜/负', '比分', 'K/D/A', 'ADR', 'Rating', 'KAST', '高光', '操作']);
   for (const removed of ['RWS', '>WE<', 'Rating Pro', '级别']) assert.equal(html.includes(removed), false);
-  for (const expected of ['25/20/4', '91.4', '75.0%', 'data-rating-value="1.42"', 'data-library-outcome="win"', 'data-highlight="opening"', '首杀 4 次，首死 0 次', '13 : 11', 'SteamID 1']) assert.ok(html.includes(expected), expected);
+  for (const expected of ['25/20/4', '91.4', '75.0%', 'data-rating-value="1.42"', 'data-library-outcome="win"', 'data-highlight="opening"', '首杀 4 次，首死 0 次', '13 : 11']) assert.ok(html.includes(expected), expected);
+  assert.equal(html.replace(/<[^>]*>/g, '').includes('SteamID'), false, 'SteamID is available only as tooltip metadata');
+  assert.match(html, /<time\b[^>]*>10-20<\/time>/);
+  assert.equal(html.includes(' title='), false);
   const switched = renderEntry('2');
   for (const expected of ['10/22/3', '50.0%', 'data-rating-value="0.65"', 'data-library-outcome="loss"', '11 : 13']) assert.ok(switched.includes(expected), expected);
   assert.equal(switched.includes('data-highlight-tags'), false);
@@ -143,17 +148,29 @@ test('shared rating formatter handles missing values, preserves precision and ex
   assert.equal(formatKast(75), '75.0%');
   assert.equal(formatKast(null), '—');
   const html = render(createElement(RatingValue, { rating: { ...rating(null), status: 'unavailable', reason: '有效回合不可用' } }));
-  assert.ok(html.includes('评分不可用：有效回合不可用'));
+  assert.ok(html.includes('data-rating-value="—"'));
+  assert.equal(html.includes(' title='), false, 'rating reasons are provided by Fluent Tooltip on hover/focus');
 });
 
 test('report secondary line keeps full long filename accessible and shares list rating formatting', () => {
   const fileName = 'very-long-demo-name-'.repeat(20) + '.dem';
   const html = render(createElement(ReportSecondaryLine, { fileName, rating: rating(1.423456) }));
   assert.ok(html.includes('data-report-secondary'));
-  assert.ok(html.includes('title="' + fileName + '"'));
+  assert.ok(html.includes(fileName));
+  assert.equal(html.includes(' title='), false, 'filename and rating must not duplicate Fluent Tooltip with a native title');
   assert.ok(html.includes('Rating: 1.42'));
   const missing = render(createElement(ReportSecondaryLine, { fileName }));
   assert.ok(missing.includes('Rating: —'));
+});
+
+test('library map choices are fixed before any results load, and dates keep the year/time in the tooltip formatter only', () => {
+  const maps = ['dust2', 'mirage', 'inferno', 'anubis', 'ancient', 'nuke', 'overpass', 'train', 'cache'];
+  assert.deepEqual(libraryMapOptions, maps.map(map => ({ value: `de_${map}`, text: map })));
+  const value = new Date(2026, 9, 25, 14, 3, 6).toISOString();
+  assert.equal(formatImportedDate(value), '10-25');
+  assert.equal(formatImportedAt(value), '2026-10-25 14:03:06');
+  assert.equal(formatImportedDate('invalid'), '未知');
+  assert.equal(formatImportedAt('invalid'), '导入时间未知');
 });
 
 test('library player preference is reused on activation and never reuses another match player metrics', async () => {

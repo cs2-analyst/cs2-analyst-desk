@@ -194,3 +194,9 @@ export function HomeIcon(props: IconProps) {
 export function ForwardIcon(props: IconProps) {
   return <Icon {...props}><path d="M4.5 10h11M11 4.8l5.2 5.2-5.2 5.2" /></Icon>;
 }
+
+/** 列表行：更多操作。 */
+export function MoreIcon(props: IconProps) {
+  return <Icon {...props}>{[4.5, 10, 15.5].map(cx =>
+    <circle key={cx} cx={cx} cy="10" r="1.2" fill="currentColor" stroke="none" />)}</Icon>;
+}

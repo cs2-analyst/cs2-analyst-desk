@@ -29,7 +29,7 @@ export function RatingValue({ rating, prefix = false }: { rating?: DesktopPlayer
   const tip = value === null ? `评分不可用：${rating?.reason || '缺少该玩家的必要分析输入。'}`
     : 'HLTV Rating 2.0 社区近似评分，非官方精确结果。';
   return <Tooltip content={tip} relationship="description"><span className={s.rating} style={{ color }} tabIndex={0}
-    data-rating-value={text} data-rating-algorithm={rating?.algorithm} title={tip}>{prefix ? 'Rating: ' : ''}{text}</span></Tooltip>;
+    data-rating-value={text} data-rating-algorithm={rating?.algorithm}>{prefix ? 'Rating: ' : ''}{text}</span></Tooltip>;
 }
 
 const tagColors: Record<DesktopPlayerHighlight['color'], string> = {
@@ -47,7 +47,7 @@ export function HighlightTags({ highlights }: { highlights?: DesktopPlayerHighli
 export function ReportSecondaryLine({ fileName, rating }: { fileName?: string; rating?: DesktopPlayerRating }) {
   const s = useStyles();
   return <div className={s.meta} data-report-secondary>
-    {fileName ? <Tooltip content={fileName} relationship="description"><Caption1 className={s.file} tabIndex={0} data-report-filename title={fileName}>{fileName}</Caption1></Tooltip> : null}
+    {fileName ? <Tooltip content={fileName} relationship="description"><Caption1 className={s.file} tabIndex={0} data-report-filename>{fileName}</Caption1></Tooltip> : null}
     <span className={s.prominent}><RatingValue rating={rating} prefix /></span>
   </div>;
 }
