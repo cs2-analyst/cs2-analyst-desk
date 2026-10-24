@@ -18,7 +18,7 @@ import { replayFloorAt } from './replay-floor';
 import type { ReplayFloorState, ReplayFloorStatus } from './replay-floor';
 import { ReplayMapImages } from './replay-map-images';
 import { resolveReplayFollow } from './replay-follow';
-import { LoadingRows, LoadingOverlay, useLoadingFeedback } from './loading-ui';
+import { LoadingRows, LoadingOverlay, MapSkeleton, useLoadingFeedback } from './loading-ui';
 
 /**
  * Desktop analysis layout: the panel owns the full height and nothing here scrolls as a page.
@@ -625,7 +625,8 @@ export function ReplayPlayer({ metadata, fileName, initialPlayerId, active, jump
           <canvas ref={baseCanvas} className={s.canvas} aria-hidden="true" />
           <canvas ref={canvas} className={s.canvas} tabIndex={0} role="img" aria-label={`R${roundNumber} 全局地图；空格播放或暂停，左右方向键定位，Home/End跳至回合起止。`} onKeyDown={e=>{if(e.key===' '){e.preventDefault();toggle();}else if(['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){e.preventDefault();const at=clock.current.read(performance.now(),metadata.tickRate);seek(e.key==='Home'?info.startTick:e.key==='End'?info.endTick:at+(e.key==='ArrowLeft'?-1:1)*(metadata.tickRate??1));}}} />
         </div>
-        {awaitingData && showLoading ? <LoadingOverlay label={`正在加载 R${roundNumber} 回放…`} hint={hasPaintedFrame.current ? '当前画面为上一帧，数据到达后继续。' : '正在读取回放数据，玩家状态将在加载后显示。'} /> : null}
+        {awaitingData && !hasPaintedFrame.current ? <MapSkeleton label="正在加载回放地图" />
+          : awaitingData && showLoading ? <LoadingOverlay label={`正在加载 R${roundNumber} 回放…`} hint="当前画面为上一帧，数据到达后继续。" /> : null}
         {error && !chunk ? <div className={s.mapIssue} role="alert"><Body1>{error}</Body1><Button onClick={()=>{failed.current.clear();setError(null);}}>重试回放</Button></div> : null}
       </div>:<div ref={mapColumn} className={s.mapColumn} data-replay-map><Body1>本机没有配套雷达资源或图片无法装载；仍可浏览事件与玩家状态。</Body1></div>}
         <div className={s.transport} data-replay-transport>

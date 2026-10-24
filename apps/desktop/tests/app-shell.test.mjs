@@ -18,6 +18,7 @@ registerHooks({ resolve(specifier, context, nextResolve) {
   }
   return nextResolve(specifier, context);
 }, load(url, context, nextLoad) {
+  if (url.endsWith('.css')) return { format: 'module', shortCircuit: true, source: 'export {};' };
   if (/\.(svg|png)$/.test(url)) return { format: 'module', shortCircuit: true, source: 'export default ' + JSON.stringify(new URL(url).pathname) + ';' };
   if (url.endsWith('.tsx')) return { format: 'module', shortCircuit: true,
     source: transformSync(readFileSync(new URL(url), 'utf8'), { loader: 'tsx', jsx: 'automatic', format: 'esm' }).code };

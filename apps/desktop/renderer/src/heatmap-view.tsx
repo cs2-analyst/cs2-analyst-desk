@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Badge, Body1, Button, Caption1, Checkbox, Field, Title2, Tooltip, makeStyles, tokens } from '@fluentui/react-components';
+import { Badge, Body1, Button, Caption1, Checkbox, Field, Title2, makeStyles, tokens } from '@fluentui/react-components';
 import type { DesktopHeatmapMetadata, DesktopHeatmapScope, HeatmapLayer, HeatmapResolution, MapHeatmapProjection } from '@cs2-analyst/report-contract';
 import { replayMapDefinitions } from '../../shared/replay-map-geometry.ts';
 import { replayMapAssets } from './replay-map-assets';
@@ -10,7 +10,7 @@ import { useRoundMenu } from './round-menu';
 import { WinSelect } from './winui-select';
 import type { HeatmapPaintLayer } from './heatmap-canvas';
 import { palette } from './theme';
-import { LoadingRows, LoadingOverlay, useLoadingFeedback } from './loading-ui';
+import { LoadingRows, MapSkeleton } from './loading-ui';
 
 const labels = { positions: '玩家位置密度', kills: '击杀位置', deaths: '死亡位置' };
 const ratio = (value: number | null | undefined) => value === null || value === undefined ? '—' : `${(value * 100).toFixed(1)}%`;
@@ -36,9 +36,6 @@ const useStyles = makeStyles({
   side: { overflowY: 'auto', minHeight: 0, display: 'flex', flexDirection: 'column', gap: '10px', paddingRight: '4px' },
   group: { flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '6px', padding: '12px', backgroundColor: palette.card, borderRadius: tokens.borderRadiusLarge },
   muted: { color: tokens.colorNeutralForeground3 },
-  update: { height: '28px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '10px', color: tokens.colorNeutralForeground3 },
-  stale: { opacity: 0.55 },
-  applied: { display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 },
 });
 
 export function HeatmapView({ metadata, players, active, sessionActive }: {
@@ -63,16 +60,11 @@ export function HeatmapView({ metadata, players, active, sessionActive }: {
   const key = JSON.stringify([metadata, scope, resolution, enabled, usable, retry]);
   const hasResults = Boolean(results.key && results.sessionId === metadata?.sessionId);
   const updating = usable && results.key !== key;
-  const showUpdating = useLoadingFeedback(updating);
   const states = hasResults ? results.layers : {};
   // A complete previous snapshot keeps its own floor image, grid size and enabled layers.
   const url = hasResults ? results.url : requestedUrl;
   const displayResolution = hasResults ? results.resolution : resolution;
   const displayEnabled = hasResults ? results.enabled : enabled;
-  const appliedScope = [results.scope.playerIds?.map(id => players.find(player => player.id === id)?.nickname ?? '已登记玩家').join(' / ') ?? '全部玩家',
-    results.scope.side === 'all' ? '全部阵营' : results.scope.side, results.scope.rounds ? `R${results.scope.rounds.join(', R')}` : '全部回合',
-    results.scope.floor ? map?.layers.find(layer => layer.id === results.scope.floor)?.label ?? '所选楼层' : '全部楼层',
-    `${results.resolution}×${results.resolution}`, results.scope.includeFreezeTime ? '包含冻结时间' : '不含冻结时间', results.scope.samplingSet].join(' · ');
   const paintLayers: HeatmapPaintLayer[] = [];
   for (const layer of heatmapLayers) {
     const state = states[layer];
@@ -151,23 +143,17 @@ export function HeatmapView({ metadata, players, active, sessionActive }: {
         onValueChange={value => change({ samplingSet: value as DesktopHeatmapScope['samplingSet'] })} /></Field>
       <Checkbox label="包含冻结时间" checked={scope.includeFreezeTime} onChange={(_, data) => change({ includeFreezeTime: data.checked === true })} />
     </div>
-    <div className={s.update} role="status" aria-live="polite" data-heatmap-update>
-      {updating && hasResults ? <Tooltip content={`上次结果：${appliedScope}`} relationship="description"><Caption1 className={s.applied} tabIndex={0}>正在更新，当前为上次结果 · {appliedScope}</Caption1></Tooltip>
-        : updating && showUpdating ? <Caption1>正在加载热力图数据…</Caption1>
-        : showUpdating ? <Caption1>热力图已更新。</Caption1> : null}
-    </div>
     <div className={s.body} aria-busy={updating}>
       <div ref={host} className={s.map} data-heatmap-map>
         <canvas ref={canvas} width={1} height={1} className={s.canvas} role="img" tabIndex={0} aria-label="热力图雷达；方向键选择网格，右侧查看计数与强度"
           onPointerMove={event => { const rect = event.currentTarget.getBoundingClientRect(); const x = Math.floor((event.clientX - rect.left) / rect.width * displayResolution), y = Math.floor((event.clientY - rect.top) / rect.height * displayResolution); if (x >= 0 && y >= 0 && x < displayResolution && y < displayResolution) setCellIndex(y * displayResolution + x); }}
           onFocus={() => setCellIndex(old => old ?? 0)} onKeyDown={event => { const delta = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -displayResolution, ArrowDown: displayResolution }[event.key]; if (delta !== undefined) { event.preventDefault(); setCellIndex(old => Math.max(0, Math.min(displayResolution * displayResolution - 1, (old ?? 0) + delta))); } }} />
-        {!url || imageState !== 'ready' || !usable ? <div className={s.notice} role={imageState === 'error' ? 'alert' : 'status'}><div>
-          <Body1>{!usable ? heatmapReason(metadata?.unavailableReason) : !url ? '地图映射或底图不可用；仍可查看右侧统计。' : imageState === 'error' ? '地图图片加载失败；仍可查看右侧统计。' : '正在加载雷达底图…'}</Body1>
+        {usable && url && imageState === 'loading' ? <MapSkeleton label="正在加载雷达底图" /> : !url || imageState !== 'ready' || !usable ? <div className={s.notice} role={imageState === 'error' ? 'alert' : 'status'}><div>
+          <Body1>{!usable ? heatmapReason(metadata?.unavailableReason) : !url ? '地图映射或底图不可用；仍可查看右侧统计。' : '地图图片加载失败；仍可查看右侧统计。'}</Body1>
           {url && imageState === 'error' && usable ? <div><Button onClick={() => setImageRetry(n => n + 1)}>重新加载雷达底图</Button></div> : null}
         </div></div> : null}
-        {updating && hasResults && showUpdating ? <LoadingOverlay label="正在更新热力图…" hint="当前显示上次筛选结果，更新完成后统一替换。" /> : null}
       </div>
-      <aside className={`${s.side} ${updating && hasResults ? s.stale : ''}`} aria-label="热力图统计与图例">
+      <aside className={s.side} aria-label="热力图统计与图例">
         <div className={s.group}><Body1>图例 · 当前筛选的相对强度</Body1><Caption1>强度 = 单元格计数 / 当前图层最大单元格计数。不同图层的强度不能直接比较数量；透明度从 0 到 80%。叠加顺序：位置 → 击杀 → 死亡。</Caption1>
           {heatmapLayers.map(layer => <Caption1 key={layer} style={{ color: palette.heatmap[layer] }}>{labels[layer]} · {displayEnabled.includes(layer) ? '已开启' : '未开启'}</Caption1>)}
           <Caption1>{currentCell === null ? '将指针移到地图，或聚焦地图用方向键查看单元格。' : `网格 (${currentCell % displayResolution}, ${Math.floor(currentCell / displayResolution)})`}</Caption1>
@@ -181,7 +167,7 @@ export function HeatmapView({ metadata, players, active, sessionActive }: {
           return <HeatmapLayerDetails key={layer} layer={layer} projection={state.projection} cellIndex={currentCell} />;
         })}
         <div className={s.group}><Caption1 className={s.muted}>展示 DEM 记录中的采样位置或精确事件位置分布，不代表连续停留时间、视线、掩体、可见性或战术收益。地图版本未确认，不能宣称与当前游戏地图精确配准。</Caption1>
-          {map && map.layers.length > 1 && scope.floor === null ? <Caption1>全部楼层合并统计，底图为主层；请选单层查看。未知 Z 和边界歧义保留原统计语义。</Caption1> : null}
+          {map && map.layers.length > 1 && (hasResults ? results.scope : scope).floor === null ? <Caption1>全部楼层合并统计，底图为主层；请选单层查看。未知 Z 和边界歧义保留原统计语义。</Caption1> : null}
         </div>
       </aside>
     </div>

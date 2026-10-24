@@ -16,7 +16,6 @@ import {
   MenuList,
   MenuPopover,
   MenuTrigger,
-  Spinner,
   ProgressBar,
   SkeletonItem,
   Subtitle1,
@@ -41,6 +40,7 @@ import { palette } from "./theme";
 import { RatingValue, HighlightTags, formatMetric, formatKast } from "./performance-display";
 import { WinSelect } from "./winui-select";
 import { LoadingRows, useLoadingFeedback } from './loading-ui';
+import './library-loading.css';
 
 const useStyles = makeStyles({
   page: { flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" },
@@ -232,7 +232,6 @@ export function LibraryList({
   busy,
   loading = false,
   openingMatchId = null,
-  removingIds = [],
   onOpen,
   onExport,
   onDelete,
@@ -241,7 +240,6 @@ export function LibraryList({
   busy: boolean;
   loading?: boolean;
   openingMatchId?: string | null;
-  removingIds?: string[];
   onOpen: (matchId: string) => void;
   onExport: (matchId: string) => void;
   onDelete: (entry: MatchLibraryEntry) => void;
@@ -294,7 +292,7 @@ export function LibraryList({
             key={entry.matchId}
             entry={entry}
             busy={busy}
-            pending={entry.matchId === openingMatchId ? '正在打开…' : removingIds.includes(entry.matchId) ? '正在删除…' : null}
+            opening={entry.matchId === openingMatchId}
             onOpen={onOpen}
             onExport={onExport}
             onDelete={onDelete}
@@ -310,14 +308,14 @@ const DASH = "-";
 function LibraryRow({
   entry,
   busy,
-  pending = null,
+  opening = false,
   onOpen,
   onExport,
   onDelete,
 }: {
   entry: MatchLibraryEntry;
   busy: boolean;
-  pending?: string | null;
+  opening?: boolean;
   onOpen: (matchId: string) => void;
   onExport: (matchId: string) => void;
   onDelete: (entry: MatchLibraryEntry) => void;
@@ -364,9 +362,10 @@ function LibraryRow({
       data-library-entry={entry.matchId}
       data-library-state={entry.state}
       data-library-player={selfId}
-      aria-busy={pending !== null}
+      aria-busy={opening}
+      data-record-opening={opening ? 'true' : 'false'}
       tabIndex={openable ? 0 : undefined}
-      aria-label={openable ? `打开 ${entry.fileName}` : undefined}
+      aria-label={opening ? `正在打开 ${entry.fileName}` : openable ? `打开 ${entry.fileName}` : undefined}
       onClick={open}
       onKeyDown={(event) => {
         if (event.target !== event.currentTarget) return;
@@ -386,7 +385,7 @@ function LibraryRow({
         <Tooltip content={{ children: description, className: s.matchTooltipSurface }} relationship="description">
           <div className={s.info} tabIndex={0}>
             <span className={s.fileName}>{entry.map}</span>
-            {pending ? <Spinner size="extra-tiny" label={pending} /> : <Caption1 className={mergeClasses(s.muted, s.playerLine)}>{playerLabel}</Caption1>}
+            <Caption1 className={mergeClasses(s.muted, s.playerLine)}>{playerLabel}</Caption1>
           </div>
         </Tooltip>
       </TableCell>
@@ -450,7 +449,6 @@ export function LibraryPage() {
   const libraryNotice = useReport((state) => state.libraryNotice);
   const libraryRevision = useReport((state) => state.libraryRevision);
   const openingMatchId = useReport(state => state.openingMatchId);
-  const operationMatchIds = useReport(state => state.operationMatchIds);
   const openMatch = useReport((state) => state.openMatch);
   const removeMatches = useReport((state) => state.removeMatches);
   const exportMatch = useReport((state) => state.exportMatch);
@@ -479,6 +477,7 @@ export function LibraryPage() {
   const [storage, setStorage] = useState<{ matchCount: number; totalBytes: number } | null>(null);
   const [storageError, setStorageError] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<MatchLibraryEntry | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const requestRef = useRef(0);
 
@@ -486,8 +485,6 @@ export function LibraryPage() {
   const queryKey = JSON.stringify([query, libraryRevision, reload]);
   const updating = loading || loadedKey !== queryKey;
   const showUpdating = useLoadingFeedback(updating);
-  const showOpening = useLoadingFeedback(status === 'opening');
-  const showRemoving = useLoadingFeedback(libraryBusy === 'remove');
   useEffect(() => {
     const requestId = ++requestRef.current;
     setLoading(true);
@@ -547,10 +544,14 @@ export function LibraryPage() {
     setPageOffsets([]);
     setFilters(patch);
   };
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     const entry = pendingDelete;
-    setPendingDelete(null);
-    if (entry) void removeMatches([entry.matchId]);
+    if (!entry || deleting || busy || useReport.getState().libraryBusy !== null) return;
+    setDeleting(true);
+    try {
+      await removeMatches([entry.matchId]);
+      if (!useReport.getState().libraryError) setPendingDelete(null);
+    } finally { setDeleting(false); }
   };
 
   return (
@@ -668,7 +669,6 @@ export function LibraryPage() {
       <div className={s.updateStatus} role="status" aria-live="polite" data-library-update>
         {hasLoaded && updating && showUpdating ? <><ProgressBar aria-label="正在更新比赛列表" style={{ width: 100 }} /><Caption1>正在更新列表… 当前为上次结果。</Caption1></>
           : hasLoaded && listError ? <Caption1>更新失败，当前为上次结果；请重试。</Caption1>
-          : status === 'opening' && showOpening ? <Caption1>正在恢复报告、回放与热力图…</Caption1>
           : hasLoaded && showUpdating ? <Caption1>列表已更新。</Caption1> : null}
       </div>
       <div className={mergeClasses(s.scroll, hasLoaded && (updating || Boolean(listError)) && s.stale)} aria-busy={updating}>
@@ -709,8 +709,7 @@ export function LibraryPage() {
           <LibraryList
             entries={entries}
             busy={busy || updating || Boolean(listError)}
-            openingMatchId={status === 'opening' && showOpening ? openingMatchId : null}
-            removingIds={libraryBusy === 'remove' && showRemoving ? operationMatchIds : []}
+            openingMatchId={status === 'opening' ? openingMatchId : null}
             onOpen={(matchId) => void openMatch(matchId)}
             onExport={(matchId) => void exportMatch(matchId)}
             onDelete={setPendingDelete}
@@ -758,7 +757,7 @@ export function LibraryPage() {
       <Dialog
         open={pendingDelete !== null}
         onOpenChange={(_, data) => {
-          if (!data.open) setPendingDelete(null);
+          if (!data.open && !deleting) setPendingDelete(null);
         }}
       >
         <DialogSurface data-library-delete-dialog>
@@ -769,13 +768,15 @@ export function LibraryPage() {
               <Caption1 className={s.muted}>
                 将从本机比赛库永久删除该归档与索引，无法撤销。源 DEM 文件不受影响。
               </Caption1>
+              {libraryError ? <MessageBar intent="error"><MessageBarBody>{libraryError}</MessageBarBody></MessageBar> : null}
             </DialogContent>
             <DialogActions>
-              <Button appearance="secondary" onClick={() => setPendingDelete(null)}>
+              <Button appearance="secondary" disabled={deleting} onClick={() => setPendingDelete(null)}>
                 取消
               </Button>
-              <Button appearance="primary" data-library-delete-confirm disabled={busy} onClick={confirmDelete}>
-                删除
+              <Button appearance="primary" data-library-delete-confirm disabled={busy || deleting} disabledFocusable={deleting}
+                aria-busy={deleting} data-button-loading={deleting ? 'true' : 'false'} style={{ minWidth: 112 }} onClick={() => void confirmDelete()}>
+                {deleting ? '正在删除…' : '删除'}
               </Button>
             </DialogActions>
           </DialogBody>

@@ -1,0 +1,28 @@
+/* Paint on the existing surface: a tr pseudo-element can create an extra table cell. */
+[data-record-opening="true"],
+[data-button-loading="true"] {
+  background-image: linear-gradient(110deg, transparent 35%, rgba(86, 173, 255, 0.04) 43%, rgba(125, 196, 255, 0.18) 50%, rgba(86, 173, 255, 0.04) 57%, transparent 65%);
+  background-size: 300% 100%;
+  background-repeat: no-repeat;
+  background-position: 100% 50%;
+  animation: library-record-shimmer 1.4s ease-in-out infinite;
+}
+
+[data-button-loading="true"][aria-busy="true"] {
+  color: var(--colorNeutralForeground1);
+  background-image: linear-gradient(110deg, transparent 35%, rgba(125, 196, 255, 0.08) 43%, rgba(160, 215, 255, 0.3) 50%, rgba(125, 196, 255, 0.08) 57%, transparent 65%);
+}
+
+@keyframes library-record-shimmer {
+  from { background-position: 100% 50%; }
+  to { background-position: 0% 50%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-record-opening="true"],
+  [data-button-loading="true"][aria-busy="true"] {
+    animation: none;
+    background-image: none;
+    background-color: rgba(125, 196, 255, 0.07);
+  }
+}
