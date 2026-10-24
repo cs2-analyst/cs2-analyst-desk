@@ -113,6 +113,12 @@ const useStyles = makeStyles({
   info: { minWidth: 0, display: "flex", flexDirection: "column", gap: "2px" },
   fileName: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
   playerLine: { display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+  matchTooltip: {
+    display: "flex", flexDirection: "column", gap: "4px",
+    whiteSpace: "normal", overflowWrap: "anywhere", fontWeight: 400,
+  },
+  matchTooltipSurface: { maxWidth: "min(320px, calc(100vw - 32px))" },
+  tooltipFile: { fontWeight: 600 },
   muted: { color: tokens.colorNeutralForeground3 },
   deleteAction: { color: tokens.colorPaletteRedForeground1 },
   empty: {
@@ -318,8 +324,6 @@ function LibraryRow({
       ? `${entry.score.initialCT} : ${entry.score.initialT}`
       : `${entry.score.initialT} : ${entry.score.initialCT}`
     : null;
-  const playerHint = player ? `${player.nickname} · SteamID ${player.id}`
-    : selfId ? "本场无此玩家" : "未设置自己";
   const playerLabel = player ? player.nickname === player.id ? "已选择玩家" : player.nickname
     : selfId ? "本场无此玩家" : "未设置自己";
   const status =
@@ -328,7 +332,13 @@ function LibraryRow({
       : entry.state === "unsupported"
         ? "档案版本不受支持，无法在本版本打开。"
         : null;
-  const description = `${entry.fileName} · ${entry.rounds} 回合 · ${formatBytes(entry.storedBytes)} · ${playerHint}${status ? ` · ${status}` : ""}`;
+  const description = <div className={s.matchTooltip} data-library-match-tooltip>
+    <span className={s.tooltipFile}>{entry.fileName}</span>
+    <span>{entry.rounds} 回合 · {formatBytes(entry.storedBytes)}</span>
+    <span>玩家：{playerLabel}</span>
+    {player ? <span>SteamID：{player.id}</span> : null}
+    {status ? <span>{status}</span> : null}
+  </div>;
   const openable = entry.state === "ready" && !busy;
   const open = () => { if (openable) onOpen(entry.matchId); };
   const stop = (event: React.SyntheticEvent) => event.stopPropagation();
@@ -356,7 +366,7 @@ function LibraryRow({
         </Tooltip>
       </TableCell>
       <TableCell className={mergeClasses(s.cell, s.mapCell)}>
-        <Tooltip content={description} relationship="description">
+        <Tooltip content={{ children: description, className: s.matchTooltipSurface }} relationship="description">
           <div className={s.info} tabIndex={0}>
             <span className={s.fileName}>{entry.map}</span>
             <Caption1 className={mergeClasses(s.muted, s.playerLine)}>{playerLabel}</Caption1>
