@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
-import { Badge, Body1, Button, Caption1, Slider, Spinner, Switch, Title2, Tooltip, makeStyles, tokens } from '@fluentui/react-components';
+import { Badge, Body1, Button, Caption1, Slider, Switch, Title2, Tooltip, makeStyles, tokens } from '@fluentui/react-components';
 import type { DesktopReplayChunk, DesktopReplayEvent, DesktopReplayFrame, DesktopReplayMetadata, DesktopReplayRoundInfo, DesktopReplayUtility } from '@cs2-analyst/report-contract';
 import { mapResourceState, radarHeading, resolveMapLayer, worldToRadar } from './replay-map';
 import type { ReplayMapDefinition } from './replay-map';
@@ -18,6 +18,7 @@ import { replayFloorAt } from './replay-floor';
 import type { ReplayFloorState, ReplayFloorStatus } from './replay-floor';
 import { ReplayMapImages } from './replay-map-images';
 import { resolveReplayFollow } from './replay-follow';
+import { LoadingRows, LoadingOverlay, useLoadingFeedback } from './loading-ui';
 
 /**
  * Desktop analysis layout: the panel owns the full height and nothing here scrolls as a page.
@@ -90,6 +91,7 @@ const useStyles = makeStyles({
   player: { justifyContent:'space-between',minWidth:0,gap:'6px',textAlign:'left' },
   name: { overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',minWidth:0 },
   muted: { color:tokens.colorNeutralForeground3 },
+  mapIssue: { position: 'absolute', inset: 0, zIndex: 3, display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center', justifyContent: 'center', padding: '24px', backgroundColor: 'rgba(15,22,31,0.85)' },
   events: {
     display: 'flex', flexDirection: 'column', flex: '1 1 0', minHeight: 0, overflowY: 'auto', gap: '4px',
     '@media (max-width: 860px)': { flex: '0 0 auto', maxHeight: '42vh' },
@@ -269,7 +271,8 @@ export function ReplayPlayer({ metadata, fileName, initialPlayerId, active, jump
   const [nicknames,setNicknames]=useState({sessionId:metadata.sessionId,visible:false});
   const showNicknames=nicknames.sessionId===metadata.sessionId&&nicknames.visible;
   const effectImages=useRef<ReplayEffectImages>({});
-  const [loading,setLoading]=useState(false),[error,setError]=useState<string|null>(null),[revision,setRevision]=useState(0);
+  const [error,setError]=useState<string|null>(null),[revision,setRevision]=useState(0),[imageRetry,setImageRetry]=useState(0);
+  const hasPaintedFrame=useRef(false);
   const [floorView,setFloorView]=useState<{layerId:string|null;status:ReplayFloorStatus;ready:boolean;failed:boolean;allDead:boolean}>({layerId:null,status:'unknown',ready:false,failed:false,allDead:false});
   const floorUi=useRef(floorView),floorHistory=useRef<ReplayFloorState|null>(null),seekRevision=useRef(0);
   const mapImages=useRef<ReplayMapImages|null>(null),backgroundKey=useRef('');
@@ -290,6 +293,8 @@ export function ReplayPlayer({ metadata, fileName, initialPlayerId, active, jump
   const timed=reliableReplayRate(metadata.tickRate);
   const displayFileName=fileName.split(/[\\/]/).at(-1)??'';
   const block=info?blockAt(info,tick):undefined,chunk=block?cache.current.get(roundNumber,block.index):undefined;
+  const awaitingData=Boolean(active && metadata.available && block && !chunk && !error);
+  const showLoading=useLoadingFeedback(awaitingData);
   const playerIds=metadata.players.map(p=>p.id);
   const mapState=mapResourceState(metadata.map,replayMapAssets),map=mapState.definition;
   const frame=chunk?replayDisplayFrame(chunk,tick,metadata.maxInterpolationTicks,playerIds,map?z=>resolveMapLayer(map,z):undefined):null;
@@ -371,9 +376,8 @@ export function ReplayPlayer({ metadata, fileName, initialPlayerId, active, jump
   async function load(round:DesktopReplayRoundInfo,index:number,prefetch=false){
     const key=`${round.round}:${index}`;
     if(inFlight.current||cache.current.get(round.round,index))return;
-    if(failed.current.has(key)){if(!prefetch){setError('该回放数据块不可用，请重试。');resume.current=false;setLoading(false);}return;}
+    if(failed.current.has(key)){if(!prefetch){setError('该回放数据块不可用，请重试。');resume.current=false;}return;}
     inFlight.current=true;const token=generation.current;
-    if(!prefetch)setLoading(true);
     try {
       const result=await window.cs2Analyst.replay.getChunk({sessionId:metadata.sessionId!,round:round.round,block:index});
       if(token!==generation.current)return;
@@ -385,8 +389,8 @@ export function ReplayPlayer({ metadata, fileName, initialPlayerId, active, jump
       if(resume.current&&live.current.active&&!document.hidden&&currentRound?.round===round.round&&blockAt(currentRound,clock.current.tick)?.index===index){
         resume.current=false;clock.current.play(performance.now());setPlaying(true);
       }
-    }catch(reason){if(token===generation.current){failed.current.add(key);if(!prefetch){setError(reason instanceof Error?reason.message:'回放数据不可用。');resume.current=false;setPlaying(false);}}}
-    finally {if(token===generation.current){inFlight.current=false;if(!prefetch)setLoading(false);}}
+    }catch(reason){if(token===generation.current){failed.current.add(key);if(!prefetch&&live.current.info?.round===round.round&&blockAt(live.current.info,clock.current.tick)?.index===index){setError(reason instanceof Error?reason.message:'回放数据不可用。');resume.current=false;setPlaying(false);}}}
+    finally {if(token===generation.current){inFlight.current=false;}}
   }
   function paint(current:DesktopReplayFrame|null,currentChunk:DesktopReplayChunk|undefined,at:number){
     const target=canvas.current,view=live.current;if(!target)return;
@@ -540,7 +544,7 @@ export function ReplayPlayer({ metadata, fileName, initialPlayerId, active, jump
         void load(round,needed.index);
       }
       appendVisibleEvents(data,round,at);
-      paint(data?replayDisplayFrame(data,at,metadata.maxInterpolationTicks,playerIds,live.current.map?z=>resolveMapLayer(live.current.map!,z):undefined):null,data,at);
+      if(data){paint(replayDisplayFrame(data,at,metadata.maxInterpolationTicks,playerIds,live.current.map?z=>resolveMapLayer(live.current.map!,z):undefined),data,at);hasPaintedFrame.current=true;}
       if(now-lastUi>=100){setTick(at);lastUi=now;}
       if(data&&needed&&!inFlight.current){const neighbor=[needed.index+1,needed.index-1].find(index=>round.blocks.some(b=>b.index===index)&&!cache.current.get(round.round,index)&&!failed.current.has(`${round.round}:${index}`));if(neighbor!==undefined)void load(round,neighbor,true);}
       raf=requestAnimationFrame(animate);
@@ -555,7 +559,7 @@ export function ReplayPlayer({ metadata, fileName, initialPlayerId, active, jump
     mapImages.current=images;
     fit.current=()=>{backgroundKey.current='';};
     return()=>{images?.dispose();if(mapImages.current===images)mapImages.current=null;backgroundKey.current='';fit.current=()=>{};};
-  },[metadata.sessionId,metadata.matchId,map?.id,availableMap]);
+  },[metadata.sessionId,metadata.matchId,map?.id,availableMap,imageRetry]);
   // The radar keeps its 1:1 shape and fills the largest square the column allows; nothing here can push page height.
   useEffect(()=>{
     const host=mapColumn.current,map=box.current;
@@ -588,7 +592,7 @@ export function ReplayPlayer({ metadata, fileName, initialPlayerId, active, jump
   },[availableMap]);
   if(!metadata.available||!info)return <section className={s.root} aria-label="比赛回放"><div className={s.group}><Title2>比赛回放</Title2><Body1>{metadata.unavailableReason??'本场缺少可靠回放窗口，比赛报告仍可用。'}</Body1></div></section>;
   const eventsHelp=`仅显示当前播放进度已到达的事件。同 tick 不推断先后顺序。${metadata.excludedRounds.length?` ${metadata.excludedRounds.length} 个回合窗口不可靠，未开放回放。`:''}`;
-  return <section className={s.root} aria-label="比赛回放" data-replay-session={metadata.sessionId} data-replay-match={metadata.matchId} data-replay-round={roundNumber} data-replay-tick={tick} data-replay-cache={cache.current.size} data-replay-block={block?.index} data-replay-revision={revision} data-replay-map-ready={imageReady} data-replay-visible-events={visibleEvents.length} data-replay-continuous={continuous?'on':'off'} data-replay-nicknames={showNicknames?'on':'off'}>
+  return <section className={s.root} aria-label="比赛回放" aria-busy={awaitingData} data-replay-waiting={awaitingData?'true':'false'} data-replay-session={metadata.sessionId} data-replay-match={metadata.matchId} data-replay-round={roundNumber} data-replay-tick={tick} data-replay-cache={cache.current.size} data-replay-block={block?.index} data-replay-revision={revision} data-replay-map-ready={imageReady} data-replay-visible-events={visibleEvents.length} data-replay-continuous={continuous?'on':'off'} data-replay-nicknames={showNicknames?'on':'off'}>
     <div className={s.bar}>
       <div className={s.barTitle}><Title2>比赛回放</Title2><Caption1 className={s.muted}>R{roundNumber}</Caption1></div>
       <div className={s.controls}>
@@ -615,12 +619,14 @@ export function ReplayPlayer({ metadata, fileName, initialPlayerId, active, jump
           </div>} />
         </div>
         {map&&map.layers.length>1&&((floor==='auto'&&floorView.status!=='known')||floorView.allDead)?<Badge className={s.floorNotice} appearance="tint" color="warning" size="small" data-replay-floor-notice>{floorView.allDead&&floorView.layerId?'全员阵亡 · 底图仅作参考，不代表当前楼层':floorView.status==='retained'?'目标楼层未知 · 沿用上一确认层':'目标楼层未知 · 请手动选层'}</Badge>:null}
-        {floorView.failed?<Body1 className={s.mapError} role="alert">本机没有配套雷达资源或图片无法装载；仍可浏览事件与玩家状态。</Body1>:null}
+        {floorView.failed?<div className={s.mapError} role="alert"><Body1>雷达底图无法加载；仍可浏览事件与玩家状态。</Body1><Button size="small" onClick={()=>setImageRetry(n=>n+1)}>重试底图</Button></div>:null}
         {info.freezeEndTick!==null&&tick<info.freezeEndTick?<Badge className={s.mapPhase} data-replay-phase appearance="outline" size="small">冻结阶段</Badge>:null}
         <div ref={box} className={s.map}>
           <canvas ref={baseCanvas} className={s.canvas} aria-hidden="true" />
           <canvas ref={canvas} className={s.canvas} tabIndex={0} role="img" aria-label={`R${roundNumber} 全局地图；空格播放或暂停，左右方向键定位，Home/End跳至回合起止。`} onKeyDown={e=>{if(e.key===' '){e.preventDefault();toggle();}else if(['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){e.preventDefault();const at=clock.current.read(performance.now(),metadata.tickRate);seek(e.key==='Home'?info.startTick:e.key==='End'?info.endTick:at+(e.key==='ArrowLeft'?-1:1)*(metadata.tickRate??1));}}} />
         </div>
+        {awaitingData && showLoading ? <LoadingOverlay label={`正在加载 R${roundNumber} 回放…`} hint={hasPaintedFrame.current ? '当前画面为上一帧，数据到达后继续。' : '正在读取回放数据，玩家状态将在加载后显示。'} /> : null}
+        {error && !chunk ? <div className={s.mapIssue} role="alert"><Body1>{error}</Body1><Button onClick={()=>{failed.current.clear();setError(null);}}>重试回放</Button></div> : null}
       </div>:<div ref={mapColumn} className={s.mapColumn} data-replay-map><Body1>本机没有配套雷达资源或图片无法装载；仍可浏览事件与玩家状态。</Body1></div>}
         <div className={s.transport} data-replay-transport>
           <div className={s.timeline} data-replay-timeline>
@@ -634,7 +640,6 @@ export function ReplayPlayer({ metadata, fileName, initialPlayerId, active, jump
               <Tooltip content={displayFileName} relationship="description" withArrow>
                 <span className={s.fileName} data-replay-filename tabIndex={0}>{displayFileName}</span>
               </Tooltip>
-              {loading?<Spinner size="tiny" aria-label="加载回放数据…"/>:null}
             </div>
             <div className={s.playback} role="group" aria-label="回放播放控制" data-replay-playback>
               <Tooltip content="回到最初" relationship="description" withArrow><Button appearance="subtle" className={s.transportButton} aria-label="回到最初" disabled={!active} icon={<ReplayStartIcon/>} onClick={()=>seek(info.startTick)}/></Tooltip>
@@ -653,8 +658,7 @@ export function ReplayPlayer({ metadata, fileName, initialPlayerId, active, jump
                 onValueChange={value=>selectRound(Number(value))} />
             </div>
           </div>
-          {error||!timed?<div className={s.transportRow}>
-            {error?<div role="alert"><Body1>{error}</Body1><Button size="small" onClick={()=>{failed.current.clear();setError(null);}}>重试</Button></div>:null}
+          {!timed?<div className={s.transportRow}>
             {!timed?<Caption1>时钟不可靠，仅支持原始 tick 与事件定位，不能正常倍速播放。</Caption1>:null}
           </div>:null}
         </div>
@@ -663,12 +667,12 @@ export function ReplayPlayer({ metadata, fileName, initialPlayerId, active, jump
         <div className={s.group}>
           <div className={s.groupHeader}><Caption1>玩家状态</Caption1><Caption1 className={s.muted}>{metadata.players.length} 人</Caption1></div>
           <div className={s.players} aria-label="回放玩家状态">
-            {metadata.players.map((player,index)=>{const p=frame?.players.find(p=>p[0]===index);return <Button key={player.id} className={s.player} appearance={player.id===selectedReplayPlayerId?'secondary':'subtle'} aria-pressed={player.id===selectedReplayPlayerId} onClick={()=>{followAnchor.current.playerId=player.id;if(player.id!==live.current.selectedPlayerId){floorHistory.current=null;live.current.selectedPlayerId=player.id;setSelectedReplayPlayerId(player.id);}}} title={player.nickname}><span className={s.name}>{index+1}. {player.nickname}</span><Caption1>{p?.[8]??'Unknown'} · {deadPlayerIds.includes(player.id)||p?.[7]===false?'阵亡':p?.[7]===true?`${p[6]??'—'} HP`:'未知'}</Caption1></Button>;})}
+            {!chunk ? error ? <Caption1>玩家状态暂不可用，请重试回放。</Caption1> : <LoadingRows rows={3} label="正在读取玩家状态…" /> : metadata.players.map((player,index)=>{const p=frame?.players.find(p=>p[0]===index);return <Button key={player.id} className={s.player} appearance={player.id===selectedReplayPlayerId?'secondary':'subtle'} aria-pressed={player.id===selectedReplayPlayerId} onClick={()=>{followAnchor.current.playerId=player.id;if(player.id!==live.current.selectedPlayerId){floorHistory.current=null;live.current.selectedPlayerId=player.id;setSelectedReplayPlayerId(player.id);}}} title={player.nickname}><span className={s.name}>{index+1}. {player.nickname}</span><Caption1>{p?.[8]??'Unknown'} · {deadPlayerIds.includes(player.id)||p?.[7]===false?'阵亡':p?.[7]===true?`${p[6]??'—'} HP`:'未知'}</Caption1></Button>;})}
           </div>
         </div>
         <div className={`${s.group} ${s.eventsGroup}`}>
-          <div className={s.groupHeader}><div className={s.groupTitle}><Caption1>关键事件</Caption1><HelpTip label="关键事件说明" content={eventsHelp} /></div><Caption1 className={s.muted}>已播放 · {visibleEvents.length}</Caption1></div>
-          <div ref={eventsList} className={s.events} aria-label="回放事件浏览" aria-live="polite" aria-relevant="additions">{visibleEvents.length?visibleEvents.map(e=><Button key={e.id} className={s.event} appearance="subtle" size="small" data-replay-event={e.id} onClick={()=>seek(e.tick)}>{timeText(e.tick,info,metadata.tickRate)} · {e.description}</Button>):<Caption1>当前播放进度还没有关键事件。</Caption1>}</div>
+          <div className={s.groupHeader}><div className={s.groupTitle}><Caption1>关键事件</Caption1><HelpTip label="关键事件说明" content={eventsHelp} /></div><Caption1 className={s.muted}>已播放 · {chunk ? visibleEvents.length : '—'}</Caption1></div>
+          <div ref={eventsList} className={s.events} aria-label="回放事件浏览" aria-live="polite" aria-relevant="additions">{!chunk ? <Caption1>{error ? '回放事件暂不可用，请重试。' : '正在读取事件…'}</Caption1> : visibleEvents.length?visibleEvents.map(e=><Button key={e.id} className={s.event} appearance="subtle" size="small" data-replay-event={e.id} onClick={()=>seek(e.tick)}>{timeText(e.tick,info,metadata.tickRate)} · {e.description}</Button>):<Caption1>当前播放进度还没有关键事件。</Caption1>}</div>
         </div>
       </div>
     </div>

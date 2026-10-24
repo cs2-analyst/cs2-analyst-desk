@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
-  Badge, Body1, Button, Card, Caption1, Dialog, DialogActions, DialogBody, DialogContent,
-  DialogSurface, DialogTitle, FluentProvider, MessageBar, MessageBarBody, Spinner, Subtitle1,
+  Badge, Body1, Button, Card, Caption1,
+  FluentProvider, MessageBar, MessageBarBody, Subtitle1,
   Tab, TabList, Title1, Title2, Tooltip, makeStyles, tokens,
 } from '@fluentui/react-components';
 import type {
-  DesktopMatchReport, DesktopPlayerAnalytics, DesktopRoundTimeline, DesktopTimelineEvent, ImportPlayerChoice,
+  DesktopMatchReport, DesktopPlayerAnalytics, DesktopRoundTimeline, DesktopTimelineEvent,
 } from '@cs2-analyst/report-contract';
 import { KillFeedEvent } from './killfeed-event';
 import { AnalysisViews } from './analysis-views';
@@ -26,6 +26,8 @@ import { WinSelect } from './winui-select';
 import { playerSelectGroups } from './player-select-groups';
 import { HeatmapView } from './heatmap-view';
 import type { ReplayJump } from './replay-player';
+import { TaskDialog, taskBlocksWorkspace } from './task-dialog';
+import { LoadingRows, LoadingOverlay, useLoadingFeedback } from './loading-ui';
 import './collapse-motion.css';
 
 /** One surface for every card on the page: same background, same weak border, same radius, no shadows. */
@@ -43,9 +45,8 @@ const useStyles = makeStyles({
   page: { height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', backgroundColor: palette.pageBottom, backgroundImage: palette.pageGradient, color: tokens.colorNeutralForeground1 },
   shell: { flex: 1, minHeight: 0, display: 'flex' },
   // The main view never scrolls as a page; each region owns its own overflow.
-  main: { flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' },
+  main: { position: 'relative', flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' },
   banner: { flexShrink: 0, padding: '12px 24px 0' },
-  statusStrip: { flexShrink: 0, display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 24px', borderBottom: `1px solid ${palette.rowDivider}`, backgroundColor: palette.pageTop },
   center: { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px', padding: '24px', overflowY: 'auto' },
   reportFrame: { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' },
   viewHeader: { flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', padding: '14px 24px', borderBottom: `1px solid ${palette.rowDivider}` },
@@ -140,7 +141,6 @@ const useStyles = makeStyles({
   timelineTime: { color: tokens.colorNeutralForeground3, fontVariantNumeric: 'tabular-nums' },
   playerName: { display: 'block', minWidth: 0, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   identityRow: { display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end', gap: '8px', flexWrap: 'wrap' },
-  importPlayerSelect: { width: '100%', marginTop: '8px' },
 });
 
 /** Display-only number rules: counts 0, ADR/seconds 2, percentages 1, KAST integer. */
@@ -558,40 +558,6 @@ function Report({ report, playerId, replayActive, activeTab, onSelectView }: {
   </div>;
 }
 
-/** Import-time identity prompt. The import promise stays pending until the user answers. */
-function ImportPlayerDialog({ players, onChoose }: {
-  players: ImportPlayerChoice[] | null;
-  onChoose: (playerId: string | null) => Promise<void>;
-}) {
-  const s = useStyles();
-  const [selected, setSelected] = useState("");
-  useEffect(() => { setSelected(""); }, [players]);
-  return (
-    <Dialog open={players !== null} onOpenChange={(_, data) => { if (!data.open) void onChoose(null); }}>
-      <DialogSurface data-import-player-dialog>
-        <DialogBody>
-          <DialogTitle>选择你自己</DialogTitle>
-          <DialogContent>
-            <Body1>本场记录会保存你所选玩家的赛后数据。也可以稍后选择。</Body1>
-            {players?.length ? <WinSelect
-              className={s.importPlayerSelect}
-              aria-label="选择你自己"
-              value={selected}
-              items={players.map(player => ({ value: player.id, text: `${player.nickname} · ${player.id.slice(-6)}` }))}
-              onValueChange={setSelected}
-            /> : null}
-            <Caption1 className={s.muted}>稍后可在比赛首页的「自己是谁」中设置。</Caption1>
-          </DialogContent>
-          <DialogActions>
-            <Button appearance="secondary" data-import-player-later onClick={() => void onChoose(null)}>稍后选择</Button>
-            <Button appearance="primary" data-import-player-confirm disabled={!selected} onClick={() => void onChoose(selected)}>确定</Button>
-          </DialogActions>
-        </DialogBody>
-      </DialogSurface>
-    </Dialog>
-  );
-}
-
 function App() {
   const s = useStyles();
   const status = useReport(state => state.status);
@@ -603,26 +569,19 @@ function App() {
   const activeView = useReport(activeMatchView);
   const sessionActive = useReport(matchSessionActive);
   const libraryBusy = useReport(state => state.libraryBusy);
+  const taskBlocking = useReport(taskBlocksWorkspace);
   const importDemo = useReport(state => state.importDemo);
   const setPhase = useReport(state => state.setPhase);
   const setImportPlayers = useReport(state => state.setImportPlayers);
-  const importPlayers = useReport(state => state.importPlayers);
-  const chooseImportPlayer = useReport(state => state.chooseImportPlayer);
-  const cancelImport = useReport(state => state.cancelImport);
+  const setLibraryProgress = useReport(state => state.setLibraryProgress);
   const selectSection = useReport(state => state.selectSection);
   const setMatchView = useReport(state => state.setMatchView);
   useEffect(() => window.cs2Analyst.onProgress(setPhase), [setPhase]);
   useEffect(() => window.cs2Analyst.onImportPlayers(setImportPlayers), [setImportPlayers]);
-  const importBusy = status === 'selecting' || status === 'parsing' || status === 'awaiting-player'
-    || status === 'analyzing' || status === 'opening';
+  useEffect(() => window.cs2Analyst.onLibraryProgress(setLibraryProgress), [setLibraryProgress]);
+  const openingVisible = useLoadingFeedback(status === 'opening');
+  const importBusy = ['selecting', 'parsing', 'awaiting-player', 'analyzing', 'saving', 'opening'].includes(status);
   const busy = importBusy || libraryBusy !== null;
-  const phase = libraryBusy === 'export' ? '正在导出比赛归档…' : libraryBusy === 'importArchive' ? '正在导入比赛归档…'
-    : libraryBusy === 'remove' ? '正在删除比赛…'
-    : status === 'opening' ? '正在打开已保存比赛…' : status === 'selecting' ? '正在选择 DEM…' : status === 'parsing' ? '正在后台解析 DEM…'
-    : status === 'awaiting-player' ? '正在等待你选择自己…' : '正在生成指标与深度复盘…';
-  const busyHint = libraryBusy !== null ? '请稍候，操作完成前不要关闭应用。'
-    : status === 'awaiting-player' ? '请在弹窗中选择你自己，或点击「稍后选择」继续分析。'
-    : '大型录像可能需要数十秒，请保持应用打开。';
   const [collapsed, setCollapsed] = useState(false);
   const matchMode = route.kind === 'match';
   return <>
@@ -636,30 +595,20 @@ function App() {
     <main className={s.main} data-app-content data-status={status} data-route-kind={route.kind}
       data-match-id={route.kind === 'match' ? route.matchId : ''} data-session-active={sessionActive ? 'true' : 'false'}>
       {matchMode ? <>
-        {error ? <div className={s.banner}><MessageBar intent="error"><MessageBarBody>{error}</MessageBarBody></MessageBar></div> : null}
-        {busy && report ? <div className={s.statusStrip} role="status">
-          <Spinner size="tiny" label={phase} />
-          <Caption1 className={s.muted}>{busyHint}</Caption1>
-          {status !== 'selecting' && status !== 'opening' ? <Button appearance="subtle" size="small" onClick={() => void cancelImport()}>取消导入</Button> : null}
-        </div> : null}
+        {error && !taskBlocking ? <div className={s.banner}><MessageBar intent="error"><MessageBarBody>{error}</MessageBarBody></MessageBar></div> : null}
         {report ? <>
-          {status === 'error' || busy ? <div className={s.banner}><Caption1>下方为上一次成功导入的报告。</Caption1></div> : null}
           <Report key={reportRevision} report={report} playerId={playerId} replayActive={sessionActive} activeTab={activeView} onSelectView={setMatchView} />
         </> : <div className={s.center} role="status">
-          <Spinner size="large" label="正在载入比赛…" />
-          <Caption1 className={s.muted}>正在重建本机归档的回放与热力图会话。</Caption1>
+          {status === 'error' ? <><Body1>无法恢复比赛数据。</Body1><Button onClick={() => void useReport.getState().openMatch(route.matchId)}>重试</Button><Button onClick={() => selectSection('library')}>返回比赛库</Button></>
+            : <LoadingRows rows={4} label="正在恢复比赛报告、回放与热力图…" />}
         </div>}
       </> : <>
-        {error ? <div className={s.banner}><MessageBar intent="error"><MessageBarBody>{error}</MessageBarBody></MessageBar></div> : null}
-        {busy ? <div className={s.statusStrip} role="status">
-          <Spinner size="tiny" label={phase} />
-          <Caption1 className={s.muted}>{busyHint}</Caption1>
-          {status === 'parsing' || status === 'analyzing' ? <Button appearance="subtle" size="small" onClick={() => void cancelImport()}>取消导入</Button> : null}
-        </div> : null}
+        {error && !taskBlocking ? <div className={s.banner}><MessageBar intent="error"><MessageBarBody>{error}</MessageBarBody></MessageBar></div> : null}
         {route.section === 'personal' ? <PersonalSection /> : <LibraryPage />}
       </>}
+      {matchMode && report && status === 'opening' && openingVisible ? <LoadingOverlay label="正在打开比赛…" hint="正在恢复报告、回放与热力图。" /> : null}
     </main>
-    <ImportPlayerDialog players={importPlayers} onChoose={chooseImportPlayer} />
+    <TaskDialog />
   </>;
 }
 
@@ -674,7 +623,8 @@ function DesktopShell() {
   useScrollbarStyles();
   useAppShellStyles();
   const s = useStyles();
-  return <div className={s.page}><AppTitlebar /><div className={s.shell}><ReportErrorBoundary><App /></ReportErrorBoundary></div></div>;
+  const taskBlocking = useReport(taskBlocksWorkspace);
+  return <div className={s.page}><AppTitlebar /><div className={s.shell} inert={taskBlocking}><ReportErrorBoundary><App /></ReportErrorBoundary></div></div>;
 }
 document.body.style.margin = '0';
 createRoot(document.getElementById('root')!).render(

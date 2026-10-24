@@ -8,6 +8,76 @@ import { mainLibraryRequire, tick } from './library-main-fixture.mjs';
 const require = createRequire(import.meta.url), { transformSync } = createRequire(require.resolve('vite'))('esbuild');
 // store.ts now imports its pure navigation module with an explicit .ts extension.
 const storeRequire = createRequire(new URL('../renderer/src/store.ts', import.meta.url));
+function rendererStore(bridge) {
+  const module = { exports: {} };
+  const code = transformSync(readFileSync(new URL('../renderer/src/store.ts', import.meta.url), 'utf8'), { loader: 'ts', format: 'cjs' }).code;
+  vm.runInNewContext(code, { require: storeRequire, module, window: { cs2Analyst: bridge } });
+  return module.exports.useReport;
+}
+
+test('cancellation remains busy until import cleanup completes and late progress cannot regress or restart it', async () => {
+  let finish, cancels = 0, imports = 0;
+  const store = rendererStore({ importDemo: () => { imports++; return new Promise(resolve => { finish = resolve; }); }, cancelImport: async () => { cancels++; } });
+  const pending = store.getState().importDemo();
+  store.getState().setPhase('parsing', 'dust2.dem');
+  assert.equal(store.getState().taskFileName, 'dust2.dem');
+  await store.getState().cancelImport();
+  assert.equal(store.getState().cancelling, true, 'cancel IPC acknowledgement is not cleanup completion');
+  store.getState().setPhase('saving');
+  store.getState().setImportPlayers([{ id: '1', nickname: 'late' }]);
+  await store.getState().cancelImport(); await store.getState().importDemo();
+  assert.equal(cancels, 1); assert.equal(imports, 1);
+  assert.equal(store.getState().status, 'parsing'); assert.equal(store.getState().importPlayers, null);
+  finish({ kind: 'cancelled' }); await pending;
+  store.getState().setPhase('analyzing');
+  assert.equal(store.getState().status, 'idle');
+  const next = store.getState().importDemo();
+  assert.equal(store.getState().cancelling, false);
+  store.getState().setPhase('saving'); store.getState().setPhase('parsing');
+  assert.equal(store.getState().status, 'saving');
+  await store.getState().cancelImport();
+  assert.equal(cancels, 1, 'a committed save tail does not promise cancellability');
+  finish({ kind: 'cancelled' }); await next;
+});
+
+test('late player submission cannot restore an identity dialog after cancellation', async () => {
+  let finish, answer;
+  const store = rendererStore({ importDemo: () => new Promise(resolve => { finish = resolve; }),
+    selectImportPlayer: () => new Promise(resolve => { answer = resolve; }), cancelImport: async () => {} });
+  const pending = store.getState().importDemo();
+  store.getState().setPhase('awaiting-player');
+  store.getState().setImportPlayers([{ id: '1', nickname: 'player' }]);
+  const selection = store.getState().chooseImportPlayer('1');
+  await store.getState().cancelImport();finish({ kind: 'cancelled' });await pending;
+  answer({ kind: 'error', message: 'late error' });await selection;
+  assert.equal(store.getState().status, 'idle');assert.equal(store.getState().importPlayers, null);assert.equal(store.getState().error, null);
+});
+
+test('library progress only belongs to the matching active operation', async () => {
+  let finish;
+  const store = rendererStore({ library: { exportMatch: () => new Promise(resolve => { finish = resolve; }) } });
+  const pending = store.getState().exportMatch('a'.repeat(64));
+  store.getState().setLibraryProgress({ operation: 'importArchive', phase: 'validating', fileName: 'wrong.cs2a' });
+  assert.equal(store.getState().libraryProgress, null);
+  store.getState().setLibraryProgress({ operation: 'export', phase: 'writing', fileName: 'dust2.cs2a' });
+  assert.equal(store.getState().taskFileName, 'dust2.cs2a');
+  finish({ kind: 'cancelled' });await pending;
+  store.getState().setLibraryProgress({ operation: 'export', phase: 'writing', fileName: 'late.cs2a' });
+  assert.equal(store.getState().taskFileName, 'dust2.cs2a');assert.equal(store.getState().libraryBusy, null);
+});
+
+test('cancelled DEM state does not label a subsequent archive operation as cancelling', async () => {
+  let finishImport, finishExport;
+  const store = rendererStore({ importDemo: () => new Promise(resolve => { finishImport = resolve; }), cancelImport: async () => {},
+    library: { exportMatch: () => new Promise(resolve => { finishExport = resolve; }) } });
+  const pending = store.getState().importDemo();store.getState().setPhase('parsing');await store.getState().cancelImport();
+  finishImport({ kind: 'cancelled' });await pending;
+  assert.equal(store.getState().cancelling, false);assert.equal(store.getState().taskOutcome, 'cancelled');
+  const next = store.getState().exportMatch('a'.repeat(64));
+  store.getState().setLibraryProgress({ operation: 'export', phase: 'writing', fileName: 'dust2.cs2a' });
+  assert.equal(store.getState().cancelling, false);assert.equal(store.getState().taskOutcome, null);
+  finishExport({ kind: 'cancelled' });await next;
+});
 async function harness() {
   const handlers = new Map(), workers = [], windows = [];
   class Window extends EventEmitter { constructor() { super(); this.webContents = Object.assign(new EventEmitter(), { mainFrame: {}, send() {}, setWindowOpenHandler() {} }); windows.push(this); } isDestroyed() { return false; } removeMenu() {} async loadFile() {} close() { this.emit('closed'); } static getAllWindows() { return windows; } }
@@ -70,7 +140,7 @@ test('preload resolves Files privately and never exposes a path import capabilit
       throw new TypeError('Not a File');
     } },
   }) });
-  assert.deepEqual(Object.keys(api).sort(), ['library', 'cancelImport', 'importDemo', 'importDroppedFile', 'selectImportPlayer', 'onImportPlayers', 'onProgress', 'replay', 'heatmap', 'session', 'version', 'window'].sort());
+  assert.deepEqual(Object.keys(api).sort(), ['library', 'cancelImport', 'importDemo', 'importDroppedFile', 'selectImportPlayer', 'onImportPlayers', 'onProgress', 'onLibraryProgress', 'replay', 'heatmap', 'session', 'version', 'window'].sort());
   for (const input of [syntheticFile, 'C:\\arbitrary.dem', { path: 'C:\\arbitrary.dem' }, null]) {
     const result = await api.importDroppedFile(input);
     assert.equal(result.kind, 'error');

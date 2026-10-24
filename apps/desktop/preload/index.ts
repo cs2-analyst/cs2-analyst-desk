@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
-import type { DesktopApi, ImportPhase, ImportPlayerChoice } from '@cs2-analyst/report-contract';
+import type { DesktopApi, ImportPhase, ImportPlayerChoice, LibraryProgress } from '@cs2-analyst/report-contract';
 
 const api: DesktopApi = {
   version: '0.1.0',
@@ -46,9 +46,14 @@ const api: DesktopApi = {
   session: { release: sessionId => ipcRenderer.invoke('session:release',sessionId) },
   heatmap: { getGrid: request => ipcRenderer.invoke('heatmap:grid',request) },
   onProgress: (listener) => {
-    const handler = (_event: Electron.IpcRendererEvent, phase: ImportPhase) => listener(phase);
+    const handler = (_event: Electron.IpcRendererEvent, phase: ImportPhase, fileName?: string) => listener(phase, fileName);
     ipcRenderer.on('report:progress', handler);
     return () => ipcRenderer.removeListener('report:progress', handler);
+  },
+  onLibraryProgress: listener => {
+    const handler = (_event: Electron.IpcRendererEvent, progress: LibraryProgress) => listener(progress);
+    ipcRenderer.on('library:progress', handler);
+    return () => ipcRenderer.removeListener('library:progress', handler);
   },
 };
 contextBridge.exposeInMainWorld('cs2Analyst', api);

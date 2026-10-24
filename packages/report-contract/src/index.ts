@@ -189,7 +189,13 @@ export interface DesktopDeepReviewPlayer {
   contexts: DesktopDeepReviewFinding[];
   coverage: { status: 'complete' | 'partial' | 'unavailable' };
 }
-export type ImportPhase = 'selecting' | 'parsing' | 'awaiting-player' | 'analyzing';
+export type ImportPhase = 'selecting' | 'parsing' | 'awaiting-player' | 'analyzing' | 'saving';
+/** Presentation-only progress. File names are basenames, never local paths. */
+export interface LibraryProgress {
+  operation: 'export' | 'importArchive';
+  phase: 'validating' | 'writing';
+  fileName: string;
+}
 export type ImportResult = { kind: 'success'; report: DesktopMatchReport; selfPlayerId?: string | null }
   | { kind: 'cancelled' }
   | { kind: 'error'; message: string };
@@ -234,5 +240,6 @@ export interface DesktopApi {
   session: {
     release(sessionId: string): Promise<void>;
   };
-  onProgress(listener: (phase: ImportPhase) => void): () => void;
+  onProgress(listener: (phase: ImportPhase, fileName?: string) => void): () => void;
+  onLibraryProgress(listener: (progress: LibraryProgress) => void): () => void;
 }

@@ -116,6 +116,7 @@ process.parentPort?.on('message', async ({ data }: { data: { kind?: string; file
     heatmapSession=heatmap.session;report.heatmap=heatmap.metadata;
     if (typeof data.archiveDirectory === 'string') {
       const archive = await import('./library-archive.ts');
+      process.parentPort?.postMessage({ kind: 'progress', phase: 'saving' });
       const versions: ArchiveVersions = { ...__CS2_ANALYST_ARCHIVE_VERSIONS__, sampling: metadata.samplingVersion, mapResource: replayResourceId };
       const written = await archive.writeLibraryArchive(data.archiveDirectory, { report, chunks: replaySession?.chunks ?? new Map(),
         match: parsed.match, replay: parsed.replay, spatial: parsed.spatial, versions });

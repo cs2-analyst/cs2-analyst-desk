@@ -1,5 +1,7 @@
 # UI / IPC 修复 — 2026-10-17
 
+2026-10-25 的统一加载反馈、真实阶段与生命周期说明见 [桌面统一加载反馈](./loading-states.md)。
+
 后续质量回归见 [质量验收记录](./ui-ipc-quality-acceptance.md)。Renderer store 的 `reportRevision` 仅在成功导入时递增，驱动默认报告 Tab 和 Report 本地状态重建；同一 DEM 的成功重导入也生效，解析/失败/取消不会递增。不改变报告 DTO 或分析业务语义。
 
 本轮基线 `f143169a7c82dcdf811d27425344ab6fc784c1c1`，实现与自动验收见 [UI / IPC 验收记录](./ui-ipc-acceptance.md)。

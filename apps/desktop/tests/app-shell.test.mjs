@@ -233,7 +233,7 @@ test('import prompt answers are forwarded and an IPC failure reopens the prompt'
       return calls.length === 1 ? { kind: 'success' } : { kind: 'error', message: '当前没有等待中的玩家选择。' };
     } } };
     const players = [{ id: '1', nickname: 'A' }, { id: '2', nickname: 'B' }];
-    useReport.setState({ importPlayers: players, error: null });
+    useReport.setState({ status: 'awaiting-player', cancelling: false, choosingPlayer: false, importPlayers: players, error: null });
     await useReport.getState().chooseImportPlayer('2');
     assert.deepEqual(calls, ['2']); assert.equal(useReport.getState().importPlayers, null);
     useReport.setState({ importPlayers: players });

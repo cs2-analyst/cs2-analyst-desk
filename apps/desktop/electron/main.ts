@@ -286,6 +286,7 @@ ipcMain.handle('library:export', async (event, matchId: unknown): Promise<Librar
       destination = withArchiveExtension(path);
     }
     temporary = join(dirname(destination), `.${basename(destination)}.${randomUUID()}.tmp`);
+    if (!window.isDestroyed()) window.webContents.send('library:progress', { operation: 'export', phase: 'writing', fileName: basename(destination) });
     const written = await writePortableArchive(archiveDirectory, temporary);
     const info = await stat(temporary);
     if (info.size !== written.bytes) throw new Error('Exported package size mismatch.');
@@ -327,8 +328,10 @@ ipcMain.handle('library:import', async (event): Promise<LibraryImportResult> => 
     try {
       // Stream into the owned staging directory, then re-verify every component with L1
       // before the catalogue transaction can publish anything.
+      if (!window.isDestroyed()) window.webContents.send('library:progress', { operation: 'importArchive', phase: 'validating', fileName: basename(filePath) });
       await extractPortableArchive(filePath, staging.directory);
       const verified = await verifyLibraryArchive(staging.directory);
+      if (!window.isDestroyed()) window.webContents.send('library:progress', { operation: 'importArchive', phase: 'writing', fileName: basename(filePath) });
       const saved = await library.commitStaging(staging.id, undefined, { manifestHash: verified.manifestHash, storedBytes: verified.storedBytes });
       committed = true;
       return { kind: 'success', entry: saved.entry, duplicate: saved.duplicate };
@@ -557,8 +560,8 @@ async function analyzeDemo(filePath: string, window: BrowserWindow): Promise<Imp
         })();
         return;
       }
-      if (message.kind === 'progress' && message.phase === 'analyzing') {
-        if (!window.isDestroyed()) window.webContents.send('report:progress', 'analyzing');
+      if (message.kind === 'progress' && (message.phase === 'analyzing' || message.phase === 'saving')) {
+        if (!window.isDestroyed()) window.webContents.send('report:progress', message.phase);
       } else if (message.kind === 'prepared' && !committed && !awaitingDuplicate) {
         if (!message.report || message.report.schemaVersion !== 2 || !message.receipt) {
           void finish({ kind: 'error', message: '比赛存档响应无效。' }); return;
@@ -676,7 +679,7 @@ async function analyzeFromPath(filePath: string, window: BrowserWindow, remember
   // Injected test paths must not become a real user's recent directory. Persistence is
   // deliberately fire-and-forget so a slow or broken settings write never delays import.
   if (rememberDirectory) void rememberDemoDirectory(filePath);
-  if (!window.isDestroyed()) window.webContents.send('report:progress', 'parsing');
+  if (!window.isDestroyed()) window.webContents.send('report:progress', 'parsing', basename(filePath));
   return await analyzeDemo(filePath, window);
 }
 

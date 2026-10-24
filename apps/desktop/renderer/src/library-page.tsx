@@ -17,6 +17,8 @@ import {
   MenuPopover,
   MenuTrigger,
   Spinner,
+  ProgressBar,
+  SkeletonItem,
   Subtitle1,
   Title1,
   Table,
@@ -38,6 +40,7 @@ import { BackIcon, DeleteIcon, ExportIcon, ForwardIcon, ImportIcon, MoreIcon } f
 import { palette } from "./theme";
 import { RatingValue, HighlightTags, formatMetric, formatKast } from "./performance-display";
 import { WinSelect } from "./winui-select";
+import { LoadingRows, useLoadingFeedback } from './loading-ui';
 
 const useStyles = makeStyles({
   page: { flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" },
@@ -110,6 +113,9 @@ const useStyles = makeStyles({
     fontWeight: 700,
   },
   rowUnavailable: { opacity: 0.7 },
+  stale: { opacity: 0.55 },
+  updateStatus: { height: '32px', flexShrink: 0, padding: '0 24px', display: 'flex', alignItems: 'center', gap: '12px', color: tokens.colorNeutralForeground3 },
+  skeleton: { padding: '12px 6px' },
   info: { minWidth: 0, display: "flex", flexDirection: "column", gap: "2px" },
   fileName: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
   playerLine: { display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
@@ -224,12 +230,18 @@ export function PersonalSection() {
 export function LibraryList({
   entries,
   busy,
+  loading = false,
+  openingMatchId = null,
+  removingIds = [],
   onOpen,
   onExport,
   onDelete,
 }: {
   entries: MatchLibraryEntry[];
   busy: boolean;
+  loading?: boolean;
+  openingMatchId?: string | null;
+  removingIds?: string[];
   onOpen: (matchId: string) => void;
   onExport: (matchId: string) => void;
   onDelete: (entry: MatchLibraryEntry) => void;
@@ -276,11 +288,13 @@ export function LibraryList({
         </TableRow>
       </TableHeader>
       <TableBody>
+        {loading ? <TableRow><TableCell colSpan={10} className={s.skeleton}><LoadingRows rows={5} label="正在读取本地比赛库…" /></TableCell></TableRow> : null}
         {entries.map((entry) => (
           <LibraryRow
             key={entry.matchId}
             entry={entry}
             busy={busy}
+            pending={entry.matchId === openingMatchId ? '正在打开…' : removingIds.includes(entry.matchId) ? '正在删除…' : null}
             onOpen={onOpen}
             onExport={onExport}
             onDelete={onDelete}
@@ -296,12 +310,14 @@ const DASH = "-";
 function LibraryRow({
   entry,
   busy,
+  pending = null,
   onOpen,
   onExport,
   onDelete,
 }: {
   entry: MatchLibraryEntry;
   busy: boolean;
+  pending?: string | null;
   onOpen: (matchId: string) => void;
   onExport: (matchId: string) => void;
   onDelete: (entry: MatchLibraryEntry) => void;
@@ -348,6 +364,7 @@ function LibraryRow({
       data-library-entry={entry.matchId}
       data-library-state={entry.state}
       data-library-player={selfId}
+      aria-busy={pending !== null}
       tabIndex={openable ? 0 : undefined}
       aria-label={openable ? `打开 ${entry.fileName}` : undefined}
       onClick={open}
@@ -369,7 +386,7 @@ function LibraryRow({
         <Tooltip content={{ children: description, className: s.matchTooltipSurface }} relationship="description">
           <div className={s.info} tabIndex={0}>
             <span className={s.fileName}>{entry.map}</span>
-            <Caption1 className={mergeClasses(s.muted, s.playerLine)}>{playerLabel}</Caption1>
+            {pending ? <Spinner size="extra-tiny" label={pending} /> : <Caption1 className={mergeClasses(s.muted, s.playerLine)}>{playerLabel}</Caption1>}
           </div>
         </Tooltip>
       </TableCell>
@@ -432,6 +449,8 @@ export function LibraryPage() {
   const libraryError = useReport((state) => state.libraryError);
   const libraryNotice = useReport((state) => state.libraryNotice);
   const libraryRevision = useReport((state) => state.libraryRevision);
+  const openingMatchId = useReport(state => state.openingMatchId);
+  const operationMatchIds = useReport(state => state.operationMatchIds);
   const openMatch = useReport((state) => state.openMatch);
   const removeMatches = useReport((state) => state.removeMatches);
   const exportMatch = useReport((state) => state.exportMatch);
@@ -442,7 +461,7 @@ export function LibraryPage() {
   const filters = useReport((state) => state.libraryFilters);
   const setFilters = useReport((state) => state.setLibraryFilters);
   const importBusy = status === "selecting" || status === "parsing" || status === "awaiting-player"
-    || status === "analyzing" || status === "opening";
+    || status === "analyzing" || status === "saving" || status === "opening";
   const busy = importBusy || libraryBusy !== null;
 
   const [entries, setEntries] = useState<MatchLibraryEntry[]>([]);
@@ -452,6 +471,10 @@ export function LibraryPage() {
   const [pageOffsets, setPageOffsets] = useState<number[]>([]);
   const [unreadable, setUnreadable] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const [reload, setReload] = useState(0);
+  const [loadedKey, setLoadedKey] = useState('');
+  const [appliedMap, setAppliedMap] = useState(filters.map);
   const [listError, setListError] = useState<string | null>(null);
   const [storage, setStorage] = useState<{ matchCount: number; totalBytes: number } | null>(null);
   const [storageError, setStorageError] = useState(false);
@@ -460,6 +483,11 @@ export function LibraryPage() {
   const requestRef = useRef(0);
 
   const query = useMemo(() => ({ ...toLibraryListQuery(filters, 25), offset }), [filters, offset]);
+  const queryKey = JSON.stringify([query, libraryRevision, reload]);
+  const updating = loading || loadedKey !== queryKey;
+  const showUpdating = useLoadingFeedback(updating);
+  const showOpening = useLoadingFeedback(status === 'opening');
+  const showRemoving = useLoadingFeedback(libraryBusy === 'remove');
   useEffect(() => {
     const requestId = ++requestRef.current;
     setLoading(true);
@@ -470,9 +498,6 @@ export function LibraryPage() {
         if (requestId !== requestRef.current) return;
         if (result.kind === "error") {
           setListError(result.message);
-          setEntries([]);
-          setTotal(0);
-          setUnreadable(0);
           return;
         }
         if (result.offset > 0 && result.offset >= result.total) {
@@ -484,16 +509,18 @@ export function LibraryPage() {
         setTotal(result.total);
         setPageSize(result.limit);
         setUnreadable(result.unreadableCount);
+        setHasLoaded(true);
+        setAppliedMap(query.map ?? 'all');
       })
       .catch(() => {
         if (requestId !== requestRef.current) return;
         setListError("无法读取本地比赛库。请检查磁盘权限或重启应用。");
-        setEntries([]);
       })
       .finally(() => {
-        if (requestId === requestRef.current) setLoading(false);
+        if (requestId === requestRef.current) { setLoading(false); setLoadedKey(queryKey); }
       });
-  }, [query, libraryRevision]);
+    return () => { requestRef.current++; };
+  }, [query, libraryRevision, reload]);
 
   useEffect(() => {
     let alive = true;
@@ -512,9 +539,9 @@ export function LibraryPage() {
     return () => {
       alive = false;
     };
-  }, [libraryRevision]);
+  }, [libraryRevision, reload]);
 
-  const filtering = filters.map !== "all";
+  const filtering = appliedMap !== "all";
   const update = (patch: Partial<LibraryFilters>) => {
     setOffset(0);
     setPageOffsets([]);
@@ -623,7 +650,7 @@ export function LibraryPage() {
           <MessageBar intent="error" data-library-list-error>
             <MessageBarBody>
               {listError}
-              <Button size="small" appearance="transparent" onClick={() => setFilters({})}>
+              <Button size="small" appearance="transparent" onClick={() => setReload(value => value + 1)}>
                 重试
               </Button>
             </MessageBarBody>
@@ -638,12 +665,16 @@ export function LibraryPage() {
         </div>
       ) : null}
 
-      <div className={s.scroll} aria-busy={loading}>
-        {loading && entries.length === 0 ? (
-          <div className={s.center} role="status" data-library-loading>
-            <Spinner size="large" label="正在读取本地比赛库…" />
-          </div>
-        ) : entries.length === 0 ? (
+      <div className={s.updateStatus} role="status" aria-live="polite" data-library-update>
+        {hasLoaded && updating && showUpdating ? <><ProgressBar aria-label="正在更新比赛列表" style={{ width: 100 }} /><Caption1>正在更新列表… 当前为上次结果。</Caption1></>
+          : hasLoaded && listError ? <Caption1>更新失败，当前为上次结果；请重试。</Caption1>
+          : status === 'opening' && showOpening ? <Caption1>正在恢复报告、回放与热力图…</Caption1>
+          : hasLoaded && showUpdating ? <Caption1>列表已更新。</Caption1> : null}
+      </div>
+      <div className={mergeClasses(s.scroll, hasLoaded && (updating || Boolean(listError)) && s.stale)} aria-busy={updating}>
+        {!hasLoaded && !listError ? <div data-library-loading><LibraryList entries={[]} busy loading onOpen={() => {}} onExport={() => {}} onDelete={() => {}} /></div>
+        : !hasLoaded && listError ? <div className={s.center}><Body1>比赛库暂时无法读取，请重试。</Body1></div>
+        : entries.length === 0 ? (
           <div
             className={s.empty}
             data-library-empty
@@ -677,7 +708,9 @@ export function LibraryPage() {
         ) : (
           <LibraryList
             entries={entries}
-            busy={busy}
+            busy={busy || updating || Boolean(listError)}
+            openingMatchId={status === 'opening' && showOpening ? openingMatchId : null}
+            removingIds={libraryBusy === 'remove' && showRemoving ? operationMatchIds : []}
             onOpen={(matchId) => void openMatch(matchId)}
             onExport={(matchId) => void exportMatch(matchId)}
             onDelete={setPendingDelete}
@@ -691,16 +724,17 @@ export function LibraryPage() {
             ? <><span>已保存 {storage.matchCount} 场</span><span>本机占用 {formatBytes(storage.totalBytes)}</span></>
             : storageError
               ? "暂时无法读取本机占用"
-              : "正在读取本机占用…"}
+              : <span role="status" aria-label="正在读取本机占用" data-storage-loading><SkeletonItem style={{ width: 180, height: 12 }} /></span>}
+          {storageError ? <Button size="small" appearance="transparent" onClick={() => setReload(value => value + 1)}>重试</Button> : null}
         </Caption1>
         <nav className={s.pagination} aria-label="比赛列表分页">
           <Caption1 className={s.pageRange} aria-live="polite" data-library-page-range>
-            {total ? `${offset + 1}–${Math.min(offset + pageSize, total)} / ${total} 场` : "0 场比赛"}
+            {!hasLoaded ? '—' : total ? `${offset + 1}–${Math.min(offset + pageSize, total)} / ${total} 场` : "0 场比赛"}
           </Caption1>
           <div className={s.pageControls}>
             <Tooltip content="上一页" relationship="description">
               <Button appearance="subtle" icon={<BackIcon size={16} />} aria-label="上一页比赛"
-                disabled={loading || busy || offset === 0}
+                disabled={updating || busy || Boolean(listError) || offset === 0}
                 onClick={() => {
                   setOffset(pageOffsets.at(-1) ?? 0);
                   setPageOffsets(pageOffsets.slice(0, -1));
@@ -711,7 +745,7 @@ export function LibraryPage() {
             </span>
             <Tooltip content="下一页" relationship="description">
               <Button appearance="subtle" icon={<ForwardIcon size={16} />} aria-label="下一页比赛"
-                disabled={loading || busy || offset + pageSize >= total}
+                disabled={updating || busy || Boolean(listError) || offset + pageSize >= total}
                 onClick={() => {
                   setPageOffsets([...pageOffsets, offset]);
                   setOffset(offset + pageSize);
