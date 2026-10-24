@@ -19,6 +19,8 @@
 
 实现：`apps/desktop/renderer/src/winui-select.tsx`。
 
+选择器默认宽度统一为 **190px**，不随选中昵称长短变化。“自己是谁”和“目标玩家”直接使用共享默认值，不再分别设置 190px / 250px。触发按钮的文本使用可收缩的独立 span 和 `minmax(0, 1fr)` 网格列，长文本省略，箭头保持可见。列表默认跟随触发按钮宽度。调用方仍可用 className/style 或 button slot 显式覆盖布局，例如热力图的 `width: 100%` 和回放工具栏的紧凑宽度。
+
 默认最大高度为 `min(320px, calc(100vh - 96px))`，选项过多时内部滚动。Fluent 定位会写入行内 `max-height`，因此共享 CSS 使用带 `!important` 的规则，通过 CSS 自定义属性 `--winselect-max-height` 提供实际高度值。React 行内样式值中不包含 `!important`。
 
 覆盖顺序：`listbox.style.maxHeight` > `maxHeight` > 默认高度。`listbox.style.maxHeight` 支持 CSS 长度字符串和数值（px）。只设置 `listbox` 的宽度或其他属性时，仍保留默认高度和滚动。`listbox` 其他 slot 属性及自定义 class 继续传递，class 使用 `mergeClasses` 合并；传入 `listbox={null}` 保留 Fluent 的禁用 slot 语义。
@@ -66,6 +68,7 @@ export type WinSelectGroup = { label?: string; items: readonly WinSelectItem[] }
 | Electron/Chromium 组件交互 | PASS，默认 320px、自定义 180px、slot 数值 120px、仅宽度覆盖、class 高度覆盖及内部滚动；800×360 视口自动限制为 264px |
 | 长文本和选中交互 | PASS，ellipsis/完整 Tooltip；扩大内容宽度后隐藏 Tooltip、缩小后恢复，Option DOM 身份保持；键盘 End/Enter、Escape 和鼠标选择通过，无控制台错误或警告 |
 | 真实构建应用、`.demo/demo1.dem` | PASS，实际磁盘 File 经 preload/IPC/worker 导入、选择“稍后选择”继续；开局CT/开局T 各 5 人，10 个唯一选项，跨组切换正确，列表 cap 为 320px，无未捕获异常 |
+| 默认等宽补验 | PASS，桌面类型检查、构建及上述 33 个用例重跑通过；组件实测默认 190px、长值 ellipsis，显式宽度仍可覆盖；真实 DEM 中两个玩家选择器均为 190px，逐一切换 10 名玩家后目标选择器始终为 190px；Tooltip/高度/键鼠选择交互重跑通过 |
 
 组件测试使用本次实际 TSX 文件构建的临时入口，视口覆盖桌面窗口及 800×360。会话没有 Browser skill，沿用仓库现有 Electron CDP 测试基础设施，无新增测试依赖。组件测试不等同于整页应用验收；真实 DEM 检查另行覆盖实际应用中的分组及选择。
 
@@ -73,6 +76,7 @@ export type WinSelectGroup = { label?: string; items: readonly WinSelectItem[] }
 
 - `cs2-winselect-qa.mjs`；最终证据目录 `cs2-winselect-qa-h9JzIz`，包含 `groups.png`、`tooltip.png`、`short-window.png`。
 - `cs2-winselect-report-qa.mjs`；最终证据目录 `cs2-winselect-report-qa-LClLXi`，包含 `real-demo-groups.png`。
+- 等宽补验沿用上述临时脚本：组件证据目录 `cs2-winselect-qa-ughbII`，真实报告证据目录 `cs2-winselect-report-qa-oSB6q2`。
 
 额外尝试 `node scripts/desktop-report-smoke.mjs`：**FAIL，未进入 DEM 报告场景**。`scripts/window-shell-checks.mjs:40` 仍断言标题栏导航仅有 `back/forward`，当前 HEAD 的 `app-titlebar.tsx` 已包含 `back/home/forward`。这两处均未被本次修改；不放宽旧断言、不把该 smoke 记作通过。上述真实 DEM 定向检查独立通过。本次不包含安装版、原生 Explorer 拖放或跨显示器 DPI 验收。
 

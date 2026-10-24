@@ -139,9 +139,7 @@ const useStyles = makeStyles({
   },
   timelineTime: { color: tokens.colorNeutralForeground3, fontVariantNumeric: 'tabular-nums' },
   playerName: { display: 'block', minWidth: 0, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  playerDropdown: { maxWidth: '250px', '& button': { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } },
   identityRow: { display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end', gap: '8px', flexWrap: 'wrap' },
-  selfDropdown: { minWidth: '190px', maxWidth: '190px', '& button': { minWidth: '190px', maxWidth: '190px' } },
   importPlayerSelect: { width: '100%', marginTop: '8px' },
 });
 
@@ -469,7 +467,6 @@ function Report({ report, playerId, replayActive, activeTab, onSelectView }: {
         <div className={s.column}>
           <Caption1>自己是谁</Caption1>
           <WinSelect
-            className={s.selfDropdown}
             aria-label="自己是谁"
             data-match-self
             value={selfPlayerId && report.players.some(p => p.id === selfPlayerId) ? selfPlayerId : "none"}
@@ -484,7 +481,7 @@ function Report({ report, playerId, replayActive, activeTab, onSelectView }: {
             onValueChange={(value) => void selectSelfPlayer(value === "none" ? null : value)}
           />
         </div>
-        <div className={s.column}><Caption1>目标玩家</Caption1><Tooltip content={player.nickname} relationship="description"><WinSelect className={s.playerDropdown} listbox={{ style: { maxWidth: '250px' } }} aria-label="目标玩家" value={playerId}
+        <div className={s.column}><Caption1>目标玩家</Caption1><Tooltip content={player.nickname} relationship="description"><WinSelect aria-label="目标玩家" value={playerId}
           items={playerGroups}
           onValueChange={selectPlayer} /></Tooltip></div>
       </div>

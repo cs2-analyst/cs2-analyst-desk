@@ -9,6 +9,22 @@ export type WinSelectItem = { value: string; text: string; label?: ReactNode };
 export type WinSelectGroup = { label?: string; items: readonly WinSelectItem[] };
 
 const useStyles = makeStyles({
+  root: {
+    width: '190px',
+    minWidth: 0,
+    flexShrink: 0,
+  },
+  button: {
+    minWidth: 0,
+    gridTemplateColumns: '[content] minmax(0, 1fr) [icon] auto [end]',
+  },
+  value: {
+    display: 'block',
+    minWidth: 0,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
   listbox: {
     // Fluent positioning writes inline max-height; keep our cap in CSS and customize its variable.
     maxHeight: 'var(--winselect-max-height, min(320px, calc(100vh - 96px))) !important',
@@ -33,13 +49,14 @@ export type WinSelectProps = Omit<ComponentProps<typeof Dropdown>, 'children' | 
  * portalled listbox) with the shared WinUI option styling. Use this instead of Fluent's native
  * `Select` so every selector in the app opens the same in-app listbox.
  */
-export function WinSelect({ items, value, onValueChange, maxHeight, listbox, ...rest }: WinSelectProps) {
+export function WinSelect({ items, value, onValueChange, maxHeight, listbox, className, button, ...rest }: WinSelectProps) {
   const styles = useStyles();
   const isGrouped = items.length > 0 && 'items' in items[0];
   const allItems = isGrouped
     ? (items as readonly WinSelectGroup[]).flatMap(group => group.items)
     : items as readonly WinSelectItem[];
   const selected = allItems.find(item => item.value === value);
+  const customButton = resolveShorthand(button, { required: true });
 
   const customListbox = resolveShorthand(listbox, { required: true });
   const height = customListbox?.style?.maxHeight ?? maxHeight;
@@ -53,6 +70,12 @@ export function WinSelect({ items, value, onValueChange, maxHeight, listbox, ...
   };
 
   return <Dropdown {...rest}
+    className={mergeClasses(styles.root, className)}
+    button={{
+      ...customButton,
+      className: mergeClasses(styles.button, customButton?.className),
+      children: customButton?.children ?? <span className={styles.value}>{selected?.text || rest.placeholder}</span>,
+    }}
     value={selected?.text ?? ''}
     selectedOptions={[value]}
     listbox={listboxProps}
