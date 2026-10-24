@@ -6,6 +6,8 @@
 
 2026-10-25 补充：用户可从记录菜单明确执行[重新分析](./match-library-reanalysis.md)，重选同源 DEM 后生成新完整快照并安全切换已有记录，保留身份及导入时间。SQLite v3 使用内部 generation 指针；普通导入的去重语义及便携归档格式不变。
 
+2026-10-25 [容量与无损优化调查](./match-library-compression-audit.md)补充了当前实际归档的分项占用及 codec/结构表达实测；该调查没有修改生产 gzip-6 格式或用户数据。
+
 ## 1. 现有代码事实与容量基线
 
 检查范围：`apps/desktop/renderer/src/store.ts`、`apps/desktop/electron/report-worker.ts`、`apps/desktop/electron/replay-session.ts`、`apps/desktop/electron/heatmap-session.ts`、`apps/desktop/shared/heatmap.ts`、`packages/report-contract`。

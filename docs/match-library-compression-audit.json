@@ -1,0 +1,1996 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-25",
+  "baselineRevision": "6ed49bac30e779200ece6ef6b04f23ce1ccf4924",
+  "scope": "Investigation only; production code, user archives and database unchanged",
+  "units": {
+    "MB": "1000000 bytes",
+    "KiB": "1024 bytes",
+    "timings": "single serial warm-cache measurements, not p95 or cold restore",
+    "KB": "1000 bytes"
+  },
+  "inputs": {
+    "liveLibrary": [
+      "demo1.dem",
+      "demo2.dem"
+    ],
+    "disposableCurrentPipelineCaptures": [
+      "dust2.dem",
+      "nuke.dem"
+    ],
+    "captureRuntime": "Node 26.3.0, explicit GC once before unchanged Heatmap admission; not production import latency",
+    "codecRuntime": "Bundled Electron 44.5.1 / Node 24.21.0, run-as-node; independent per-component codecs"
+  },
+  "summary": [
+    {
+      "file": "demo1.dem",
+      "rounds": 24,
+      "totalMB": 13.265101,
+      "roles": {
+        "report": {
+          "MB": 0.027617,
+          "pct": 0.2081929116106994
+        },
+        "heatmap-match": {
+          "MB": 0.08043,
+          "pct": 0.6063278372324492
+        },
+        "heatmap-replay": {
+          "MB": 4.356242,
+          "pct": 32.839870574675615
+        },
+        "heatmap-spatial": {
+          "MB": 4.413486,
+          "pct": 33.271408939894236
+        },
+        "replay-chunk": {
+          "MB": 4.354338,
+          "pct": 32.82551712195784
+        }
+      },
+      "codecs": {
+        "gzip-6": {
+          "payloadMB": 13.232113,
+          "savingPercent": 0,
+          "encodeMs": 908.9615000000085,
+          "decodeMs": 221.73549999999173
+        },
+        "gzip-9": {
+          "payloadMB": 12.993789,
+          "savingPercent": 1.8011031193581828,
+          "encodeMs": 1369.244400000015,
+          "decodeMs": 177.64869999998848
+        },
+        "brotli-4": {
+          "payloadMB": 11.745743,
+          "savingPercent": 11.233050987397098,
+          "encodeMs": 704.8989000000036,
+          "decodeMs": 190.24619999999405
+        },
+        "brotli-6": {
+          "payloadMB": 11.111904,
+          "savingPercent": 16.023208084755623,
+          "encodeMs": 1470.050200000009,
+          "decodeMs": 187.24059999999267
+        },
+        "brotli-9": {
+          "payloadMB": 10.967459,
+          "savingPercent": 17.114832680162273,
+          "encodeMs": 3498.2430999999888,
+          "decodeMs": 192.07760000000235
+        },
+        "zstd-3": {
+          "payloadMB": 13.185282,
+          "savingPercent": 0.3539192871161223,
+          "encodeMs": 269.7810000000026,
+          "decodeMs": 149.41599999998945
+        }
+      },
+      "tupleSavedKB": 293.479,
+      "spatialDictionarySavedKB": -51.413,
+      "followSavedKB": 30.46,
+      "regeneration": {
+        "generatedChunks": 114,
+        "same": 114,
+        "different": 0,
+        "metadataByteExact": true,
+        "byteExact": true
+      }
+    },
+    {
+      "file": "demo2.dem",
+      "rounds": 18,
+      "totalMB": 8.949174,
+      "roles": {
+        "report": {
+          "MB": 0.02084,
+          "pct": 0.23287065376089458
+        },
+        "heatmap-match": {
+          "MB": 0.04994,
+          "pct": 0.5580403286381515
+        },
+        "heatmap-replay": {
+          "MB": 3.120065,
+          "pct": 34.86427909436111
+        },
+        "heatmap-spatial": {
+          "MB": 2.626081,
+          "pct": 29.344395359839915
+        },
+        "replay-chunk": {
+          "MB": 3.107015,
+          "pct": 34.71845558036976
+        }
+      },
+      "codecs": {
+        "gzip-6": {
+          "payloadMB": 8.923941,
+          "savingPercent": 0,
+          "encodeMs": 681.3303000000044,
+          "decodeMs": 120.63490000000073
+        },
+        "gzip-9": {
+          "payloadMB": 8.762573,
+          "savingPercent": 1.8082593777793865,
+          "encodeMs": 951.2000999999973,
+          "decodeMs": 119.85749999999929
+        },
+        "brotli-4": {
+          "payloadMB": 7.987055,
+          "savingPercent": 10.498567841271022,
+          "encodeMs": 508.84280000000297,
+          "decodeMs": 134.4656999999995
+        },
+        "brotli-6": {
+          "payloadMB": 7.585779,
+          "savingPercent": 14.995191026027621,
+          "encodeMs": 1012.2002999999963,
+          "decodeMs": 129.47639999999996
+        },
+        "brotli-9": {
+          "payloadMB": 7.49582,
+          "savingPercent": 16.00325461586982,
+          "encodeMs": 2484.2889999999998,
+          "decodeMs": 128.09530000000825
+        },
+        "zstd-3": {
+          "payloadMB": 8.974707,
+          "savingPercent": -0.5688742227228927,
+          "encodeMs": 210.2708000000003,
+          "decodeMs": 122.76160000000135
+        }
+      },
+      "tupleSavedKB": 215.738,
+      "spatialDictionarySavedKB": -42.407,
+      "followSavedKB": 22.017,
+      "regeneration": {
+        "generatedChunks": 85,
+        "same": 85,
+        "different": 0,
+        "metadataByteExact": true,
+        "byteExact": true
+      }
+    },
+    {
+      "file": "dust2.dem",
+      "rounds": 24,
+      "totalMB": 16.910121,
+      "roles": {
+        "report": {
+          "MB": 0.029593,
+          "pct": 0.1750017046004579
+        },
+        "heatmap-match": {
+          "MB": 0.089179,
+          "pct": 0.5273705610977
+        },
+        "heatmap-replay": {
+          "MB": 6.225825,
+          "pct": 36.81715228412617
+        },
+        "heatmap-spatial": {
+          "MB": 4.319038,
+          "pct": 25.541141899575997
+        },
+        "replay-chunk": {
+          "MB": 6.201607,
+          "pct": 36.6739362775701
+        }
+      },
+      "codecs": {
+        "gzip-6": {
+          "payloadMB": 16.865242,
+          "savingPercent": 0,
+          "encodeMs": 1190.7419000000086,
+          "decodeMs": 292.3680999999875
+        },
+        "gzip-9": {
+          "payloadMB": 16.564106,
+          "savingPercent": 1.7855421226686263,
+          "encodeMs": 1719.2175999999981,
+          "decodeMs": 214.0572999999946
+        },
+        "brotli-4": {
+          "payloadMB": 15.184354,
+          "savingPercent": 9.966580971681282,
+          "encodeMs": 855.5893000000228,
+          "decodeMs": 223.65759999998693
+        },
+        "brotli-6": {
+          "payloadMB": 14.458801,
+          "savingPercent": 14.268641979759323,
+          "encodeMs": 1813.5402999999849,
+          "decodeMs": 213.46009999999114
+        },
+        "brotli-9": {
+          "payloadMB": 14.277646,
+          "savingPercent": 15.342774209821597,
+          "encodeMs": 4364.482200000003,
+          "decodeMs": 218.13220000000115
+        },
+        "zstd-3": {
+          "payloadMB": 16.993716,
+          "savingPercent": -0.7617679011069134,
+          "encodeMs": 339.2956999999984,
+          "decodeMs": 193.1131999999905
+        }
+      },
+      "tupleSavedKB": 412.543,
+      "spatialDictionarySavedKB": -48.501,
+      "followSavedKB": 44.253,
+      "regeneration": {
+        "generatedChunks": 159,
+        "same": 159,
+        "different": 0,
+        "metadataByteExact": true,
+        "byteExact": true
+      }
+    },
+    {
+      "file": "nuke.dem",
+      "rounds": 21,
+      "totalMB": 12.06623,
+      "roles": {
+        "report": {
+          "MB": 0.023034,
+          "pct": 0.19089641089221737
+        },
+        "heatmap-match": {
+          "MB": 0.064075,
+          "pct": 0.5310275040339858
+        },
+        "heatmap-replay": {
+          "MB": 4.394723,
+          "pct": 36.42167437550917
+        },
+        "heatmap-spatial": {
+          "MB": 3.096581,
+          "pct": 25.663202176653353
+        },
+        "replay-chunk": {
+          "MB": 4.447789,
+          "pct": 36.86146377120277
+        }
+      },
+      "codecs": {
+        "gzip-6": {
+          "payloadMB": 12.026202,
+          "savingPercent": 0,
+          "encodeMs": 890.5975999999987,
+          "decodeMs": 182.24830000000298
+        },
+        "gzip-9": {
+          "payloadMB": 11.776096,
+          "savingPercent": 2.0796756947870976,
+          "encodeMs": 1374.9706999999892,
+          "decodeMs": 168.04800000001393
+        },
+        "brotli-4": {
+          "payloadMB": 10.846008,
+          "savingPercent": 9.813522174332345,
+          "encodeMs": 617.7523000000206,
+          "decodeMs": 179.6973999999869
+        },
+        "brotli-6": {
+          "payloadMB": 10.164172,
+          "savingPercent": 15.48310929751554,
+          "encodeMs": 1393.369900000006,
+          "decodeMs": 183.25720000000115
+        },
+        "brotli-9": {
+          "payloadMB": 10.051978,
+          "savingPercent": 16.416022282013888,
+          "encodeMs": 3367.4954,
+          "decodeMs": 178.60579999998788
+        },
+        "zstd-3": {
+          "payloadMB": 12.240471,
+          "savingPercent": -1.7816846914761708,
+          "encodeMs": 252.78160000000398,
+          "decodeMs": 147.98130000000793
+        }
+      },
+      "tupleSavedKB": 297.65,
+      "spatialDictionarySavedKB": -58.386,
+      "followSavedKB": 50.183,
+      "regeneration": {
+        "generatedChunks": 141,
+        "same": 141,
+        "different": 0,
+        "metadataByteExact": true,
+        "byteExact": true
+      }
+    }
+  ],
+  "samples": [
+    {
+      "schemaVersion": 1,
+      "purpose": "Read-only capacity investigation; codec/structural results are not a deployable archive format",
+      "source": {
+        "fileName": "demo1.dem",
+        "matchId": "f3c3173eae0cd100d15c81c3b734be792f9212256a9c99703b358d3434000852",
+        "map": "de_dust2",
+        "rounds": 24,
+        "archiveSourceRevision": "482341ba25a11be02b899d1ce14b683646c159a5",
+        "manifestSha256": "7783d8e3155c614bcd1ca9f13e7a2765c7d38971362364ffed31403a34d64009"
+      },
+      "runtime": {
+        "versions": {
+          "node": "24.21.0",
+          "acorn": "8.18.0",
+          "ada": "4.0.0",
+          "amaro": "1.1.11",
+          "ares": "1.34.8",
+          "brotli": "1.2.0",
+          "cldr": "48.0",
+          "icu": "78.2",
+          "llhttp": "9.4.3",
+          "merve": "1.2.2",
+          "modules": "149",
+          "napi": "10",
+          "nbytes": "0.1.4",
+          "ncrypto": "0.0.1",
+          "nghttp2": "1.70.0",
+          "nghttp3": "",
+          "ngtcp2": "",
+          "openssl": "0.0.0",
+          "simdjson": "4.6.7",
+          "simdutf": "7.7.0",
+          "sqlite": "3.53.4",
+          "tz": "2025c",
+          "undici": "7.29.1",
+          "unicode": "17.0",
+          "uv": "1.52.1",
+          "uvwasi": "0.0.23",
+          "v8": "15.2.124.28-electron.0",
+          "zlib": "1.3.2.1-motley",
+          "zstd": "1.6.0",
+          "electron": "44.5.1",
+          "chrome": "152.0.7977.130"
+        },
+        "platform": "win32",
+        "os": "10.0.26200",
+        "cpu": "13th Gen Intel(R) Core(TM) i7-13620H"
+      },
+      "baseline": {
+        "manifestBytes": 32988,
+        "payloadBytes": 13232113,
+        "totalBytes": 13265101,
+        "roles": {
+          "report": {
+            "files": 1,
+            "rawBytes": 347623,
+            "gzipBytes": 27617
+          },
+          "heatmap-match": {
+            "files": 1,
+            "rawBytes": 1013350,
+            "gzipBytes": 80430
+          },
+          "heatmap-replay": {
+            "files": 1,
+            "rawBytes": 46254820,
+            "gzipBytes": 4356242
+          },
+          "heatmap-spatial": {
+            "files": 1,
+            "rawBytes": 80182666,
+            "gzipBytes": 4413486
+          },
+          "replay-chunk": {
+            "files": 114,
+            "rawBytes": 27719852,
+            "gzipBytes": 4354338
+          }
+        }
+      },
+      "codecTrials": {
+        "gzip-6": {
+          "total": {
+            "rawBytes": 155518311,
+            "bytes": 13232113,
+            "encodeMs": 908.9615000000085,
+            "decodeMs": 221.73549999999173
+          },
+          "roles": {
+            "report": {
+              "rawBytes": 347623,
+              "bytes": 27617,
+              "encodeMs": 2.2973999999999997,
+              "decodeMs": 0.4128000000000007
+            },
+            "heatmap-match": {
+              "rawBytes": 1013350,
+              "bytes": 80430,
+              "encodeMs": 5.840299999999999,
+              "decodeMs": 1.6957999999999984
+            },
+            "heatmap-replay": {
+              "rawBytes": 46254820,
+              "bytes": 4356242,
+              "encodeMs": 280.44679999999994,
+              "decodeMs": 102.78609999999998
+            },
+            "heatmap-spatial": {
+              "rawBytes": 80182666,
+              "bytes": 4413486,
+              "encodeMs": 357.46820000000025,
+              "decodeMs": 70.36999999999989
+            },
+            "replay-chunk": {
+              "rawBytes": 27719852,
+              "bytes": 4354338,
+              "encodeMs": 262.90880000000834,
+              "decodeMs": 46.47079999999187
+            }
+          }
+        },
+        "gzip-9": {
+          "total": {
+            "rawBytes": 155518311,
+            "bytes": 12993789,
+            "encodeMs": 1369.244400000015,
+            "decodeMs": 177.64869999998848
+          },
+          "roles": {
+            "report": {
+              "rawBytes": 347623,
+              "bytes": 26922,
+              "encodeMs": 3.3491,
+              "decodeMs": 0.3981999999999992
+            },
+            "heatmap-match": {
+              "rawBytes": 1013350,
+              "bytes": 74301,
+              "encodeMs": 11.863300000000002,
+              "decodeMs": 1.0568999999999988
+            },
+            "heatmap-replay": {
+              "rawBytes": 46254820,
+              "bytes": 4243829,
+              "encodeMs": 494.82000000000005,
+              "decodeMs": 57.693899999999985
+            },
+            "heatmap-spatial": {
+              "rawBytes": 80182666,
+              "bytes": 4337693,
+              "encodeMs": 503.15559999999914,
+              "decodeMs": 69.45090000000073
+            },
+            "replay-chunk": {
+              "rawBytes": 27719852,
+              "bytes": 4311044,
+              "encodeMs": 356.05640000001586,
+              "decodeMs": 49.04879999998775
+            }
+          }
+        },
+        "brotli-4": {
+          "total": {
+            "rawBytes": 155518311,
+            "bytes": 11745743,
+            "encodeMs": 704.8989000000036,
+            "decodeMs": 190.24619999999405
+          },
+          "roles": {
+            "report": {
+              "rawBytes": 347623,
+              "bytes": 26181,
+              "encodeMs": 1.9282000000000004,
+              "decodeMs": 0.6092000000000013
+            },
+            "heatmap-match": {
+              "rawBytes": 1013350,
+              "bytes": 74681,
+              "encodeMs": 3.780299999999997,
+              "decodeMs": 1.4348000000000098
+            },
+            "heatmap-replay": {
+              "rawBytes": 46254820,
+              "bytes": 3893949,
+              "encodeMs": 243.3508999999999,
+              "decodeMs": 61.67409999999995
+            },
+            "heatmap-spatial": {
+              "rawBytes": 80182666,
+              "bytes": 3646509,
+              "encodeMs": 261.33920000000035,
+              "decodeMs": 69.90619999999944
+            },
+            "replay-chunk": {
+              "rawBytes": 27719852,
+              "bytes": 4104423,
+              "encodeMs": 194.50030000000334,
+              "decodeMs": 56.62189999999464
+            }
+          }
+        },
+        "brotli-6": {
+          "total": {
+            "rawBytes": 155518311,
+            "bytes": 11111904,
+            "encodeMs": 1470.050200000009,
+            "decodeMs": 187.24059999999267
+          },
+          "roles": {
+            "report": {
+              "rawBytes": 347623,
+              "bytes": 21271,
+              "encodeMs": 3.348799999999997,
+              "decodeMs": 0.4896000000000029
+            },
+            "heatmap-match": {
+              "rawBytes": 1013350,
+              "bytes": 61359,
+              "encodeMs": 7.646000000000001,
+              "decodeMs": 1.1928000000000054
+            },
+            "heatmap-replay": {
+              "rawBytes": 46254820,
+              "bytes": 3663793,
+              "encodeMs": 492.30719999999997,
+              "decodeMs": 60.23860000000013
+            },
+            "heatmap-spatial": {
+              "rawBytes": 80182666,
+              "bytes": 3356166,
+              "encodeMs": 553.7060999999994,
+              "decodeMs": 74.03380000000016
+            },
+            "replay-chunk": {
+              "rawBytes": 27719852,
+              "bytes": 4009315,
+              "encodeMs": 413.04210000000967,
+              "decodeMs": 51.28579999999238
+            }
+          }
+        },
+        "brotli-9": {
+          "total": {
+            "rawBytes": 155518311,
+            "bytes": 10967459,
+            "encodeMs": 3498.2430999999888,
+            "decodeMs": 192.07760000000235
+          },
+          "roles": {
+            "report": {
+              "rawBytes": 347623,
+              "bytes": 19901,
+              "encodeMs": 9.555900000000001,
+              "decodeMs": 0.5302000000000007
+            },
+            "heatmap-match": {
+              "rawBytes": 1013350,
+              "bytes": 57835,
+              "encodeMs": 22.994600000000005,
+              "decodeMs": 1.5277999999999992
+            },
+            "heatmap-replay": {
+              "rawBytes": 46254820,
+              "bytes": 3622897,
+              "encodeMs": 1083.9105,
+              "decodeMs": 58.47310000000016
+            },
+            "heatmap-spatial": {
+              "rawBytes": 80182666,
+              "bytes": 3267773,
+              "encodeMs": 1114.8535000000002,
+              "decodeMs": 79.10469999999987
+            },
+            "replay-chunk": {
+              "rawBytes": 27719852,
+              "bytes": 3999053,
+              "encodeMs": 1266.9285999999884,
+              "decodeMs": 52.44180000000233
+            }
+          }
+        },
+        "zstd-3": {
+          "total": {
+            "rawBytes": 155518311,
+            "bytes": 13185282,
+            "encodeMs": 269.7810000000026,
+            "decodeMs": 149.41599999998945
+          },
+          "roles": {
+            "report": {
+              "rawBytes": 347623,
+              "bytes": 28805,
+              "encodeMs": 1.1631,
+              "decodeMs": 0.5924000000000049
+            },
+            "heatmap-match": {
+              "rawBytes": 1013350,
+              "bytes": 82291,
+              "encodeMs": 1.9100000000000108,
+              "decodeMs": 1.1030999999999977
+            },
+            "heatmap-replay": {
+              "rawBytes": 46254820,
+              "bytes": 4394283,
+              "encodeMs": 82.2215000000001,
+              "decodeMs": 46.940700000000106
+            },
+            "heatmap-spatial": {
+              "rawBytes": 80182666,
+              "bytes": 4324360,
+              "encodeMs": 85.70979999999963,
+              "decodeMs": 62.45470000000023
+            },
+            "replay-chunk": {
+              "rawBytes": 27719852,
+              "bytes": 4355543,
+              "encodeMs": 98.77660000000287,
+              "decodeMs": 38.325099999989106
+            }
+          }
+        }
+      },
+      "structuralTrials": {
+        "heatmap-replay": {
+          "originalRawBytes": 46254820,
+          "originalGzipBytes": 4356242,
+          "packedRawBytes": 27936337,
+          "byteExactRestore": true,
+          "samples": 203540,
+          "schemas": 1,
+          "codecs": {
+            "gzip-6": {
+              "rawBytes": 27936337,
+              "bytes": 4062763,
+              "sha256": "e93e75a8740d96ac6ae110fdbb2964d81147ae5fe693f5c249587f4a6a66a4a5",
+              "encodeMs": 254.36029999999982,
+              "decodeMs": 42.990200000000186
+            },
+            "brotli-6": {
+              "rawBytes": 27936337,
+              "bytes": 3473835,
+              "sha256": "b1ec174d9d217daaf5f4cae9d464c88a2c445540d7350305e948412f1ca8a925",
+              "encodeMs": 402.4885999999997,
+              "decodeMs": 37.76299999999992
+            }
+          }
+        },
+        "heatmap-spatial": {
+          "originalRawBytes": 80182666,
+          "originalGzipBytes": 4413486,
+          "packedRawBytes": 65930471,
+          "byteExactRestore": true,
+          "references": 168435,
+          "uniqueSamples": 133580,
+          "codecs": {
+            "gzip-6": {
+              "rawBytes": 65930471,
+              "bytes": 4464899,
+              "sha256": "f3a4a96b3db7ac897550f3222fd615805b1bb441d6af8a7c7d4d59b4a9c43270",
+              "encodeMs": 320.33300000000054,
+              "decodeMs": 61.43029999999999
+            },
+            "brotli-6": {
+              "rawBytes": 65930471,
+              "bytes": 3427658,
+              "sha256": "18bbc9f1b9ea763254f580e84f3c4995c8cfd85c3c4acf6cb78c7d73e7617d1a",
+              "encodeMs": 505.58179999999993,
+              "decodeMs": 59.14249999999993
+            }
+          }
+        }
+      },
+      "followTrial": {
+        "originalBytes": 4354338,
+        "strippedBytes": 4310468,
+        "dictionariesBytes": 13410,
+        "chunks": 114,
+        "uniqueFollows": 24,
+        "packedPayloadBytes": 4323878,
+        "savedPayloadBytes": 30460,
+        "extraManifestBytesEstimate": 6144
+      },
+      "regeneration": {
+        "generatedChunks": 114,
+        "same": 114,
+        "different": 0,
+        "metadataByteExact": true,
+        "byteExact": true
+      },
+      "elapsedMs": 14361.1678,
+      "processResourceUsage": {
+        "userCPUTime": 12250000,
+        "systemCPUTime": 2656000,
+        "maxRSS": 1072992,
+        "sharedMemorySize": 0,
+        "unsharedDataSize": 0,
+        "unsharedStackSize": 0,
+        "minorPageFault": 0,
+        "majorPageFault": 2133521,
+        "swappedOut": 0,
+        "fsRead": 129,
+        "fsWrite": 0,
+        "ipcSent": 0,
+        "ipcReceived": 0,
+        "signalsCount": 0,
+        "voluntaryContextSwitches": 0,
+        "involuntaryContextSwitches": 0
+      },
+      "limits": [
+        "One serial warm-cache run; timings are observations, not latency p95 or production SLAs",
+        "Codec bytes are compressed member payloads; current manifest overhead is reported separately",
+        "Structural candidates include their dictionary/schema headers but need a versioned archive manifest",
+        "No codec installed-app/cold-restore or prototype peak-memory acceptance is implied",
+        "No sampling reduction, numeric quantization, evidence pruning, DEM copying or live archive mutation"
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "purpose": "Read-only capacity investigation; codec/structural results are not a deployable archive format",
+      "source": {
+        "fileName": "demo2.dem",
+        "matchId": "253e5b719ac418b092ff3cdd1b5928bb0dfc8ccbf06cb9398963ea1e9fa44a25",
+        "map": "de_dust2",
+        "rounds": 18,
+        "archiveSourceRevision": "482341ba25a11be02b899d1ce14b683646c159a5",
+        "manifestSha256": "2f7853451f6efdf6d4f0e29714461f775ffa8592ebca3846a036aa7952a1d2cc"
+      },
+      "runtime": {
+        "versions": {
+          "node": "24.21.0",
+          "acorn": "8.18.0",
+          "ada": "4.0.0",
+          "amaro": "1.1.11",
+          "ares": "1.34.8",
+          "brotli": "1.2.0",
+          "cldr": "48.0",
+          "icu": "78.2",
+          "llhttp": "9.4.3",
+          "merve": "1.2.2",
+          "modules": "149",
+          "napi": "10",
+          "nbytes": "0.1.4",
+          "ncrypto": "0.0.1",
+          "nghttp2": "1.70.0",
+          "nghttp3": "",
+          "ngtcp2": "",
+          "openssl": "0.0.0",
+          "simdjson": "4.6.7",
+          "simdutf": "7.7.0",
+          "sqlite": "3.53.4",
+          "tz": "2025c",
+          "undici": "7.29.1",
+          "unicode": "17.0",
+          "uv": "1.52.1",
+          "uvwasi": "0.0.23",
+          "v8": "15.2.124.28-electron.0",
+          "zlib": "1.3.2.1-motley",
+          "zstd": "1.6.0",
+          "electron": "44.5.1",
+          "chrome": "152.0.7977.130"
+        },
+        "platform": "win32",
+        "os": "10.0.26200",
+        "cpu": "13th Gen Intel(R) Core(TM) i7-13620H"
+      },
+      "baseline": {
+        "manifestBytes": 25233,
+        "payloadBytes": 8923941,
+        "totalBytes": 8949174,
+        "roles": {
+          "report": {
+            "files": 1,
+            "rawBytes": 254981,
+            "gzipBytes": 20840
+          },
+          "heatmap-match": {
+            "files": 1,
+            "rawBytes": 636171,
+            "gzipBytes": 49940
+          },
+          "heatmap-replay": {
+            "files": 1,
+            "rawBytes": 33403671,
+            "gzipBytes": 3120065
+          },
+          "heatmap-spatial": {
+            "files": 1,
+            "rawBytes": 49423135,
+            "gzipBytes": 2626081
+          },
+          "replay-chunk": {
+            "files": 85,
+            "rawBytes": 19860548,
+            "gzipBytes": 3107015
+          }
+        }
+      },
+      "codecTrials": {
+        "gzip-6": {
+          "total": {
+            "rawBytes": 103578506,
+            "bytes": 8923941,
+            "encodeMs": 681.3303000000044,
+            "decodeMs": 120.63490000000073
+          },
+          "roles": {
+            "report": {
+              "rawBytes": 254981,
+              "bytes": 20840,
+              "encodeMs": 1.6388999999999996,
+              "decodeMs": 0.3924000000000021
+            },
+            "heatmap-match": {
+              "rawBytes": 636171,
+              "bytes": 49940,
+              "encodeMs": 4.0869,
+              "decodeMs": 0.6599999999999966
+            },
+            "heatmap-replay": {
+              "rawBytes": 33403671,
+              "bytes": 3120065,
+              "encodeMs": 222.10410000000002,
+              "decodeMs": 42.42609999999996
+            },
+            "heatmap-spatial": {
+              "rawBytes": 49423135,
+              "bytes": 2626081,
+              "encodeMs": 238.19610000000011,
+              "decodeMs": 41.433500000000095
+            },
+            "replay-chunk": {
+              "rawBytes": 19860548,
+              "bytes": 3107015,
+              "encodeMs": 215.30430000000433,
+              "decodeMs": 35.722900000000664
+            }
+          }
+        },
+        "gzip-9": {
+          "total": {
+            "rawBytes": 103578506,
+            "bytes": 8762573,
+            "encodeMs": 951.2000999999973,
+            "decodeMs": 119.85749999999929
+          },
+          "roles": {
+            "report": {
+              "rawBytes": 254981,
+              "bytes": 20355,
+              "encodeMs": 2.3470000000000013,
+              "decodeMs": 0.2798999999999978
+            },
+            "heatmap-match": {
+              "rawBytes": 636171,
+              "bytes": 45783,
+              "encodeMs": 10.21499999999999,
+              "decodeMs": 0.574300000000008
+            },
+            "heatmap-replay": {
+              "rawBytes": 33403671,
+              "bytes": 3038438,
+              "encodeMs": 365.9232,
+              "decodeMs": 42.21449999999993
+            },
+            "heatmap-spatial": {
+              "rawBytes": 49423135,
+              "bytes": 2580742,
+              "encodeMs": 308.6854000000003,
+              "decodeMs": 42.40009999999984
+            },
+            "replay-chunk": {
+              "rawBytes": 19860548,
+              "bytes": 3077255,
+              "encodeMs": 264.0294999999969,
+              "decodeMs": 34.38869999999952
+            }
+          }
+        },
+        "brotli-4": {
+          "total": {
+            "rawBytes": 103578506,
+            "bytes": 7987055,
+            "encodeMs": 508.84280000000297,
+            "decodeMs": 134.4656999999995
+          },
+          "roles": {
+            "report": {
+              "rawBytes": 254981,
+              "bytes": 19301,
+              "encodeMs": 5.943100000000001,
+              "decodeMs": 0.6749000000000009
+            },
+            "heatmap-match": {
+              "rawBytes": 636171,
+              "bytes": 47806,
+              "encodeMs": 2.5660000000000025,
+              "decodeMs": 0.8380999999999972
+            },
+            "heatmap-replay": {
+              "rawBytes": 33403671,
+              "bytes": 2787445,
+              "encodeMs": 160.3039,
+              "decodeMs": 49.3359999999999
+            },
+            "heatmap-spatial": {
+              "rawBytes": 49423135,
+              "bytes": 2208748,
+              "encodeMs": 172.11539999999968,
+              "decodeMs": 41.88090000000011
+            },
+            "replay-chunk": {
+              "rawBytes": 19860548,
+              "bytes": 2923755,
+              "encodeMs": 167.9144000000033,
+              "decodeMs": 41.73579999999947
+            }
+          }
+        },
+        "brotli-6": {
+          "total": {
+            "rawBytes": 103578506,
+            "bytes": 7585779,
+            "encodeMs": 1012.2002999999963,
+            "decodeMs": 129.47639999999996
+          },
+          "roles": {
+            "report": {
+              "rawBytes": 254981,
+              "bytes": 15453,
+              "encodeMs": 3.209000000000003,
+              "decodeMs": 0.481899999999996
+            },
+            "heatmap-match": {
+              "rawBytes": 636171,
+              "bytes": 39143,
+              "encodeMs": 5.215199999999996,
+              "decodeMs": 0.8068999999999988
+            },
+            "heatmap-replay": {
+              "rawBytes": 33403671,
+              "bytes": 2624586,
+              "encodeMs": 339.65779999999995,
+              "decodeMs": 47.49019999999996
+            },
+            "heatmap-spatial": {
+              "rawBytes": 49423135,
+              "bytes": 2038240,
+              "encodeMs": 337.46509999999944,
+              "decodeMs": 42.6846000000005
+            },
+            "replay-chunk": {
+              "rawBytes": 19860548,
+              "bytes": 2868357,
+              "encodeMs": 326.653199999997,
+              "decodeMs": 38.012799999999515
+            }
+          }
+        },
+        "brotli-9": {
+          "total": {
+            "rawBytes": 103578506,
+            "bytes": 7495820,
+            "encodeMs": 2484.2889999999998,
+            "decodeMs": 128.09530000000825
+          },
+          "roles": {
+            "report": {
+              "rawBytes": 254981,
+              "bytes": 14827,
+              "encodeMs": 7.8322999999999965,
+              "decodeMs": 0.3862000000000023
+            },
+            "heatmap-match": {
+              "rawBytes": 636171,
+              "bytes": 37015,
+              "encodeMs": 13.630499999999998,
+              "decodeMs": 0.7446000000000055
+            },
+            "heatmap-replay": {
+              "rawBytes": 33403671,
+              "bytes": 2596335,
+              "encodeMs": 810.7476999999999,
+              "decodeMs": 43.090400000000045
+            },
+            "heatmap-spatial": {
+              "rawBytes": 49423135,
+              "bytes": 1986811,
+              "encodeMs": 651.2713000000003,
+              "decodeMs": 41.50510000000031
+            },
+            "replay-chunk": {
+              "rawBytes": 19860548,
+              "bytes": 2860832,
+              "encodeMs": 1000.8071999999993,
+              "decodeMs": 42.36900000000787
+            }
+          }
+        },
+        "zstd-3": {
+          "total": {
+            "rawBytes": 103578506,
+            "bytes": 8974707,
+            "encodeMs": 210.2708000000003,
+            "decodeMs": 122.76160000000135
+          },
+          "roles": {
+            "report": {
+              "rawBytes": 254981,
+              "bytes": 21219,
+              "encodeMs": 2.3737999999999957,
+              "decodeMs": 0.4245000000000019
+            },
+            "heatmap-match": {
+              "rawBytes": 636171,
+              "bytes": 52478,
+              "encodeMs": 1.457099999999997,
+              "decodeMs": 1.2600000000000051
+            },
+            "heatmap-replay": {
+              "rawBytes": 33403671,
+              "bytes": 3148352,
+              "encodeMs": 67.84879999999976,
+              "decodeMs": 39.57290000000012
+            },
+            "heatmap-spatial": {
+              "rawBytes": 49423135,
+              "bytes": 2622008,
+              "encodeMs": 58.72640000000047,
+              "decodeMs": 44.816100000000006
+            },
+            "replay-chunk": {
+              "rawBytes": 19860548,
+              "bytes": 3130650,
+              "encodeMs": 79.86470000000008,
+              "decodeMs": 36.688100000001214
+            }
+          }
+        }
+      },
+      "structuralTrials": {
+        "heatmap-replay": {
+          "originalRawBytes": 33403671,
+          "originalGzipBytes": 3120065,
+          "packedRawBytes": 20063988,
+          "byteExactRestore": true,
+          "samples": 148220,
+          "schemas": 1,
+          "codecs": {
+            "gzip-6": {
+              "rawBytes": 20063988,
+              "bytes": 2904327,
+              "sha256": "e334e0410b7fc405ea5b0575bae00ecc053aeff111d06a46676887321b7e83c9",
+              "encodeMs": 192.19360000000006,
+              "decodeMs": 29.463000000000193
+            },
+            "brotli-6": {
+              "rawBytes": 20063988,
+              "bytes": 2483985,
+              "sha256": "dbc90b3e0f65cb6b1c889c04f057cd481de508c51df5ff16268f78cdfb72d074",
+              "encodeMs": 312.3809000000001,
+              "decodeMs": 106.79050000000007
+            }
+          }
+        },
+        "heatmap-spatial": {
+          "originalRawBytes": 49423135,
+          "originalGzipBytes": 2626081,
+          "packedRawBytes": 40505421,
+          "byteExactRestore": true,
+          "references": 103825,
+          "uniqueSamples": 82110,
+          "codecs": {
+            "gzip-6": {
+              "rawBytes": 40505421,
+              "bytes": 2668488,
+              "sha256": "31983b61603946283dbc1d765fa414e3e194f206ebefafb16d2055e9ab3391c7",
+              "encodeMs": 186.63979999999992,
+              "decodeMs": 34.94920000000002
+            },
+            "brotli-6": {
+              "rawBytes": 40505421,
+              "bytes": 2084189,
+              "sha256": "110a444f7252c35abde5952e10f4214e8b126917931dec0df3687dc0ab58232f",
+              "encodeMs": 311.6772000000001,
+              "decodeMs": 40.151700000000346
+            }
+          }
+        }
+      },
+      "followTrial": {
+        "originalBytes": 3107015,
+        "strippedBytes": 3075026,
+        "dictionariesBytes": 9972,
+        "chunks": 85,
+        "uniqueFollows": 18,
+        "packedPayloadBytes": 3084998,
+        "savedPayloadBytes": 22017,
+        "extraManifestBytesEstimate": 4608
+      },
+      "regeneration": {
+        "generatedChunks": 85,
+        "same": 85,
+        "different": 0,
+        "metadataByteExact": true,
+        "byteExact": true
+      },
+      "elapsedMs": 10447.095299999999,
+      "processResourceUsage": {
+        "userCPUTime": 8609000,
+        "systemCPUTime": 2328000,
+        "maxRSS": 747676,
+        "sharedMemorySize": 0,
+        "unsharedDataSize": 0,
+        "unsharedStackSize": 0,
+        "minorPageFault": 0,
+        "majorPageFault": 1536590,
+        "swappedOut": 0,
+        "fsRead": 100,
+        "fsWrite": 0,
+        "ipcSent": 0,
+        "ipcReceived": 0,
+        "signalsCount": 0,
+        "voluntaryContextSwitches": 0,
+        "involuntaryContextSwitches": 0
+      },
+      "limits": [
+        "One serial warm-cache run; timings are observations, not latency p95 or production SLAs",
+        "Codec bytes are compressed member payloads; current manifest overhead is reported separately",
+        "Structural candidates include their dictionary/schema headers but need a versioned archive manifest",
+        "No codec installed-app/cold-restore or prototype peak-memory acceptance is implied",
+        "No sampling reduction, numeric quantization, evidence pruning, DEM copying or live archive mutation"
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "purpose": "Read-only capacity investigation; codec/structural results are not a deployable archive format",
+      "source": {
+        "fileName": "dust2.dem",
+        "matchId": "db90fe85aab023a1d2c8a5996182e6120d98ef494f02a070b17982b235e4958c",
+        "map": "de_dust2",
+        "rounds": 24,
+        "archiveSourceRevision": "6ed49bac30e779200ece6ef6b04f23ce1ccf4924",
+        "manifestSha256": "75cada16dab163e3489fdf527fc6fb1517d45850aec273782e7e9a7796f9432d"
+      },
+      "runtime": {
+        "versions": {
+          "node": "24.21.0",
+          "acorn": "8.18.0",
+          "ada": "4.0.0",
+          "amaro": "1.1.11",
+          "ares": "1.34.8",
+          "brotli": "1.2.0",
+          "cldr": "48.0",
+          "icu": "78.2",
+          "llhttp": "9.4.3",
+          "merve": "1.2.2",
+          "modules": "149",
+          "napi": "10",
+          "nbytes": "0.1.4",
+          "ncrypto": "0.0.1",
+          "nghttp2": "1.70.0",
+          "nghttp3": "",
+          "ngtcp2": "",
+          "openssl": "0.0.0",
+          "simdjson": "4.6.7",
+          "simdutf": "7.7.0",
+          "sqlite": "3.53.4",
+          "tz": "2025c",
+          "undici": "7.29.1",
+          "unicode": "17.0",
+          "uv": "1.52.1",
+          "uvwasi": "0.0.23",
+          "v8": "15.2.124.28-electron.0",
+          "zlib": "1.3.2.1-motley",
+          "zstd": "1.6.0",
+          "electron": "44.5.1",
+          "chrome": "152.0.7977.130"
+        },
+        "platform": "win32",
+        "os": "10.0.26200",
+        "cpu": "13th Gen Intel(R) Core(TM) i7-13620H"
+      },
+      "baseline": {
+        "manifestBytes": 44879,
+        "payloadBytes": 16865242,
+        "totalBytes": 16910121,
+        "roles": {
+          "report": {
+            "files": 1,
+            "rawBytes": 372486,
+            "gzipBytes": 29593
+          },
+          "heatmap-match": {
+            "files": 1,
+            "rawBytes": 1027422,
+            "gzipBytes": 89179
+          },
+          "heatmap-replay": {
+            "files": 1,
+            "rawBytes": 62157994,
+            "gzipBytes": 6225825
+          },
+          "heatmap-spatial": {
+            "files": 1,
+            "rawBytes": 74993725,
+            "gzipBytes": 4319038
+          },
+          "replay-chunk": {
+            "files": 159,
+            "rawBytes": 37158066,
+            "gzipBytes": 6201607
+          }
+        }
+      },
+      "codecTrials": {
+        "gzip-6": {
+          "total": {
+            "rawBytes": 175709693,
+            "bytes": 16865242,
+            "encodeMs": 1190.7419000000086,
+            "decodeMs": 292.3680999999875
+          },
+          "roles": {
+            "report": {
+              "rawBytes": 372486,
+              "bytes": 29593,
+              "encodeMs": 2.1820999999999984,
+              "decodeMs": 0.4855000000000018
+            },
+            "heatmap-match": {
+              "rawBytes": 1027422,
+              "bytes": 89179,
+              "encodeMs": 6.233999999999995,
+              "decodeMs": 1.2395000000000067
+            },
+            "heatmap-replay": {
+              "rawBytes": 62157994,
+              "bytes": 6225825,
+              "encodeMs": 440.3085,
+              "decodeMs": 79.79500000000007
+            },
+            "heatmap-spatial": {
+              "rawBytes": 74993725,
+              "bytes": 4319038,
+              "encodeMs": 345.65610000000015,
+              "decodeMs": 140.6246999999994
+            },
+            "replay-chunk": {
+              "rawBytes": 37158066,
+              "bytes": 6201607,
+              "encodeMs": 396.36120000000847,
+              "decodeMs": 70.22339999998803
+            }
+          }
+        },
+        "gzip-9": {
+          "total": {
+            "rawBytes": 175709693,
+            "bytes": 16564106,
+            "encodeMs": 1719.2175999999981,
+            "decodeMs": 214.0572999999946
+          },
+          "roles": {
+            "report": {
+              "rawBytes": 372486,
+              "bytes": 28837,
+              "encodeMs": 3.3058999999999976,
+              "decodeMs": 0.4204000000000008
+            },
+            "heatmap-match": {
+              "rawBytes": 1027422,
+              "bytes": 83123,
+              "encodeMs": 12.0141,
+              "decodeMs": 1.0863999999999976
+            },
+            "heatmap-replay": {
+              "rawBytes": 62157994,
+              "bytes": 6066204,
+              "encodeMs": 719.3904,
+              "decodeMs": 71.00999999999999
+            },
+            "heatmap-spatial": {
+              "rawBytes": 74993725,
+              "bytes": 4245730,
+              "encodeMs": 461.4493000000002,
+              "decodeMs": 67.76379999999972
+            },
+            "replay-chunk": {
+              "rawBytes": 37158066,
+              "bytes": 6140212,
+              "encodeMs": 523.057899999998,
+              "decodeMs": 73.77669999999489
+            }
+          }
+        },
+        "brotli-4": {
+          "total": {
+            "rawBytes": 175709693,
+            "bytes": 15184354,
+            "encodeMs": 855.5893000000228,
+            "decodeMs": 223.65759999998693
+          },
+          "roles": {
+            "report": {
+              "rawBytes": 372486,
+              "bytes": 27576,
+              "encodeMs": 2.040600000000005,
+              "decodeMs": 0.6143000000000001
+            },
+            "heatmap-match": {
+              "rawBytes": 1027422,
+              "bytes": 84497,
+              "encodeMs": 4.6494,
+              "decodeMs": 1.6587999999999994
+            },
+            "heatmap-replay": {
+              "rawBytes": 62157994,
+              "bytes": 5580897,
+              "encodeMs": 352.1109999999999,
+              "decodeMs": 78.51110000000017
+            },
+            "heatmap-spatial": {
+              "rawBytes": 74993725,
+              "bytes": 3601515,
+              "encodeMs": 219.09169999999995,
+              "decodeMs": 66.67399999999998
+            },
+            "replay-chunk": {
+              "rawBytes": 37158066,
+              "bytes": 5889869,
+              "encodeMs": 277.69660000002295,
+              "decodeMs": 76.19939999998678
+            }
+          }
+        },
+        "brotli-6": {
+          "total": {
+            "rawBytes": 175709693,
+            "bytes": 14458801,
+            "encodeMs": 1813.5402999999849,
+            "decodeMs": 213.46009999999114
+          },
+          "roles": {
+            "report": {
+              "rawBytes": 372486,
+              "bytes": 22905,
+              "encodeMs": 3.7316000000000003,
+              "decodeMs": 0.6081999999999965
+            },
+            "heatmap-match": {
+              "rawBytes": 1027422,
+              "bytes": 70205,
+              "encodeMs": 8.826400000000007,
+              "decodeMs": 1.7025000000000006
+            },
+            "heatmap-replay": {
+              "rawBytes": 62157994,
+              "bytes": 5273022,
+              "encodeMs": 680.2232000000001,
+              "decodeMs": 75.25979999999981
+            },
+            "heatmap-spatial": {
+              "rawBytes": 74993725,
+              "bytes": 3342890,
+              "encodeMs": 538.238800000001,
+              "decodeMs": 65.21389999999883
+            },
+            "replay-chunk": {
+              "rawBytes": 37158066,
+              "bytes": 5749779,
+              "encodeMs": 582.5202999999838,
+              "decodeMs": 70.6756999999925
+            }
+          }
+        },
+        "brotli-9": {
+          "total": {
+            "rawBytes": 175709693,
+            "bytes": 14277646,
+            "encodeMs": 4364.482200000003,
+            "decodeMs": 218.13220000000115
+          },
+          "roles": {
+            "report": {
+              "rawBytes": 372486,
+              "bytes": 21528,
+              "encodeMs": 11.6158,
+              "decodeMs": 0.9436999999999998
+            },
+            "heatmap-match": {
+              "rawBytes": 1027422,
+              "bytes": 66675,
+              "encodeMs": 22.385899999999992,
+              "decodeMs": 1.7329000000000008
+            },
+            "heatmap-replay": {
+              "rawBytes": 62157994,
+              "bytes": 5208211,
+              "encodeMs": 1551.1347,
+              "decodeMs": 75.15099999999984
+            },
+            "heatmap-spatial": {
+              "rawBytes": 74993725,
+              "bytes": 3253670,
+              "encodeMs": 1044.9722000000002,
+              "decodeMs": 64.87800000000061
+            },
+            "replay-chunk": {
+              "rawBytes": 37158066,
+              "bytes": 5727562,
+              "encodeMs": 1734.3736000000026,
+              "decodeMs": 75.42660000000069
+            }
+          }
+        },
+        "zstd-3": {
+          "total": {
+            "rawBytes": 175709693,
+            "bytes": 16993716,
+            "encodeMs": 339.2956999999984,
+            "decodeMs": 193.1131999999905
+          },
+          "roles": {
+            "report": {
+              "rawBytes": 372486,
+              "bytes": 30219,
+              "encodeMs": 1.0380000000000038,
+              "decodeMs": 2.5071999999999974
+            },
+            "heatmap-match": {
+              "rawBytes": 1027422,
+              "bytes": 92314,
+              "encodeMs": 2.072800000000001,
+              "decodeMs": 1.1026000000000096
+            },
+            "heatmap-replay": {
+              "rawBytes": 62157994,
+              "bytes": 6323921,
+              "encodeMs": 110.50640000000021,
+              "decodeMs": 76.76549999999952
+            },
+            "heatmap-spatial": {
+              "rawBytes": 74993725,
+              "bytes": 4268711,
+              "encodeMs": 83.07129999999961,
+              "decodeMs": 57.47870000000148
+            },
+            "replay-chunk": {
+              "rawBytes": 37158066,
+              "bytes": 6278551,
+              "encodeMs": 142.60719999999856,
+              "decodeMs": 55.259199999989505
+            }
+          }
+        }
+      },
+      "structuralTrials": {
+        "heatmap-replay": {
+          "originalRawBytes": 62157994,
+          "originalGzipBytes": 6225825,
+          "packedRawBytes": 37438711,
+          "byteExactRestore": true,
+          "samples": 274660,
+          "schemas": 1,
+          "codecs": {
+            "gzip-6": {
+              "rawBytes": 37438711,
+              "bytes": 5813282,
+              "sha256": "72b9f3ef5af1526b3d43f106c3f508268ef9acf46f6f379e428d05b228412996",
+              "encodeMs": 370.40999999999985,
+              "decodeMs": 74.44400000000041
+            },
+            "brotli-6": {
+              "rawBytes": 37438711,
+              "bytes": 5009417,
+              "sha256": "b61aa3264929e9262aebc90c5956647bdc73adfdea8b7f160be68a9de16b9b6a",
+              "encodeMs": 536.4912000000004,
+              "decodeMs": 59.453599999999824
+            }
+          }
+        },
+        "heatmap-spatial": {
+          "originalRawBytes": 74993725,
+          "originalGzipBytes": 4319038,
+          "packedRawBytes": 62362851,
+          "byteExactRestore": true,
+          "references": 157348,
+          "uniqueSamples": 126360,
+          "codecs": {
+            "gzip-6": {
+              "rawBytes": 62362851,
+              "bytes": 4367539,
+              "sha256": "abe076a3f0211dfb0c917aa384a11c6d0887f5ffc1356812763c8a50d52c4d48",
+              "encodeMs": 294.65290000000095,
+              "decodeMs": 234.41529999999875
+            },
+            "brotli-6": {
+              "rawBytes": 62362851,
+              "bytes": 3405937,
+              "sha256": "02ce415f831486eccc25b89ebded070697620dca155bd13182fec50b90030b63",
+              "encodeMs": 486.08150000000023,
+              "decodeMs": 61.74759999999878
+            }
+          }
+        }
+      },
+      "followTrial": {
+        "originalBytes": 6201607,
+        "strippedBytes": 6144527,
+        "dictionariesBytes": 12827,
+        "chunks": 159,
+        "uniqueFollows": 24,
+        "packedPayloadBytes": 6157354,
+        "savedPayloadBytes": 44253,
+        "extraManifestBytesEstimate": 6144
+      },
+      "regeneration": {
+        "generatedChunks": 159,
+        "same": 159,
+        "different": 0,
+        "metadataByteExact": true,
+        "byteExact": true
+      },
+      "elapsedMs": 17502.436100000003,
+      "processResourceUsage": {
+        "userCPUTime": 15187000,
+        "systemCPUTime": 3125000,
+        "maxRSS": 1177972,
+        "sharedMemorySize": 0,
+        "unsharedDataSize": 0,
+        "unsharedStackSize": 0,
+        "minorPageFault": 0,
+        "majorPageFault": 2587184,
+        "swappedOut": 0,
+        "fsRead": 174,
+        "fsWrite": 0,
+        "ipcSent": 0,
+        "ipcReceived": 0,
+        "signalsCount": 0,
+        "voluntaryContextSwitches": 0,
+        "involuntaryContextSwitches": 0
+      },
+      "limits": [
+        "One serial warm-cache run; timings are observations, not latency p95 or production SLAs",
+        "Codec bytes are compressed member payloads; current manifest overhead is reported separately",
+        "Structural candidates include their dictionary/schema headers but need a versioned archive manifest",
+        "No codec installed-app/cold-restore or prototype peak-memory acceptance is implied",
+        "No sampling reduction, numeric quantization, evidence pruning, DEM copying or live archive mutation"
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "purpose": "Read-only capacity investigation; codec/structural results are not a deployable archive format",
+      "source": {
+        "fileName": "nuke.dem",
+        "matchId": "dea9382b9cc263fed9ee4ed7e71fa6be8c176cf888868f05b26d850af6f5cb3c",
+        "map": "de_nuke",
+        "rounds": 21,
+        "archiveSourceRevision": "6ed49bac30e779200ece6ef6b04f23ce1ccf4924",
+        "manifestSha256": "4d1a8fa2d10797f69800b106beccc66a59cbed9c2f4e4c923ae9ab91cf511bcc"
+      },
+      "runtime": {
+        "versions": {
+          "node": "24.21.0",
+          "acorn": "8.18.0",
+          "ada": "4.0.0",
+          "amaro": "1.1.11",
+          "ares": "1.34.8",
+          "brotli": "1.2.0",
+          "cldr": "48.0",
+          "icu": "78.2",
+          "llhttp": "9.4.3",
+          "merve": "1.2.2",
+          "modules": "149",
+          "napi": "10",
+          "nbytes": "0.1.4",
+          "ncrypto": "0.0.1",
+          "nghttp2": "1.70.0",
+          "nghttp3": "",
+          "ngtcp2": "",
+          "openssl": "0.0.0",
+          "simdjson": "4.6.7",
+          "simdutf": "7.7.0",
+          "sqlite": "3.53.4",
+          "tz": "2025c",
+          "undici": "7.29.1",
+          "unicode": "17.0",
+          "uv": "1.52.1",
+          "uvwasi": "0.0.23",
+          "v8": "15.2.124.28-electron.0",
+          "zlib": "1.3.2.1-motley",
+          "zstd": "1.6.0",
+          "electron": "44.5.1",
+          "chrome": "152.0.7977.130"
+        },
+        "platform": "win32",
+        "os": "10.0.26200",
+        "cpu": "13th Gen Intel(R) Core(TM) i7-13620H"
+      },
+      "baseline": {
+        "manifestBytes": 40028,
+        "payloadBytes": 12026202,
+        "totalBytes": 12066230,
+        "roles": {
+          "report": {
+            "files": 1,
+            "rawBytes": 270570,
+            "gzipBytes": 23034
+          },
+          "heatmap-match": {
+            "files": 1,
+            "rawBytes": 800270,
+            "gzipBytes": 64075
+          },
+          "heatmap-replay": {
+            "files": 1,
+            "rawBytes": 51500063,
+            "gzipBytes": 4394723
+          },
+          "heatmap-spatial": {
+            "files": 1,
+            "rawBytes": 60748853,
+            "gzipBytes": 3096581
+          },
+          "replay-chunk": {
+            "files": 141,
+            "rawBytes": 29826961,
+            "gzipBytes": 4447789
+          }
+        }
+      },
+      "codecTrials": {
+        "gzip-6": {
+          "total": {
+            "rawBytes": 143146717,
+            "bytes": 12026202,
+            "encodeMs": 890.5975999999987,
+            "decodeMs": 182.24830000000298
+          },
+          "roles": {
+            "report": {
+              "rawBytes": 270570,
+              "bytes": 23034,
+              "encodeMs": 1.6841000000000008,
+              "decodeMs": 0.33589999999999876
+            },
+            "heatmap-match": {
+              "rawBytes": 800270,
+              "bytes": 64075,
+              "encodeMs": 4.956599999999995,
+              "decodeMs": 0.8038999999999987
+            },
+            "heatmap-replay": {
+              "rawBytes": 51500063,
+              "bytes": 4394723,
+              "encodeMs": 308.3056,
+              "decodeMs": 75.21039999999994
+            },
+            "heatmap-spatial": {
+              "rawBytes": 60748853,
+              "bytes": 3096581,
+              "encodeMs": 265.4962000000005,
+              "decodeMs": 53.925899999999274
+            },
+            "replay-chunk": {
+              "rawBytes": 29826961,
+              "bytes": 4447789,
+              "encodeMs": 310.15509999999813,
+              "decodeMs": 51.972200000003795
+            }
+          }
+        },
+        "gzip-9": {
+          "total": {
+            "rawBytes": 143146717,
+            "bytes": 11776096,
+            "encodeMs": 1374.9706999999892,
+            "decodeMs": 168.04800000001393
+          },
+          "roles": {
+            "report": {
+              "rawBytes": 270570,
+              "bytes": 22493,
+              "encodeMs": 2.5658999999999956,
+              "decodeMs": 0.3120000000000047
+            },
+            "heatmap-match": {
+              "rawBytes": 800270,
+              "bytes": 59125,
+              "encodeMs": 10.35110000000001,
+              "decodeMs": 0.7841999999999985
+            },
+            "heatmap-replay": {
+              "rawBytes": 51500063,
+              "bytes": 4264108,
+              "encodeMs": 513.9139000000001,
+              "decodeMs": 59.91919999999982
+            },
+            "heatmap-spatial": {
+              "rawBytes": 60748853,
+              "bytes": 3044674,
+              "encodeMs": 379.3681000000006,
+              "decodeMs": 56.05419999999958
+            },
+            "replay-chunk": {
+              "rawBytes": 29826961,
+              "bytes": 4385696,
+              "encodeMs": 468.7716999999884,
+              "decodeMs": 50.97840000001452
+            }
+          }
+        },
+        "brotli-4": {
+          "total": {
+            "rawBytes": 143146717,
+            "bytes": 10846008,
+            "encodeMs": 617.7523000000206,
+            "decodeMs": 179.6973999999869
+          },
+          "roles": {
+            "report": {
+              "rawBytes": 270570,
+              "bytes": 21919,
+              "encodeMs": 1.6015999999999977,
+              "decodeMs": 0.6203999999999965
+            },
+            "heatmap-match": {
+              "rawBytes": 800270,
+              "bytes": 60097,
+              "encodeMs": 2.9546999999999883,
+              "decodeMs": 1.1299000000000063
+            },
+            "heatmap-replay": {
+              "rawBytes": 51500063,
+              "bytes": 3919084,
+              "encodeMs": 217.2726,
+              "decodeMs": 65.64509999999996
+            },
+            "heatmap-spatial": {
+              "rawBytes": 60748853,
+              "bytes": 2599649,
+              "encodeMs": 182.02760000000035,
+              "decodeMs": 51.30169999999998
+            },
+            "replay-chunk": {
+              "rawBytes": 29826961,
+              "bytes": 4245259,
+              "encodeMs": 213.89580000002024,
+              "decodeMs": 61.000299999986964
+            }
+          }
+        },
+        "brotli-6": {
+          "total": {
+            "rawBytes": 143146717,
+            "bytes": 10164172,
+            "encodeMs": 1393.369900000006,
+            "decodeMs": 183.25720000000115
+          },
+          "roles": {
+            "report": {
+              "rawBytes": 270570,
+              "bytes": 17607,
+              "encodeMs": 3.484099999999998,
+              "decodeMs": 0.5095000000000027
+            },
+            "heatmap-match": {
+              "rawBytes": 800270,
+              "bytes": 49220,
+              "encodeMs": 6.555099999999996,
+              "decodeMs": 1.3238999999999947
+            },
+            "heatmap-replay": {
+              "rawBytes": 51500063,
+              "bytes": 3644889,
+              "encodeMs": 478.44010000000003,
+              "decodeMs": 63.73029999999994
+            },
+            "heatmap-spatial": {
+              "rawBytes": 60748853,
+              "bytes": 2394514,
+              "encodeMs": 427.2996999999996,
+              "decodeMs": 59.72019999999975
+            },
+            "replay-chunk": {
+              "rawBytes": 29826961,
+              "bytes": 4057942,
+              "encodeMs": 477.5909000000065,
+              "decodeMs": 57.97330000000147
+            }
+          }
+        },
+        "brotli-9": {
+          "total": {
+            "rawBytes": 143146717,
+            "bytes": 10051978,
+            "encodeMs": 3367.4954,
+            "decodeMs": 178.60579999998788
+          },
+          "roles": {
+            "report": {
+              "rawBytes": 270570,
+              "bytes": 16837,
+              "encodeMs": 9.840999999999994,
+              "decodeMs": 0.520700000000005
+            },
+            "heatmap-match": {
+              "rawBytes": 800270,
+              "bytes": 46367,
+              "encodeMs": 19.699200000000005,
+              "decodeMs": 1.1753999999999962
+            },
+            "heatmap-replay": {
+              "rawBytes": 51500063,
+              "bytes": 3611588,
+              "encodeMs": 1093.2538,
+              "decodeMs": 58.753400000000056
+            },
+            "heatmap-spatial": {
+              "rawBytes": 60748853,
+              "bytes": 2337635,
+              "encodeMs": 825.1388999999999,
+              "decodeMs": 54.10519999999997
+            },
+            "replay-chunk": {
+              "rawBytes": 29826961,
+              "bytes": 4039551,
+              "encodeMs": 1419.5625,
+              "decodeMs": 64.05109999998785
+            }
+          }
+        },
+        "zstd-3": {
+          "total": {
+            "rawBytes": 143146717,
+            "bytes": 12240471,
+            "encodeMs": 252.78160000000398,
+            "decodeMs": 147.98130000000793
+          },
+          "roles": {
+            "report": {
+              "rawBytes": 270570,
+              "bytes": 24238,
+              "encodeMs": 0.9757999999999996,
+              "decodeMs": 0.44200000000000017
+            },
+            "heatmap-match": {
+              "rawBytes": 800270,
+              "bytes": 65783,
+              "encodeMs": 1.346100000000007,
+              "decodeMs": 0.9177999999999997
+            },
+            "heatmap-replay": {
+              "rawBytes": 51500063,
+              "bytes": 4465725,
+              "encodeMs": 84.61459999999988,
+              "decodeMs": 50.58689999999979
+            },
+            "heatmap-spatial": {
+              "rawBytes": 60748853,
+              "bytes": 3137509,
+              "encodeMs": 58.69499999999971,
+              "decodeMs": 48.71860000000015
+            },
+            "replay-chunk": {
+              "rawBytes": 29826961,
+              "bytes": 4547216,
+              "encodeMs": 107.15010000000439,
+              "decodeMs": 47.31600000000799
+            }
+          }
+        }
+      },
+      "structuralTrials": {
+        "heatmap-replay": {
+          "originalRawBytes": 51500063,
+          "originalGzipBytes": 4394723,
+          "packedRawBytes": 30046880,
+          "byteExactRestore": true,
+          "samples": 238370,
+          "schemas": 1,
+          "codecs": {
+            "gzip-6": {
+              "rawBytes": 30046880,
+              "bytes": 4097073,
+              "sha256": "bbe8668a5da4414b7f09e69b4451abb1cd646516c2250e8a001049ba81b4ee51",
+              "encodeMs": 282.1957000000002,
+              "decodeMs": 40.848299999999654
+            },
+            "brotli-6": {
+              "rawBytes": 30046880,
+              "bytes": 3469692,
+              "sha256": "9c1b69d6c11a078405ec175b0c5c16deb341912226ced21eea5ad302f71b84e6",
+              "encodeMs": 478.15380000000005,
+              "decodeMs": 142.72630000000026
+            }
+          }
+        },
+        "heatmap-spatial": {
+          "originalRawBytes": 60748853,
+          "originalGzipBytes": 3096581,
+          "packedRawBytes": 50259647,
+          "byteExactRestore": true,
+          "references": 128739,
+          "uniqueSamples": 102850,
+          "codecs": {
+            "gzip-6": {
+              "rawBytes": 50259647,
+              "bytes": 3154967,
+              "sha256": "8a1ac2f69e6f748fb3510af779a5d059ff6adf3cdb7ba8b45e0e0ca3dc5aa77e",
+              "encodeMs": 238.51510000000053,
+              "decodeMs": 48.06290000000081
+            },
+            "brotli-6": {
+              "rawBytes": 50259647,
+              "bytes": 2453874,
+              "sha256": "be93a528e7e8d620fcdcc86b742ee436867aed6213c8d38ff2bef263b0c2d17e",
+              "encodeMs": 375.9254000000001,
+              "decodeMs": 48.13489999999911
+            }
+          }
+        }
+      },
+      "followTrial": {
+        "originalBytes": 4447789,
+        "strippedBytes": 4384952,
+        "dictionariesBytes": 12654,
+        "chunks": 141,
+        "uniqueFollows": 21,
+        "packedPayloadBytes": 4397606,
+        "savedPayloadBytes": 50183,
+        "extraManifestBytesEstimate": 5376
+      },
+      "regeneration": {
+        "generatedChunks": 141,
+        "same": 141,
+        "different": 0,
+        "metadataByteExact": true,
+        "byteExact": true
+      },
+      "elapsedMs": 13945.302,
+      "processResourceUsage": {
+        "userCPUTime": 11484000,
+        "systemCPUTime": 2984000,
+        "maxRSS": 946428,
+        "sharedMemorySize": 0,
+        "unsharedDataSize": 0,
+        "unsharedStackSize": 0,
+        "minorPageFault": 0,
+        "majorPageFault": 2140218,
+        "swappedOut": 0,
+        "fsRead": 156,
+        "fsWrite": 0,
+        "ipcSent": 0,
+        "ipcReceived": 0,
+        "signalsCount": 0,
+        "voluntaryContextSwitches": 0,
+        "involuntaryContextSwitches": 0
+      },
+      "limits": [
+        "One serial warm-cache run; timings are observations, not latency p95 or production SLAs",
+        "Codec bytes are compressed member payloads; current manifest overhead is reported separately",
+        "Structural candidates include their dictionary/schema headers but need a versioned archive manifest",
+        "No codec installed-app/cold-restore or prototype peak-memory acceptance is implied",
+        "No sampling reduction, numeric quantization, evidence pruning, DEM copying or live archive mutation"
+      ]
+    }
+  ]
+}
