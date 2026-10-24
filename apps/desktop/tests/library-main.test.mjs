@@ -73,6 +73,113 @@ test('catalogue privileged routes reject foreign frames, invalid limits and over
   h.service.list=()=>({kind:'success',entries:['x'.repeat(600_000)]});
   assert.equal((await h.handlers.get('library:list')(h.trusted,{})).kind,'error');
 });
+test('reanalysis rejects foreign frames, malformed identities, unavailable records and cancelled dialogs without a worker', async () => {
+  const h = await harness({ dialog: { showOpenDialog: async () => ({ canceled: true, filePaths: [] }) } });
+  const action = h.handlers.get('library:reanalyze');
+  for (const event of [{}, { sender: h.trusted.sender, senderFrame: {} }]) assert.equal((await action(event, MATCH)).kind, 'error');
+  for (const id of [null, '../file.dem', 'x', {}]) assert.equal((await action(h.trusted, id)).kind, 'error');
+  h.service.get = () => null;
+  assert.equal((await action(h.trusted, MATCH)).kind, 'error');
+  h.service.get = () => realEntry({ state: 'invalid' });
+  assert.equal((await action(h.trusted, MATCH)).kind, 'error');
+  h.service.get = () => realEntry();
+  assert.equal((await action(h.trusted, MATCH)).kind, 'cancelled');
+  assert.equal(h.workers.length, 0);
+  assert.equal(h.service.sequence, 0);
+});
+
+test('reanalysis uses the saved identity/date, replaces rather than deduplicates, and activates only after commit', async () => {
+  const h = await harness({ env: { CS2_ANALYST_DEM_PATH: 'C:\\local\\demo2.dem' } });
+  const entry = realEntry({ selfPlayerId: '2', players: [{ id: '2', nickname: 'Self' }] });
+  h.service.get = () => entry;
+  h.service.commitStaging = () => { throw new Error('must use explicit replacement'); };
+  let release, commitArgs;
+  h.service.replaceStaging = async (...args) => { commitArgs = args; await new Promise(r => { release = r; }); args[4](); return { entry, duplicate: false }; };
+  const promise = h.handlers.get('library:reanalyze')(h.trusted, MATCH);
+  await tick(); const worker = h.workers.at(-1); worker.emit('spawn');
+  assert.equal(worker.sent[0].expectedMatchId, MATCH);
+  assert.equal(worker.sent[0].selfPlayerId, '2');
+  assert.equal(worker.sent[0].createdAt, entry.importedAt);
+  h.prepared(worker); await tick();
+  assert.equal(commitArgs[1], MATCH);
+  assert.equal((await h.handlers.get('library:open')(h.trusted, MATCH)).kind, 'error', 'mutations/open are mutually exclusive');
+  let completed = false; promise.then(() => { completed = true; }); await tick(); assert.equal(completed, false);
+  release(); const result = await promise;
+  assert.equal(result.kind, 'success'); assert.equal(result.selfPlayerId, '2');
+  assert.equal(h.messages.some(m => m.channel === 'report:import-players'), false);
+});
+
+test('reanalysis cannot replace another match and keeps the previous live session usable on failure', async () => {
+  const h = await harness({ env: { CS2_ANALYST_DEM_PATH: 'C:\\local\\demo2.dem' } });
+  const old = await h.start(); h.prepared(old.worker); assert.equal((await old.promise).kind, 'success');
+  h.service.get = () => realEntry();
+  h.service.replaceStaging = () => { throw new Error('wrong identity must not reach storage'); };
+  const promise = h.handlers.get('library:reanalyze')(h.trusted, MATCH);
+  await tick(); const worker = h.workers.at(-1); worker.emit('spawn');
+  worker.emit('message', { kind: 'prepared', receipt: {}, report: { schemaVersion: 2, match: { id: 'b'.repeat(64) } } });
+  const result = await promise; assert.equal(result.kind, 'error'); assert.match(result.message, /不匹配/);
+  assert.equal(worker.killed, true); assert.equal(old.worker.killed, false);
+});
+
+test('cancelling reanalysis before commit preserves the old worker and cancels its storage signal', async () => {
+  const h = await harness({ env: { CS2_ANALYST_DEM_PATH: 'C:\\local\\demo2.dem' } });
+  const old = await h.start(); h.prepared(old.worker); await old.promise;
+  h.service.get = () => realEntry();
+  let release, signal;
+  h.service.replaceStaging = async (_id, _match, s) => { signal = s; await new Promise(r => { release = r; }); if (s.aborted) throw new Error('cancelled'); };
+  const promise = h.handlers.get('library:reanalyze')(h.trusted, MATCH);
+  await tick(); const worker = h.workers.at(-1); worker.emit('spawn'); h.prepared(worker); await tick();
+  await h.handlers.get('report:cancel')(h.trusted); release();
+  assert.equal((await promise).kind, 'cancelled'); assert.equal(signal.aborted, true);
+  assert.equal(old.worker.killed, false); assert.equal(worker.killed, true);
+});
+
+test('production reanalysis uses the native chooser and ignores development DEM path injection', async () => {
+  let chooser;
+  const h = await harness({ isPackaged: true, env: { CS2_ANALYST_DEM_PATH: 'C:\\untrusted\\wrong.dem' },
+    dialog: { showOpenDialog: async (_window, options) => { chooser = options; return { canceled: true, filePaths: [] }; } } });
+  h.service.get = () => realEntry();
+  assert.equal((await h.handlers.get('library:reanalyze')(h.trusted, MATCH)).kind, 'cancelled');
+  assert.match(chooser.title, /重新分析/); assert.deepEqual(Array.from(chooser.filters[0].extensions), ['dem']);
+  assert.equal(h.workers.length, 0);
+});
+
+for (const failure of ['exit', 'error']) {
+  test(`candidate ${failure} during replacement verification aborts before commit and retains the previous session`, async () => {
+    const h = await harness({ env: { CS2_ANALYST_DEM_PATH: 'C:\\local\\demo2.dem' } });
+    const old = await h.start(); h.prepared(old.worker); await old.promise;
+    h.service.get = () => realEntry(); let signal, release, committed = false;
+    h.service.replaceStaging = async (_id, _match, s, _receipt, onCommitted) => {
+      signal = s; await new Promise(r => { release = r; });
+      if (s.aborted) throw new Error('cancelled'); committed = true; onCommitted();
+      return { entry: realEntry(), duplicate: false };
+    };
+    const promise = h.handlers.get('library:reanalyze')(h.trusted, MATCH);
+    await tick(); const worker = h.workers.at(-1); worker.emit('spawn'); h.prepared(worker); await tick();
+    if (failure === 'exit') worker.emit('exit', 1); else worker.emit('message', { kind: 'error', message: 'candidate failed' });
+    await tick(); assert.equal(signal.aborted, true); release();
+    assert.equal((await promise).kind, 'error'); await tick();
+    assert.equal(committed, false); assert.equal(old.worker.killed, false);
+  });
+}
+
+for (const restored of [true, false]) {
+  test(`candidate exit after durable replacement ${restored ? 'restores the saved new report' : 'reports saved state when activation also fails'}`, async () => {
+    const h = await harness({ env: { CS2_ANALYST_DEM_PATH: 'C:\\local\\demo2.dem' } });
+    h.service.get = () => realEntry();
+    h.service.replaceStaging = async (_id, _match, _signal, _receipt, onCommitted) => {
+      onCommitted(); h.workers.at(-1).emit('exit', 1); return { entry: realEntry(), duplicate: false };
+    };
+    const promise = h.handlers.get('library:reanalyze')(h.trusted, MATCH);
+    await tick(); const candidate = h.workers.at(-1); candidate.emit('spawn'); h.prepared(candidate); await tick();
+    const worker = h.workers.at(-1); assert.notEqual(worker, candidate); worker.emit('spawn');
+    if (restored) worker.emit('message', { kind: 'restored', report: { schemaVersion: 2, match: { id: MATCH } } });
+    else worker.emit('message', { kind: 'error', message: 'restore failed' });
+    const result = await promise;
+    assert.equal(result.kind, restored ? 'success' : 'error');
+    if (!restored) { assert.equal(result.savedMatchId, MATCH); assert.match(result.message, /新报告已保存/); }
+  });
+}
 test('a candidate cannot publish success before catalogue commit and precommit cancellation aborts it',async()=>{
   const h=await harness();let release,seen;
   h.service.commitStaging=async(_id,signal)=>{seen=signal;await new Promise(resolve=>{release=resolve;});if(signal.aborted)throw new Error('cancelled');};

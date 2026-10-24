@@ -90,4 +90,4 @@ RatingApprox = 0.0073*KASTPercent + 0.3591*KPR - 0.5329*DPR
 
 真实 Electron/Chromium（已构建应用、1280×800）验证：磁盘 File 经 preload/IPC/Utility 导入原 demo2，身份选择为元屠；依次切换全部 10 名玩家，界面评分均与报告未取整数值的两位小数一致。比赛库列表显示元屠 **1.60**，从该记录重开后全部 10 人评分与首次导入精确一致。页面身份、非空内容、无框架错误遮罩、无应用控制台错误/警告及无未捕获异常通过；既有未打包 Electron CSP 提示单独记录。会话没有 Browser skill，沿用仓库 Electron CDP 设施。证据位于本机 `%TEMP%/cs2-demo2-rating-qa-wLZtbW/`，包括 `demo2-report-rating.png`、`demo2-library-rating.png` 和 `evidence.json`；临时脚本 `cs2-demo2-rating-qa.mjs` 不提交。首次 QA 启动未先进入比赛库，因 Home drop target unavailable 在导入前停止；修正临时脚本的导航和等待后完整通过，未改动产品代码。未执行安装版或多显示器 DPI 验收。
 
-已有归档保存旧版 KAST，不会通过此修复或派生缓存重算；同 SHA 重复导入仍重开旧归档。需要更新该旧记录时，用户须先移除旧比赛库记录，再用本机 DEM 导入生成新报告；本次验证只操作隔离的临时比赛库，不删除或改写用户归档。
+已有归档保存旧版 KAST，不会通过此修复或派生缓存自动重算；同 SHA 普通重复导入仍重开旧归档。2026-10-25 后续新增的[比赛库「重新分析」](./match-library-reanalysis.md)可重选原 DEM 更新已有报告并保留「自己是谁」，不再要求先删除记录。上述覆盖判定验证仅操作隔离临时比赛库，不删除或改写用户归档。

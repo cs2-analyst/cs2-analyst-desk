@@ -198,7 +198,7 @@ export interface LibraryProgress {
 }
 export type ImportResult = { kind: 'success'; report: DesktopMatchReport; selfPlayerId?: string | null }
   | { kind: 'cancelled' }
-  | { kind: 'error'; message: string };
+  | { kind: 'error'; message: string; /** Durable save succeeded but session activation failed. */ savedMatchId?: string };
 /** One participant offered by the import-time "who am I" prompt. */
 export interface ImportPlayerChoice { id: string; nickname: string }
 export interface DesktopApi {
@@ -208,6 +208,8 @@ export interface DesktopApi {
     storage(): Promise<LibraryStorageResult>;
     /** Reopen a saved match without its source DEM and with a fresh IPC session. */
     open(matchId: string): Promise<ImportResult>;
+    /** Select the same source DEM and replace a saved analysis, preserving its local identity. */
+    reanalyze(matchId: string): Promise<ImportResult>;
     remove(matchIds: string[]): Promise<LibraryDeleteResult>;
     /** Main owns the save dialog; Renderer receives only the basename and size. */
     exportMatch(matchId: string): Promise<LibraryExportResult>;

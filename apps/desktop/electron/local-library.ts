@@ -29,8 +29,18 @@ interface Options {
   diagnostic?: (message: string) => void;
 }
 interface Row { match_id: string; entry_json: string; manifest_hash: string; state: string;
-  imported_at: string; map: string; file_name: string; stored_bytes: number; self_player_id: string | null }
-const rowColumns = 'match_id,entry_json,manifest_hash,state,imported_at,map,file_name,stored_bytes,self_player_id';
+  imported_at: string; map: string; file_name: string; stored_bytes: number; self_player_id: string | null; archive_key: string }
+const rowColumns = 'match_id,entry_json,manifest_hash,state,imported_at,map,file_name,stored_bytes,self_player_id,archive_key';
+function archiveKey(row: Pick<Row, 'match_id' | 'archive_key'>): string {
+  if (!isMatchId(row.match_id) || typeof row.archive_key !== 'string'
+    || !(row.archive_key === row.match_id || row.archive_key.startsWith(row.match_id + '.')
+      && stagingId.test(row.archive_key.slice(65)))) throw new Error('比赛库归档位置无效。');
+  return row.archive_key;
+}
+function isArchiveKey(value: string): boolean {
+  return /^[a-f0-9]{64}$/.test(value) || value.length > 65 && /^[a-f0-9]{64}$/.test(value.slice(0, 64))
+    && value[64] === '.' && stagingId.test(value.slice(65));
+}
 const record = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value);
 const shortText = (value: unknown, max = 256): value is string => typeof value === 'string' && value.length > 0 && value.length <= max && !/[\u0000-\u001f]/.test(value);
 const nonnegative = (value: unknown, max = Number.MAX_SAFE_INTEGER): value is number => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 && value <= max;
@@ -143,7 +153,7 @@ export class LocalMatchLibrary {
         db = new DatabaseSync(database);
         db.exec('PRAGMA busy_timeout=100; PRAGMA locking_mode=EXCLUSIVE; PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL;');
         const version = db.prepare('PRAGMA user_version').get()?.user_version;
-        if (version !== 0 && version !== 1 && version !== 2) throw new Error('比赛库由不受支持的版本创建。');
+        if (version !== 0 && version !== 1 && version !== 2 && version !== 3) throw new Error('比赛库由不受支持的版本创建。');
         db.exec(`BEGIN IMMEDIATE;
           CREATE TABLE IF NOT EXISTS matches (
             match_id TEXT PRIMARY KEY CHECK(length(match_id)=64),
@@ -151,7 +161,7 @@ export class LocalMatchLibrary {
             stored_bytes INTEGER NOT NULL CHECK(stored_bytes>=0),
             manifest_hash TEXT NOT NULL, state TEXT NOT NULL CHECK(state IN ('ready','invalid','unsupported')),
             entry_json TEXT NOT NULL CHECK(length(entry_json)<=65536),
-            self_player_id TEXT
+            self_player_id TEXT, archive_key TEXT
           );
           CREATE INDEX IF NOT EXISTS matches_imported_at ON matches(imported_at);
           CREATE INDEX IF NOT EXISTS matches_map ON matches(map);
@@ -164,7 +174,14 @@ export class LocalMatchLibrary {
         // immutable archive manifest or the catalogue snapshot.
         const columns = db.prepare('PRAGMA table_info(matches)').all().map(column => column.name);
         if (!columns.includes('self_player_id')) db.exec('ALTER TABLE matches ADD COLUMN self_player_id TEXT');
-        db.exec('PRAGMA user_version=2');
+        // v3 publishes a new immutable generation by atomically switching this pointer.
+        // Legacy archives retain their original match-id directory and all preferences.
+        db.exec('BEGIN IMMEDIATE');
+        try {
+          if (!columns.includes('archive_key')) db.exec('ALTER TABLE matches ADD COLUMN archive_key TEXT');
+          if (version !== 3) db.exec('UPDATE matches SET archive_key=match_id WHERE archive_key IS NULL');
+          db.exec('PRAGMA user_version=3; COMMIT');
+        } catch (error) { db.exec('ROLLBACK'); throw error; }
         break;
       } catch (error) {
         try { db?.close(); } catch { /* Release a failed opening handle before retry. */ }
@@ -202,6 +219,7 @@ export class LocalMatchLibrary {
     return this.db.prepare(`SELECT ${rowColumns} FROM matches WHERE match_id=?`).get(matchId) as Row | undefined;
   }
   private entry(row: Row): MatchLibraryEntry {
+    archiveKey(row);
     let entry: MatchLibraryEntry;
     try { entry = JSON.parse(row.entry_json) as MatchLibraryEntry; }
     catch { throw new Error('比赛库索引记录损坏。'); }
@@ -231,30 +249,23 @@ export class LocalMatchLibrary {
       if (!stagingId.test(item.name)) throw new Error('比赛库暂存目录包含未知项目。');
       await this.removeDirectory(join(this.root, 'staging', item.name));
     }
-    for (const item of await readdir(join(this.root, 'matches'), { withFileTypes: true })) {
-      if (!isMatchId(item.name)) throw new Error('比赛库包含未知比赛目录。');
-      const path = join(this.root, 'matches', item.name);
-      // A row-less directory is an interrupted-delete orphan. If it cannot be removed
-      // (junction/ACL/EBUSY), retain it with a diagnostic instead of making the whole
-      // catalogue unopenable; the next restart can retry.
-      if (!this.row(item.name)) {
-        try { await this.removeDirectory(path); }
-        catch (error) {
-          this.options.diagnostic?.('Orphan archive ' + item.name + ' retained: ' + (error instanceof Error ? error.message : 'unknown'));
-        }
-      }
-    }
-    for (const row of this.db.prepare(`SELECT ${rowColumns} FROM matches`).all() as unknown as Row[]) {
+    const rows = this.db.prepare(`SELECT ${rowColumns} FROM matches`).all() as unknown as Row[];
+    const referenced = new Set<string>(), uncertain = new Set<string>();
+    // Establish trusted references before deleting anything. A syntactically valid
+    // pointer can still name a missing/wrong generation after catalogue corruption.
+    for (const row of rows) {
       let trustedManifest: ArchiveManifest | null = null;
       try {
         if (!isMatchId(row.match_id)) throw new Error('Invalid catalogue match identity');
-        const manifest = await readArchiveManifest(join(this.root, 'matches', row.match_id));
+        const manifest = await readArchiveManifest(join(this.root, 'matches', archiveKey(row)));
         if (manifest.matchId !== row.match_id) throw new Error('Archive identity mismatch');
         // Startup reads bounded manifests only, never decompresses historical matches.
         if (archiveManifestHash(manifest) !== row.manifest_hash) throw new Error('Archive manifest changed');
         trustedManifest = manifest;
         if (!this.matchesSnapshot(row, this.entry(row), manifest, this.storedBytes(manifest))) throw new Error('Catalogue snapshot changed');
+        referenced.add(archiveKey(row));
       } catch (error) {
+        if (isMatchId(row.match_id)) uncertain.add(row.match_id);
         // Preserve bytes and the existing record for explicit repair/deletion later.
         const unsupported = (error as { code?: string })?.code === 'ARCHIVE_UNSUPPORTED';
         if (trustedManifest) {
@@ -265,6 +276,18 @@ export class LocalMatchLibrary {
             .run(JSON.stringify(recovered), 'invalid', recovered.importedAt, recovered.map, recovered.fileName, recovered.storedBytes, row.match_id);
         } else this.db.prepare('UPDATE matches SET state=? WHERE match_id=?').run(unsupported ? 'unsupported' : 'invalid', row.match_id);
         this.options.diagnostic?.(`Archive ${row.match_id} marked ${unsupported ? 'unsupported' : 'invalid'}`);
+      }
+    }
+    for (const item of await readdir(join(this.root, 'matches'), { withFileTypes: true })) {
+      if (!isArchiveKey(item.name)) throw new Error('比赛库包含未知比赛目录。');
+      const path = join(this.root, 'matches', item.name);
+      // No indexed/trusted reference means an interrupted write/delete orphan.
+      // Uncertain matches retain every generation for explicit recovery instead.
+      if (!referenced.has(item.name) && !uncertain.has(item.name.slice(0, 64))) {
+        try { await this.removeDirectory(path); }
+        catch (error) {
+          this.options.diagnostic?.('Orphan archive ' + item.name + ' retained: ' + (error instanceof Error ? error.message : 'unknown'));
+        }
       }
     }
   }
@@ -354,8 +377,8 @@ export class LocalMatchLibrary {
         // No awaits between BEGIN and COMMIT: commit is the cancellation linearization point.
         this.db.exec('BEGIN IMMEDIATE');
         try {
-          this.db.prepare('INSERT INTO matches(match_id,imported_at,map,file_name,stored_bytes,manifest_hash,state,entry_json,self_player_id) VALUES(?,?,?,?,?,?,?,?,?)')
-            .run(entry.matchId, entry.importedAt, entry.map, entry.fileName, entry.storedBytes, manifestHash, 'ready', entryJson, entry.selfPlayerId);
+          this.db.prepare('INSERT INTO matches(match_id,imported_at,map,file_name,stored_bytes,manifest_hash,state,entry_json,self_player_id,archive_key) VALUES(?,?,?,?,?,?,?,?,?,?)')
+            .run(entry.matchId, entry.importedAt, entry.map, entry.fileName, entry.storedBytes, manifestHash, 'ready', entryJson, entry.selfPlayerId, entry.matchId);
           this.db.exec('COMMIT');
           committed = true;
           try { onCommitted?.(); } catch { this.options.diagnostic?.('Committed-import notification failed.'); }
@@ -373,16 +396,85 @@ export class LocalMatchLibrary {
     });
   }
 
+  /** Explicit reanalysis only. Ordinary duplicate imports keep their original snapshot. */
+  replaceStaging(id: string, expectedMatchId: string, signal?: AbortSignal,
+    receipt?: { manifestHash: string; storedBytes: number }, onCommitted?: () => void): Promise<{ entry: MatchLibraryEntry; duplicate: false }> {
+    return this.serial(async () => {
+      if (!stagingId.test(id) || !isMatchId(expectedMatchId)) throw new Error('无效的重新分析请求。');
+      await this.directories();
+      const source = join(this.root, 'staging', id);
+      abort(signal);
+      const verified = await verifyLibraryArchive(source, { signal, mode: 'compressed' });
+      const { manifest, manifestHash, storedBytes } = verified;
+      if (manifest.matchId !== expectedMatchId) throw new Error('所选 DEM 与已有比赛不一致，原报告未更新。');
+      if (receipt && (receipt.manifestHash !== manifestHash || receipt.storedBytes !== storedBytes)) throw new Error('比赛归档写入结果不一致。');
+      const context = { matchId: expectedMatchId, directory: source };
+      await this.options.phase?.('validated', context);
+      abort(signal);
+      const row = this.row(expectedMatchId);
+      if (!row) throw new Error('比赛不存在或已被删除。');
+      const previousEntry = this.entry(row);
+      if (previousEntry.state !== 'ready') throw new Error('已有比赛归档不可用，请先处理损坏记录。');
+      const previousDirectory = await this.archiveDirectory(expectedMatchId);
+      const previous = await verifyLibraryArchive(previousDirectory, { signal, mode: 'compressed' });
+      if (previous.manifestHash !== row.manifest_hash
+        || !this.matchesSnapshot(row, previousEntry, previous.manifest, previous.storedBytes)) throw new Error('已有比赛归档与持久索引不一致。');
+      if (manifest.createdAt !== previousEntry.importedAt) throw new Error('重新分析必须保留原导入时间。');
+      const selfPlayerId = previousEntry.selfPlayerId ?? null;
+      if (selfPlayerId && !manifest.summary.players.some(player => player.id === selfPlayerId)) throw new Error('新报告无法保留已选择的玩家身份，原报告未更新。');
+      const entry = { ...this.manifestEntry(manifest, storedBytes), selfPlayerId };
+      const entryJson = JSON.stringify(entry);
+      if (Buffer.byteLength(entryJson) > 65536) throw new Error('比赛库索引记录超过安全大小限制。');
+      const nextKey = expectedMatchId + '.' + id, target = join(this.root, 'matches', nextKey);
+      let moved = false, committed = false;
+      try {
+        await this.options.phase?.('before-rename', context);
+        abort(signal);
+        try { await lstat(target); throw new Error('比赛归档目标已存在，不能覆盖。'); }
+        catch (error) { if (!missing(error)) throw error; }
+        await rename(source, target);
+        moved = true;
+        await this.options.phase?.('after-rename', { ...context, directory: target });
+        abort(signal);
+        await this.options.phase?.('before-index-commit', { ...context, directory: target });
+        abort(signal);
+        this.db.exec('BEGIN IMMEDIATE');
+        try {
+          const changed = this.db.prepare('UPDATE matches SET map=?,file_name=?,stored_bytes=?,manifest_hash=?,state=?,entry_json=?,archive_key=? WHERE match_id=? AND manifest_hash=? AND archive_key=?')
+            .run(entry.map, entry.fileName, entry.storedBytes, manifestHash, 'ready', entryJson, nextKey, expectedMatchId, row.manifest_hash, archiveKey(row));
+          if (Number(changed.changes) !== 1) throw new Error('比赛记录已变化，原报告未更新。');
+          this.db.prepare('DELETE FROM player_summary_cache WHERE match_id=?').run(expectedMatchId);
+          // No asynchronous work between the pointer switch and durable COMMIT.
+          this.db.exec('COMMIT');
+          committed = true;
+          try { onCommitted?.(); } catch { this.options.diagnostic?.('Committed-reanalysis notification failed.'); }
+        } catch (error) { try { this.db.exec('ROLLBACK'); } catch { /* Keep the transaction error. */ } throw error; }
+        try { await this.options.phase?.('after-index-commit', { ...context, directory: target }); }
+        catch { this.options.diagnostic?.('Post-commit observer failed; durable reanalysis remains successful.'); }
+        // The new snapshot is durable. A Windows reader can defer old-generation cleanup.
+        try { await this.removeDirectory(previousDirectory); }
+        catch { this.options.diagnostic?.('Superseded archive cleanup deferred until restart.'); }
+        return { entry, duplicate: false };
+      } catch (error) {
+        if (moved && !committed) {
+          try { await this.removeDirectory(target); }
+          catch { this.options.diagnostic?.('Interrupted reanalysis cleanup deferred until restart.'); }
+        }
+        throw error;
+      }
+    });
+  }
+
   private manifestEntry(manifest: ArchiveManifest, storedBytes: number): MatchLibraryEntry {
     return { matchId: manifest.matchId, ...manifest.summary, importedAt: manifest.createdAt,
       versions: manifest.versions, capabilities: manifest.capabilities, storedBytes, state: 'ready' };
   }
   get(matchId: string): MatchLibraryEntry | null { const row = this.row(matchId); return row ? this.entry(row) : null; }
   async archiveDirectory(matchId: string): Promise<string> {
-    const entry = this.get(matchId);
+    const row = this.row(matchId), entry = row ? this.entry(row) : null;
     if (!entry || entry.state !== 'ready') throw new Error('比赛归档不可用。');
     await this.directories();
-    const path = join(this.root, 'matches', matchId);
+    const path = join(this.root, 'matches', archiveKey(row!));
     await plainDirectory(path);
     return path;
   }
@@ -482,7 +574,9 @@ export class LocalMatchLibrary {
       const removed: string[] = [], failed: { matchId: string; message: string }[] = [];
       for (const matchId of matchIds as string[]) {
         try {
-          if (!this.row(matchId)) throw new Error('比赛不存在或已被删除。');
+          const row = this.row(matchId);
+          if (!row) throw new Error('比赛不存在或已被删除。');
+          const directory = join(this.root, 'matches', archiveKey(row));
           this.db.exec('BEGIN IMMEDIATE');
           try {
             const result = this.db.prepare('DELETE FROM matches WHERE match_id=?').run(matchId);
@@ -491,7 +585,7 @@ export class LocalMatchLibrary {
             this.db.exec('COMMIT');
           } catch (error) { try { this.db.exec('ROLLBACK'); } catch { /* Preserve the delete failure. */ } throw error; }
           try {
-            await this.removeDirectory(join(this.root, 'matches', matchId));
+            await this.removeDirectory(directory);
           } catch (error) {
             if (!missing(error)) {
               this.options.diagnostic?.('Removed catalogue row ' + matchId + ', but archive cleanup failed: ' + (error instanceof Error ? error.message : 'unknown'));

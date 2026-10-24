@@ -234,6 +234,7 @@ export function LibraryList({
   openingMatchId = null,
   onOpen,
   onExport,
+  onReanalyze,
   onDelete,
 }: {
   entries: MatchLibraryEntry[];
@@ -242,6 +243,7 @@ export function LibraryList({
   openingMatchId?: string | null;
   onOpen: (matchId: string) => void;
   onExport: (matchId: string) => void;
+  onReanalyze?: (matchId: string) => void;
   onDelete: (entry: MatchLibraryEntry) => void;
 }) {
   const s = useStyles();
@@ -295,6 +297,7 @@ export function LibraryList({
             opening={entry.matchId === openingMatchId}
             onOpen={onOpen}
             onExport={onExport}
+            onReanalyze={onReanalyze}
             onDelete={onDelete}
           />
         ))}
@@ -311,6 +314,7 @@ function LibraryRow({
   opening = false,
   onOpen,
   onExport,
+  onReanalyze,
   onDelete,
 }: {
   entry: MatchLibraryEntry;
@@ -318,6 +322,7 @@ function LibraryRow({
   opening?: boolean;
   onOpen: (matchId: string) => void;
   onExport: (matchId: string) => void;
+  onReanalyze?: (matchId: string) => void;
   onDelete: (entry: MatchLibraryEntry) => void;
 }) {
   const s = useStyles();
@@ -429,6 +434,8 @@ function LibraryRow({
           </MenuTrigger>
           <MenuPopover>
             <MenuList>
+              <MenuItem icon={<ImportIcon size={18} />} data-library-reanalyze disabled={busy || entry.state !== "ready"}
+                onClick={() => onReanalyze?.(entry.matchId)}>重新分析</MenuItem>
               <MenuItem icon={<ExportIcon size={18} />} data-library-export disabled={busy || entry.state !== "ready"}
                 onClick={() => onExport(entry.matchId)}>导出比赛归档</MenuItem>
               <MenuItem icon={<DeleteIcon size={18} />} className={s.deleteAction} data-library-delete disabled={busy}
@@ -452,6 +459,7 @@ export function LibraryPage() {
   const openMatch = useReport((state) => state.openMatch);
   const removeMatches = useReport((state) => state.removeMatches);
   const exportMatch = useReport((state) => state.exportMatch);
+  const reanalyzeMatch = useReport((state) => state.reanalyzeMatch);
   const importArchive = useReport((state) => state.importArchive);
   const importDemo = useReport((state) => state.importDemo);
   const importDroppedFile = useReport((state) => state.importDroppedFile);
@@ -712,6 +720,7 @@ export function LibraryPage() {
             openingMatchId={status === 'opening' ? openingMatchId : null}
             onOpen={(matchId) => void openMatch(matchId)}
             onExport={(matchId) => void exportMatch(matchId)}
+            onReanalyze={(matchId) => void reanalyzeMatch(matchId)}
             onDelete={setPendingDelete}
           />
         )}

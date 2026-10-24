@@ -317,3 +317,49 @@ test('one-open-at-a-time guards prevent duplicate/racing opens and imports', asy
   assert.equal(useReport.getState().report.match.id, matchId('i'));
   assert.equal(calls, 1);
 });
+
+test('reanalysis activates the replacement, preserves self identity and refreshes catalogue without another history entry', async () => {
+  const { api, calls } = bridge();
+  const id = matchId('a'), old = report(id), replacement = report(id, 'new-session');
+  reset({ status: 'success', report: old, selfPlayerId: '1', playerId: '1', preferredPlayerId: '1', sessionActive: true,
+    navigation: { history: [libraryRoute, matchRoute(id)], index: 1 }, reportRevision: 4, libraryRevision: 2 });
+  api.library.reanalyze = async target => { assert.equal(target, id); return { kind: 'success', report: replacement, selfPlayerId: '1' }; };
+  await useReport.getState().reanalyzeMatch(id);
+  const state = useReport.getState();
+  assert.equal(state.report, replacement); assert.equal(state.selfPlayerId, '1'); assert.equal(state.reportRevision, 5);
+  assert.equal(state.libraryRevision, 3); assert.equal(state.sessionActive, true);
+  assert.equal(state.navigation.history.length, 2); assert.equal(state.taskOperation, 'reanalyze');
+  assert.deepEqual(calls.release, [], 'Main owns successful worker replacement');
+});
+
+for (const outcome of ['cancelled', 'error', 'throw']) {
+  test(`reanalysis ${outcome} retains the report, navigation, identity and usable session`, async () => {
+    const { api } = bridge(), id = matchId('a'), previous = report(id);
+    const navigation = { history: [libraryRoute, matchRoute(id)], index: 1 };
+    reset({ status: 'success', report: previous, selfPlayerId: '1', sessionActive: true, navigation, reportRevision: 3 });
+    api.library.reanalyze = async () => { if (outcome === 'throw') throw new Error('IPC'); return outcome === 'error' ? { kind: 'error', message: '源 DEM 不匹配' } : { kind: 'cancelled' }; };
+    await useReport.getState().reanalyzeMatch(id); const state = useReport.getState();
+    assert.equal(state.report, previous); assert.equal(state.selfPlayerId, '1'); assert.equal(state.navigation, navigation);
+    assert.equal(state.reportRevision, 3); assert.equal(state.status, 'success'); assert.equal(state.sessionActive, true);
+    assert.equal(state.taskOutcome, outcome === 'cancelled' ? 'cancelled' : 'failed');
+  });
+}
+
+test('reanalysis is single-flight and blocks concurrent open/import/delete/export', async () => {
+  const { api, calls } = bridge(); let finish, count = 0;
+  reset(); api.library.reanalyze = async () => { count++; return await new Promise(r => { finish = r; }); };
+  const pending = useReport.getState().reanalyzeMatch(matchId('a'));
+  await useReport.getState().reanalyzeMatch(matchId('a')); await useReport.getState().openMatch(matchId('b'));
+  await useReport.getState().importDemo(); await useReport.getState().removeMatches([matchId('b')]); await useReport.getState().exportMatch(matchId('b'));
+  assert.equal(count, 1); assert.deepEqual(calls.open, []); assert.deepEqual(calls.remove, []); assert.deepEqual(calls.export, []);
+  finish({ kind: 'cancelled' }); await pending;
+});
+
+test('saved reanalysis with a failed activation refreshes the catalogue and disables the stale IPC session', async () => {
+  const { api } = bridge(), id = matchId('a'), previous = report(id);
+  reset({ status: 'success', report: previous, selfPlayerId: '1', sessionActive: true, libraryRevision: 2 });
+  api.library.reanalyze = async () => ({ kind: 'error', savedMatchId: id, message: '新报告已保存，请重新打开' });
+  await useReport.getState().reanalyzeMatch(id); const state = useReport.getState();
+  assert.equal(state.report, previous); assert.equal(state.sessionActive, false); assert.equal(state.libraryRevision, 3);
+  assert.match(state.libraryError, /新报告已保存/); assert.equal(state.selfPlayerId, '1');
+});

@@ -28,7 +28,9 @@ export interface ArchiveManifest {
   versions: ArchiveVersions; capabilities: ArchiveCapabilities; files: ArchiveFile[];
 }
 export interface ArchiveWriteInput { report: DesktopMatchReport; chunks: ReadonlyMap<string, string>;
-  match: Match; replay: MatchReplay | null; spatial: MatchSpatialEvidence | null; versions: ArchiveVersions }
+  match: Match; replay: MatchReplay | null; spatial: MatchSpatialEvidence | null; versions: ArchiveVersions;
+  /** Trusted original import timestamp when explicitly reanalysing an existing match. */
+  createdAt?: string }
 export interface ArchiveWriteResult { manifest: ArchiveManifest; manifestHash: string; storedBytes: number }
 interface ArchiveOptions { signal?: AbortSignal; mode?: 'full' | 'compressed' }
 type JsonObject = Record<string, unknown>;
@@ -366,6 +368,9 @@ export async function writeLibraryArchive(directory: string, input: ArchiveWrite
   if ((await readdir(directory)).length) fail('staging directory must be empty');
   if (!sha(input.match.id) || input.report.match.id !== input.match.id || input.report.match.map !== input.match.map
     || input.report.match.rounds !== input.match.rounds.length || !validVersions(input.versions)) fail('writer identity or versions');
+  const createdAt = input.createdAt ?? new Date().toISOString();
+  if (typeof createdAt !== 'string' || !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/.test(createdAt)
+    || !Number.isFinite(Date.parse(createdAt)) || new Date(createdAt).toISOString() !== createdAt) fail('writer creation date');
   await mkdir(join(directory, 'heatmap'));
   if (input.chunks.size) await mkdir(join(directory, 'replay'));
   const available = (): LibraryCapability => ({ status: 'available', reason: null });
@@ -375,7 +380,7 @@ export async function writeLibraryArchive(directory: string, input: ArchiveWrite
   const heatmapAvailable = report.heatmap?.available === true;
   const heatmapLayers = report.heatmap?.layers;
   const manifest: ArchiveManifest = { format: 'cs2-analyst-match', schemaVersion: 1, matchId: input.match.id,
-    createdAt: new Date().toISOString(), summary: { ...report.match, players: report.players } as ArchiveManifest['summary'],
+    createdAt, summary: { ...report.match, players: report.players } as ArchiveManifest['summary'],
     versions: { ...input.versions }, capabilities: { report: available(), timeline: available(), analysis: available(),
       deepReview: report.deepReview.available ? available() : missing('deep-review-unavailable'),
       replay: report.replay?.available ? available() : missing(report.replay?.unavailableReason ?? 'replay-unavailable'),

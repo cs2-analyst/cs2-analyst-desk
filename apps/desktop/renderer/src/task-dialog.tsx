@@ -27,6 +27,7 @@ export function TaskDialog() {
   const cancelling = useReport(state => state.cancelling);
   const outcome = useReport(state => state.taskOutcome);
   const fileName = useReport(state => state.taskFileName);
+  const reanalyzing = useReport(state => state.taskOperation === 'reanalyze');
   const startedAt = useReport(state => state.taskStartedAt);
   const libraryBusy = useReport(state => state.libraryBusy);
   const progress = useReport(state => state.libraryProgress);
@@ -43,9 +44,9 @@ export function TaskDialog() {
   const [selected, setSelected] = useState('');
   useEffect(() => { setSelected(''); }, [players]);
   const stage = status === 'saving' ? 2 : status === 'analyzing' ? 1 : 0;
-  const steps = ['解析录像', '生成分析', '保存到比赛库'];
+  const steps = ['解析录像', '生成分析', reanalyzing ? '更新比赛记录' : '保存到比赛库'];
   const title = !active ? outcome === 'cancelled' ? '操作已取消' : error || libraryError ? '处理未完成' : '处理完成'
-    : cancelling ? '正在取消导入…' : waiting ? '选择你自己' : dem ? '正在分析比赛'
+    : cancelling ? '正在取消…' : waiting ? '选择你自己' : dem ? reanalyzing ? '正在重新分析比赛' : '正在分析比赛'
     : libraryBusy === 'export' ? '正在导出比赛归档' : '正在导入比赛归档';
   const phase = dem ? status === 'saving' ? '正在保存到本机比赛库…' : status === 'analyzing' ? '正在生成指标、深度复盘与回放…' : '正在解析录像…'
     : libraryBusy === 'export' ? '正在写入归档文件…' : progress?.phase === 'writing' ? '正在保存到本机比赛库…' : '正在校验归档内容…';
@@ -59,6 +60,7 @@ export function TaskDialog() {
         <DialogTitle action={null}>{title}</DialogTitle>
         <DialogContent className={s.content}>
           {fileName ? <Caption1 className={s.file}>{fileName}</Caption1> : null}
+          {active && dem && reanalyzing ? <Caption1>新分析完成后更新原报告，并保留「自己是谁」的选择。</Caption1> : null}
           {!active ? <Body1>{outcome === 'cancelled' ? '后台任务已结束。' : error || libraryError || '操作已完成。'}</Body1> : waiting ? <>
             <Body1>本场记录会保存你所选玩家的赛后数据。也可以稍后选择。</Body1>
             <WinSelect aria-label="选择你自己" placeholder="请选择本场玩家" value={selected} disabled={choosing || !players?.length}
@@ -80,7 +82,7 @@ export function TaskDialog() {
           {!active ? null : waiting ? <>
             <Button disabled={choosing} data-import-player-later onClick={() => void choose(null)}>稍后选择</Button>
             <Button appearance="primary" disabled={!selected || choosing} data-import-player-confirm onClick={() => void choose(selected)}>{choosing ? '正在提交…' : '确定'}</Button>
-          </> : dem && status !== 'saving' ? <Button data-task-cancel disabled={cancelling} onClick={() => void cancel()}>{cancelling ? '正在取消…' : '取消导入'}</Button>
+          </> : dem && status !== 'saving' ? <Button data-task-cancel disabled={cancelling} onClick={() => void cancel()}>{cancelling ? '正在取消…' : reanalyzing ? '取消重新分析' : '取消导入'}</Button>
             : <Caption1 className={s.muted}>请保持应用打开，完成后将自动返回。</Caption1>}
         </DialogActions>
       </DialogBody>

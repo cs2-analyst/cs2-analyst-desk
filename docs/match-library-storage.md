@@ -4,6 +4,8 @@
 >
 > 核心决定：默认把用户主动导入的 DEM **解析后、分析后的完整可复用结果保存在 Windows 本机**；**不保存 DEM 原文件**、不建设个人比赛历史公共服务端、不要求账号、不上传个人 DEM。用户可删除、导出及导入单场归档。P8 职业知识管线/AI Coach 服务是另外一条独立路线，不与本地比赛库混淆。
 
+2026-10-25 补充：用户可从记录菜单明确执行[重新分析](./match-library-reanalysis.md)，重选同源 DEM 后生成新完整快照并安全切换已有记录，保留身份及导入时间。SQLite v3 使用内部 generation 指针；普通导入的去重语义及便携归档格式不变。
+
 ## 1. 现有代码事实与容量基线
 
 检查范围：`apps/desktop/renderer/src/store.ts`、`apps/desktop/electron/report-worker.ts`、`apps/desktop/electron/replay-session.ts`、`apps/desktop/electron/heatmap-session.ts`、`apps/desktop/shared/heatmap.ts`、`packages/report-contract`。

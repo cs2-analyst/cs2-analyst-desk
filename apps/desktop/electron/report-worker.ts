@@ -41,7 +41,7 @@ async function restoreArchived(directory: string, sessionId: string) {
   }
   return report;
 }
-process.parentPort?.on('message', async ({ data }: { data: { kind?: string; filePath?: string; sessionId?: string; requestId?: number; request?: unknown; archiveDirectory?: string; playerId?: string | null } }) => {
+process.parentPort?.on('message', async ({ data }: { data: { kind?: string; filePath?: string; sessionId?: string; requestId?: number; request?: unknown; archiveDirectory?: string; playerId?: string | null; expectedMatchId?: string; selfPlayerId?: string | null; createdAt?: string } }) => {
   if(!data||typeof data!=='object')return;
   if (data.kind === 'player-selection' && pendingPlayerSelection) {
     const resolve = pendingPlayerSelection;
@@ -84,6 +84,9 @@ process.parentPort?.on('message', async ({ data }: { data: { kind?: string; file
   try {
     const parsed = await new Demoparser2Provider().parseWithReplay(data.filePath);
     if(disposed)return;
+    if (data.expectedMatchId !== undefined && parsed.match.id !== data.expectedMatchId) {
+      process.parentPort?.postMessage({ kind: 'error', message: '所选 DEM 与这条比赛记录不匹配，请选择原始录像；原报告保持不变。' }); return;
+    }
     const offered: ImportPlayerChoice[] = [];
     const seen = new Set<string>();
     for (const player of Array.isArray(parsed.match.players) ? parsed.match.players : []) {
@@ -92,7 +95,12 @@ process.parentPort?.on('message', async ({ data }: { data: { kind?: string; file
       offered.push({ id: player.steamId, nickname: displayPlayerName(player.steamId, player.nickname) });
     }
     let selfPlayerId: string | null = null;
-    if (typeof data.archiveDirectory === 'string') {
+    if (data.expectedMatchId !== undefined) {
+      selfPlayerId = data.selfPlayerId ?? null;
+      if (selfPlayerId !== null && !seen.has(selfPlayerId)) {
+        process.parentPort?.postMessage({ kind: 'error', message: '新解析结果缺少已选择的玩家，无法保留身份；原报告保持不变。' }); return;
+      }
+    } else if (typeof data.archiveDirectory === 'string') {
       // The user is asked only for the real import path. Direct harnesses keep the
       // original non-interactive worker protocol.
       offeredPlayerIds = new Set(offered.map(player => player.id));
@@ -119,7 +127,8 @@ process.parentPort?.on('message', async ({ data }: { data: { kind?: string; file
       process.parentPort?.postMessage({ kind: 'progress', phase: 'saving' });
       const versions: ArchiveVersions = { ...__CS2_ANALYST_ARCHIVE_VERSIONS__, sampling: metadata.samplingVersion, mapResource: replayResourceId };
       const written = await archive.writeLibraryArchive(data.archiveDirectory, { report, chunks: replaySession?.chunks ?? new Map(),
-        match: parsed.match, replay: parsed.replay, spatial: parsed.spatial, versions });
+        match: parsed.match, replay: parsed.replay, spatial: parsed.spatial, versions,
+        ...(data.expectedMatchId !== undefined ? { createdAt: data.createdAt } : {}) });
       // Verify every decompressed component in Utility before Main can publish its small catalogue entry.
       const verified = await archive.verifyLibraryArchive(data.archiveDirectory);
       if (disposed) return;

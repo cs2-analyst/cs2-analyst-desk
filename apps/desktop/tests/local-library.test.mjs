@@ -83,7 +83,7 @@ test('durable catalogue is WAL/FULL, survives close/reopen, lists and sorts smal
   const raw = new DatabaseSync(join(root, 'library.db'));
   assert.equal(raw.prepare('PRAGMA journal_mode').get().journal_mode, 'wal');
   // synchronous is per connection; the product opening path always sets FULL (2).
-  assert.equal(raw.prepare('PRAGMA user_version').get().user_version, 2); raw.close();
+  assert.equal(raw.prepare('PRAGMA user_version').get().user_version, 3); raw.close();
   library = await LocalMatchLibrary.open(root); setLibrary(library);
   assert.deepEqual(library.get(first.entry.matchId), first.entry);
   assert.equal(library.list().total, 2);
@@ -114,7 +114,7 @@ test('v1 catalogue migrates in place by adding the self-player column without lo
   library = await LocalMatchLibrary.open(root); setLibrary(library);
   assert.deepEqual(library.get(added.entry.matchId), added.entry);
   assert.equal(library.list().total, 1);
-  assert.equal(library.db.prepare('PRAGMA user_version').get().user_version, 2);
+  assert.equal(library.db.prepare('PRAGMA user_version').get().user_version, 3);
   assert.ok(library.db.prepare('PRAGMA table_info(matches)').all().some(column => column.name === 'self_player_id'));
 }));
 

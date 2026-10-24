@@ -222,6 +222,32 @@ ipcMain.handle('library:open', async (event, matchId: unknown): Promise<ImportRe
   try { return await openSavedMatch(matchId); }
   finally { opening = false; }
 });
+ipcMain.handle('library:reanalyze', async (event, matchId: unknown): Promise<ImportResult> => {
+  const window = trustedWindow(event);
+  if (!window || !isMatchId(matchId)) return { kind: 'error', message: '无效的比赛请求。' };
+  if (importing || opening || removing || exporting) return { kind: 'error', message: '已有比赛任务正在运行。' };
+  importing = true;
+  try {
+    const entry = (await libraryService()).get(matchId);
+    if (!entry || entry.state !== 'ready') return { kind: 'error', message: '该比赛当前不可用，无法重新分析。' };
+    window.webContents.send('report:progress', 'selecting');
+    const injected = injectedDemoPath();
+    let filePath: string;
+    if (injected) filePath = injected;
+    else {
+      const defaultPath = await demChooserDirectory();
+      const selected = await dialog.showOpenDialog(window, { title: '重新分析：选择这场比赛的源 DEM',
+        ...(defaultPath ? { defaultPath } : {}), properties: ['openFile'], filters: [{ name: 'CS2 Demo', extensions: ['dem'] }] });
+      if (selected.canceled || !selected.filePaths.length || window.isDestroyed()) return { kind: 'cancelled' };
+      filePath = selected.filePaths[0];
+    }
+    return await analyzeFromPath(filePath, window, injected === undefined,
+      { matchId, selfPlayerId: entry.selfPlayerId ?? null, importedAt: entry.importedAt });
+  } catch (error) {
+    console.error('Match reanalysis failed', error);
+    return { kind: 'error', message: '无法重新分析比赛；原报告保持不变。请检查源 DEM 和磁盘权限后重试。' };
+  } finally { importing = false; }
+});
 ipcMain.handle('library:remove', async (event, value: unknown): Promise<LibraryDeleteResult> => {
   if (!trustedWindow(event)) return { kind: 'error', message: '比赛库请求无效。' };
   const matchIds = normalizeMatchIds(value);
@@ -451,7 +477,8 @@ function retireCandidate(worker: Electron.UtilityProcess): Promise<boolean> {
   });
 }
 
-async function analyzeDemo(filePath: string, window: BrowserWindow): Promise<ImportResult> {
+interface ReanalysisTarget { matchId: string; selfPlayerId: string | null; importedAt: string }
+async function analyzeDemo(filePath: string, window: BrowserWindow, replacement?: ReanalysisTarget): Promise<ImportResult> {
   // The previous worker remains usable until a fully persisted candidate is ready.
   const controller = new AbortController();
   const earlyCancel = () => controller.abort();
@@ -488,6 +515,7 @@ async function analyzeDemo(filePath: string, window: BrowserWindow): Promise<Imp
     let awaitingPlayers = false;
     let workerExited = false;
     let selectedSelfPlayerId: string | null = null;
+    let preparedMatchId: string | null = null;
     let duplicateSelfPlayerId: string | null = null;
     let activationTimeout: ReturnType<typeof setTimeout> | null = null;
     const finish = async (result: ImportResult, retain = false) => {
@@ -497,6 +525,20 @@ async function analyzeDemo(filePath: string, window: BrowserWindow): Promise<Imp
       clearTimeout(timeout);
       if (activationTimeout !== null) clearTimeout(activationTimeout);
       if(cancelActiveImport===cancel)cancelActiveImport=null;
+      if (result.kind !== 'success') {
+        if (!committed) controller.abort();
+        else if (replacement && preparedMatchId) {
+          // The catalogue switch already committed: never report a rollback. A lost
+          // candidate can be replaced by restoring the durable snapshot in a new worker.
+          const restored = await openSavedMatch(preparedMatchId);
+          if (restored.kind === 'success') result = restored;
+          else {
+            stopAnalysisWorker();
+            result = { kind: 'error', savedMatchId: preparedMatchId,
+              message: '新报告已保存，但暂时无法打开。请从比赛库重新打开该记录。' };
+          }
+        }
+      }
       let safeToClean = retain || workerExited;
       if (!retain) { worker.removeAllListeners('message'); if (!workerExited) safeToClean = await retireCandidate(worker); }
       // A failed candidate never removes an existing ready match. Cleanup is serialized by the service.
@@ -527,7 +569,8 @@ async function analyzeDemo(filePath: string, window: BrowserWindow): Promise<Imp
     };
     worker.on('spawn', () => {
       if(settled||controller.signal.aborted){worker.kill();return;}
-      worker.postMessage({ filePath, sessionId, archiveDirectory: staging.directory });
+      worker.postMessage({ filePath, sessionId, archiveDirectory: staging.directory,
+        ...(replacement ? { expectedMatchId: replacement.matchId, selfPlayerId: replacement.selfPlayerId, createdAt: replacement.importedAt } : {}) });
     });
     worker.on('message', async (message) => {
       if(!message||typeof message!=='object')return;
@@ -535,6 +578,7 @@ async function analyzeDemo(filePath: string, window: BrowserWindow): Promise<Imp
       if(message.kind==='replay-chunk'){ routeReplayReply(worker,message);return; }
       if(settled)return;
       if (message.kind === 'players' && !awaitingPlayers) {
+        if (replacement) { void finish({ kind: 'error', message: '重新分析协议无效；原报告保持不变。' }); return; }
         const offered = Array.isArray(message.players) ? message.players : null;
         if (!offered || offered.length < 1 || offered.length > 64) {
           void finish({ kind: 'error', message: 'DEM 玩家列表无效，无法询问你的身份。' }); return;
@@ -567,14 +611,20 @@ async function analyzeDemo(filePath: string, window: BrowserWindow): Promise<Imp
           void finish({ kind: 'error', message: '比赛存档响应无效。' }); return;
         }
         try {
+          preparedMatchId = isMatchId(message.report.match?.id) ? message.report.match.id : null;
           const candidateSelf = message.selfPlayerId === undefined ? selectedSelfPlayerId : message.selfPlayerId;
           const validSelf = typeof candidateSelf === 'string' && Array.isArray(message.report.players)
             && message.report.players.some((player: { id?: unknown }) => player?.id === candidateSelf) ? candidateSelf : null;
           selectedSelfPlayerId = validSelf;
-          const saved = await library.commitStaging(staging.id, controller.signal, message.receipt, () => { committed = true; }, validSelf);
+          if (replacement && message.report.match?.id !== replacement.matchId) {
+            void finish({ kind: 'error', message: '所选 DEM 与这条比赛记录不匹配；原报告保持不变。' }); return;
+          }
+          const saved = replacement
+            ? await library.replaceStaging(staging.id, replacement.matchId, controller.signal, message.receipt, () => { committed = true; })
+            : await library.commitStaging(staging.id, controller.signal, message.receipt, () => { committed = true; }, validSelf);
           if (settled) return;
           committed = true;
-          const savedSelf = saved.entry.selfPlayerId ?? validSelf;
+          const savedSelf = replacement ? saved.entry.selfPlayerId ?? null : saved.entry.selfPlayerId ?? validSelf;
           if (saved.duplicate) {
             duplicateSelfPlayerId = savedSelf;
             awaitingDuplicate = true;
@@ -674,13 +724,13 @@ async function openSavedMatch(matchId: string): Promise<ImportResult> {
 }
 
 /** Shared tail of every import path: extension gate, parsing progress, worker analysis. */
-async function analyzeFromPath(filePath: string, window: BrowserWindow, rememberDirectory = false): Promise<ImportResult> {
+async function analyzeFromPath(filePath: string, window: BrowserWindow, rememberDirectory = false, replacement?: ReanalysisTarget): Promise<ImportResult> {
   if (extname(filePath).toLowerCase() !== '.dem') return { kind: 'error', message: '请选择 .dem 文件。' };
   // Injected test paths must not become a real user's recent directory. Persistence is
   // deliberately fire-and-forget so a slow or broken settings write never delays import.
   if (rememberDirectory) void rememberDemoDirectory(filePath);
   if (!window.isDestroyed()) window.webContents.send('report:progress', 'parsing', basename(filePath));
-  return await analyzeDemo(filePath, window);
+  return await analyzeDemo(filePath, window, replacement);
 }
 
 ipcMain.handle('report:import', async (event): Promise<ImportResult> => {

@@ -43,6 +43,7 @@ export interface ReportState {
   libraryError: string | null;
   libraryNotice: string | null;
   taskId: number;
+  taskOperation: 'import' | 'reanalyze';
   taskOutcome: 'completed' | 'cancelled' | 'failed' | null;
   taskFileName: string;
   taskStartedAt: number;
@@ -64,6 +65,7 @@ export interface ReportState {
   forward(): Promise<void>;
   goHome(): Promise<void>;
   importDemo(): Promise<void>;
+  reanalyzeMatch(matchId: string): Promise<void>;
   importDroppedFile(file: File): Promise<void>;
   openMatch(matchId: string, navigationOverride?: NavigationState): Promise<void>;
   cancelImport(): Promise<void>;
@@ -139,7 +141,7 @@ export const useReport = create<ReportState>((set, get) => ({
   libraryBusy: null,
   libraryError: null,
   libraryNotice: null,
-  taskId: 0, taskOutcome: null, taskFileName: '', taskStartedAt: 0, cancelling: false, choosingPlayer: false,
+  taskId: 0, taskOperation: 'import', taskOutcome: null, taskFileName: '', taskStartedAt: 0, cancelling: false, choosingPlayer: false,
   openingMatchId: null, operationMatchIds: [], libraryProgress: null,
   // Progress only moves an in-flight import forward; a late event must not re-enter busy after success/error.
   setPhase: (phase, fileName) => set(state => ['selecting', 'parsing', 'awaiting-player', 'analyzing', 'saving'].includes(state.status)
@@ -290,11 +292,12 @@ export const useReport = create<ReportState>((set, get) => ({
     const state = get();
     if (busyState(state)) return;
     const hadReport = Boolean(state.report);
-    set({ status: 'selecting', taskId: ++taskSequence, taskOutcome: null, taskStartedAt: Date.now(), taskFileName: '', cancelling: false, choosingPlayer: false, error: null, libraryError: null, libraryNotice: null, sessionActive: false, importPlayers: null });
+    set({ status: 'selecting', taskOperation: 'import', taskId: ++taskSequence, taskOutcome: null, taskStartedAt: Date.now(), taskFileName: '', cancelling: false, choosingPlayer: false, error: null, libraryError: null, libraryNotice: null, sessionActive: false, importPlayers: null });
     try {
       const result = await window.cs2Analyst.importDemo();
       if (result.kind === 'cancelled') set({ status: hadReport ? 'success' : 'idle', sessionActive: hadReport, importPlayers: null, cancelling: false, choosingPlayer: false, taskOutcome: 'cancelled' });
-      else if (result.kind === 'error') set({ status: 'error', error: result.message, sessionActive: hadReport, importPlayers: null, cancelling: false, choosingPlayer: false, taskOutcome: 'failed' });
+      else if (result.kind === 'error') set({ status: 'error', error: result.message, sessionActive: hadReport && !result.savedMatchId,
+        ...(result.savedMatchId ? { libraryRevision: get().libraryRevision + 1 } : {}), importPlayers: null, cancelling: false, choosingPlayer: false, taskOutcome: 'failed' });
       else set(current => {
         const matchId = matchIdOf(result.report);
         const navigation = matchId ? pushRoute(current.navigation, matchRoute(matchId)) : current.navigation;
@@ -304,16 +307,40 @@ export const useReport = create<ReportState>((set, get) => ({
       set({ status: 'error', error: '桌面分析连接失败。请重新选择 DEM；若仍失败，请重启应用。', sessionActive: hadReport, importPlayers: null, cancelling: false, choosingPlayer: false, taskOutcome: 'failed' });
     }
   },
+  reanalyzeMatch: async matchId => {
+    const state = get();
+    if (busyState(state)) return;
+    const hadReport = Boolean(state.report);
+    set({ status: 'selecting', taskOperation: 'reanalyze', taskId: ++taskSequence, taskOutcome: null,
+      taskStartedAt: Date.now(), taskFileName: '', cancelling: false, choosingPlayer: false,
+      error: null, libraryError: null, libraryNotice: null, sessionActive: false, importPlayers: null });
+    try {
+      const result = await window.cs2Analyst.library.reanalyze(matchId);
+      if (result.kind === 'success') set(current => ({
+        ...activatedReport(current, result.report, pushRoute(current.navigation, matchRoute(matchId)), true, result.selfPlayerId ?? null),
+        libraryRevision: current.libraryRevision + 1, libraryNotice: '已使用当前算法重新分析比赛。',
+      }));
+      else set({ status: hadReport ? 'success' : 'idle', sessionActive: hadReport && !(result.kind === 'error' && result.savedMatchId),
+        ...(result.kind === 'error' && result.savedMatchId ? { libraryRevision: get().libraryRevision + 1 } : {}),
+        importPlayers: null, cancelling: false, choosingPlayer: false,
+        taskOutcome: result.kind === 'cancelled' ? 'cancelled' : 'failed',
+        libraryError: result.kind === 'error' ? result.message : null });
+    } catch {
+      set({ status: hadReport ? 'success' : 'idle', sessionActive: hadReport, importPlayers: null,
+        cancelling: false, choosingPlayer: false, taskOutcome: 'failed', libraryError: '无法重新分析比赛；原报告保持不变。' });
+    }
+  },
   // Preload owns the disk path; Main progress invalidates old replay only when analysis starts.
   importDroppedFile: async file => {
     const state = get();
     if (busyState(state)) return;
     const hadReport = Boolean(state.report);
-    set({ status: 'selecting', taskId: ++taskSequence, taskOutcome: null, taskStartedAt: Date.now(), taskFileName: file.name, cancelling: false, choosingPlayer: false, error: null, libraryError: null, libraryNotice: null, sessionActive: false, importPlayers: null });
+    set({ status: 'selecting', taskOperation: 'import', taskId: ++taskSequence, taskOutcome: null, taskStartedAt: Date.now(), taskFileName: file.name, cancelling: false, choosingPlayer: false, error: null, libraryError: null, libraryNotice: null, sessionActive: false, importPlayers: null });
     try {
       const result = await window.cs2Analyst.importDroppedFile(file);
       if (result.kind === 'cancelled') set({ status: hadReport ? 'success' : 'idle', sessionActive: hadReport, importPlayers: null, cancelling: false, choosingPlayer: false, taskOutcome: 'cancelled' });
-      else if (result.kind === 'error') set({ status: 'error', error: result.message, sessionActive: hadReport, importPlayers: null, cancelling: false, choosingPlayer: false, taskOutcome: 'failed' });
+      else if (result.kind === 'error') set({ status: 'error', error: result.message, sessionActive: hadReport && !result.savedMatchId,
+        ...(result.savedMatchId ? { libraryRevision: get().libraryRevision + 1 } : {}), importPlayers: null, cancelling: false, choosingPlayer: false, taskOutcome: 'failed' });
       else set(current => {
         const matchId = matchIdOf(result.report);
         const navigation = matchId ? pushRoute(current.navigation, matchRoute(matchId)) : current.navigation;
