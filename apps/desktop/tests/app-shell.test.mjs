@@ -31,7 +31,7 @@ const { LibraryList, LibraryPage, PersonalSection } = await import('../renderer/
 const { TitlebarView } = await import('../renderer/src/app-titlebar.tsx');
 const { brandCenterOffset, isBrandCentered } = await import('../renderer/src/titlebar-geometry.ts');
 const { toLibraryListQuery, formatBytes, formatImportedAt, formatImportedDate, libraryMapOptions } = await import('../renderer/src/library-query.ts');
-const { RatingValue, ReportSecondaryLine, formatRating, formatKast } = await import('../renderer/src/performance-display.tsx');
+const { HighlightTags, RatingValue, ReportSecondaryLine, formatRating, formatKast } = await import('../renderer/src/performance-display.tsx');
 const { useReport } = await import('../renderer/src/store.ts');
 const render = element => renderToStaticMarkup(createElement(SSRProvider, null, element));
 const noop = () => {};
@@ -161,6 +161,28 @@ test('the library renders all eight qualifying highlight categories without drop
   entry.playerSummaries[0].performance.highlights = highlights;
   const html = render(createElement(LibraryList, { entries: [entry], busy: false, onOpen: noop, onExport: noop, onDelete: noop }));
   assert.deepEqual([...html.matchAll(/data-highlight="([^"]+)"/g)].map(m => m[1]), types);
+});
+
+test('saved multi-kill highlights display evidence on separate nonzero lines without changing archived text', () => {
+  for (const [evidence, expected] of [
+    [{ rounds: 3, triple: 3, quad: 0, fivePlus: 0 }, '多杀表现：本场 3 个三杀及以上回合\n3 杀 3 次'],
+    [{ rounds: 3, triple: 0, quad: 2, fivePlus: 1 }, '多杀表现：本场 3 个三杀及以上回合\n4 杀 2 次\n5 杀及以上 1 次'],
+  ]) {
+    const tag = { type: 'multi-kill', label: '神', color: 'cyan',
+      tooltip: '多杀表现：旧报告保存的括号式说明', evidence };
+    const before = structuredClone(tag);
+    const html = render(createElement(HighlightTags, { highlights: [tag] }));
+    assert.ok(html.includes(`aria-label="${expected}"`));
+    assert.equal(html.includes('旧报告保存的括号式说明'), false);
+    assert.deepEqual(tag, before, 'presentation must not rewrite the saved report');
+  }
+  for (const tag of [
+    { type: 'opening', tooltip: '突破表现：本场首杀 3 次，首死 0 次', evidence: { kills: 3, deaths: 0 } },
+    { type: 'multi-kill', tooltip: '历史高光说明', evidence: { rounds: 3 } },
+  ]) {
+    const html = render(createElement(HighlightTags, { highlights: [{ label: '突', color: 'blue', ...tag }] }));
+    assert.ok(html.includes(`aria-label="${tag.tooltip}"`), 'other highlights and missing legacy evidence retain their original copy');
+  }
 });
 
 test('report secondary line keeps full long filename accessible and shares list rating formatting', () => {

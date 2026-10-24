@@ -10,6 +10,7 @@ const useStyles = makeStyles({
   meta: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', minWidth: 0 },
   file: { display: 'block', minWidth: 0, flex: '1 1 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: tokens.colorNeutralForeground3 },
   prominent: { flexShrink: 0, fontSize: '16px', lineHeight: '22px' },
+  highlightTooltip: { whiteSpace: 'pre-line' },
 });
 
 export const formatMetric = (value: number | null | undefined, digits: number): string =>
@@ -36,11 +37,24 @@ const tagColors: Record<DesktopPlayerHighlight['color'], string> = {
   gold: '#e2b751', cyan: '#49c9cf', blue: '#76a7ee', pink: '#ed80bd',
   green: '#a7d58b', yellow: '#e3d65c', purple: '#b29bea', orange: '#eaa76b',
 };
+function highlightTooltip(tag: DesktopPlayerHighlight): string {
+  if (tag.type !== 'multi-kill') return tag.tooltip;
+  const { rounds, triple, quad, fivePlus } = tag.evidence;
+  if (![rounds, triple, quad, fivePlus].every(value => Number.isSafeInteger(value) && value >= 0)
+    || rounds <= 0 || triple + quad + fivePlus !== rounds) return tag.tooltip;
+  return [
+    `多杀表现：本场 ${rounds} 个三杀及以上回合`,
+    ...([['3 杀', triple], ['4 杀', quad], ['5 杀及以上', fivePlus]] as const)
+      .filter(([, count]) => count > 0).map(([label, count]) => `${label} ${count} 次`),
+  ].join('\n');
+}
 export function HighlightTags({ highlights }: { highlights?: DesktopPlayerHighlight[] }) {
   const s = useStyles();
-  return highlights?.length ? <div className={s.tags} data-highlight-tags>{highlights.map(tag =>
-    <Tooltip key={tag.type} content={tag.tooltip} relationship="description"><span className={s.tag} tabIndex={0}
-      data-highlight={tag.type} aria-label={tag.tooltip} style={{ backgroundColor: tagColors[tag.color] }}>{tag.label}</span></Tooltip>)}</div> : <span data-highlight-empty>—</span>;
+  return highlights?.length ? <div className={s.tags} data-highlight-tags>{highlights.map(tag => {
+    const tooltip = highlightTooltip(tag);
+    return <Tooltip key={tag.type} content={<span className={s.highlightTooltip}>{tooltip}</span>} relationship="description"><span className={s.tag} tabIndex={0}
+      data-highlight={tag.type} aria-label={tooltip} style={{ backgroundColor: tagColors[tag.color] }}>{tag.label}</span></Tooltip>;
+  })}</div> : <span data-highlight-empty>—</span>;
 }
 
 /** Optional filename and rating share the same bounded row at every window width. */

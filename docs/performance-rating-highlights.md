@@ -4,6 +4,10 @@
 
 2026-10-25 更新：取消高光“最多 3 项”的截断，所有满足原门槛的高光全部输出；Rating 公式/算法标识、8 类标签门槛、覆盖门控与排序保持不变。
 
+2026-10-25 展示补充：多杀高光 Tooltip 在概述下按 3 杀、4 杀、5 杀及以上逐行显示次数，0 次项目隐藏，不再使用括号。共用 Renderer 高光组件直接读取已保存的 `evidence` 格式化，并保留换行；旧比赛库记录无需重新分析。缺少完整多杀证据的历史项保留原说明，不猜测次数。评分、触发门槛与归档原文不变。
+
+该展示补充通过 `app-shell` / `report-ux` 回归及 Desktop build（含类型检查）。真实 Electron 在已保存的 demo2 记录上悬浮验证：概述与「3 杀 3 次」独占两行，32px 总内容高度、16px 行高，无括号或零次项目；没有重新分析 DEM。截图位于 `%TEMP%/cs2-multi-tooltip-qa-R18f2h/demo2-multi-kill-tooltip.png`，未提交媒体文件。
+
 ## Rating
 
 算法标识：`hltv-2.0-community-approx-v1`。输出包含 `value`、`algorithm`、`status`、`reason`；不可用时 `value=null`，不伪装为 0。保存未取整的数值，展示统一保留两位小数。
