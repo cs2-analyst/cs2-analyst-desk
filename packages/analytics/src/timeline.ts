@@ -6,8 +6,8 @@ import type { KnownSide, RoundCoverage } from "./coverage.js";
  * A lifecycle observation that invalidates the freeze-end alive baseline.
  *
  * Everything at or before the baseline tick is the round setup (spawns, the
- * halftime side change). Anything after it changes state that the death
- * timeline alone cannot explain, so the round's survival evidence is unusable.
+ * halftime side change). Later changes invalidate survival evidence, except
+ * a disconnect strictly after the identified player's single proven death.
  */
 export type TimelineAnomalyKind =
   | "disconnect"
@@ -92,6 +92,12 @@ function buildAnomalies(
   for (const event of round.lifecycleEvents) {
     if (baselineTick === null || event.tick <= baselineTick) continue;
     if (event.type === "disconnect") {
+      const deathTick = event.player === null ? undefined : deathTicks.get(event.player);
+      // Leaving after death cannot change the alive set. Require a living baseline
+      // and strict tick ordering; same-tick exits and inconsistent deaths stay suspect.
+      if (event.player !== null && stateBySteamId.get(event.player)?.aliveAtBaseline === true
+        && deathCounts.get(event.player) === 1 && deathTick !== undefined
+        && deathTick > baselineTick && deathTick < event.tick) continue;
       anomalies.push({ kind: "disconnect", tick: event.tick, player: event.player });
     } else if (event.type === "spawn") {
       anomalies.push({ kind: "respawn", tick: event.tick, player: event.player });

@@ -66,8 +66,28 @@ RatingApprox = 0.0073*KASTPercent + 0.3591*KPR - 0.5329*DPR
 
 真实 `demo1.dem`（SHA-256 `f3c3173eae0cd100d15c81c3b734be792f9212256a9c99703b358d3434000852`，de_dust2，24 回合）10 名玩家均可计算 Rating。twinkle 为 `1.3742186666666667`，展示 `1.37`，前三项为残、神、突：1 次 1v3 残局获胜；1 个三杀、1 个四杀回合；首杀 4、首死 0。取消截断后的真实 Electron 验证显示第 4 项“补”，Rating 仍为 1.37。该样本实际出现残、神、突、补、准、助；没有达到闪/辅门槛，不用合成标签冒充真实验收。
 
-交叉调查 `demo2.dem`（SHA-256 `253e5b719ac418b092ff3cdd1b5928bb0dfc8ccbf06cb9398963ea1e9fa44a25`，de_dust2，18 回合）：既有 KAST 覆盖不完整，10 名玩家 Rating 均不可用；已确认的残局、多杀等高光仍可独立展示。没有为提高可用率绕过覆盖门控。
+最初交叉调查 `demo2.dem`（SHA-256 `253e5b719ac418b092ff3cdd1b5928bb0dfc8ccbf06cb9398963ea1e9fa44a25`，de_dust2，18 回合）时，旧生命周期判定将 R18 死亡后的退出也视为整回合异常，KAST 仅覆盖 17 回合，10 名玩家 Rating 均不可用。2026-10-25 已按下节修复，Rating 完整性门槛保持不变。
 
 这些是本模块验证与样本调查，不代表整个项目 Final Acceptance。
 
 既有同 SHA 导入继续使用去重重开语义，不因新增评分覆盖已有归档。缺少覆盖证明的历史记录不会仅靠重复导入自动替换；本轮保留明确不可用状态，不要求删除用户数据。
+
+## 2026-10-25：死亡后退出的覆盖判定修复
+
+修复位于 Analytics 的共享 `buildRoundTimeline`，不在 Renderer 或 Rating 公式中补数值。只有身份已知、baseline 确认存活、恰好一次死亡且 `baselineTick < deathTick < disconnectTick` 时，退出才不再构成时间线 anomaly。所有原始事件仍保留；存活中/死亡前/同 tick 退出、未知身份或 baseline、重生、换边、多次死亡、期末状态冲突继续阻止不可靠评分。共享时间线的 KAST / Trade / Clutch 使用同一证明，不各自绕过保护。
+
+本地原字节 `demo2.dem` 的 R18 证据：
+
+| 玩家 | 死亡 tick | 退出 tick |
+| --- | ---: | ---: |
+| 老彩笔123 | 105798 | 106202 |
+| 清华北大落榜生灰太狼 | 102576 | 106209 |
+| 图丶图 | 105707 | 106475 |
+
+三人均有 freeze-end 存活与期末死亡快照，原先唯一的问题是退出发生在死亡之后。修复后 10 名玩家 KAST 均完整覆盖 18/18 回合，Rating 均 available；元屠 K/D/A 仍为 18/9/3，ADR 仍为 `1990/18`，KAST 为 `14/18 = 77.78%`，Rating 为 `1.5974935555555556`，显示 **1.60**。没有修改 DEM、Parser、领域模型、评分系数或评分完整性门槛。
+
+回归：新增合成用例证明死亡后的退出与无退出控制组的 KAST/Trade/Clutch/Rating 完全一致、输入不变；危险生命周期和冲突仍 unavailable。真实 demo2 测试锁定 SHA，并核对三条退出证明及全体玩家评分，真实 demo1 原 golden 不变。`pnpm --filter @cs2-analyst/analytics test`：117/117；`pnpm typecheck`：15/15；`pnpm build`：8/8；`pnpm --filter @cs2-analyst/desktop test`：325/325，均 0 fail / 0 skip。独立只读复审 PASS。
+
+真实 Electron/Chromium（已构建应用、1280×800）验证：磁盘 File 经 preload/IPC/Utility 导入原 demo2，身份选择为元屠；依次切换全部 10 名玩家，界面评分均与报告未取整数值的两位小数一致。比赛库列表显示元屠 **1.60**，从该记录重开后全部 10 人评分与首次导入精确一致。页面身份、非空内容、无框架错误遮罩、无应用控制台错误/警告及无未捕获异常通过；既有未打包 Electron CSP 提示单独记录。会话没有 Browser skill，沿用仓库 Electron CDP 设施。证据位于本机 `%TEMP%/cs2-demo2-rating-qa-wLZtbW/`，包括 `demo2-report-rating.png`、`demo2-library-rating.png` 和 `evidence.json`；临时脚本 `cs2-demo2-rating-qa.mjs` 不提交。首次 QA 启动未先进入比赛库，因 Home drop target unavailable 在导入前停止；修正临时脚本的导航和等待后完整通过，未改动产品代码。未执行安装版或多显示器 DPI 验收。
+
+已有归档保存旧版 KAST，不会通过此修复或派生缓存重算；同 SHA 重复导入仍重开旧归档。需要更新该旧记录时，用户须先移除旧比赛库记录，再用本机 DEM 导入生成新报告；本次验证只操作隔离的临时比赛库，不删除或改写用户归档。

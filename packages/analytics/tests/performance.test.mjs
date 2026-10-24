@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { Demoparser2Provider } from '@cs2-analyst/dem-parser';
-import { analyzeMatch, computePlayerPerformance, computeRating, highlightRules, playerPerformanceInput, ratingAlgorithm,
+import { analyzeMatch, buildCoverage, buildRoundTimeline, computePlayerPerformance, computeRating, highlightRules, playerPerformanceInput, ratingAlgorithm,
   summarizePlayerPerformance } from '../dist/index.js';
 
 const base = (extra = {}) => ({ kills: 20, deaths: 16, assists: 4, validRounds: 24, adr: 80,
@@ -178,6 +179,46 @@ test('highlights remain independently available when ADR/KAST cannot support Rat
 });
 
 const demoPath = fileURLToPath(new URL('../../../.demo/demo1.dem', import.meta.url));
+const demo2Path = fileURLToPath(new URL('../../../.demo/demo2.dem', import.meta.url));
+test('real demo2 post-death exits retain all 18 KAST rounds and available Ratings',
+  { skip: existsSync(demo2Path) ? false : 'Local .demo/demo2.dem absent' }, async () => {
+    assert.equal(createHash('sha256').update(readFileSync(demo2Path)).digest('hex'),
+      '253e5b719ac418b092ff3cdd1b5928bb0dfc8ccbf06cb9398963ea1e9fa44a25');
+    const match = await new Demoparser2Provider().parse(demo2Path);
+    const round = buildCoverage(match).round(18);
+    const timeline = buildRoundTimeline(round);
+    const exits = round.lifecycleEvents.filter(e => e.type === 'disconnect');
+    assert.equal(exits.length, 3);
+    for (const exit of exits) {
+      const state = timeline.state(exit.player);
+      assert.equal(state.aliveAtBaseline, true);
+      assert.equal(state.deaths, 1);
+      assert.ok(state.deathTick > timeline.baselineTick && state.deathTick < exit.tick);
+      assert.equal(state.endAlive, false);
+    }
+    assert.deepEqual(timeline.anomalies, []);
+    const analytics = analyzeMatch(match);
+    assert.equal(analytics.players.length, 10);
+    for (const candidate of analytics.players) {
+      assert.equal(candidate.roundsPlayed, 18);
+      assert.equal(candidate.kast.eligibleRounds, 18);
+      assert.equal(candidate.kast.unavailableRounds, 0);
+      assert.equal(candidate.kast.complete, true);
+      const rating = summarizePlayerPerformance(candidate).rating;
+      assert.equal(rating.status, 'available', candidate.nickname);
+      assert.equal(rating.reason, null);
+      const expected = 0.0073 * candidate.kast.percentage + 0.3591 * candidate.kills / 18
+        - 0.5329 * candidate.deaths / 18
+        + 0.2372 * (2.13 * candidate.kills / 18 + 0.42 * candidate.assists / 18 - 0.41)
+        + 0.0032 * candidate.adr + 0.1587;
+      assert.ok(Math.abs(rating.value - expected) < 1e-12);
+    }
+    const self = analytics.players.find(p => p.steamId === '76561198397206664');
+    assert.deepEqual([self.kills, self.deaths, self.assists], [18, 9, 3]);
+    assert.equal(self.adr, 1990 / 18);
+    assert.equal(self.kast.percentage, 14 / 18 * 100);
+  });
+
 test('real demo1 performance is deterministic, player-isolated and uses unchanged standard metrics',
   { skip: existsSync(demoPath) ? false : 'Local .demo/demo1.dem absent' }, async () => {
     const match = await new Demoparser2Provider().parse(demoPath);

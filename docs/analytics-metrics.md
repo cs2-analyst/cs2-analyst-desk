@@ -93,7 +93,7 @@ pnpm --filter @cs2-analyst/analytics test
 - 起点是统一 coverage 选出的**名单快照**（`freeze_end` 优先，缺失时退化到 `start` 并标记 degraded），记录每个玩家的 side 与 `alive`。
 - 只用正式回合窗口 `[startTick, endTick]`（闭区间）内的死亡事件推进状态；post-round 死亡被排除。
 - 终点用 `end` 边界快照核验。`survived` 只有在“起点 alive、窗口内无死亡、end 快照该玩家 alive=true”三者同时成立时才为 `true`；**没有死亡事件本身不等于存活**。
-- baseline 之后、窗口内的 lifecycle `disconnect` / `spawn` / `side_change`，以及不一致死亡（baseline 非存活者的死亡、同一玩家多次死亡）都记为 anomaly，使该回合的时间线不再被 KAST/Trade/Clutch 采信。
+- baseline 之后、窗口内的 lifecycle `disconnect` / `spawn` / `side_change`，以及不一致死亡（baseline 非存活者的死亡、同一玩家多次死亡）都记为 anomaly，使该回合的时间线不再被 KAST/Trade/Clutch 采信。2026-10-25 修正：身份明确、baseline 确认存活、该回合仅有一次死亡，且 `baselineTick < deathTick < disconnectTick` 时，死亡后的退出不改变存活集合，不再单独构成 anomaly；原始退出事件仍保留。同 tick 无法确定先后、无死亡证明、未知身份/名单、重生、换边、多次死亡及期末状态冲突继续受原保护。
 - 死亡与 end 快照冲突（有死亡但 end 显示存活，或无死亡但 end 显示已死）记 `survival-end-state-conflict`，并使 `timeline.endStateSuspect = true`。KAST 保持不完整覆盖；Trade / Clutch 不再采信该回合的存活时间线。
 
 ### KAST

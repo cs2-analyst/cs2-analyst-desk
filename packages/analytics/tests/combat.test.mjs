@@ -3,7 +3,7 @@ import test from "node:test";
 
 import {
   analyzeMatch, buildCoverage, buildRoundTimeline, coverageIssueSeverity,
-  resolveRoundClutch, resolveRoundTrades,
+  resolveRoundClutch, resolveRoundTrades, summarizePlayerPerformance,
 } from "../dist/index.js";
 
 const CT1 = "76561198000000001";
@@ -345,6 +345,91 @@ test("omits clutch for a round with an unexplained lifecycle change", () => {
   assert.equal(byId(result, CT1).kast.unavailableRounds, 1);
   assert.equal(byId(result, CT1).trade.unavailableRounds, 1);
 });
+
+test("post-death disconnects preserve the proven KAST, trade, clutch and Rating results", () => {
+  const players = Object.keys(sides4).map(id => player(id, id));
+  const events = [
+    kill(1050, T1, CT1, { killerSide: "T", victimSide: "CT", teamkill: false }),
+    kill(1090, CT2, T1, { killerSide: "CT", victimSide: "T", teamkill: false }),
+  ];
+  const end = { [CT1]: false, [T1]: false };
+  const control = analyzeMatch(mkMatch(players, [makeRound(1, sides4, end, events)]));
+  const match = mkMatch(players, [makeRound(1, sides4, end, events, { lifecycle: [
+    { type: "disconnect", tick: 1051, player: CT1 },
+    { type: "disconnect", tick: 1100, player: T1 },
+    { type: "disconnect", tick: 1110, player: CT1 },
+  ] })]);
+  const before = structuredClone(match);
+  assert.deepEqual(buildRoundTimeline(buildCoverage(match).rounds[0]).anomalies, []);
+  const result = analyzeMatch(match);
+  assert.deepEqual(result, control, "spectator exits must not change any proven combat metrics");
+  for (const candidate of result.players) {
+    assert.equal(candidate.kast.complete, true);
+    assert.equal(summarizePlayerPerformance(candidate).rating.status, "available");
+  }
+  assert.equal(byId(result, CT1).kast.tradedRounds, 1);
+  assert.equal(byId(result, CT2).trade.tradeKills, 1);
+  assert.ok(result.players.some(candidate => candidate.clutch.opportunities > 0));
+  assert.deepEqual(match, before, "classification must not remove lifecycle evidence from the model");
+});
+
+for (const [name, disconnect] of [
+  ["before death", { type: "disconnect", tick: 1049, player: CT1 }],
+  ["at the same tick as death", { type: "disconnect", tick: 1050, player: CT1 }],
+  ["while alive", { type: "disconnect", tick: 1060, player: CT2 }],
+  ["without a known identity", { type: "disconnect", tick: 1060, player: null }],
+  ["for an absent roster player", { type: "disconnect", tick: 1060, player: T3 }],
+]) {
+  test(`a disconnect ${name} retains the whole-round anomaly protection`, () => {
+    const match = mkMatch(Object.keys(sides4).map(id => player(id, id)), [
+      makeRound(1, sides4, { [CT1]: false }, [
+        kill(1050, T1, CT1, { killerSide: "T", victimSide: "CT", teamkill: false }),
+      ], { lifecycle: [disconnect] }),
+    ]);
+    assert.ok(buildRoundTimeline(buildCoverage(match).rounds[0]).anomalies.some(a => a.kind === "disconnect"));
+    for (const candidate of analyzeMatch(match).players) {
+      assert.equal(candidate.kast.unavailableRounds, 1);
+      assert.equal(candidate.trade.complete, false);
+      assert.equal(summarizePlayerPerformance(candidate).rating.status, "unavailable");
+    }
+  });
+}
+
+for (const [name, change, kind] of [
+  ["respawn", { type: "spawn", tick: 1055, player: CT1, side: "CT" }, "respawn"],
+  ["side change", { type: "side_change", tick: 1055, player: CT1, previousSide: "CT", side: "T" }, "side-change"],
+]) {
+  test(`post-death disconnects do not hide a ${name}`, () => {
+    const match = mkMatch(Object.keys(sides4).map(id => player(id, id)), [
+      makeRound(1, sides4, { [CT1]: false }, [
+        kill(1050, T1, CT1, { killerSide: "T", victimSide: "CT", teamkill: false }),
+      ], { lifecycle: [change, { type: "disconnect", tick: 1060, player: CT1 }] }),
+    ]);
+    assert.ok(buildRoundTimeline(buildCoverage(match).rounds[0]).anomalies.some(a => a.kind === kind));
+    for (const candidate of analyzeMatch(match).players) assert.equal(candidate.kast.unavailableRounds, 1);
+  });
+}
+
+for (const defect of ["multiple deaths", "dead baseline", "unknown baseline", "death before baseline", "end-state conflict"]) {
+  test(`post-death disconnects cannot make a ${defect} reliable`, () => {
+    const events = [kill(1050, T1, CT1, { killerSide: "T", victimSide: "CT", teamkill: false })];
+    if (defect === "multiple deaths") events.push(kill(1055, T2, CT1, { killerSide: "T", victimSide: "CT", teamkill: false }));
+    if (defect === "death before baseline") events[0].tick = 1005;
+    const round = makeRound(1, sides4, { [CT1]: defect === "end-state conflict" }, events,
+      { lifecycle: [{ type: "disconnect", tick: 1060, player: CT1 }] });
+    if (defect === "dead baseline" || defect === "unknown baseline") {
+      round.stateSnapshots[1].players.find(p => p.steamId === CT1).alive = defect === "dead baseline" ? false : null;
+    }
+    const match = mkMatch(Object.keys(sides4).map(id => player(id, id)), [round]);
+    const timeline = buildRoundTimeline(buildCoverage(match).rounds[0]);
+    assert.ok(timeline.anomalies.length > 0 || timeline.endStateSuspect);
+    for (const candidate of analyzeMatch(match).players) {
+      assert.equal(candidate.kast.complete, false);
+      assert.equal(candidate.trade.complete, false);
+      assert.equal(summarizePlayerPerformance(candidate).rating.status, "unavailable");
+    }
+  });
+}
 
 test("degrades every combat metric when the roster has unidentified players", () => {
   const players = [player(CT1, "ct1"), player(CT2, "ct2"), player(T1, "t1")];
