@@ -61,7 +61,7 @@ async function seed(configPath, versionText) {
   assert.ok([1, 2].includes(version));
   const run = config.runs[version];
   const { LocalMatchLibrary, localMatchLibraryRoot } = await import('../apps/desktop/electron/local-library.ts');
-  const { verifyLibraryArchive } = await import('../apps/desktop/electron/library-archive.ts');
+  const { readArchiveManifest, archiveManifestHash } = await import('../apps/desktop/electron/library-archive.ts');
   const root = localMatchLibraryRoot(run.localAppData);
   assert.equal(root, join(run.localAppData, 'CS2 Analyst', 'MatchLibrary'));
   assertOwnedPath(run, root);
@@ -69,19 +69,26 @@ async function seed(configPath, versionText) {
   try {
     for (const name of benchmark.fixtures) {
       const source = assertOwnedPath(benchmark.owner, join(benchmark.owner.directory, basename(name, '.dem'), `v${version}`));
-      const verified = await verifyLibraryArchive(source, { mode: 'compressed' });
-      assert.equal(verified.manifest.summary.fileName, name);
+      const manifest = await readArchiveManifest(source);
+      assert.equal(manifest.summary.fileName, name);
+      const existing = library.get(manifest.matchId);
+      if (existing) {
+        assert.equal(existing.state, 'ready'); assert.equal(existing.versions.archive, version);
+        const stored = await readArchiveManifest(await library.archiveDirectory(manifest.matchId));
+        assert.equal(archiveManifestHash(stored), archiveManifestHash(manifest), 'Resume may only reuse the exact seeded archive');
+        entries.push({ name, matchId: existing.matchId, storedBytes: existing.storedBytes });
+        continue;
+      }
       const staging = await library.createStaging(); assertOwnedPath(run, staging.directory);
-      // Inventory has been validated by production code. Copy only its exact members, never a DEM.
-      for (const member of ['manifest.json', ...verified.manifest.files.map(file => file.path)]) {
+      // The strict manifest fixes the whitelist. commitStaging verifies the complete copied
+      // inventory/digests once; doing the same full scan before copying only duplicates QA I/O.
+      for (const member of ['manifest.json', ...manifest.files.map(file => file.path)]) {
         assert.ok(!member.toLowerCase().endsWith('.dem'));
         const target = assertOwnedPath(run, join(staging.directory, ...member.split('/')));
         mkdirSync(dirname(target), { recursive: true });
         copyFileSync(join(source, ...member.split('/')), target);
       }
-      const committed = await library.commitStaging(staging.id, undefined,
-        { manifestHash: verified.manifestHash, storedBytes: verified.storedBytes }, undefined,
-        verified.manifest.summary.players[0]?.id ?? null);
+      const committed = await library.commitStaging(staging.id, undefined, undefined, undefined, manifest.summary.players[0]?.id ?? null);
       assert.equal(committed.duplicate, false); assert.equal(committed.entry.state, 'ready');
       entries.push({ name, matchId: committed.entry.matchId, storedBytes: committed.entry.storedBytes });
     }
@@ -150,7 +157,7 @@ async function runSeed(electron, configPath, version) {
   const tracked = scope.track(child, `storage GUI seed v${version}`, startedAt);
   try {
     await scope.live();
-    await waitFor(() => { if (tracked.error) throw tracked.error; return child.exitCode !== null; }, 90_000, 'SQLite archive seeding',
+    await waitFor(() => { if (tracked.error) throw tracked.error; return child.exitCode !== null; }, 300_000, 'SQLite archive seeding',
       { diagnostics: () => ({ stderr: tracked.stderr }) });
     assert.equal(child.exitCode, 0, tracked.stderr);
   } finally { await scope.cleanup(); }
@@ -275,14 +282,16 @@ async function sixViews(page, directory, matchId) {
 }
 
 async function launchTrial(config, benchmark, version, trial, name) {
-  const run = config.runs[version], directory = assertOwnedPath(run, join(run.output, `${basename(name, '.dem')}-trial-${trial}`));
+  const run = config.runs[version], base = join(run.output, `${basename(name, '.dem')}-trial-${trial}`);
+  let directory = assertOwnedPath(run, base), attempt = 1;
+  while (existsSync(directory)) { assert.ok(attempt < 20, 'Too many preserved trial attempts'); directory = assertOwnedPath(run, base + '-attempt-' + ++attempt); }
   mkdirSync(directory);
   const seeded = json(join(config.owner.directory, `seed-v${version}.json`)).entries;
   const primary = seeded.find(entry => entry.name === name), alternate = seeded.find(entry => entry.name !== name);
   assert.ok(primary && alternate);
   const expected = json(join(benchmark.owner.directory, basename(name, '.dem'), 'expected.json'));
   const phases = [], observations = [], consoleMessages = [], errors = [];
-  const result = { name, version, trial, primary, alternate, phases, startupAt: Date.now(),
+  const result = { name, version, trial, attempt, outputDirectory: directory, primary, alternate, phases, startupAt: Date.now(),
     sourceRevision: config.sourceRevision, sourceWorktreeDirty: config.sourceWorktreeDirty,
     builtEntryFingerprints: config.builtEntryFingerprints,
     coldDefinition: 'First archive open in a new GUI Electron process. OS filesystem cache is not cleared; profile is reused within this format.',
@@ -480,13 +489,20 @@ async function main(args) {
     createdAt: new Date().toISOString() };
   const configPath = join(owner.directory, 'gui-run.json'); save(owner, configPath, config);
   console.log(JSON.stringify({ guiRun: owner.directory, benchmark: benchmark.configPath, trials, requests, serial: true }));
+  await execute(config, benchmark, configPath);
+}
+async function execute(config, benchmark, configPath) {
+  const { owner, trials, requests, sourceRevision, sourceWorktreeDirty, builtEntryFingerprints } = config;
   const electron = require('electron'), results = [];
   try {
-    for (const version of [1, 2]) await runSeed(electron, configPath, version);
+    for (const version of [1, 2]) if (!existsSync(join(owner.directory, `seed-v${version}.json`))) await runSeed(electron, configPath, version);
     // Every fixture gets a genuinely new app process for each format/trial; no parallel pressure.
     for (let trial = 0; trial < trials; trial++) for (const name of benchmark.fixtures) for (const version of [1, 2]) {
       console.log(JSON.stringify({ phase: 'GUI', trial, name, version }));
-      results.push(await launchTrial(config, benchmark, version, trial, name));
+      const checkpoint = join(owner.directory, `completed-v${version}-${basename(name, '.dem')}-${trial}.json`);
+      if (existsSync(checkpoint)) { const result = json(checkpoint); assert.equal(result.status, 'PASS'); results.push(result); continue; }
+      const result = await launchTrial(config, benchmark, version, trial, name);
+      save(owner, checkpoint, result); results.push(result);
     }
     save(owner, join(owner.directory, 'results.json'), { schemaVersion: 1, createdAt: config.createdAt, benchmark: benchmark.configPath,
       sourceRevision, sourceWorktreeDirty, builtEntryFingerprints, buildPrecondition: config.buildPrecondition,
@@ -495,12 +511,20 @@ async function main(args) {
       results });
     console.log(JSON.stringify({ success: true, results: join(owner.directory, 'results.json') }));
   } catch (error) {
-    save(owner, join(owner.directory, 'failure.json'), { message: error.message, stack: error.stack, completed: results.length });
+    const path = join(owner.directory, existsSync(join(owner.directory, 'failure.json')) ? `failure-${Date.now()}.json` : 'failure.json');
+    save(owner, path, { message: error.message, stack: error.stack, completed: results.length });
     throw error;
   }
 }
 if (process.argv[1] && resolve(process.argv[1]) === here) {
   const [mode, ...args] = process.argv.slice(2);
   if (mode === '$seed') await seed(...args);
+  else if (mode === '$resume') {
+    const path = resolve(args[0]), config = readGuiConfig(path);
+    assert.equal(existsSync(join(config.owner.directory, 'results.json')), false, 'Completed runs must not be modified');
+    for (const [file, fingerprint] of Object.entries(config.app.original))
+      assert.equal(digest(readFileSync(join(desktop, 'dist', ...file.split('/')))), fingerprint.sha256, 'Resume requires unchanged production dist');
+    await execute(config, readBenchmark(config.benchmark), path);
+  }
   else await main(mode ? [mode, ...args] : []);
 }
