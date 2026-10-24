@@ -7,6 +7,7 @@ import type { DesktopReplayBomb, DesktopReplayChunk, DesktopReplayFrame, Desktop
 export const DERIVED_REPLAY_ENCODING = 'replay-projection-v1' as const;
 const MiB = 1024 * 1024;
 export const DERIVED_REPLAY_CACHE_BYTES = 3 * MiB;
+const serializedSessionBudget = 64 * MiB;
 const sessionPlaceholder = '00000000-0000-0000-0000-000000000000';
 const hash = (value: string) => createHash('sha256').update(value).digest('hex');
 const storedJson = (value: unknown) => JSON.stringify(value, (key, value) => key === 'sessionId' ? undefined : value);
@@ -109,8 +110,14 @@ export class DerivedReplaySession {
   private cache = new Map<string, string>();
   private sequence = 0;
   private pending: Promise<unknown> = Promise.resolve();
+  private readonly cacheBudget: number;
+  contextBytes: number;
   bytes = 0;
-  constructor(replay: MatchReplay, metadata: DesktopReplayMetadata, loader: (round: number) => Promise<ReplayProjection>) {
+  constructor(replay: MatchReplay, metadata: DesktopReplayMetadata, loader: (round: number) => Promise<ReplayProjection>,
+    options: { retainedContextBytes?: number } = {}) {
+    this.contextBytes = options.retainedContextBytes ?? 0;
+    if (!Number.isSafeInteger(this.contextBytes) || this.contextBytes < 0 || this.contextBytes > serializedSessionBudget) throw new Error('Replay retained context budget');
+    this.cacheBudget = Math.min(DERIVED_REPLAY_CACHE_BYTES, serializedSessionBudget - this.contextBytes);
     this.replay = replay; this.metadata = metadata; this.loader = loader;
   }
   async get(request: DesktopReplayRequest): Promise<DesktopReplayChunk | null> {
@@ -127,16 +134,16 @@ export class DerivedReplaySession {
       let json = '';
       const chunk = restoreProjectedChunk(this.replay, projection, request.block, this.metadata.sessionId ?? sessionPlaceholder, value => { json = value; });
       const size = Buffer.byteLength(json);
-      while (this.bytes + size > DERIVED_REPLAY_CACHE_BYTES && this.cache.size) {
+      while (this.bytes + size > this.cacheBudget && this.cache.size) {
         const oldest = this.cache.keys().next().value!;
         this.bytes -= Buffer.byteLength(this.cache.get(oldest)!); this.cache.delete(oldest);
       }
-      this.cache.set(key, json); this.bytes += size;
+      if (size <= this.cacheBudget) { this.cache.set(key, json); this.bytes += size; }
       return chunk;
     });
     // The serialisation tail must not retain the last parsed chunk outside the LRU.
     this.pending = run.then(() => undefined, () => undefined);
     return run;
   }
-  clear() { ++this.sequence; this.cache.clear(); this.bytes = 0; this.replay = null; this.loader = null; }
+  clear() { ++this.sequence; this.cache.clear(); this.bytes = 0; this.contextBytes = 0; this.replay = null; this.loader = null; }
 }

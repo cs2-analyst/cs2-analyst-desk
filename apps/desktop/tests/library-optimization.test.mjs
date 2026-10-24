@@ -116,3 +116,17 @@ test('v2 rejects corruption, truncation, bombs, mixed encodings and projection/s
   await writeFile(join(directory, 'manifest.json'), JSON.stringify(future));
   await assert.rejects(readArchiveManifest(directory), { code: 'ARCHIVE_UNSUPPORTED' });
 });
+
+test('retained import context and Chunk LRU share the original 64MiB serialized session ceiling', async () => {
+  const data = optimizationInput(), projections = createReplayProjections(data.chunks);
+  let reads = 0;
+  const session = new DerivedReplaySession(data.replay, data.report.replay, async round => { reads++; return projections.get(round); },
+    { retainedContextBytes: 64 * 1024 * 1024 - 100 });
+  const request = { sessionId: data.report.replay.sessionId, round: 1, block: 0 };
+  assert.ok(await session.get(request)); assert.ok(await session.get(request));
+  assert.equal(reads, 2); assert.equal(session.bytes, 0, 'An oversized cache entry is skipped without losing the response');
+  assert.ok(session.contextBytes + session.bytes <= 64 * 1024 * 1024);
+  session.clear(); assert.equal(session.contextBytes, 0); assert.equal(session.bytes, 0);
+  for (const retainedContextBytes of [-1, NaN, 64 * 1024 * 1024 + 1]) assert.throws(() => new DerivedReplaySession(data.replay, data.report.replay,
+    async round => projections.get(round), { retainedContextBytes }), /context budget/);
+});

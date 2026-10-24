@@ -145,11 +145,20 @@ process.parentPort?.on('message', async ({ data }: { data: { kind?: string; file
         // Staging is renamed on commit. Retain only small immutable projection context,
         // never a loader pointing at the old staging path or the eager full-match cache.
         const projections = createReplayProjections(replaySession.chunks);
+        const context = new Map<number, string>();
+        let contextBytes = 0;
+        for (const [round, projection] of projections) {
+          const json = JSON.stringify(projection, (key, value) => key === 'sessionId' ? undefined : value);
+          context.set(round, json); contextBytes += Buffer.byteLength(json);
+        }
+        // Keep source context in the same serialized form that is charged to the
+        // session budget; discard the much larger parsed template trees.
+        projections.clear();
         session = new DerivedReplaySession(parsed.replay, metadata, async round => {
-          const projection = projections.get(round);
-          if (!projection) throw new Error('Missing replay projection');
-          return projection;
-        });
+          const json = context.get(round);
+          if (!json) throw new Error('Missing replay projection');
+          return JSON.parse(json);
+        }, { retainedContextBytes: contextBytes });
         replaySession.clear(); replaySession = null;
       }
       // Verify every decompressed component in Utility before Main can publish its small catalogue entry.
