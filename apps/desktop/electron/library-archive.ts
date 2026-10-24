@@ -377,10 +377,15 @@ export async function loadLibraryArchive(directory: string, options?: ArchiveOpt
   const sources = new Set<ArchiveFileRole>();
   const values = new Map<ArchiveFileRole, unknown>();
   let canonicalBytes = 0;
-  for (const file of manifest.files) {
+  // A verifier needs Replay until every projection is checked, but never needs to
+  // retain Spatial. Decode Spatial first so its temporary tree can be collected
+  // before expanding Replay. The ordinary restore order and returned sources stay unchanged.
+  const files = options?.retainSources === false && options.mode !== 'compressed' && manifest.schemaVersion === 2
+    ? [...manifest.files].sort((a, b) => Number(a.role === 'heatmap-replay') - Number(b.role === 'heatmap-replay')) : manifest.files;
+  for (const file of files) {
     if (options?.mode === 'compressed') { await verifyCompressedFile(directory, file, options); continue; }
     if (file.role === 'replay-projection') continue;
-    const value = await decodeFile(directory, file, options, bytes => { canonicalBytes += bytes; });
+    let value = await decodeFile(directory, file, options, bytes => { canonicalBytes += bytes; });
     if (file.role === 'report') { validateReport(value, manifest); report = value; }
     else if (file.role === 'replay-chunk') validateChunk(value, manifest, file);
     else {
@@ -388,6 +393,9 @@ export async function loadLibraryArchive(directory: string, options?: ArchiveOpt
       if (options?.retainSources !== false || (manifest.schemaVersion === 2 && file.role === 'heatmap-replay')) values.set(file.role, value);
       if (value !== null) sources.add(file.role);
     }
+    // Avoid leaving the last large decode in an async activation while the next
+    // member/projection performs I/O. Required canonical roots are owned by values.
+    value = null;
   }
   if (report) validateAvailability(report, sources.has('heatmap-replay'), sources.has('heatmap-spatial'));
   let replayBytes = 0;
@@ -410,10 +418,12 @@ export async function loadLibraryArchive(directory: string, options?: ArchiveOpt
     // Packed bytes are not a licence to expand the canonical-source/Replay budgets.
     if (canonicalBytes + replayBytes > LIBRARY_ARCHIVE_LIMITS.totalRawBytes) fail('restored archive budget');
   }
+  const restoredSources = options?.retainSources !== false && values.size ? { match: values.get('heatmap-match') as Match,
+    replay: values.get('heatmap-replay') as MatchReplay | null, spatial: values.get('heatmap-spatial') as MatchSpatialEvidence | null } : null;
+  if (options?.retainSources === false) values.clear();
   return { manifest, manifestHash: archiveManifestHash(manifest),
     storedBytes: Buffer.byteLength(JSON.stringify(manifest)) + manifest.files.reduce((sum, file) => sum + archiveCompressedBytes(file), 0),
-    report, sources: options?.retainSources !== false && values.size ? { match: values.get('heatmap-match') as Match, replay: values.get('heatmap-replay') as MatchReplay | null,
-      spatial: values.get('heatmap-spatial') as MatchSpatialEvidence | null } : null };
+    report, sources: restoredSources };
 }
 
 export async function verifyLibraryArchive(directory: string, options?: ArchiveOptions): Promise<ArchiveWriteResult> {
