@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { lstat, mkdir, open, readFile, readdir, unlink } from 'node:fs/promises';
 import type { FileHandle } from 'node:fs/promises';
 import { isAbsolute, join, relative, resolve, sep } from 'node:path';
-import { assertArchiveDirectory, LIBRARY_ARCHIVE_LIMITS, validateArchiveManifest, verifyLibraryArchive, type ArchiveManifest } from './library-archive.ts';
+import { archiveCompressedBytes, archiveCompressedHash, assertArchiveDirectory, LIBRARY_ARCHIVE_LIMITS, validateArchiveManifest, verifyLibraryArchive, type ArchiveManifest } from './library-archive.ts';
 
 /**
  * Frozen `.cs2a` byte layout (docs/match-library-portable-format.md):
@@ -15,7 +15,9 @@ const MAGIC = Buffer.from([0x43, 0x53, 0x32, 0x41, 0x0d, 0x0a, 0x1a, 0x0a]);
 const PREFIX_BYTES = 12;
 const SLICE_BYTES = 64 * 1024;
 const FIXED_PATHS = ['manifest.json', 'report.json.gz', 'heatmap/match.json.gz', 'heatmap/replay.json.gz', 'heatmap/spatial.json.gz'] as const;
+const FIXED_PATHS_V2 = ['manifest.json', 'report.json.br', 'heatmap/match.json.br', 'heatmap/replay.json.br', 'heatmap/spatial.json.br'] as const;
 const REPLAY_PATH = /^replay\/r([1-9]\d{0,3})-b(0|[1-9]\d{0,3})\.json\.gz$/;
+const PROJECTION_PATH = /^replay\/r([1-9]\d{0,3})\.json\.br$/;
 const ISO_MILLIS = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/;
 
 export const PORTABLE_MAGIC = MAGIC;
@@ -25,7 +27,7 @@ export interface PortableFile { path: string; bytes: number; sha256: string }
 export interface PortableHeader {
   format: 'cs2-analyst-portable';
   schemaVersion: 1;
-  archiveSchemaVersion: 1;
+  archiveSchemaVersion: 1 | 2;
   matchId: string;
   createdAt: string;
   files: PortableFile[];
@@ -67,30 +69,35 @@ function replayCoordinates(path: string): { round: number; block: number } | nul
   return { round, block };
 }
 /** The whitelist itself rejects traversal, absolute paths, drive letters, UNC and empty segments. */
-export function isPortablePath(path: unknown): path is string {
-  return typeof path === 'string' && (FIXED_PATHS.includes(path as typeof FIXED_PATHS[number]) || replayCoordinates(path) !== null);
+export function isPortablePath(path: unknown, archiveSchemaVersion?: 1 | 2): path is string {
+  if (typeof path !== 'string') return false;
+  if (archiveSchemaVersion !== 2 && (FIXED_PATHS.includes(path as typeof FIXED_PATHS[number]) || replayCoordinates(path) !== null)) return true;
+  if (archiveSchemaVersion === 1) return false;
+  const projection = PROJECTION_PATH.exec(path);
+  return FIXED_PATHS_V2.includes(path as typeof FIXED_PATHS_V2[number])
+    || (projection !== null && Number(projection[1]) <= LIBRARY_ARCHIVE_LIMITS.rounds);
 }
-function validPortableFile(value: unknown): value is PortableFile {
-  return exact(value, ['path', 'bytes', 'sha256']) && isPortablePath(value.path)
+function validPortableFile(value: unknown, archiveSchemaVersion: 1 | 2): value is PortableFile {
+  return exact(value, ['path', 'bytes', 'sha256']) && isPortablePath(value.path, archiveSchemaVersion)
     && integer(value.bytes, 1, PORTABLE_LIMITS.fileBytes) && sha256(value.sha256)
     // manifest.json is later read whole by the L1 strict manifest validator.
     && (value.path !== 'manifest.json' || value.bytes <= LIBRARY_ARCHIVE_LIMITS.manifestBytes);
 }
 export function validatePortableHeader(value: unknown): value is PortableHeader {
   if (!exact(value, ['format', 'schemaVersion', 'archiveSchemaVersion', 'matchId', 'createdAt', 'files'])
-    || value.format !== 'cs2-analyst-portable' || value.schemaVersion !== 1 || value.archiveSchemaVersion !== 1
+    || value.format !== 'cs2-analyst-portable' || value.schemaVersion !== 1 || (value.archiveSchemaVersion !== 1 && value.archiveSchemaVersion !== 2)
     || !sha256(value.matchId) || typeof value.createdAt !== 'string' || !ISO_MILLIS.test(value.createdAt)
     || !Number.isFinite(Date.parse(value.createdAt)) || new Date(value.createdAt).toISOString() !== value.createdAt
     || !Array.isArray(value.files) || value.files.length < FIXED_PATHS.length || value.files.length > PORTABLE_LIMITS.fileCount) return false;
   const seen = new Set<string>();
   let total = 0;
   for (const file of value.files) {
-    if (!validPortableFile(file) || seen.has(file.path)) return false;
+    if (!validPortableFile(file, value.archiveSchemaVersion) || seen.has(file.path)) return false;
     seen.add(file.path);
     total += file.bytes;
     if (total > PORTABLE_LIMITS.payloadBytes) return false;
   }
-  return FIXED_PATHS.every(path => seen.has(path));
+  return (value.archiveSchemaVersion === 1 ? FIXED_PATHS : FIXED_PATHS_V2).every(path => seen.has(path));
 }
 export const portableHeaderBytes = (header: PortableHeader): Buffer => Buffer.from(JSON.stringify(header), 'utf8');
 
@@ -100,7 +107,7 @@ function parseHeader(bytes: Buffer): PortableHeader {
   if (!plain(value)) portableFail('header JSON');
   if (value.format === 'cs2-analyst-portable') {
     if (integer(value.schemaVersion, 0, Number.MAX_SAFE_INTEGER) && value.schemaVersion !== 1) unsupportedVersion();
-    if (integer(value.archiveSchemaVersion, 0, Number.MAX_SAFE_INTEGER) && value.archiveSchemaVersion !== 1) unsupportedVersion();
+    if (integer(value.archiveSchemaVersion, 0, Number.MAX_SAFE_INTEGER) && value.archiveSchemaVersion !== 1 && value.archiveSchemaVersion !== 2) unsupportedVersion();
   }
   if (!validatePortableHeader(value)) portableFail('header contract');
   if (!Buffer.from(JSON.stringify(value), 'utf8').equals(bytes)) portableFail('canonical header JSON');
@@ -116,10 +123,11 @@ function validateInnerManifest(bytes: Buffer, header: PortableHeader): ArchiveMa
   try { value = JSON.parse(bytes.toString('utf8')); } catch { portableFail('inner manifest JSON'); }
   if (!plain(value)) portableFail('inner manifest JSON');
   if (value.format === 'cs2-analyst-match') {
-    if (integer(value.schemaVersion, 0, Number.MAX_SAFE_INTEGER) && value.schemaVersion !== 1) unsupportedVersion();
+    if (integer(value.schemaVersion, 0, Number.MAX_SAFE_INTEGER) && value.schemaVersion !== 1 && value.schemaVersion !== 2) unsupportedVersion();
     const versions = plain(value.versions) ? value.versions : null;
-    if (versions && Object.entries({ archive: 1, report: 2, replay: 1 })
-      .some(([key, supported]) => integer(versions[key], 0, Number.MAX_SAFE_INTEGER) && versions[key] !== supported)) unsupportedVersion();
+    if (versions && ((integer(versions.archive, 0, Number.MAX_SAFE_INTEGER) && versions.archive !== 1 && versions.archive !== 2)
+      || Object.entries({ report: 2, replay: 1 })
+      .some(([key, supported]) => integer(versions[key], 0, Number.MAX_SAFE_INTEGER) && versions[key] !== supported))) unsupportedVersion();
   }
   if (!validateArchiveManifest(value) || !Buffer.from(JSON.stringify(value), 'utf8').equals(bytes)) portableFail('inner manifest contract');
   if (value.matchId !== header.matchId) portableFail('inner manifest identity');
@@ -128,7 +136,7 @@ function validateInnerManifest(bytes: Buffer, header: PortableHeader): ArchiveMa
   for (const entry of header.files) {
     if (entry.path === 'manifest.json') continue;
     const file = remaining.get(entry.path);
-    if (!file || file.gzipBytes !== entry.bytes || file.gzipSha256 !== entry.sha256) portableFail('inner manifest inventory mismatch');
+    if (!file || archiveCompressedBytes(file) !== entry.bytes || archiveCompressedHash(file) !== entry.sha256) portableFail('inner manifest inventory mismatch');
     remaining.delete(entry.path);
   }
   if (remaining.size) portableFail('inner manifest inventory mismatch');
@@ -326,14 +334,14 @@ export async function writePortableArchive(sourceDirectory: string, destination:
     return matches[0];
   };
   const components = [role('report'), role('heatmap-match'), role('heatmap-replay'), role('heatmap-spatial'),
-    ...manifest.files.filter(file => file.role === 'replay-chunk')
-      .sort((left, right) => (left.round! - right.round!) || (left.block! - right.block!))];
+    ...manifest.files.filter(file => file.role === 'replay-chunk' || file.role === 'replay-projection')
+      .sort((left, right) => (left.round! - right.round!) || ((left.block ?? 0) - (right.block ?? 0)))];
   if (components.length !== manifest.files.length) portableFail('source archive inventory');
   const candidates: { path: string; target: string; maximum: number; expect?: { bytes: number; sha256: string } }[] = [
     { path: 'manifest.json', target: join(source, 'manifest.json'), maximum: LIBRARY_ARCHIVE_LIMITS.manifestBytes,
       expect: { bytes: Buffer.byteLength(JSON.stringify(manifest)), sha256: digest(JSON.stringify(manifest)) } },
     ...components.map(file => ({ path: file.path, target: join(source, ...file.path.split('/')),
-      maximum: LIBRARY_ARCHIVE_LIMITS.componentBytes, expect: { bytes: file.gzipBytes, sha256: file.gzipSha256 } })),
+      maximum: LIBRARY_ARCHIVE_LIMITS.componentBytes, expect: { bytes: archiveCompressedBytes(file), sha256: archiveCompressedHash(file) } })),
   ];
   if (candidates.length > PORTABLE_LIMITS.fileCount) portableFail('file count');
   const files: PortableFile[] = [];

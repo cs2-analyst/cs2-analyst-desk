@@ -201,7 +201,7 @@ test('unsupported outer and inner schema versions fail with a distinguishable co
   const write = async (name, value) => { const path = join(root, name); await writeFile(path, assemble(value, payload)); return path; };
   const outer = structuredClone(header); outer.schemaVersion = 2;
   await assert.rejects(verifyPortableArchive(await write('outer.cs2a', outer)), { code: 'ARCHIVE_UNSUPPORTED' });
-  const nested = structuredClone(header); nested.archiveSchemaVersion = 2;
+  const nested = structuredClone(header); nested.archiveSchemaVersion = 3;
   await assert.rejects(verifyPortableArchive(await write('nested.cs2a', nested)), { code: 'ARCHIVE_UNSUPPORTED' });
   const map = parts(header, payload);
   const manifest = JSON.parse(map.get('manifest.json').toString('utf8'));
