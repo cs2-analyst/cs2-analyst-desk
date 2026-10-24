@@ -61,8 +61,10 @@ export function TaskDialog() {
           {fileName ? <Caption1 className={s.file}>{fileName}</Caption1> : null}
           {!active ? <Body1>{outcome === 'cancelled' ? '后台任务已结束。' : error || libraryError || '操作已完成。'}</Body1> : waiting ? <>
             <Body1>本场记录会保存你所选玩家的赛后数据。也可以稍后选择。</Body1>
-            <WinSelect aria-label="选择你自己" value={selected} disabled={choosing || !players?.length}
-              items={(players ?? []).map(player => ({ value: player.id, text: `${player.nickname} · ${player.id.slice(-6)}` }))} onValueChange={setSelected} />
+            <WinSelect aria-label="选择你自己" placeholder="请选择本场玩家" value={selected} disabled={choosing || !players?.length}
+              items={(players ?? []).map(player => ({ value: player.id, text: `${player.nickname} · ${player.id.slice(-6)}`,
+                label: <>{player.nickname}<span className={s.muted}> · {player.id.slice(-6)}</span></>,
+              }))} onValueChange={setSelected} />
             <Caption1 className={s.muted}>稍后可在比赛首页的「自己是谁」中设置。</Caption1>
           </> : <div role="status" aria-live="polite">
             <Body1>{cancelling ? '正在停止后台任务并清理临时数据，请稍候。' : phase}</Body1>
