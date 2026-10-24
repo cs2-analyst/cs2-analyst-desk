@@ -52,6 +52,15 @@ function readGuiConfig(path) {
   for (const run of Object.values(config.runs)) assertOwnedDirectory(run);
   return config;
 }
+export function formalGuiResults(config) {
+  let path = join(config.owner.directory, 'results.json');
+  if (config.formalResultsFrom) {
+    const previous = readGuiConfig(config.seededFrom);
+    assert.equal(config.formalResultsFrom, join(previous.owner.directory, 'results.json'));
+    path = config.formalResultsFrom;
+  }
+  return json(path);
+}
 
 /** This internal mode uses the actual bundled Electron SQLite runtime and immutable commit path. */
 async function seed(configPath, versionText) {
@@ -538,8 +547,9 @@ function correctMemory(configPath) {
     correction: 'Electron names analysis Utilities in name; serviceName can be generic node.mojom.NodeService. Both are matched. Raw metrics and original timing/results are preserved unchanged. Release exit is independently rechecked in each released-idle phase.', results });
   console.log(JSON.stringify({ success: true, correctedResults: path }));
 }
-async function portableRepeats(configPath, name = 'nuke.dem') {
-  const config = readGuiConfig(configPath), benchmark = readBenchmark(config.benchmark), formal = json(join(config.owner.directory, 'results.json'));
+async function portableRepeats(configPath, name = 'nuke.dem', { samples = 2, includeOriginal = true } = {}) {
+  assert.ok(Number.isInteger(samples) && samples >= 1 && samples <= 10);
+  const config = readGuiConfig(configPath), benchmark = readBenchmark(config.benchmark), formal = formalGuiResults(config);
   assert.ok(benchmark.fixtures.includes(name));
   assert.equal(formal.results.length, config.trials * benchmark.fixtures.length * 2);
   assert.ok(formal.results.every(result => result.status === 'PASS'));
@@ -547,31 +557,52 @@ async function portableRepeats(configPath, name = 'nuke.dem') {
     assert.equal(digest(readFileSync(join(desktop, 'dist', ...file.split('/')))), fingerprint.sha256, 'Portable repeats require unchanged production dist');
   const extra = [];
   try {
-    for (let trial = config.trials; trial < config.trials + 2; trial++) for (const version of [1, 2]) {
+    for (let trial = config.trials; trial < config.trials + samples; trial++) for (const version of [1, 2]) {
       console.log(JSON.stringify({ phase: 'supplemental-portable', name, version, trial }));
-      const checkpoint = join(config.owner.directory, `portable-extra-v${version}-${basename(name, '.dem')}-${trial}.json`);
+      const checkpoint = join(config.owner.directory, `portable-${includeOriginal ? 'extra' : 'probe'}-v${version}-${basename(name, '.dem')}-${trial}.json`);
       if (existsSync(checkpoint)) { const result = json(checkpoint); assert.equal(result.status, 'PASS'); extra.push(result); continue; }
       const result = await launchTrial(config, benchmark, version, trial, name, { forcePortable: true });
       save(config.owner, checkpoint, result); extra.push(result);
     }
-    const original = formal.results.filter(result => result.name === name && result.trial === 0)
-      .map(result => ({ ...result, memory: summarizeMemory(readObservations(result.outputDirectory), result.rendererHeapObservations, result.phases) }));
-    assert.equal(original.length, 2);
-    const path = join(config.owner.directory, `portable-repeated-${basename(name, '.dem')}.json`);
-    save(config.owner, path, { schemaVersion: 1, name, observationsPerFormat: 3,
+    const original = includeOriginal ? formal.results.filter(result => result.name === name && result.trial === 0)
+      .map(result => ({ ...result, memory: summarizeMemory(readObservations(result.outputDirectory), result.rendererHeapObservations, result.phases) })) : [];
+    if (includeOriginal) assert.equal(original.length, 2);
+    const path = join(config.owner.directory, `portable-${includeOriginal ? 'repeated' : 'probed'}-${basename(name, '.dem')}.json`);
+    save(config.owner, path, { schemaVersion: 1, name, observationsPerFormat: samples + (includeOriginal ? 1 : 0),
+      sourceRevision: config.sourceRevision, builtEntryFingerprints: config.builtEntryFingerprints,
       formalTimingsRemainUnchanged: true, originalFormalTrialZero: original, supplemental: extra,
-      interpretation: 'Two additional independent GUI processes per format, each repeating the same full open/seek/switch/release and Main export/delete/import flow. These samples supplement portable-memory evidence and are excluded from the formal 24 open/seek timing samples. No explicit GC, OS cache clearing or production-code changes.' });
+      interpretation: 'Additional independent GUI processes per format, each repeating the same full open/seek/switch/release and Main export/delete/import flow. These samples supplement portable-memory evidence and are excluded from the formal 24 open/seek timing samples. No explicit GC or OS cache clearing. All measured processes use the fingerprinted observed-app snapshot in this config; originalFormalTrialZero is empty for a new-build probe.' });
     console.log(JSON.stringify({ success: true, portableRepeatedResults: path }));
   } catch (error) {
     save(config.owner, join(config.owner.directory, `portable-extra-failure-${Date.now()}.json`), { message: error.message, stack: error.stack, completed: extra.length });
     throw error;
   }
 }
+function refreeze(configPath) {
+  const previous = readGuiConfig(configPath), benchmark = readBenchmark(previous.benchmark), formal = formalGuiResults(previous);
+  assert.equal(formal.results.length, previous.trials * benchmark.fixtures.length * 2);
+  assert.ok(formal.results.every(result => result.status === 'PASS'));
+  const originalConfigPath = previous.seededFrom ?? configPath;
+  const originalConfig = readGuiConfig(originalConfigPath);
+  const owner = createOwnedTempDirectory('storage-portable-qa', { parent: realpathSync.native(tmpdir()) });
+  const app = prepareApp(owner), sourceRevision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repository, encoding: 'utf8', windowsHide: true }).trim();
+  const config = { ...previous, owner, app, sourceRevision, sourceWorktreeDirty:
+    execFileSync('git', ['status', '--porcelain', '--untracked-files=no'], { cwd: repository, encoding: 'utf8', windowsHide: true }).trim().length > 0,
+    builtEntryFingerprints: { main: app.original['electron/main.js'], reportWorker: app.original['electron/report-worker.js'] },
+    seededFrom: originalConfigPath, previousMeasurementConfig: configPath,
+    formalResultsFrom: join(originalConfig.owner.directory, 'results.json'), createdAt: new Date().toISOString(),
+    purpose: 'New frozen built app for supplemental Main portable/reanalysis checks. Reuses the same owned seeded libraries and profiles; does not rewrite original configs/results or benchmark archives. Formal 24 open/seek evidence retains its original build identity.' };
+  const path = join(owner.directory, 'gui-run.json'); save(owner, path, config);
+  for (const version of [1, 2]) save(owner, join(owner.directory, `seed-v${version}.json`), json(join(originalConfig.owner.directory, `seed-v${version}.json`)));
+  console.log(JSON.stringify({ success: true, guiRun: path, sourceRevision, builtEntryFingerprints: config.builtEntryFingerprints }));
+}
 if (process.argv[1] && resolve(process.argv[1]) === here) {
   const [mode, ...args] = process.argv.slice(2);
   if (mode === '$seed') await seed(...args);
   else if (mode === '$summarize') correctMemory(resolve(args[0]));
   else if (mode === '$portable-repeats') await portableRepeats(resolve(args[0]), args[1]);
+  else if (mode === '$portable-probes') await portableRepeats(resolve(args[0]), args[1], { samples: args[2] ? Number(args[2]) : 3, includeOriginal: false });
+  else if (mode === '$refreeze') refreeze(resolve(args[0]));
   else if (mode === '$resume') {
     const path = resolve(args[0]), config = readGuiConfig(path);
     assert.equal(existsSync(join(config.owner.directory, 'results.json')), false, 'Completed runs must not be modified');

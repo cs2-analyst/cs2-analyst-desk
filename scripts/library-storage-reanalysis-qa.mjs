@@ -14,7 +14,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { assertOwnedDirectory, assertOwnedPath, createOwnedTempDirectory, qaLaunchOptions } from './owned-qa-run.mjs';
 import { ProcessScope } from './installed-smoke-lifecycle.mjs';
 import { connectCdp, waitFor } from './smoke-runtime.mjs';
-import { readObservations, summarizeMemory } from './library-storage-electron-qa.mjs';
+import { formalGuiResults, readObservations, summarizeMemory } from './library-storage-electron-qa.mjs';
 
 const here = fileURLToPath(import.meta.url), repository = resolve(dirname(here), '..');
 const require = createRequire(join(repository, 'apps/desktop/package.json'));
@@ -39,7 +39,7 @@ function input(path) {
   const benchmark = json(gui.benchmark); assertOwnedDirectory(benchmark.owner);
   assert.equal(gui.benchmark, join(benchmark.owner.directory, 'run.json')); assert.equal(benchmark.repository, repository);
   assert.deepEqual([...benchmark.fixtures].sort(), [...allowed].sort(), 'All four requested fixtures must have been benchmarked');
-  const completed = json(join(gui.owner.directory, 'results.json'));
+  const completed = formalGuiResults(gui);
   assert.equal(completed.results.length, gui.trials * 2 * allowed.length);
   assert.ok(completed.results.every(result => result.status === 'PASS'), 'Do not reanalyze until every GUI timing trial passes');
   return { gui, benchmark, configPath };
