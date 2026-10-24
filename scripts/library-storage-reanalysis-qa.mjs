@@ -296,7 +296,7 @@ async function main(path) {
     console.log('Usage: node scripts/library-storage-reanalysis-qa.mjs <completed GUI run directory or gui-run.json>\nRuns 4 real whitelist DEM reanalyses only after every GUI timing trial passes. Uses original .demo files in place; no copy, rename, download, GC or user-library access.'); return;
   }
   assert.equal(process.platform, 'win32'); assert.equal(typeof global.gc, 'undefined');
-  const loaded = input(path), owner = createOwnedTempDirectory('storage-reanalysis-qa', { parent: realpathSync(tmpdir()) });
+  const loaded = input(path), owner = createOwnedTempDirectory('storage-reanalysis-qa', { parent: realpathSync.native(tmpdir()) });
   const cases = allowed.map((name, index) => ({ name, version: index < 2 ? 1 : 2, self: index % 2 === 0 ? 'null' : 'selected-player' }));
   const state = { schemaVersion: 1, owner, repository, guiConfig: loaded.configPath, cases, createdAt: new Date().toISOString() };
   state.sourceRevision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repository, encoding: 'utf8', windowsHide: true }).trim();

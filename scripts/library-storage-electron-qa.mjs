@@ -468,7 +468,7 @@ async function main(args) {
   const trials = flags.trials ?? 3, requests = flags.requests ?? 40;
   assert.ok(Number.isInteger(trials) && trials >= 3 && trials <= 10);
   assert.ok(Number.isInteger(requests) && requests >= 40 && requests <= 512);
-  const owner = createOwnedTempDirectory('storage-electron-qa', { parent: realpathSync(tmpdir()) });
+  const owner = createOwnedTempDirectory('storage-electron-qa', { parent: realpathSync.native(tmpdir()) });
   const runs = Object.fromEntries([1, 2].map(version => [version, createOwnedQaRun(`storage-gui-v${version}`, { parent: owner.directory })]));
   const app = prepareApp(owner);
   const sourceRevision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repository, encoding: 'utf8', windowsHide: true }).trim();
