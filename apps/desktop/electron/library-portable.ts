@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { lstat, mkdir, open, readFile, readdir, unlink } from 'node:fs/promises';
 import type { FileHandle } from 'node:fs/promises';
 import { isAbsolute, join, relative, resolve, sep } from 'node:path';
-import { archiveCompressedBytes, archiveCompressedHash, assertArchiveDirectory, LIBRARY_ARCHIVE_LIMITS, validateArchiveManifest, verifyLibraryArchive, type ArchiveManifest } from './library-archive.ts';
+import { archiveCompressedBytes, archiveCompressedHash, assertArchiveDirectory, LIBRARY_ARCHIVE_LIMITS, validateArchiveManifest, verifyLibraryArchive, type ArchiveManifest, type ArchiveWriteResult } from './library-archive.ts';
 
 /**
  * Frozen `.cs2a` byte layout (docs/match-library-portable-format.md):
@@ -34,6 +34,10 @@ export interface PortableHeader {
 }
 export interface PortableReceipt { header: PortableHeader; manifest: ArchiveManifest; bytes: number; payloadBytes: number; files: number }
 export interface PortableOptions { signal?: AbortSignal }
+/** Main-only dependency seam; Renderer cannot supply options or invoke this function. */
+export interface PortableWriteOptions extends PortableOptions {
+  verify?: (directory: string, signal?: AbortSignal) => Promise<ArchiveWriteResult>;
+}
 
 type JsonObject = Record<string, unknown>;
 const plain = (value: unknown): value is JsonObject => value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -321,12 +325,13 @@ export async function extractPortableArchive(packagePath: string, stagingDirecto
  * streamed into the exclusive destination. The caller owns the destination lifecycle
  * (temporary name + atomic rename) and removes it on failure.
  */
-export async function writePortableArchive(sourceDirectory: string, destination: string, options?: PortableOptions): Promise<PortableReceipt> {
+export async function writePortableArchive(sourceDirectory: string, destination: string, options?: PortableWriteOptions): Promise<PortableReceipt> {
   const source = localPath(sourceDirectory, 'Archive directory');
   const target = localPath(destination, 'Export destination');
   if (inside(source, target)) throw new Error('Export destination must be outside the match archive.');
   options?.signal?.throwIfAborted();
-  const verified = await verifyLibraryArchive(source, { signal: options?.signal });
+  const verified = options?.verify ? await options.verify(source, options.signal) : await verifyLibraryArchive(source, { signal: options?.signal });
+  options?.signal?.throwIfAborted();
   const manifest = verified.manifest;
   const role = (name: string) => {
     const matches = manifest.files.filter(file => file.role === name);

@@ -111,3 +111,17 @@ test('v2 transport checks the inner compressed digest and archive version indepe
     await assert.rejects(verifyPortableArchive(target), expected);
   }
 });
+
+test('the internal Utility verification seam retains streaming digest checks after verification', async t => {
+  const { root, archive } = await saved(t);
+  const verified = await verifyLibraryArchive(archive);
+  const destination = join(root, 'changed-after-verify.cs2a');
+  let calls = 0;
+  await assert.rejects(writePortableArchive(archive, destination, { verify: async directory => {
+    assert.equal(directory, archive); calls++;
+    const payload = join(archive, 'report.json.br'), bytes = await readFile(payload);
+    bytes[bytes.length - 1] ^= 1; await writeFile(payload, bytes);
+    return verified;
+  } }), /source archive changed/);
+  assert.equal(calls, 1); await assert.rejects(stat(destination), { code: 'ENOENT' });
+});

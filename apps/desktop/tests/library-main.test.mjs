@@ -6,10 +6,12 @@ import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import vm from 'node:vm';
+import { setTimeout as delay } from 'node:timers/promises';
 import { assertOwnedDirectory, createOwnedTempDirectory } from '../../../scripts/owned-qa-run.mjs';
 import { mainLibraryRequire, createLibraryDouble, tick } from './library-main-fixture.mjs';
 import * as libraryArchive from '../electron/library-archive.ts';
 import * as libraryPortable from '../electron/library-portable.ts';
+import * as archiveVerification from '../electron/archive-verification.ts';
 import { writeLibraryArchive } from '../electron/library-archive.ts';
 import { verifyPortableArchive, writePortableArchive } from '../electron/library-portable.ts';
 
@@ -54,13 +56,18 @@ async function harness(options={}) {
     const worker=Object.assign(new EventEmitter(),{pid:123,sent:[],killed:false,postMessage(value){this.sent.push(value);},kill(){this.killed=true;if(!options.delayExit)this.emit('exit',0);}});workers.push(worker);return worker;
   }}};
   const file=new URL('../electron/main.ts',import.meta.url),code=transformSync(readFileSync(file,'utf8'),{loader:'ts',format:'cjs',define:{'import.meta.url':JSON.stringify(file.href),'__CS2_ANALYST_TEST_SEAM__':JSON.stringify(options.testSeam===true)}}).code;
-  vm.runInNewContext(code,{require:name=>name==='electron'?electron:mainLibraryRequire(name,require,service,{archive:libraryArchive,portable:options.portable??libraryPortable}),process:{env:options.env??{},platform:'win32',resourcesPath:'C:/owned-test/resources'},console:{error(){}},URL,Buffer,AbortController,
+  vm.runInNewContext(code,{require:name=>name==='electron'?electron:mainLibraryRequire(name,require,service,{archive:libraryArchive,portable:options.portable??libraryPortable,
+    verification: options.realVerifier ? archiveVerification : undefined}),process:{env:options.env??{},platform:'win32',resourcesPath:'C:/owned-test/resources'},console:{error(){}},URL,Buffer,AbortController,
     setTimeout(fn,ms){const id=++timerSequence;timers.set(id,{fn,ms});return id;},clearTimeout(id){timers.delete(id);}});
   await tick();const trusted={sender:window.webContents,senderFrame:window.webContents.mainFrame};
   const start=async()=>{const promise=handlers.get('report:import-file')(trusted,'C:\\local\\dust2.dem');await tick();const worker=workers.at(-1);worker?.emit('spawn');return {promise,worker};};
   const prepared=worker=>{const sessionId=worker.sent[0].sessionId;worker.emit('message',{kind:'prepared',receipt:{manifestHash:'x',storedBytes:100},report:{schemaVersion:2,match:{id:MATCH},replay:{available:true,sessionId,matchId:MATCH,rounds:[{round:1,blocks:[{index:0}]}]}}});};
   const open=async(matchId)=>{const promise=handlers.get('library:open')(trusted,matchId);await tick();const worker=workers.at(-1);worker?.emit('spawn');return {promise,worker};};
-  return {handlers,service,app,trusted,start,prepared,open,workers,timers,messages};
+  return {handlers,service,app,trusted,start,prepared,open,workers,timers,messages,window};
+}
+async function waitVerificationWorker(h) {
+  for (let i = 0; i < 400; i++) { if (h.workers.length) return h.workers.at(-1); await delay(5); }
+  throw new Error('Verification worker did not start');
 }
 
 test('catalogue privileged routes reject foreign frames, invalid limits and oversized service responses',async()=>{
@@ -565,4 +572,76 @@ test('destructive removal and open/import entry points cannot race each other', 
   const worker = h.workers.at(-1);
   worker.emit('message', { kind: 'error', message: 'stop' });
   assert.equal((await opened).kind, 'error');
+});
+
+test('portable export delegates full decode to a one-shot Utility and waits for its checked receipt', async t => {
+  const run = await ownedRun(t), archive = await archiveFixture(run.directory), destination = join(run.directory, 'verified.cs2a');
+  const h = await harness({ realVerifier: true, env: { CS2_ANALYST_EXPORT_PATH: destination } });
+  h.service.get = () => realEntry(); h.service.archiveDirectory = async () => archive;
+  const pending = h.handlers.get('library:export')(h.trusted, MATCH);
+  const worker = await waitVerificationWorker(h); worker.emit('spawn');
+  assert.equal(worker.sent[0].kind, 'verify-archive'); assert.equal(worker.sent[0].directory, archive);
+  assert.equal(existsSync(destination), false);
+  const verified = await libraryArchive.verifyLibraryArchive(archive);
+  worker.emit('message', { kind: 'archive-verified', jobId: worker.sent[0].jobId,
+    manifestHash: verified.manifestHash, storedBytes: verified.storedBytes });
+  assert.equal((await pending).kind, 'success'); assert.equal(worker.killed, true);
+  assert.equal((await verifyPortableArchive(destination)).manifest.matchId, MATCH);
+});
+
+for (const failure of ['crash', 'forged-receipt']) {
+  test(`portable import ${failure} never reaches catalogue commit`, async t => {
+    const run = await ownedRun(t), archive = await archiveFixture(run.directory), packagePath = join(run.directory, 'match.cs2a');
+    await writePortableArchive(archive, packagePath);
+    const staging = join(run.directory, 'stage'); await mkdir(staging);
+    const h = await harness({ realVerifier: true, env: { CS2_ANALYST_IMPORT_PATH: packagePath } });
+    h.service.createStaging = async () => ({ id: 'stage-1', directory: staging });
+    let committed = false; h.service.commitStaging = async () => { committed = true; };
+    const pending = h.handlers.get('library:import')(h.trusted);
+    const worker = await waitVerificationWorker(h); worker.emit('spawn');
+    if (failure === 'crash') worker.emit('exit', 1);
+    else worker.emit('message', { kind: 'archive-verified', jobId: worker.sent[0].jobId,
+      manifestHash: worker.sent[0].manifestHash, storedBytes: 1 });
+    assert.equal((await pending).kind, 'error'); assert.equal(committed, false);
+    assert.deepEqual(h.service.discarded, ['stage-1']); assert.equal(h.service.get(MATCH).state, 'ready');
+  });
+}
+
+test('portable import cancellation waits verifier exit before discarding staging and retains existing records', async t => {
+  const run = await ownedRun(t), archive = await archiveFixture(run.directory), packagePath = join(run.directory, 'match.cs2a');
+  await writePortableArchive(archive, packagePath);
+  const staging = join(run.directory, 'stage'); await mkdir(staging);
+  const h = await harness({ realVerifier: true, delayExit: true, env: { CS2_ANALYST_IMPORT_PATH: packagePath } });
+  h.service.createStaging = async () => ({ id: 'stage-1', directory: staging });
+  let commits = 0; h.service.commitStaging = async () => { commits++; };
+  const pending = h.handlers.get('library:import')(h.trusted);
+  const worker = await waitVerificationWorker(h); worker.emit('spawn');
+  await h.handlers.get('report:cancel')(h.trusted); await tick();
+  assert.equal(worker.killed, true); assert.deepEqual(h.service.discarded, []);
+  worker.emit('exit', 0);
+  assert.equal((await pending).kind, 'cancelled'); assert.equal(commits, 0);
+  assert.deepEqual(h.service.discarded, ['stage-1']); assert.equal(h.service.get(MATCH).state, 'ready');
+});
+
+test('window close and quit wait portable verifier exit and staging cleanup before releasing SQLite', async t => {
+  const run = await ownedRun(t), archive = await archiveFixture(run.directory), packagePath = join(run.directory, 'match.cs2a');
+  await writePortableArchive(archive, packagePath);
+  const staging = join(run.directory, 'stage'); await mkdir(staging);
+  const h = await harness({ realVerifier: true, delayExit: true, env: { CS2_ANALYST_IMPORT_PATH: packagePath } });
+  h.service.createStaging = async () => ({ id: 'stage-1', directory: staging });
+  const pending = h.handlers.get('library:import')(h.trusted);
+  const worker = await waitVerificationWorker(h); worker.emit('spawn');
+  h.window.emit('closed'); let prevented = false;
+  h.app.emit('before-quit', { preventDefault() { prevented = true; } }); await tick();
+  assert.equal(prevented, true); assert.equal(worker.killed, true); assert.equal(h.service.closed, false);
+  assert.deepEqual(h.service.discarded, []); worker.emit('exit', 0);
+  assert.equal((await pending).kind, 'cancelled'); await tick(); await tick();
+  assert.deepEqual(h.service.discarded, ['stage-1']); assert.equal(h.service.closed, true);
+});
+
+test('portable cancellation can release an unresolved native chooser without starting a worker or staging', async () => {
+  const h = await harness({ dialog: { showOpenDialog: () => new Promise(() => {}) } });
+  const pending = h.handlers.get('library:import')(h.trusted); await tick();
+  await h.handlers.get('report:cancel')(h.trusted);
+  assert.equal((await pending).kind, 'cancelled'); assert.equal(h.workers.length, 0); assert.equal(h.service.sequence, 0);
 });

@@ -8,6 +8,18 @@ export function mainLibraryRequire(name, require, service = createLibraryDouble(
   if (name === '../shared/library-ipc.ts') return libraryIpc;
   if (name === './library-archive.ts') return modules.archive ?? libraryArchive;
   if (name === './library-portable.ts') return modules.portable ?? libraryPortable;
+  if (name === './archive-verification.ts') return modules.verification ?? {
+    ARCHIVE_VERIFICATION_SERVICE_NAME: 'CS2 Archive Verification',
+    // Existing protocol tests count analysis/restore forks. Verification is tested
+    // independently and remains a real full check of their small disk fixtures.
+    ArchiveVerificationBroker: class {
+      activeCount = 0;
+      cancelAll() {}
+      async waitForIdle() {}
+      async close() {}
+      verify(directory, signal) { return (modules.archive ?? libraryArchive).verifyLibraryArchive(directory, { signal }); }
+    },
+  };
   return require(name);
 }
 export function createLibraryDouble() {

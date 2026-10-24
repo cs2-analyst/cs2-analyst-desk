@@ -10,7 +10,7 @@ import type { ImportPhase, ImportResult, ImportPlayerChoice, ImportPlayerSelecti
   LibraryDeleteResult, LibraryExportResult, LibraryImportResult, LibrarySelfPlayerResult } from '@cs2-analyst/report-contract';
 import { HEATMAP_MAX_PENDING, HEATMAP_TIMEOUT_MS, validateHeatmapRequest, validateHeatmapResult } from '../shared/heatmap-ipc.ts';
 import { LocalMatchLibrary } from './local-library.ts';
-import { verifyLibraryArchive } from './library-archive.ts';
+import { ArchiveVerificationBroker, ARCHIVE_VERIFICATION_SERVICE_NAME } from './archive-verification.ts';
 import { extractPortableArchive, writePortableArchive } from './library-portable.ts';
 import { normalizeLibraryListQuery, boundedLibraryResult, isMatchId, LIBRARY_LIST_RESPONSE_BYTES, LIBRARY_STORAGE_RESPONSE_BYTES } from '../shared/library-ipc.ts';
 
@@ -34,6 +34,30 @@ interface PendingPlayerPrompt { playerIds: Set<string>; resolve: (playerId: stri
 let pendingPlayerPrompt: PendingPlayerPrompt | null = null;
 const candidateWorkers = new Map<Electron.UtilityProcess, Promise<void>>();
 const candidateCleanups = new Set<Promise<unknown>>();
+const archiveVerifier = new ArchiveVerificationBroker(() => utilityProcess.fork(
+  fileURLToPath(new URL('./archive-verifier.js', import.meta.url)), [], { serviceName: ARCHIVE_VERIFICATION_SERVICE_NAME }));
+const portableControllers = new Set<AbortController>();
+const portableCleanups = new Set<Promise<unknown>>();
+function cancelPortableOperations() { for (const controller of portableControllers) controller.abort(); archiveVerifier.cancelAll(); }
+function portableOperation<T>(operation: (signal: AbortSignal) => Promise<T>): Promise<T> {
+  const controller = new AbortController(); portableControllers.add(controller);
+  const pending = Promise.resolve().then(() => operation(controller.signal));
+  portableCleanups.add(pending);
+  const finished = () => { portableControllers.delete(controller); portableCleanups.delete(pending); };
+  void pending.then(finished, finished);
+  return pending;
+}
+function portableDialog<T>(signal: AbortSignal, open: () => Promise<T>): Promise<T> {
+  signal.throwIfAborted();
+  return new Promise((resolve, reject) => {
+    const abort = () => reject(signal.reason ?? new Error('Portable archive operation cancelled.'));
+    signal.addEventListener('abort', abort, { once: true });
+    void Promise.resolve().then(open).then(value => {
+      signal.removeEventListener('abort', abort);
+      if (signal.aborted) abort(); else resolve(value);
+    }, error => { signal.removeEventListener('abort', abort); reject(error); });
+  });
+}
 function finishPlayerPrompt(playerId: string | null): boolean {
   const pending = pendingPlayerPrompt;
   if (!pending) return false;
@@ -186,7 +210,11 @@ ipcMain.handle('window:toggle-maximize', event => {
 });
 ipcMain.handle('window:close', event => { trustedWindow(event)?.close(); });
 ipcMain.handle('window:is-maximized', event => trustedWindow(event)?.isMaximized() ?? false);
-ipcMain.handle('report:cancel', event => { if(trustedWindow(event)&&importing)cancelActiveImport?.(); });
+ipcMain.handle('report:cancel', event => {
+  if (!trustedWindow(event)) return;
+  if (importing) cancelActiveImport?.();
+  cancelPortableOperations();
+});
 ipcMain.handle('report:select-player', (event, playerId: unknown): ImportPlayerSelectionResult => {
   if (!trustedWindow(event)) return { kind: 'error', message: '无效的玩家选择请求。' };
   if (playerId !== null && (typeof playerId !== 'string' || !playerId || playerId.length > 256)) {
@@ -290,91 +318,105 @@ ipcMain.handle('library:export', async (event, matchId: unknown): Promise<Librar
   if (!window || !isMatchId(matchId)) return { kind: 'error', message: '无效的导出请求。' };
   if (importing || opening || removing || exporting) return { kind: 'error', message: '已有比赛任务正在运行，请稍后再导出。' };
   exporting = true;
-  let temporary: string | null = null;
-  try {
-    const library = await libraryService();
-    const entry = library.get(matchId);
-    if (!entry || entry.state !== 'ready') return { kind: 'error', message: '该比赛当前不可用，无法导出。' };
-    const archiveDirectory = await library.archiveDirectory(matchId);
-    let destination: string;
-    const injected = developmentInjectedPath('CS2_ANALYST_EXPORT_PATH');
-    if (injected !== undefined) {
-      const path = localAbsolutePath(injected);
-      if (!path) return { kind: 'error', message: '导出目标路径无效。' };
-      destination = withArchiveExtension(path);
-    } else {
-      const chosen = await dialog.showSaveDialog(window, { title: '导出比赛归档',
-        defaultPath: await exportDefaultPath(entry.fileName),
-        filters: [{ name: 'CS2 Analyst 比赛归档', extensions: ['cs2a'] }] });
-      if (chosen.canceled || !chosen.filePath || window.isDestroyed()) return { kind: 'cancelled' };
-      const path = localAbsolutePath(chosen.filePath);
-      if (!path) return { kind: 'error', message: '导出目标路径无效。' };
-      destination = withArchiveExtension(path);
+  return portableOperation<LibraryExportResult>(async signal => {
+    let temporary: string | null = null;
+    try {
+      const library = await libraryService();
+      const entry = library.get(matchId);
+      if (!entry || entry.state !== 'ready') return { kind: 'error', message: '该比赛当前不可用，无法导出。' };
+      const archiveDirectory = await library.archiveDirectory(matchId);
+      let destination: string;
+      const injected = developmentInjectedPath('CS2_ANALYST_EXPORT_PATH');
+      if (injected !== undefined) {
+        const path = localAbsolutePath(injected);
+        if (!path) return { kind: 'error', message: '导出目标路径无效。' };
+        destination = withArchiveExtension(path);
+      } else {
+        const defaultPath = await exportDefaultPath(entry.fileName);
+        const chosen = await portableDialog(signal, () => dialog.showSaveDialog(window, { title: '导出比赛归档',
+          defaultPath,
+          filters: [{ name: 'CS2 Analyst 比赛归档', extensions: ['cs2a'] }] }));
+        if (chosen.canceled || !chosen.filePath || window.isDestroyed()) return { kind: 'cancelled' };
+        const path = localAbsolutePath(chosen.filePath);
+        if (!path) return { kind: 'error', message: '导出目标路径无效。' };
+        destination = withArchiveExtension(path);
+      }
+      signal.throwIfAborted();
+      temporary = join(dirname(destination), `.${basename(destination)}.${randomUUID()}.tmp`);
+      if (!window.isDestroyed()) window.webContents.send('library:progress', { operation: 'export', phase: 'writing', fileName: basename(destination) });
+      const written = await writePortableArchive(archiveDirectory, temporary, { signal,
+        verify: (directory, signal) => archiveVerifier.verify(directory, signal) });
+      const info = await stat(temporary);
+      if (info.size !== written.bytes) throw new Error('Exported package size mismatch.');
+      signal.throwIfAborted();
+      // Same-volume rename replaces atomically on Windows once the bytes are durable.
+      await rename(temporary, destination);
+      temporary = null;
+      return { kind: 'success', fileName: basename(destination), bytes: info.size };
+    } catch (error) {
+      if (signal.aborted) return { kind: 'cancelled' };
+      console.error('Match export failed', error);
+      return { kind: 'error', message: '无法导出比赛归档。请检查目标位置、磁盘空间后重试。' };
+    } finally {
+      exporting = false;
+      if (temporary) { try { await rm(temporary, { force: true }); } catch { /* Best-effort temp cleanup. */ } }
     }
-    temporary = join(dirname(destination), `.${basename(destination)}.${randomUUID()}.tmp`);
-    if (!window.isDestroyed()) window.webContents.send('library:progress', { operation: 'export', phase: 'writing', fileName: basename(destination) });
-    const written = await writePortableArchive(archiveDirectory, temporary);
-    const info = await stat(temporary);
-    if (info.size !== written.bytes) throw new Error('Exported package size mismatch.');
-    // Same-volume rename replaces atomically on Windows once the bytes are durable.
-    await rename(temporary, destination);
-    temporary = null;
-    return { kind: 'success', fileName: basename(destination), bytes: info.size };
-  } catch (error) {
-    console.error('Match export failed', error);
-    return { kind: 'error', message: '无法导出比赛归档。请检查目标位置、磁盘空间后重试。' };
-  } finally {
-    exporting = false;
-    if (temporary) { try { await rm(temporary, { force: true }); } catch { /* Best-effort temp cleanup. */ } }
-  }
+  });
 });
 ipcMain.handle('library:import', async (event): Promise<LibraryImportResult> => {
   const window = trustedWindow(event);
   if (!window) return { kind: 'error', message: '比赛库请求无效。' };
   if (importing || opening || removing || exporting) return { kind: 'error', message: '已有比赛任务正在运行。' };
   importing = true;
-  try {
-    let filePath: string;
-    const injected = developmentInjectedPath('CS2_ANALYST_IMPORT_PATH');
-    if (injected !== undefined) {
-      const path = localAbsolutePath(injected);
-      if (!path || extname(path).toLowerCase() !== ARCHIVE_EXTENSION) return { kind: 'error', message: '请选择 .cs2a 比赛归档。' };
-      filePath = path;
-    } else {
-      const chosen = await dialog.showOpenDialog(window, { title: '导入比赛归档', properties: ['openFile'],
-        filters: [{ name: 'CS2 Analyst 比赛归档', extensions: ['cs2a'] }] });
-      if (chosen.canceled || !chosen.filePaths.length || window.isDestroyed()) return { kind: 'cancelled' };
-      const path = localAbsolutePath(chosen.filePaths[0]);
-      if (!path || extname(path).toLowerCase() !== ARCHIVE_EXTENSION) return { kind: 'error', message: '请选择 .cs2a 比赛归档。' };
-      filePath = path;
-    }
-    const library = await libraryService();
-    const staging = await library.createStaging();
-    let committed = false;
+  return portableOperation<LibraryImportResult>(async signal => {
     try {
-      // Stream into the owned staging directory, then re-verify every component with L1
-      // before the catalogue transaction can publish anything.
-      if (!window.isDestroyed()) window.webContents.send('library:progress', { operation: 'importArchive', phase: 'validating', fileName: basename(filePath) });
-      await extractPortableArchive(filePath, staging.directory);
-      const verified = await verifyLibraryArchive(staging.directory);
-      if (!window.isDestroyed()) window.webContents.send('library:progress', { operation: 'importArchive', phase: 'writing', fileName: basename(filePath) });
-      const saved = await library.commitStaging(staging.id, undefined, { manifestHash: verified.manifestHash, storedBytes: verified.storedBytes });
-      committed = true;
-      return { kind: 'success', entry: saved.entry, duplicate: saved.duplicate };
+      let filePath: string;
+      const injected = developmentInjectedPath('CS2_ANALYST_IMPORT_PATH');
+      if (injected !== undefined) {
+        const path = localAbsolutePath(injected);
+        if (!path || extname(path).toLowerCase() !== ARCHIVE_EXTENSION) return { kind: 'error', message: '请选择 .cs2a 比赛归档。' };
+        filePath = path;
+      } else {
+        const chosen = await portableDialog(signal, () => dialog.showOpenDialog(window, { title: '导入比赛归档', properties: ['openFile'],
+          filters: [{ name: 'CS2 Analyst 比赛归档', extensions: ['cs2a'] }] }));
+        if (chosen.canceled || !chosen.filePaths.length || window.isDestroyed()) return { kind: 'cancelled' };
+        const path = localAbsolutePath(chosen.filePaths[0]);
+        if (!path || extname(path).toLowerCase() !== ARCHIVE_EXTENSION) return { kind: 'error', message: '请选择 .cs2a 比赛归档。' };
+        filePath = path;
+      }
+      signal.throwIfAborted();
+      const library = await libraryService();
+      signal.throwIfAborted();
+      const staging = await library.createStaging();
+      let committed = false;
+      try {
+        // Stream into the owned staging directory, then re-verify every component with L1
+        // before the catalogue transaction can publish anything.
+        if (!window.isDestroyed()) window.webContents.send('library:progress', { operation: 'importArchive', phase: 'validating', fileName: basename(filePath) });
+        await extractPortableArchive(filePath, staging.directory, { signal });
+        const verified = await archiveVerifier.verify(staging.directory, signal);
+        if (!window.isDestroyed()) window.webContents.send('library:progress', { operation: 'importArchive', phase: 'writing', fileName: basename(filePath) });
+        const saved = await library.commitStaging(staging.id, signal,
+          { manifestHash: verified.manifestHash, storedBytes: verified.storedBytes }, () => { committed = true; });
+        committed = true;
+        return { kind: 'success', entry: saved.entry, duplicate: saved.duplicate };
+      } catch (error) {
+        if (signal.aborted && !committed) return { kind: 'cancelled' };
+        console.error('Match archive import rejected', error);
+        return { kind: 'error', message: committed ? '比赛归档已保存，请在比赛库中查看；现有记录没有回滚。' : importFailureMessage(error) };
+      } finally {
+        // A duplicate commit already removed its staging directory; a failure is always
+        // discarded so no partial data survives and existing matches are untouched.
+        if (!committed) { try { await library.discardStaging(staging.id); } catch (error) { console.error('Import staging cleanup failed', error); } }
+      }
     } catch (error) {
-      console.error('Match archive import rejected', error);
-      return { kind: 'error', message: importFailureMessage(error) };
+      if (signal.aborted) return { kind: 'cancelled' };
+      console.error('Match archive import failed', error);
+      return { kind: 'error', message: '无法导入比赛归档；现有比赛保持不变。' };
     } finally {
-      // A duplicate commit already removed its staging directory; a failure is always
-      // discarded so no partial data survives and existing matches are untouched.
-      if (!committed) { try { await library.discardStaging(staging.id); } catch (error) { console.error('Import staging cleanup failed', error); } }
+      importing = false;
     }
-  } catch (error) {
-    console.error('Match archive import failed', error);
-    return { kind: 'error', message: '无法导入比赛归档；现有比赛保持不变。' };
-  } finally {
-    importing = false;
-  }
+  });
 });
 ipcMain.handle('heatmap:grid', (event, value: unknown): Promise<DesktopHeatmapResult> | DesktopHeatmapResult => {
   const fail = (): DesktopHeatmapResult => ({kind:'error',message:'无效、不可用或已过期的热力图请求。'});
@@ -844,7 +886,7 @@ async function createWindow() {
   }
 
   mainWindow.on('closed', () => {
-    cancelActiveImport?.();stopAnalysisWorker();
+    cancelActiveImport?.();cancelPortableOperations();stopAnalysisWorker();
     mainWindow = null;
   });
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
@@ -875,17 +917,22 @@ app.on('window-all-closed', () => {
 });
 let shutdownReady = false, shutdownRunning = false;
 app.on('before-quit', event => {
-  if (shutdownReady || (candidateWorkers.size === 0 && candidateCleanups.size === 0)) return;
+  if (shutdownReady || (candidateWorkers.size === 0 && candidateCleanups.size === 0
+    && archiveVerifier.activeCount === 0 && portableCleanups.size === 0)) return;
   event.preventDefault();
   if (shutdownRunning) return;
   shutdownRunning = true;
-  cancelActiveImport?.();stopAnalysisWorker();
+  cancelActiveImport?.();cancelPortableOperations();stopAnalysisWorker();
   // Keep the exclusive library writer lock until every candidate writer has really exited.
   const pending = [...candidateWorkers.entries()];
   for (const [worker] of pending) worker.kill();
-  void Promise.all(pending.map(([, exit]) => exit)).then(async () => {
+  void Promise.all([...pending.map(([, exit]) => exit), archiveVerifier.close()]).then(async () => {
     await Promise.all([...candidateCleanups]);
+    await Promise.all([...portableCleanups]);
     libraryInstance?.close();shutdownReady = true;app.quit();
   }).catch(error => { shutdownRunning=false;console.error('Waiting for library writers to exit failed', error); });
 });
-app.on('will-quit', () => { cancelActiveImport?.(); if (candidateWorkers.size === 0) libraryInstance?.close(); });
+app.on('will-quit', () => {
+  cancelActiveImport?.();cancelPortableOperations();void archiveVerifier.close();
+  if (candidateWorkers.size === 0 && archiveVerifier.activeCount === 0 && portableCleanups.size === 0) libraryInstance?.close();
+});

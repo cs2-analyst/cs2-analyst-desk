@@ -54,7 +54,8 @@ export default defineConfig({
       outDir: 'dist/electron',
       externalizeDeps: packaging ? { exclude: WORKSPACE_PACKAGES, include: NATIVE_PACKAGES } : true,
       rollupOptions: {
-        input: { main: resolvePath('./electron/main.ts'), 'report-worker': resolvePath('./electron/report-worker.ts') },
+        input: { main: resolvePath('./electron/main.ts'), 'report-worker': resolvePath('./electron/report-worker.ts'),
+          'archive-verifier': resolvePath('./electron/archive-verifier.ts') },
       },
     },
   },
