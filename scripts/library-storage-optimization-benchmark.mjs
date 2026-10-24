@@ -1,6 +1,7 @@
 // Disposable, serial production-code comparison. Never opens the user's library.
 // node scripts/library-storage-optimization-benchmark.mjs run [demo1.dem ...]
 // node scripts/library-storage-optimization-benchmark.mjs synthetic
+// node scripts/library-storage-optimization-benchmark.mjs probe <owned-run.json> <demo1.dem> <1|2>
 // Cold means a new process; this tool does NOT clear the OS filesystem cache.
 import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
@@ -265,13 +266,15 @@ async function child(mode, configPath, name, versionText, trialText) {
   const config = loadConfig(configPath), memory = memoryRecorder();
   const version = Number(versionText), trial = Number(trialText);
   assert.ok(config.fixtures.includes(name));
-  const output = join(dataDirectory(config, name), mode === '$capture' ? 'capture.json' : `${mode.slice(1)}-v${version}${mode === '$probe' ? `-${trial}` : ''}.json`);
+  const output = join(dataDirectory(config, name), mode === '$capture' ? 'capture.json'
+    : mode === '$probe-fresh' ? `probe-fresh-v${version}-${trial}-${randomUUID()}.json`
+    : `${mode.slice(1)}-v${version}${mode === '$probe' ? `-${trial}` : ''}.json`);
   try {
     let result;
     if (mode === '$capture') result = await capture(config, name, memory);
     else {
       assert.ok([1, 2].includes(version));
-      if (mode === '$probe') { assert.ok(Number.isInteger(trial) && trial >= 0 && trial < config.samples); result = await probe(config, name, version, trial, memory); }
+      if (mode === '$probe' || mode === '$probe-fresh') { assert.ok(Number.isInteger(trial) && trial >= 0 && trial < config.samples); result = await probe(config, name, version, trial, memory); }
       else if (mode === '$portable') result = await portable(config, name, version, memory);
       else throw new Error('Unknown internal mode');
     }
@@ -335,4 +338,10 @@ async function run(mode, names) {
 }
 const [mode, ...args] = process.argv.slice(2);
 if (mode?.startsWith('$')) await child(mode, ...args);
+else if (mode === 'probe') {
+  const [configPath, name, versionText] = args, config = loadConfig(configPath), version = Number(versionText);
+  assert.ok(config.fixtures.includes(name) && [1, 2].includes(version));
+  const require = createRequire(join(repository, 'apps/desktop/package.json'));
+  for (let trial = 0; trial < config.samples; trial++) await launch(require('electron'), ['$probe-fresh', resolve(configPath), name, String(version), String(trial)]);
+}
 else await run(mode, args);
