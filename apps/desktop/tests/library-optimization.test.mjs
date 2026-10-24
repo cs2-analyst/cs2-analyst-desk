@@ -56,6 +56,9 @@ test('projection decoder freezes text, names, effects, follow and block decision
   const raw = normalized({ ...first.template, frames: JSON.parse(data.chunks.get('1:0')).frames, follow: p.follow });
   first.rawBytes = Buffer.byteLength(raw); first.sha256 = hash(raw);
   assert.equal(restoreProjectedChunk(data.replay, p, 0, randomUUID()).events[0].description, 'archived historical wording');
+  let serialized;
+  const restored = restoreProjectedChunk(data.replay, p, 0, randomUUID(), json => { serialized = json; });
+  assert.equal(serialized, JSON.stringify(restored), 'cached JSON is the exact returned IPC object');
 });
 test('rapid seek supersedes pending work, release never caches or publishes stale work, loader failures recover', async () => {
   const data = optimizationInput(), projections = createReplayProjections(data.chunks);
@@ -68,8 +71,10 @@ test('rapid seek supersedes pending work, release never caches or publishes stal
   const next = session.get(request(1)); const latest = session.get(request(2));
   unblock(); assert.equal(await first, null); assert.equal(await next, null);
   await new Promise(setImmediate); unblock(); assert.ok(await latest); assert.equal(reads, 2);
+  assert.equal(await session.pending, undefined, 'serialization tail never retains a decoded payload outside the LRU');
   const releasing = session.get(request(0)); await new Promise(setImmediate); session.clear(); unblock();
   assert.equal(await releasing, null); assert.equal(session.bytes, 0);
+  assert.equal(await session.pending, undefined);
   const recovery = new DerivedReplaySession(data.replay, data.report.replay, async r => { if (fail) throw new Error('I/O'); return projections.get(r); });
   fail = true; await assert.rejects(recovery.get(request(0)), /I\/O/); fail = false; assert.ok(await recovery.get(request(0))); recovery.clear();
 });

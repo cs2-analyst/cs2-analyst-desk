@@ -84,17 +84,21 @@ export function validateReplayProjection(value: unknown, metadata: DesktopReplay
   }
 }
 
-export function restoreProjectedChunk(replay: MatchReplay, projection: ReplayProjection, block: number, sessionId: string): DesktopReplayChunk {
+export function restoreProjectedChunk(replay: MatchReplay, projection: ReplayProjection, block: number, sessionId: string,
+  onSerialized?: (json: string) => void): DesktopReplayChunk {
   const entry = projection.blocks.find(b => b.template.block === block), round = replay.rounds.find(r => r.round === projection.round);
   if (!entry || !round) throw new Error('Missing replay projection source');
   const template = entry.template;
   const chunk = { ...template, frames: blockFrames(round, replay, template.startTick, template.endTick),
     ...(Object.hasOwn(template, 'follow') ? { follow: projection.follow! } : {}) };
-  const raw = storedJson(chunk);
+  // Stored templates contain no session handles. A generic JSON replacer visits every
+  // player tuple element and needlessly repeats that work on every cache miss.
+  const raw = JSON.stringify(chunk);
   if (Buffer.byteLength(raw) !== entry.rawBytes || hash(raw) !== entry.sha256) throw new Error('Regenerated replay digest mismatch');
-  const restored = { ...chunk, sessionId } as DesktopReplayChunk;
-  if (Buffer.byteLength(JSON.stringify(restored)) > MiB) throw new Error('Regenerated replay IPC budget');
-  return restored;
+  const json = raw.slice(0, -1) + ',"sessionId":' + JSON.stringify(sessionId) + '}';
+  if (Buffer.byteLength(json) > MiB) throw new Error('Regenerated replay IPC budget');
+  onSerialized?.(json);
+  return { ...chunk, sessionId } as DesktopReplayChunk;
 }
 
 /** Session-owned byte-counted LRU. At most one miss runs; stale queued seeks are discarded. */
@@ -120,8 +124,9 @@ export class DerivedReplaySession {
       const projection = await this.loader(request.round);
       if (sequence !== this.sequence || !this.replay) return null;
       validateReplayProjection(projection, this.metadata, request.round);
-      const chunk = restoreProjectedChunk(this.replay, projection, request.block, this.metadata.sessionId ?? sessionPlaceholder);
-      const json = JSON.stringify(chunk), size = Buffer.byteLength(json);
+      let json = '';
+      const chunk = restoreProjectedChunk(this.replay, projection, request.block, this.metadata.sessionId ?? sessionPlaceholder, value => { json = value; });
+      const size = Buffer.byteLength(json);
       while (this.bytes + size > DERIVED_REPLAY_CACHE_BYTES && this.cache.size) {
         const oldest = this.cache.keys().next().value!;
         this.bytes -= Buffer.byteLength(this.cache.get(oldest)!); this.cache.delete(oldest);

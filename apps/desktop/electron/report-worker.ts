@@ -140,6 +140,7 @@ process.parentPort?.on('message', async ({ data }: { data: { kind?: string; file
       const written = await archive.writeLibraryArchive(data.archiveDirectory, { report, chunks: replaySession?.chunks ?? new Map(),
         match: parsed.match, replay: parsed.replay, spatial: parsed.spatial, versions,
         ...(data.expectedMatchId !== undefined ? { createdAt: data.createdAt } : {}) });
+      if (disposed) return;
       if (written.manifest.schemaVersion === 2 && parsed.replay && replaySession) {
         // Staging is renamed on commit. Retain only small immutable projection context,
         // never a loader pointing at the old staging path or the eager full-match cache.

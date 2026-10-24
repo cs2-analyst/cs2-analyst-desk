@@ -16,6 +16,8 @@ const MiB = 1024 * 1024;
 const restoredSessionBytes = Buffer.byteLength(',"sessionId":"00000000-0000-0000-0000-000000000000"');
 export const LIBRARY_ARCHIVE_LIMITS = Object.freeze({ manifestBytes: MiB, fileCount: 4096,
   componentBytes: 256 * MiB, reportBytes: 16 * MiB, totalRawBytes: 512 * MiB,
+  totalCompressedBytes: 256 * MiB,
+  /** Legacy exported name retained for v1 callers; the same ceiling applies to both codecs. */
   totalGzipBytes: 256 * MiB, chunkBytes: MiB, replayBytes: 64 * MiB, players: 64, rounds: 1024 });
 /** Summary metadata shared with the SQLite catalogue. A written manifest must stay listable. */
 export const LIBRARY_METADATA_LIMITS = Object.freeze({ fileName: 256, map: 64, rounds: 1024,
@@ -177,7 +179,7 @@ export function validateArchiveManifest(value: unknown): value is ArchiveManifes
   return new Set(files.map(file => file.path)).size === files.length
     && ['report', 'heatmap-match', 'heatmap-replay', 'heatmap-spatial'].every(role => files.filter(file => file.role === role).length === 1)
     && files.reduce((sum, file) => sum + file.rawBytes, 0) <= LIBRARY_ARCHIVE_LIMITS.totalRawBytes
-    && files.reduce((sum, file) => sum + archiveCompressedBytes(file), 0) <= LIBRARY_ARCHIVE_LIMITS.totalGzipBytes
+    && files.reduce((sum, file) => sum + archiveCompressedBytes(file), 0) <= LIBRARY_ARCHIVE_LIMITS.totalCompressedBytes
     && files.filter(file => file.role === 'replay-projection').reduce((sum, file) => sum + file.rawBytes, 0) <= LIBRARY_ARCHIVE_LIMITS.replayBytes
     && files.filter(file => file.role === 'replay-chunk').reduce((sum, file) => sum + file.rawBytes + restoredSessionBytes, 0) <= LIBRARY_ARCHIVE_LIMITS.replayBytes;
 }
@@ -474,7 +476,7 @@ export async function writeLibraryArchive(directory: string, input: ArchiveWrite
     manifest.files.push(file);
     if (manifest.files.length > LIBRARY_ARCHIVE_LIMITS.fileCount
       || manifest.files.reduce((sum, file) => sum + file.rawBytes, 0) > LIBRARY_ARCHIVE_LIMITS.totalRawBytes
-      || manifest.files.reduce((sum, file) => sum + archiveCompressedBytes(file), 0) > LIBRARY_ARCHIVE_LIMITS.totalGzipBytes) fail('writer archive budget');
+      || manifest.files.reduce((sum, file) => sum + archiveCompressedBytes(file), 0) > LIBRARY_ARCHIVE_LIMITS.totalCompressedBytes) fail('writer archive budget');
     // The encoder has already validated every tuple. Validate the original canonical
     // source instead of allocating a second full sample tree alongside the parser result.
     const stored = version === 2 && role === 'heatmap-replay' ? value : JSON.parse(raw.toString('utf8'));
