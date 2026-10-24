@@ -162,11 +162,12 @@ test('incomplete event attribution or participation suppresses event count badge
       headshotPercentage: 80, headshotsComplete: true }).length, 0);
   }
 });
-test('multiple highlights have stable explicit priority and maximum count', () => {
+test('every qualifying highlight is returned in stable priority without top-three truncation', () => {
   const all = Object.assign({}, ...examples.map(example => example.positive));
   const first = badges(all);
-  assert.equal(first.length, highlightRules.maxVisible);
-  assert.deepEqual(first.map(b => b.type), ['clutch', 'multi-kill', 'opening']);
+  assert.equal(first.length, 8);
+  assert.deepEqual(first.map(b => b.type), ['clutch', 'multi-kill', 'opening', 'trade', 'headshot', 'flash', 'utility', 'assists']);
+  assert.deepEqual(first.map(b => b.type), highlightRules.priority);
   assert.deepEqual(badges(Object.fromEntries(Object.entries(all).reverse())), first);
   assert.deepEqual(badges(all), first);
 });
@@ -195,7 +196,9 @@ test('real demo1 performance is deterministic, player-isolated and uses unchange
         + 0.2372 * (2.13 * kpr + 0.42 * apr - 0.41) + 0.0032 * player.adr + 0.1587;
       assert.equal(performance.rating.value, expected);
       ratings.add(performance.rating.value);
-      assert.ok(performance.highlights.length <= 3);
+      assert.equal(new Set(performance.highlights.map(b => b.type)).size, performance.highlights.length);
+      assert.deepEqual(performance.highlights.map(b => b.type),
+        highlightRules.priority.filter(type => performance.highlights.some(b => b.type === type)));
       for (const badge of performance.highlights) {
         if (badge.type === 'trade') assert.equal(badge.evidence.kills, player.trade.tradeKills);
         if (badge.type === 'clutch') assert.equal(badge.evidence.wins, player.clutch.list.filter(c => c.won === true).length);

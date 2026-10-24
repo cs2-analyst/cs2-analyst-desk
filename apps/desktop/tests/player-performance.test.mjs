@@ -7,7 +7,7 @@ import test from 'node:test';
 import { createOwnedTempDirectory, assertOwnedDirectory } from '../../../scripts/owned-qa-run.mjs';
 import { LocalMatchLibrary } from '../electron/local-library.ts';
 import { readArchiveManifest, readArchiveReport, writeLibraryArchive } from '../electron/library-archive.ts';
-import { reportPlayerSummaries, upgradeReportPerformance, validCachedPlayerSummaries } from '../electron/player-performance.ts';
+import { PERFORMANCE_CACHE_VERSION, isPlayerPerformance, reportPlayerSummaries, upgradeReportPerformance, validCachedPlayerSummaries } from '../electron/player-performance.ts';
 
 const versions = { application: '0.2.0', archive: 1, report: 2, replay: 1, analysis: 'test-analysis', parser: 'test-parser', native: 'test-native',
   sampling: 'test', mapResource: 'test-map', sourceRevision: '1'.repeat(40) };
@@ -53,9 +53,38 @@ test('legacy report is upgraded from saved metrics with formula precision and pl
     + 0.2372 * (2.13 * (25 / 24) + 0.42 * (4 / 24) - 0.41) + 0.0032 * 91.375 + 0.1587;
   assert.equal(one.rating.value, expected);
   assert.equal(one.rating.algorithm, 'hltv-2.0-community-approx-v1');
-  assert.deepEqual(one.highlights.map(h => h.type), ['clutch', 'multi-kill', 'opening']);
+  assert.deepEqual(one.highlights.map(h => h.type), ['clutch', 'multi-kill', 'opening', 'trade']);
   assert.ok(one.rating.value > r.analytics[1].performance.rating.value);
   assert.deepEqual(upgradeReportPerformance(r), r, 'upgrade is idempotent');
+});
+
+test('a valid old top-three result gains all independently supported badges without changing its rating', () => {
+  const r = report();
+  Object.assign(r.analytics[0], { assists: 10, headshotPercentage: 70,
+    performanceCoverage: { countsComplete: true, roundsAligned: true, headshotsComplete: true },
+    utility: { flashAssists: 4, heDamage: 150, fireDamage: 100 } });
+  const all = structuredClone(upgradeReportPerformance(r).analytics[0].performance);
+  assert.equal(all.highlights.length, 8);
+  const legacy = { rating: { ...all.rating, value: 1.23456789 }, highlights: all.highlights.slice(0, 3) };
+  r.analytics[0].performance = structuredClone(legacy);
+  const result = upgradeReportPerformance(r).analytics[0].performance;
+  assert.deepEqual(result.rating, legacy.rating, 'previously stored ratings keep their exact value');
+  assert.deepEqual(result.highlights, all.highlights);
+  assert.equal(isPlayerPerformance(result), true);
+  assert.equal(isPlayerPerformance({ ...result, highlights: [...result.highlights, result.highlights[0]] }), false);
+  assert.equal(isPlayerPerformance({ ...result, highlights: [result.highlights[0], result.highlights[0]] }), false);
+  assert.deepEqual(upgradeReportPerformance(r).analytics[0].performance, result);
+});
+
+test('old proven badges survive missing historical proofs, without guessing additional event badges', () => {
+  const r = report();
+  const existing = structuredClone(upgradeReportPerformance(r).analytics[0].performance);
+  delete r.analytics[0].performanceCoverage;
+  r.analytics[0].assists = 10;
+  r.analytics[0].performance = existing;
+  const result = upgradeReportPerformance(r).analytics[0].performance;
+  assert.deepEqual(result, existing);
+  assert.equal(result.highlights.some(h => h.type === 'assists'), false);
 });
 test('100 matches with 10 players stay within IPC budget through exact SQL-page limits without skipping records', async t => {
   const s = await scope(t);
@@ -189,6 +218,37 @@ test('corrupt derived cache is rebuilt from the same immutable report without ch
   await s.reopen();
   assert.deepEqual((await s.library.listWithPerformance()).entries[0].playerSummaries, expected);
   assert.equal(s.library.get(entry.matchId).state, 'ready');
+});
+
+test('the old top-three cache version is rebuilt from saved evidence without rewriting the archive', async t => {
+  const s = await scope(t), data = input();
+  Object.assign(data.report.analytics[0], { assists: 10, headshotPercentage: 70,
+    performanceCoverage: { countsComplete: true, roundsAligned: true, headshotsComplete: true },
+    utility: { flashAssists: 4, heDamage: 150, fireDamage: 100 } });
+  upgradeReportPerformance(data.report);
+  data.report.analytics[0].performance.highlights = data.report.analytics[0].performance.highlights.slice(0, 3);
+  const entry = await s.seed(data.report.match.id, data);
+  const directory = await s.library.archiveDirectory(entry.matchId);
+  const beforeManifest = await readFile(join(directory, 'manifest.json'));
+  const beforeReport = await readFile(join(directory, 'report.json.gz'));
+  await s.library.listWithPerformance();
+  s.library.close();
+  const raw = new DatabaseSync(join(s.root, 'library.db'));
+  const payload = JSON.parse(raw.prepare('SELECT summary_json FROM player_summary_cache WHERE match_id=?').get(entry.matchId).summary_json);
+  payload.playerSummaries[0].performance.highlights = payload.playerSummaries[0].performance.highlights.slice(0, 3);
+  raw.prepare('UPDATE player_summary_cache SET cache_version=?,summary_json=? WHERE match_id=?')
+    .run('hltv-2.0-community-approx-v1/highlights-v1/adapter-v3', JSON.stringify(payload), entry.matchId);
+  raw.close();
+  await s.reopen();
+  const listed = await s.library.listWithPerformance();
+  assert.equal(listed.entries[0].playerSummaries[0].performance.highlights.length, 8);
+  assert.deepEqual(await readFile(join(directory, 'manifest.json')), beforeManifest);
+  assert.deepEqual(await readFile(join(directory, 'report.json.gz')), beforeReport);
+  assert.equal((await readArchiveReport(directory, await readArchiveManifest(directory), randomUUID())).analytics[0].performance.highlights.length, 8);
+  s.library.close();
+  const rebuilt = new DatabaseSync(join(s.root, 'library.db'), { readOnly: true });
+  assert.equal(rebuilt.prepare('SELECT cache_version FROM player_summary_cache WHERE match_id=?').get(entry.matchId).cache_version, PERFORMANCE_CACHE_VERSION);
+  rebuilt.close();
 });
 test('different matches keep distinct summaries and removing one removes only its derived cache', async t => {
   const s = await scope(t); const first = await s.seed(); const second = await s.seed('b'.repeat(64));

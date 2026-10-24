@@ -46,7 +46,6 @@ export interface PlayerPerformanceInput extends RatingInput {
 
 /** Conservative, explicit v1 rules; ordering is part of the public result. */
 export const highlightRules = Object.freeze({
-  maxVisible: 3,
   openingKills: 3,
   tradeKills: 3,
   assists: 6,
@@ -144,7 +143,7 @@ export function computePlayerPerformance(input: PlayerPerformanceInput): PlayerP
   }
   const priority = new Map<HighlightType, number>(highlightRules.priority.map((type, index) => [type, index]));
   highlights.sort((a, b) => priority.get(a.type)! - priority.get(b.type)!);
-  return { rating: computeRating(input), highlights: highlights.slice(0, highlightRules.maxVisible) };
+  return { rating: computeRating(input), highlights };
 }
 
 /** Portable inputs retain the small coverage proofs needed for later algorithm replacement. */

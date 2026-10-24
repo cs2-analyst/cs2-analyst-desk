@@ -152,6 +152,16 @@ test('shared rating formatter handles missing values, preserves precision and ex
   assert.equal(html.includes(' title='), false, 'rating reasons are provided by Fluent Tooltip on hover/focus');
 });
 
+test('the library renders all eight qualifying highlight categories without dropping later items', () => {
+  const types = ['clutch', 'multi-kill', 'opening', 'trade', 'headshot', 'flash', 'utility', 'assists'];
+  const highlights = types.map((type, i) => ({ type, label: ['残', '神', '突', '补', '准', '闪', '辅', '助'][i],
+    color: 'blue', tooltip: `Evidence for ${type}`, evidence: { count: 1 } }));
+  const entry = structuredClone(entries[0]);
+  entry.playerSummaries[0].performance.highlights = highlights;
+  const html = render(createElement(LibraryList, { entries: [entry], busy: false, onOpen: noop, onExport: noop, onDelete: noop }));
+  assert.deepEqual([...html.matchAll(/data-highlight="([^"]+)"/g)].map(m => m[1]), types);
+});
+
 test('report secondary line keeps full long filename accessible and shares list rating formatting', () => {
   const fileName = 'very-long-demo-name-'.repeat(20) + '.dem';
   const html = render(createElement(ReportSecondaryLine, { fileName, rating: rating(1.423456) }));

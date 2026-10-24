@@ -5,7 +5,7 @@ import { palette } from './theme';
 
 const useStyles = makeStyles({
   rating: { fontWeight: 700, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', ':focus-visible': { outline: `1px solid ${tokens.colorBrandStroke1}` } },
-  tags: { display: 'flex', gap: '4px', alignItems: 'center', justifyContent: 'center' },
+  tags: { display: 'flex', flexWrap: 'wrap', gap: '4px', alignItems: 'center', justifyContent: 'center', padding: '4px 0' },
   tag: { width: '20px', height: '20px', flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '2px', fontSize: '12px', fontWeight: 800, lineHeight: '20px', color: '#101821' },
   meta: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', minWidth: 0 },
   file: { display: 'block', minWidth: 0, flex: '1 1 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: tokens.colorNeutralForeground3 },

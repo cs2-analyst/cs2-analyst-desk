@@ -1,17 +1,17 @@
-import { computePlayerPerformance } from '@cs2-analyst/analytics';
+import { computePlayerPerformance, highlightRules } from '@cs2-analyst/analytics';
 import type { PlayerPerformanceInput } from '@cs2-analyst/analytics';
 import type { DesktopMatchReport, DesktopPlayerPerformance, LibraryPlayerSummary } from '@cs2-analyst/report-contract';
 
 /** Independent from report/archive schema: derived data may be discarded and rebuilt. */
-export const PERFORMANCE_CACHE_VERSION = 'hltv-2.0-community-approx-v1/highlights-v1/adapter-v3';
+export const PERFORMANCE_CACHE_VERSION = 'hltv-2.0-community-approx-v1/highlights-v2-all/adapter-v4';
 const object = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
 const number = (value: unknown): number | null => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
 const count = (value: unknown): number | null => Number.isSafeInteger(value) ? number(value) : null;
-const ratingTypes = ['clutch', 'multi-kill', 'opening', 'trade', 'assists', 'headshot', 'flash', 'utility'];
+const ratingTypes: readonly string[] = highlightRules.priority;
 const colors = ['gold', 'cyan', 'blue', 'pink', 'green', 'yellow', 'purple', 'orange'];
 
 export function isPlayerPerformance(value: unknown): value is DesktopPlayerPerformance {
-  if (!object(value) || !object(value.rating) || !Array.isArray(value.highlights) || value.highlights.length > 3) return false;
+  if (!object(value) || !object(value.rating) || !Array.isArray(value.highlights) || value.highlights.length > ratingTypes.length) return false;
   const rating = value.rating;
   if (typeof rating.algorithm !== 'string' || !rating.algorithm.length || rating.algorithm.length > 128
     || !['available', 'unavailable'].includes(rating.status as string)
@@ -20,14 +20,15 @@ export function isPlayerPerformance(value: unknown): value is DesktopPlayerPerfo
   return value.highlights.every(item => object(item) && ratingTypes.includes(item.type as string) && colors.includes(item.color as string)
     && typeof item.label === 'string' && item.label.length > 0 && item.label.length <= 3
     && typeof item.tooltip === 'string' && item.tooltip.length <= 512 && object(item.evidence)
-    && Object.keys(item.evidence).length <= 16 && Object.values(item.evidence).every(value => typeof value === 'number' && Number.isFinite(value)));
+    && Object.keys(item.evidence).length <= 16 && Object.values(item.evidence).every(value => typeof value === 'number' && Number.isFinite(value)))
+    && new Set(value.highlights.map(item => item.type)).size === value.highlights.length;
 }
 
 /** Conservative upgrade from frozen report metrics; never invokes Parser or redefines ADR/KAST. */
 export function upgradeReportPerformance(report: DesktopMatchReport): DesktopMatchReport {
   const analyses = new Map((report.analysis?.perPlayer ?? []).filter(object).map(p => [p.playerId, p]));
   report.analytics = report.analytics.filter(p => object(p) && typeof p.playerId === 'string').map(p => {
-    if (isPlayerPerformance(p.performance)) return p;
+    const existing = isPlayerPerformance(p.performance) ? p.performance : undefined;
     const proof = p.performanceCoverage;
     const multi = analyses.get(p.playerId)?.multiKills;
     const validMulti = multi && [multi.double, multi.triple, multi.quad, multi.fivePlus].every(value => count(value) !== null);
@@ -46,9 +47,17 @@ export function upgradeReportPerformance(report: DesktopMatchReport): DesktopMat
       headshotPercentage: number(p.headshotPercentage), headshotsComplete: proof?.headshotsComplete === true,
       flashAssists: count(p.utility?.flashAssists), heDamage: number(p.utility?.heDamage), fireDamage: number(p.utility?.fireDamage),
     };
-    const performance = computePlayerPerformance(input);
+    const performance: DesktopPlayerPerformance = computePlayerPerformance(input);
     if (!proof) performance.rating = { ...performance.rating, value: null, status: 'unavailable',
       reason: '旧报告缺少评分所需的统计覆盖证明；当前归档无法计算可靠评分。' };
+    if (existing) {
+      // Old archives may contain only the former top three. Preserve their proven badges
+      // and exact rating, adding any further badges supported by saved metrics/coverage.
+      const highlights = new Map(existing.highlights.map(item => [item.type, item]));
+      for (const item of performance.highlights) if (!highlights.has(item.type)) highlights.set(item.type, item);
+      performance.rating = existing.rating;
+      performance.highlights = [...highlights.values()].sort((a, b) => ratingTypes.indexOf(a.type) - ratingTypes.indexOf(b.type));
+    }
     return { ...p, performance };
   });
   return report;

@@ -229,17 +229,18 @@ export function LibraryList({
   onDelete: (entry: MatchLibraryEntry) => void;
 }) {
   const s = useStyles();
+  // Keep metadata compact; the highlights column receives all remaining width.
   const columns = [
-    ["日期", 8],
-    ["地图", 22],
-    ["胜/负", 6],
-    ["比分", 9],
-    ["K/D/A", 12],
-    ["ADR", 8],
-    ["Rating", 8],
-    ["KAST", 9],
-    ["高光", 12],
-    ["操作", 6],
+    ["日期", 72],
+    ["地图", 128],
+    ["胜/负", 52],
+    ["比分", 72],
+    ["K/D/A", 96],
+    ["ADR", 64],
+    ["Rating", 64],
+    ["KAST", 72],
+    ["高光", undefined],
+    ["操作", 48],
   ] as const;
   return (
     <Table
@@ -255,7 +256,7 @@ export function LibraryList({
             <TableHeaderCell
               key={label}
               className={mergeClasses(s.tableHead, s.cell, label === "地图" && s.mapCell)}
-              style={{ width: `${width}%` }}
+              style={width === undefined ? undefined : { width }}
             >
               {label === "日期" ? (
                 <Tooltip content="当前 DEM 未提供可信比赛日期，下方日期为本机导入时间。" relationship="description">
