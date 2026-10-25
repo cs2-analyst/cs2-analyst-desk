@@ -23,7 +23,7 @@ const desktop = join(repository, 'apps', 'desktop');
 const allowed = ['demo1.dem', 'demo2.dem', 'dust2.dem', 'nuke.dem'];
 const json = path => JSON.parse(readFileSync(path, 'utf8'));
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
-const qaScriptSha256 = digest(readFileSync(here));
+const qaScriptSource = readFileSync(here), qaScriptSha256 = digest(qaScriptSource);
 const require = createRequire(join(desktop, 'package.json'));
 
 function save(owner, path, value) {
@@ -335,7 +335,7 @@ async function sixViews(page, directory, matchId) {
   return views;
 }
 
-async function launchTrial(config, benchmark, version, trial, name, { forcePortable = false, fingerprints = true, soak = null } = {}) {
+async function launchTrial(config, benchmark, version, trial, name, { forcePortable = false, fingerprints = true, soak = null, diagnostics = null } = {}) {
   const run = config.runs[version], base = join(run.output, `${basename(name, '.dem')}${fingerprints ? '' : '-no-fingerprint'}-trial-${trial}`);
   let directory = assertOwnedPath(run, base), attempt = 1;
   while (existsSync(directory)) { assert.ok(attempt < 20, 'Too many preserved trial attempts'); directory = assertOwnedPath(run, base + '-attempt-' + ++attempt); }
@@ -399,14 +399,14 @@ async function launchTrial(config, benchmark, version, trial, name, { forcePorta
       window.__storageQaWeak=[];window.__storageQaCycle=-1;
       window.__storageQaRemember=(value,kind)=>{if(value&&typeof value==='object')window.__storageQaWeak.push({kind,cycle:window.__storageQaCycle,ref:new WeakRef(value)});};
       window.__storageQaReferenceState=()=>{
-        const counts={};let nonEmptyReplayCaches=0,boundEffectImages=0,largeReplayCanvases=0;
+        const counts={};let nonEmptyReplayCaches=0,boundEffectImages=0,effectImageSourceAttributes=0,largeReplayCanvases=0;
         for(const item of window.__storageQaWeak){const key=item.cycle+':'+item.kind,value=item.ref.deref();
           const entry=counts[key]??={live:0,dead:0};entry[value?'live':'dead']++;
           if(item.kind==='ui-cache'&&value?.entries?.size>0)nonEmptyReplayCaches++;}
         for(const item of window.__storageQaWeak){const value=item.ref.deref();
-          if(item.kind==='ui-effect-image'&&value?.hasAttribute('src'))boundEffectImages++;
+          if(item.kind==='ui-effect-image'&&value){if(value.hasAttribute('src'))effectImageSourceAttributes++;if(value.getAttribute('src'))boundEffectImages++;}
           if(item.kind==='ui-replay-canvas'&&value&&(value.width>1||value.height>1))largeReplayCanvases++;}
-        return {reportRootCleared:window.__storageQaReport===null,counts,nonEmptyReplayCaches,boundEffectImages,largeReplayCanvases};
+        return {reportRootCleared:window.__storageQaReport===null,counts,nonEmptyReplayCaches,boundEffectImages,effectImageSourceAttributes,largeReplayCanvases};
       };
       window.__storageQaRememberUi=(captureReplay=false)=>{
         const host=document.getElementById('root')?.firstElementChild;
@@ -437,6 +437,7 @@ async function launchTrial(config, benchmark, version, trial, name, { forcePorta
         return {fibers:seen.size,reports:reports.size,matchIds:[...reports].map(report=>report.match.id),caches:caches.size,chunks,effectImages:images.size,canvases:canvases.length};
       };
     })()`);
+    if (diagnostics) await diagnostics.setup(page, config);
     const poll = () => {
       if (polling || closing) return;
       polling = page.send('Runtime.getHeapUsage').then(value => observations.push({ at: Date.now(), ...value }))
@@ -519,7 +520,7 @@ async function launchTrial(config, benchmark, version, trial, name, { forcePorta
     }
     if (soak) result.soak = await soakCycles(page, directory, primary, alternate, phase, soak, observations, async () => {
       clearInterval(timer); timer = null; if (polling) await polling;
-    });
+    }, diagnostics);
     if (!soak && trial === 0 && name === benchmark.fixtures[0]) {
       phase('actual-six-view-ui', primary.matchId); result.views = await sixViews(page, directory, primary.matchId);
       phase('ui-returned-home'); await delay(500);
@@ -575,11 +576,11 @@ async function launchTrial(config, benchmark, version, trial, name, { forcePorta
 
 // Weak references and ordinary business activity only: snapshots/queryObjects and
 // memory-pressure/GC commands are deliberately absent from this experiment.
-async function soakCycles(page, directory, primary, alternate, phase, options, observations, pauseObserver) {
+async function soakCycles(page, directory, primary, alternate, phase, options, observations, pauseObserver, diagnostics) {
   const cycles = [], sample = async (cycle, label) => {
     const at = Date.now(), heap = await page.send('Runtime.getHeapUsage'); observations.push({ at, ...heap });
     return { cycle, label, at, heap, dom: await page.send('Memory.getDOMCounters'),
-      references: await page.evaluate('window.__storageQaReferenceState()') };
+      references: await page.evaluate('window.__storageQaReferenceState()'), diagnostics: diagnostics ? await diagnostics.sample(page) : undefined };
   };
   const baseline = await sample(-1, 'original-no-fingerprint-portable-release');
   for (let cycle = 0; cycle < options.cycles; cycle++) {
@@ -671,7 +672,7 @@ async function soakCycles(page, directory, primary, alternate, phase, options, o
     retentionProbe: 'WeakRef only; dereference jobs retain no values in later jobs. Counts distinguish previous cycles from the last cycle; uncleared objects before a natural GC do not prove a leak.' };
 }
 
-async function soakRun(configPath, name = 'nuke.dem', trials = 3, cycles = 8, idleMs = 10000, finalIdleMs = 60000, uiEvery = 0, nativeReleaseExpected = 0) {
+export async function soakRun(configPath, name = 'nuke.dem', trials = 3, cycles = 8, idleMs = 10000, finalIdleMs = 60000, uiEvery = 0, nativeReleaseExpected = 0, diagnostics = null) {
   assert.ok(Number.isInteger(trials) && trials >= 1 && trials <= 5);
   assert.ok(Number.isInteger(cycles) && cycles >= 2 && cycles <= 100);
   assert.ok(Number.isInteger(idleMs) && idleMs >= 1000 && idleMs <= 60000);
@@ -687,14 +688,19 @@ async function soakRun(configPath, name = 'nuke.dem', trials = 3, cycles = 8, id
     sourceRevision: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repository, encoding: 'utf8', windowsHide: true }).trim(), qaScriptSha256,
     sourceWorktreeDirty: execFileSync('git', ['status', '--porcelain', '--untracked-files=no'], { cwd: repository, encoding: 'utf8', windowsHide: true }).trim().length > 0,
     builtEntryFingerprints: { main: app.original['electron/main.js'], reportWorker: app.original['electron/report-worker.js'], archiveVerifier: app.original['electron/archive-verifier.js'] },
-    createdAt: new Date().toISOString(), soak: { name, cycles, idleMs, finalIdleMs, requests: 40, uiEvery, nativeReleaseExpected },
-    purpose: 'Long-lived no-fingerprint Renderer lifecycle experiment; new owned libraries and profiles, original archives and results untouched.' };
+    createdAt: new Date().toISOString(), resourceProbeVersion: 2,
+    resourceProbeDefinition: 'boundEffectImages counts non-empty src URLs; effectImageSourceAttributes separately records attribute presence, including intentionally empty src.',
+    soak: { name, cycles, idleMs, finalIdleMs, requests: 40, uiEvery, nativeReleaseExpected },
+    diagnostics: diagnostics?.metadata ?? null,
+    purpose: diagnostics ? 'Isolated image lifetime diagnostic under ordinary business activity; not a comparable production memory benchmark.'
+      : 'Long-lived no-fingerprint Renderer lifecycle experiment; new owned libraries and profiles, original archives and results untouched.' };
   const path = join(owner.directory, 'gui-run.json'); save(owner, path, config);
+  writeFileSync(assertOwnedPath(owner, join(owner.directory, 'controller-source.mjs')), qaScriptSource, { flag: 'wx' });
   console.log(JSON.stringify({ phase: 'soak-start', config: path, trials, cycles, idleMs, finalIdleMs, uiEvery }));
   for (const version of [1, 2]) await runSeed(require('electron'), path, version);
   const results = [];
   for (let trial = 0; trial < trials; trial++) for (const version of trial % 2 ? [2, 1] : [1, 2]) {
-    const result = await launchTrial(config, benchmark, version, trial, name, { forcePortable: true, fingerprints: false,
+    const result = await launchTrial(config, benchmark, version, trial, name, { forcePortable: true, fingerprints: false, diagnostics,
       soak: { cycles, idleMs, finalIdleMs, requests: 40, uiEvery, nativeReleaseExpected } });
     results.push(result); save(owner, join(owner.directory, `soak-v${version}-trial-${trial}.json`), result);
   }
