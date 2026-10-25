@@ -571,7 +571,8 @@ async function execute(config, benchmark, configPath) {
   }
 }
 /** Recompute derived telemetry without changing immutable raw observations or timed samples. */
-function correctMemory(configPath) {
+function correctMemory(configPath, fileName = 'results-memory-corrected.json') {
+  assert.match(fileName, /^results-[a-z0-9-]+\.json$/, 'Memory summaries need a safe new result filename');
   const config = readGuiConfig(configPath), originalPath = join(config.owner.directory, 'results.json'), original = json(originalPath);
   const results = original.results.map(result => {
     assertOwnedPath(config.runs[result.version], result.outputDirectory);
@@ -584,7 +585,7 @@ function correctMemory(configPath) {
     return { ...result, memory: summarizeMemory(rows, result.rendererHeapObservations, result.phases),
       releasedUtilityExitedFromCorrectedMetrics: true };
   });
-  const path = join(config.owner.directory, 'results-memory-corrected.json');
+  const path = join(config.owner.directory, fileName);
   save(config.owner, path, { ...original, memoryClassificationVersion: 2, rawResults: originalPath,
     correction: 'Electron names analysis Utilities in name; serviceName can be generic node.mojom.NodeService. Both are matched. Raw metrics and original timing/results are preserved unchanged. Release exit is independently rechecked in each released-idle phase.', results });
   console.log(JSON.stringify({ success: true, correctedResults: path }));
@@ -662,7 +663,7 @@ function refreeze(configPath) {
 if (process.argv[1] && resolve(process.argv[1]) === here) {
   const [mode, ...args] = process.argv.slice(2);
   if (mode === '$seed') await seed(...args);
-  else if (mode === '$summarize') correctMemory(resolve(args[0]));
+  else if (mode === '$summarize') correctMemory(resolve(args[0]), args[1]);
   else if (mode === '$portable-repeats') await portableRepeats(resolve(args[0]), args[1]);
   else if (mode === '$portable-probes') await portableRepeats(resolve(args[0]), args[1], { samples: args[2] ? Number(args[2]) : 3, includeOriginal: false });
   else if (mode === '$memory-control') await memoryControl(resolve(args[0]), args[1]);
