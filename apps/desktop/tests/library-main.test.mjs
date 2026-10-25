@@ -57,7 +57,10 @@ async function harness(options={}) {
   }}};
   const file=new URL('../electron/main.ts',import.meta.url),code=transformSync(readFileSync(file,'utf8'),{loader:'ts',format:'cjs',define:{'import.meta.url':JSON.stringify(file.href),'__CS2_ANALYST_TEST_SEAM__':JSON.stringify(options.testSeam===true)}}).code;
   vm.runInNewContext(code,{require:name=>name==='electron'?electron:mainLibraryRequire(name,require,service,{archive:libraryArchive,portable:options.portable??libraryPortable,
-    verification: options.realVerifier ? archiveVerification : undefined}),process:{env:options.env??{},platform:'win32',resourcesPath:'C:/owned-test/resources'},console:{error(){}},URL,Buffer,AbortController,
+    verification: options.realVerifier ? { ...archiveVerification,
+      ArchiveVerificationBroker: class extends archiveVerification.ArchiveVerificationBroker {
+        constructor(fork) { super(fork, options.verifierTimeoutMs ? { timeoutMs: options.verifierTimeoutMs } : {}); }
+      } } : undefined}),process:{env:options.env??{},platform:'win32',resourcesPath:'C:/owned-test/resources'},console:{error(){}},URL,Buffer,AbortController,
     setTimeout(fn,ms){const id=++timerSequence;timers.set(id,{fn,ms});return id;},clearTimeout(id){timers.delete(id);}});
   await tick();const trusted={sender:window.webContents,senderFrame:window.webContents.mainFrame};
   const start=async()=>{const promise=handlers.get('report:import-file')(trusted,'C:\\local\\dust2.dem');await tick();const worker=workers.at(-1);worker?.emit('spawn');return {promise,worker};};
@@ -607,7 +610,7 @@ for (const failure of ['crash', 'forged-receipt']) {
   });
 }
 
-test('portable import cancellation waits verifier exit before discarding staging and retains existing records', async t => {
+test('portable import cancellation responds promptly but defers staging cleanup and stays busy until actual exit', async t => {
   const run = await ownedRun(t), archive = await archiveFixture(run.directory), packagePath = join(run.directory, 'match.cs2a');
   await writePortableArchive(archive, packagePath);
   const staging = join(run.directory, 'stage'); await mkdir(staging);
@@ -618,9 +621,42 @@ test('portable import cancellation waits verifier exit before discarding staging
   const worker = await waitVerificationWorker(h); worker.emit('spawn');
   await h.handlers.get('report:cancel')(h.trusted); await tick();
   assert.equal(worker.killed, true); assert.deepEqual(h.service.discarded, []);
+  assert.equal((await pending).kind, 'cancelled');
+  assert.equal((await h.handlers.get('library:open')(h.trusted, MATCH)).kind, 'error');
   worker.emit('exit', 0);
-  assert.equal((await pending).kind, 'cancelled'); assert.equal(commits, 0);
+  await tick(); assert.equal(commits, 0);
   assert.deepEqual(h.service.discarded, ['stage-1']); assert.equal(h.service.get(MATCH).state, 'ready');
+});
+
+test('portable verification timeout returns failure without deleting live staging or releasing the library lock', async t => {
+  const run = await ownedRun(t), archive = await archiveFixture(run.directory), packagePath = join(run.directory, 'match.cs2a');
+  await writePortableArchive(archive, packagePath);
+  const staging = join(run.directory, 'stage'); await mkdir(staging);
+  const h = await harness({ realVerifier: true, delayExit: true, verifierTimeoutMs: 50, env: { CS2_ANALYST_IMPORT_PATH: packagePath } });
+  h.service.createStaging = async () => ({ id: 'stage-1', directory: staging });
+  let commits = 0; h.service.commitStaging = async () => { commits++; };
+  const pending = h.handlers.get('library:import')(h.trusted);
+  const worker = await waitVerificationWorker(h); worker.emit('spawn');
+  assert.equal((await pending).kind, 'error'); assert.equal(worker.killed, true);
+  assert.deepEqual(h.service.discarded, []); assert.equal(h.service.closed, false); assert.equal(commits, 0);
+  assert.equal((await h.handlers.get('library:export')(h.trusted, MATCH)).kind, 'error');
+  worker.emit('exit', 0); await tick();
+  assert.deepEqual(h.service.discarded, ['stage-1']);
+});
+
+test('unsupported portable archive schemas retain the friendly newer-version message before a verifier starts', async t => {
+  const run = await ownedRun(t), archive = await archiveFixture(run.directory), packagePath = join(run.directory, 'match.cs2a');
+  await writePortableArchive(archive, packagePath);
+  const original = await readFile(packagePath), headerLength = original.readUInt32BE(8);
+  const header = JSON.parse(original.subarray(12, 12 + headerLength)); header.archiveSchemaVersion = 3;
+  const json = Buffer.from(JSON.stringify(header)), prefix = Buffer.from(original.subarray(0, 12)); prefix.writeUInt32BE(json.length, 8);
+  await writeFile(packagePath, Buffer.concat([prefix, json, original.subarray(12 + headerLength)]));
+  const staging = join(run.directory, 'stage'); await mkdir(staging);
+  const h = await harness({ realVerifier: true, env: { CS2_ANALYST_IMPORT_PATH: packagePath } });
+  h.service.createStaging = async () => ({ id: 'stage-1', directory: staging });
+  const result = await h.handlers.get('library:import')(h.trusted);
+  assert.equal(result.kind, 'error'); assert.match(result.message, /更新版本/); assert.equal(h.workers.length, 0);
+  assert.deepEqual(h.service.discarded, ['stage-1']);
 });
 
 test('window close and quit wait portable verifier exit and staging cleanup before releasing SQLite', async t => {

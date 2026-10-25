@@ -47,6 +47,11 @@ function portableOperation<T>(operation: (signal: AbortSignal) => Promise<T>): P
   void pending.then(finished, finished);
   return pending;
 }
+function deferredPortableCleanup(cleanup: Promise<void>): void {
+  const guarded = cleanup.catch(error => { console.error('Deferred portable archive cleanup failed', error); });
+  portableCleanups.add(guarded);
+  void guarded.then(() => portableCleanups.delete(guarded));
+}
 function portableDialog<T>(signal: AbortSignal, open: () => Promise<T>): Promise<T> {
   signal.throwIfAborted();
   return new Promise((resolve, reject) => {
@@ -358,8 +363,12 @@ ipcMain.handle('library:export', async (event, matchId: unknown): Promise<Librar
       console.error('Match export failed', error);
       return { kind: 'error', message: '无法导出比赛归档。请检查目标位置、磁盘空间后重试。' };
     } finally {
-      exporting = false;
-      if (temporary) { try { await rm(temporary, { force: true }); } catch { /* Best-effort temp cleanup. */ } }
+      const cleanup = async () => {
+        if (temporary) { try { await rm(temporary, { force: true }); } catch { /* Best-effort temp cleanup. */ } }
+        exporting = false;
+      };
+      if (archiveVerifier.activeCount) deferredPortableCleanup(archiveVerifier.waitForIdle().then(cleanup));
+      else await cleanup();
     }
   });
 });
@@ -369,6 +378,7 @@ ipcMain.handle('library:import', async (event): Promise<LibraryImportResult> => 
   if (importing || opening || removing || exporting) return { kind: 'error', message: '已有比赛任务正在运行。' };
   importing = true;
   return portableOperation<LibraryImportResult>(async signal => {
+    let retiring = false;
     try {
       let filePath: string;
       const injected = developmentInjectedPath('CS2_ANALYST_IMPORT_PATH');
@@ -405,16 +415,22 @@ ipcMain.handle('library:import', async (event): Promise<LibraryImportResult> => 
         console.error('Match archive import rejected', error);
         return { kind: 'error', message: committed ? '比赛归档已保存，请在比赛库中查看；现有记录没有回滚。' : importFailureMessage(error) };
       } finally {
-        // A duplicate commit already removed its staging directory; a failure is always
-        // discarded so no partial data survives and existing matches are untouched.
-        if (!committed) { try { await library.discardStaging(staging.id); } catch (error) { console.error('Import staging cleanup failed', error); } }
+        // A failed verifier may not have exited yet. Return its controlled error,
+        // but retain busy/SQLite ownership and defer staging removal until real exit.
+        const discard = async () => {
+          try { await library.discardStaging(staging.id); } catch (error) { console.error('Import staging cleanup failed', error); }
+        };
+        if (!committed && archiveVerifier.activeCount) {
+          retiring = true;
+          deferredPortableCleanup(archiveVerifier.waitForIdle().then(async () => { await discard(); importing = false; }));
+        } else if (!committed) await discard();
       }
     } catch (error) {
       if (signal.aborted) return { kind: 'cancelled' };
       console.error('Match archive import failed', error);
       return { kind: 'error', message: '无法导入比赛归档；现有比赛保持不变。' };
     } finally {
-      importing = false;
+      if (!retiring) importing = false;
     }
   });
 });

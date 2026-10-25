@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { EventEmitter } from 'node:events';
-import { isAbsolute } from 'node:path';
+import { isAbsolute, resolve } from 'node:path';
 import { archiveCompressedBytes, archiveManifestHash, LIBRARY_ARCHIVE_LIMITS, readArchiveManifest,
   type ArchiveManifest, type ArchiveWriteResult } from './library-archive.ts';
 
@@ -27,7 +27,7 @@ export function isArchiveVerificationRequest(value: unknown): value is ArchiveVe
   const v = value as Record<string, unknown>;
   return Object.keys(v).sort().join() === 'directory,jobId,kind,manifestHash' && v.kind === 'verify-archive'
     && uuid(v.jobId) && sha(v.manifestHash) && typeof v.directory === 'string' && v.directory.length <= 32768
-    && !v.directory.includes('\0') && isAbsolute(v.directory) && !v.directory.startsWith('\\\\');
+    && !v.directory.includes('\0') && isAbsolute(v.directory) && !resolve(v.directory).startsWith('\\\\');
 }
 function receipt(value: unknown, jobId: string, manifestHash: string, storedBytes: number): value is ArchiveVerificationReceipt {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
@@ -57,23 +57,33 @@ export class ArchiveVerificationBroker {
     if (this.closed) throw failure('Archive verification broker closed.');
     const readManifest = this.options.readManifest ?? readArchiveManifest;
     const before = await readManifest(directory), manifestHash = archiveManifestHash(before), storedBytes = bytes(before);
-    if (storedBytes > LIBRARY_ARCHIVE_LIMITS.totalGzipBytes + LIBRARY_ARCHIVE_LIMITS.manifestBytes) throw failure('Archive verification budget.');
+    if (storedBytes > LIBRARY_ARCHIVE_LIMITS.totalCompressedBytes + LIBRARY_ARCHIVE_LIMITS.manifestBytes) throw failure('Archive verification budget.');
     signal?.throwIfAborted();
     if (this.closed) throw failure('Archive verification broker closed.');
     const jobId = randomUUID(), worker = this.fork();
     return await new Promise<ArchiveWriteResult>((resolve, reject) => {
-      let failed: Error | null = null, validated: ArchiveManifest | null = null, checking = false, hasExited = false, done = false;
+      let failed: Error | null = null, validated: ArchiveManifest | null = null, checking = false, hasExited = false, done = false, retired = false;
       let releaseExit!: () => void;
       const exited = new Promise<void>(resolveExit => { releaseExit = resolveExit; });
       const finish = () => {
-        if (done || !hasExited || (!failed && !validated)) return;
-        done = true; clearTimeout(timer); signal?.removeEventListener('abort', abort);
-        worker.removeListener('message', onMessage); worker.removeListener('spawn', onSpawn); worker.removeListener('error', onError);
+        if (!hasExited) return;
+        if (!retired) {
+          retired = true; clearTimeout(timer); signal?.removeEventListener('abort', abort);
+          worker.removeListener('message', onMessage); worker.removeListener('spawn', onSpawn); worker.removeListener('error', onError);
+        }
+        if (done || (!failed && !validated)) return;
+        done = true;
         if (failed) reject(failed);
         else resolve({ manifest: validated!, manifestHash, storedBytes });
       };
       const kill = () => { try { worker.kill(); } catch { /* Exit confirmation still owns cleanup. */ } };
-      const fail = (error: Error) => { failed ??= error; kill(); finish(); };
+      const fail = (error: Error) => {
+        failed ??= error; clearTimeout(timer); signal?.removeEventListener('abort', abort);
+        kill(); finish();
+        // Return a controlled failure even if the OS cannot confirm retirement yet.
+        // jobs retains the process/late-spawn guard; Main defers cleanup and its lock.
+        if (!done) { done = true; reject(failed); }
+      };
       const abort = () => fail(cancelled());
       const onError = () => fail(failure('Archive verification Utility failed.'));
       const onSpawn = () => {

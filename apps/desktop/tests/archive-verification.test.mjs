@@ -85,6 +85,29 @@ test('cancel, crash, error and timeout kill the worker and never return a verifi
   }
 });
 
+test('timeout and abort return controlled failure while an unconfirmed process remains tracked', async () => {
+  for (const reason of ['abort', 'timeout', 'error']) {
+    const h = await started({ worker: { autoExit: false }, timeoutMs: reason === 'timeout' ? 5 : 5000 });
+    if (reason === 'abort') h.controller.abort();
+    if (reason === 'error') h.worker.emit('error', new Error('failed without exit'));
+    const result = await h.outcome;
+    assert.ok(result.error); assert.equal(h.broker.activeCount, 1); assert.equal(h.worker.kills, 1);
+    assert.equal(h.worker.listenerCount('spawn'), 0, 'already-spawned worker has no pending spawn handler');
+    let idle = false; const waiting = h.broker.waitForIdle().then(() => { idle = true; });
+    await tick(); assert.equal(idle, false);
+    h.worker.emit('exit', 0); await waiting; assert.equal(h.broker.activeCount, 0);
+    assert.equal(h.worker.listenerCount('message'), 0);
+  }
+});
+
+test('private jobs reject both Windows UNC spellings and device paths', () => {
+  const request = { kind: 'verify-archive', jobId: randomUUID(), directory: 'C:/owned-test/archive', manifestHash: 'a'.repeat(64) };
+  assert.equal(isArchiveVerificationRequest(request), true);
+  for (const directory of ['\\\\server\\share\\archive', '//server/share/archive', '//?/C:/archive', '\\\\?\\C:\\archive', '../archive']) {
+    assert.equal(isArchiveVerificationRequest({ ...request, directory }), false, directory);
+  }
+});
+
 test('pre-spawn cancellation retires the late process before cleanup is confirmed', async () => {
   const h = await started({ worker: { autoExit: false, pid: undefined }, spawn: false });
   h.controller.abort();
