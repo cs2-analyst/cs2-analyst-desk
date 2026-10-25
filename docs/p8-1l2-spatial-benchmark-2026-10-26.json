@@ -1,0 +1,1403 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-26",
+  "timeZone": "Asia/Shanghai",
+  "stage": "P8.1-L2.2C",
+  "applicationVersion": "0.2.0",
+  "result": {
+    "coordinateProjectionArithmetic": "PASS",
+    "independentSpatialAccuracy": "BLOCKED",
+    "globalCoordinateConsistency": "BLOCKED",
+    "regionalCompatibility": "unconfirmed",
+    "staticCollision": "NOT RUN",
+    "nav": "NOT RUN",
+    "staticLOS": "NOT RUN",
+    "dynamicOcclusion": "NOT RUN"
+  },
+  "baseline": {
+    "repository": "cs2-analyst/cs2-analyst-desk",
+    "localDirectory": "E:/cs2-analyst",
+    "initialBranch": "codex/p8-1l2-demo-map-binding-research",
+    "head": "d58de2f156e08836c719bf72225c200287f4c196",
+    "initialWorktree": "clean",
+    "branch": "codex/p8-1l2-spatial-benchmark",
+    "originMain": "f44984e5464552c81737922c67df3d9f17c27c71",
+    "remoteInventory": "b50bc7ac5cb079e86bc64e9f107ba1501aa34e60",
+    "remoteBinding": "d58de2f156e08836c719bf72225c200287f4c196",
+    "pr4": {
+      "url": "https://github.com/cs2-analyst/cs2-analyst-desk/pull/4",
+      "state": "open",
+      "draft": true,
+      "merged": false,
+      "head": "8f61854793f3d9230d1cd160b3fd01dedaafcadd"
+    },
+    "previousCommits": [
+      "babcdd8cdff444dad86ff78e0f3e1f4499c54ddb",
+      "623caaccbbd479e538c6b1166b8890170ab4c8f1",
+      "b50bc7ac5cb079e86bc64e9f107ba1501aa34e60",
+      "d58de2f156e08836c719bf72225c200287f4c196"
+    ],
+    "diffAgainst": "d58de2f156e08836c719bf72225c200287f4c196"
+  },
+  "scope": {
+    "newFilesOnly": true,
+    "productionChanges": false,
+    "publicContractChanges": false,
+    "manifestChanges": false,
+    "oldReportOrTestChanges": false,
+    "dependenciesInstalled": false,
+    "nativeCompiled": false,
+    "gameResourceReadOrExtraction": false,
+    "versionChanged": false,
+    "navOrLosImplemented": false,
+    "rawProbesCommitted": false,
+    "nextStageStarted": false
+  },
+  "freeze": {
+    "frozenAt": "2026-10-25T18:47:40.951Z",
+    "localTime": "2026-10-26T02:47:40.951+08:00",
+    "protocolSha256": "f0141108ec03a5a2dc25eed61b4e778e9da7fcda8e6daeb193bf083c20b6c3d0",
+    "scriptSha256AtFreeze": "da993ec8ebc8f4a91295143108afc36d03ef306df45785172ad8b503e7e39511",
+    "priorExposure": "Historical four-region outcomes were read before this protocol; all region reruns are exploratory, never held-out validation.",
+    "protocolChangedAfterResults": false
+  },
+  "execution": {
+    "startedAt": "2026-10-25T18:47:46.914Z",
+    "completedAt": "2026-10-25T18:47:48.673Z",
+    "protocolSha256": "f0141108ec03a5a2dc25eed61b4e778e9da7fcda8e6daeb193bf083c20b6c3d0",
+    "protocol": {
+      "id": "l22c-spatial-benchmark-v1",
+      "frozenBeforeCurrentRun": true,
+      "priorExposure": "Historical four-region outcomes were read before this protocol; all region reruns are exploratory, never held-out validation.",
+      "arithmetic": {
+        "tolerancePx": 1e-9,
+        "scope": "finite practical inputs; |XYZ|<=1e6, dimensions 1..8192, scale 1..100; not an exhaustive numeric proof"
+      },
+      "independentAccuracy": {
+        "maxReferenceUncertaintyPx": 2,
+        "regionalMinDistinctHeldOutLandmarks": 6,
+        "maxConservativeErrorPx": 8,
+        "medianConservativeErrorPx": 4,
+        "regionalMinHullFraction": 0.5,
+        "globalMinDistinctHeldOutLandmarks": 24,
+        "globalMinRegions": 6,
+        "globalMinLandmarksPerRegion": 4,
+        "p95MinDistinctLandmarks": 20,
+        "method": "No fitting on validation points. Conservative error = Euclidean point residual + bounded radial reference uncertainty. Non-collinear references; region center, perimeter, both axes and declared height bands must be covered. Outside supported hull/height is unconfirmed.",
+        "rationale": "Prospective research budgets at native 1024 px, not game-accuracy standards. Thresholds alone cannot certify source independence or geometry."
+      },
+      "sample": {
+        "fixture": ".demo/dust2.dem",
+        "sha256": "db90fe85aab023a1d2c8a5996182e6120d98ef494f02a070b17982b235e4958c",
+        "freezeTick": 2712,
+        "plantTicks": [
+          21621,
+          43991,
+          61675,
+          70450,
+          91257,
+          101668,
+          114041,
+          124988,
+          144817,
+          161643,
+          183400,
+          199980
+        ],
+        "fields": [
+          "X",
+          "Y",
+          "Z",
+          "is_alive",
+          "team_num"
+        ],
+        "selection": "Historical ticks frozen before rerun. All live team 2/3 rows at first freeze tick; unique bomb_planted actor joined at each plant tick. No nearest-tick substitution; no trajectory query."
+      },
+      "regions": [
+        {
+          "id": "t-spawn",
+          "bounds": [
+            295,
+            875,
+            490,
+            960
+          ]
+        },
+        {
+          "id": "ct-spawn",
+          "bounds": [
+            570,
+            150,
+            685,
+            265
+          ]
+        },
+        {
+          "id": "east-bomb-area",
+          "bounds": [
+            775,
+            135,
+            855,
+            215
+          ]
+        },
+        {
+          "id": "west-bomb-area",
+          "bounds": [
+            165,
+            78,
+            260,
+            180
+          ]
+        }
+      ],
+      "regionInterpretation": "Historical image rectangles, not point correspondences. East/west plant grouping uses X sign as in old script; it is transform-sensitive and not an independent site assignment. Bounds have no calibrated uncertainty."
+    },
+    "imageReferences": [
+      {
+        "referenceId": "IMG01",
+        "region": "west-bomb-area",
+        "referenceType": "image-only-fixed-feature-candidate",
+        "feature": "northwest corner of orange marker",
+        "worldPosition": null,
+        "imagePosition": {
+          "x": 171,
+          "y": 82
+        },
+        "imageSource": "apps/desktop/renderer/src/assets/replay-maps/de_dust2.png",
+        "sourceEvidence": "Natural-size 1024x1024 PNG visual inspection; same-image annotation independent of worldToRadar arithmetic, but no world/DEM correspondence.",
+        "annotationMethod": "Agent visual estimate on original image; top-left origin, x right/y down, continuous pixel coordinates; no resampling, inverse transform, or projection overlay.",
+        "referenceUncertainty": {
+          "estimatedRadiusPx": 4,
+          "calibrated": false,
+          "worldUnits": null,
+          "note": "Heuristic visual ambiguity range, not a measured confidence interval."
+        },
+        "suitability": "exploration-only",
+        "trainingEligible": false,
+        "validationEligible": false,
+        "missingEvidence": "Independent identification and measurement of this exact fixed feature in target DEM world coordinates, including Z/height and bounded uncertainty."
+      },
+      {
+        "referenceId": "IMG02",
+        "region": "east-bomb-area",
+        "referenceType": "image-only-fixed-feature-candidate",
+        "feature": "northwest corner of orange marker",
+        "worldPosition": null,
+        "imagePosition": {
+          "x": 780,
+          "y": 139
+        },
+        "imageSource": "apps/desktop/renderer/src/assets/replay-maps/de_dust2.png",
+        "sourceEvidence": "Natural-size 1024x1024 PNG visual inspection; same-image annotation independent of worldToRadar arithmetic, but no world/DEM correspondence.",
+        "annotationMethod": "Agent visual estimate on original image; top-left origin, x right/y down, continuous pixel coordinates; no resampling, inverse transform, or projection overlay.",
+        "referenceUncertainty": {
+          "estimatedRadiusPx": 4,
+          "calibrated": false,
+          "worldUnits": null,
+          "note": "Heuristic visual ambiguity range, not a measured confidence interval."
+        },
+        "suitability": "exploration-only",
+        "trainingEligible": false,
+        "validationEligible": false,
+        "missingEvidence": "Independent identification and measurement of this exact fixed feature in target DEM world coordinates, including Z/height and bounded uncertainty."
+      },
+      {
+        "referenceId": "IMG03",
+        "region": "t-spawn",
+        "referenceType": "image-only-fixed-feature-candidate",
+        "feature": "southwest corner of green marker",
+        "worldPosition": null,
+        "imagePosition": {
+          "x": 295,
+          "y": 957
+        },
+        "imageSource": "apps/desktop/renderer/src/assets/replay-maps/de_dust2.png",
+        "sourceEvidence": "Natural-size 1024x1024 PNG visual inspection; same-image annotation independent of worldToRadar arithmetic, but no world/DEM correspondence.",
+        "annotationMethod": "Agent visual estimate on original image; top-left origin, x right/y down, continuous pixel coordinates; no resampling, inverse transform, or projection overlay.",
+        "referenceUncertainty": {
+          "estimatedRadiusPx": 4,
+          "calibrated": false,
+          "worldUnits": null,
+          "note": "Heuristic visual ambiguity range, not a measured confidence interval."
+        },
+        "suitability": "exploration-only",
+        "trainingEligible": false,
+        "validationEligible": false,
+        "missingEvidence": "Independent identification and measurement of this exact fixed feature in target DEM world coordinates, including Z/height and bounded uncertainty."
+      },
+      {
+        "referenceId": "IMG04",
+        "region": "ct-spawn",
+        "referenceType": "image-only-fixed-feature-candidate",
+        "feature": "northwest corner of solid green marker",
+        "worldPosition": null,
+        "imagePosition": {
+          "x": 574,
+          "y": 155
+        },
+        "imageSource": "apps/desktop/renderer/src/assets/replay-maps/de_dust2.png",
+        "sourceEvidence": "Natural-size 1024x1024 PNG visual inspection; same-image annotation independent of worldToRadar arithmetic, but no world/DEM correspondence.",
+        "annotationMethod": "Agent visual estimate on original image; top-left origin, x right/y down, continuous pixel coordinates; no resampling, inverse transform, or projection overlay.",
+        "referenceUncertainty": {
+          "estimatedRadiusPx": 4,
+          "calibrated": false,
+          "worldUnits": null,
+          "note": "Heuristic visual ambiguity range, not a measured confidence interval."
+        },
+        "suitability": "exploration-only",
+        "trainingEligible": false,
+        "validationEligible": false,
+        "missingEvidence": "Independent identification and measurement of this exact fixed feature in target DEM world coordinates, including Z/height and bounded uncertainty."
+      },
+      {
+        "referenceId": "IMG05",
+        "region": "mid",
+        "referenceType": "image-only-fixed-feature-candidate",
+        "feature": "center of diagonal double-door gap",
+        "worldPosition": null,
+        "imagePosition": {
+          "x": 458,
+          "y": 371
+        },
+        "imageSource": "apps/desktop/renderer/src/assets/replay-maps/de_dust2.png",
+        "sourceEvidence": "Natural-size 1024x1024 PNG visual inspection; same-image annotation independent of worldToRadar arithmetic, but no world/DEM correspondence.",
+        "annotationMethod": "Agent visual estimate on original image; top-left origin, x right/y down, continuous pixel coordinates; no resampling, inverse transform, or projection overlay.",
+        "referenceUncertainty": {
+          "estimatedRadiusPx": 8,
+          "calibrated": false,
+          "worldUnits": null,
+          "note": "Heuristic visual ambiguity range, not a measured confidence interval."
+        },
+        "suitability": "exploration-only",
+        "trainingEligible": false,
+        "validationEligible": false,
+        "missingEvidence": "Independent identification and measurement of this exact fixed feature in target DEM world coordinates, including Z/height and bounded uncertainty."
+      },
+      {
+        "referenceId": "IMG06",
+        "region": "a-long-east",
+        "referenceType": "image-only-fixed-feature-candidate",
+        "feature": "southeast corner of long blue rectangle",
+        "worldPosition": null,
+        "imagePosition": {
+          "x": 921,
+          "y": 698
+        },
+        "imageSource": "apps/desktop/renderer/src/assets/replay-maps/de_dust2.png",
+        "sourceEvidence": "Natural-size 1024x1024 PNG visual inspection; same-image annotation independent of worldToRadar arithmetic, but no world/DEM correspondence.",
+        "annotationMethod": "Agent visual estimate on original image; top-left origin, x right/y down, continuous pixel coordinates; no resampling, inverse transform, or projection overlay.",
+        "referenceUncertainty": {
+          "estimatedRadiusPx": 6,
+          "calibrated": false,
+          "worldUnits": null,
+          "note": "Heuristic visual ambiguity range, not a measured confidence interval."
+        },
+        "suitability": "exploration-only",
+        "trainingEligible": false,
+        "validationEligible": false,
+        "missingEvidence": "Independent identification and measurement of this exact fixed feature in target DEM world coordinates, including Z/height and bounded uncertainty."
+      },
+      {
+        "referenceId": "IMG07",
+        "region": "west-tunnel-stairs",
+        "referenceType": "image-only-fixed-feature-candidate",
+        "feature": "center of curved stair depiction",
+        "worldPosition": null,
+        "imagePosition": {
+          "x": 282,
+          "y": 475
+        },
+        "imageSource": "apps/desktop/renderer/src/assets/replay-maps/de_dust2.png",
+        "sourceEvidence": "Natural-size 1024x1024 PNG visual inspection; same-image annotation independent of worldToRadar arithmetic, but no world/DEM correspondence.",
+        "annotationMethod": "Agent visual estimate on original image; top-left origin, x right/y down, continuous pixel coordinates; no resampling, inverse transform, or projection overlay.",
+        "referenceUncertainty": {
+          "estimatedRadiusPx": 10,
+          "calibrated": false,
+          "worldUnits": null,
+          "note": "Heuristic visual ambiguity range, not a measured confidence interval."
+        },
+        "suitability": "exploration-only",
+        "trainingEligible": false,
+        "validationEligible": false,
+        "missingEvidence": "Independent identification and measurement of this exact fixed feature in target DEM world coordinates, including Z/height and bounded uncertainty."
+      },
+      {
+        "referenceId": "IMG08",
+        "region": "ct-overlap",
+        "referenceType": "image-only-fixed-feature-candidate",
+        "feature": "center of hatched overlapping-level depiction",
+        "worldPosition": null,
+        "imagePosition": {
+          "x": 648,
+          "y": 212
+        },
+        "imageSource": "apps/desktop/renderer/src/assets/replay-maps/de_dust2.png",
+        "sourceEvidence": "Natural-size 1024x1024 PNG visual inspection; same-image annotation independent of worldToRadar arithmetic, but no world/DEM correspondence.",
+        "annotationMethod": "Agent visual estimate on original image; top-left origin, x right/y down, continuous pixel coordinates; no resampling, inverse transform, or projection overlay.",
+        "referenceUncertainty": {
+          "estimatedRadiusPx": 12,
+          "calibrated": false,
+          "worldUnits": null,
+          "note": "Heuristic visual ambiguity range, not a measured confidence interval."
+        },
+        "suitability": "exploration-only",
+        "trainingEligible": false,
+        "validationEligible": false,
+        "missingEvidence": "Independent identification and measurement of this exact fixed feature in target DEM world coordinates, including Z/height and bounded uncertainty."
+      }
+    ],
+    "files": [
+      {
+        "path": "apps/desktop/renderer/src/assets/replay-overviews/de_dust2.txt",
+        "bytes": 541,
+        "sha256": "97947e99bc7930fc06dc15af3dcf942dbca5ca1c6f36119a089615fd4b383620"
+      },
+      {
+        "path": "apps/desktop/renderer/src/assets/replay-maps/de_dust2.png",
+        "bytes": 175761,
+        "sha256": "0828297130ce26db25a299806ff743df9104de634a3e64b52b358f6f4399354d"
+      },
+      {
+        "path": "docs/replay-resources.json",
+        "bytes": 21974,
+        "sha256": "a055ce462c1c8f464f54493b0bd7287fc16f5171bf29d2a3e1120de0a6e9f543"
+      },
+      {
+        "path": "docs/replay-calibration.json",
+        "bytes": 12136,
+        "sha256": "be8142476361896360cde49f88849e8c0449c3907723437b0446e46ae153d99b"
+      },
+      {
+        "path": "apps/desktop/shared/replay-map-geometry.ts",
+        "bytes": 3190,
+        "sha256": "a242bf59f92af958d094a997b26a89d2f954dc06ca30edcf46c3da2a458c9c33"
+      }
+    ],
+    "resourceId": "valve-730-2347770-2312433566686574487-vrf20.1",
+    "identity": {
+      "versionMatch": "unconfirmed",
+      "demVersionMatch": "unconfirmed"
+    },
+    "fixture": {
+      "filename": ".demo/dust2.dem",
+      "sha256": "db90fe85aab023a1d2c8a5996182e6120d98ef494f02a070b17982b235e4958c",
+      "bytes": 557650967,
+      "stableSizeMtime": true
+    },
+    "parser": {
+      "version": "0.42.0-backport.363.1",
+      "binarySha256": "132d664125b60542dc80dc8bc270e2c8e181a0a55433fdac5be285ef4d9b0de1"
+    },
+    "arithmetic": [
+      {
+        "id": "origin",
+        "input": {
+          "x": -2476,
+          "y": 3239
+        },
+        "expected": {
+          "x": 0,
+          "y": 0
+        },
+        "actual": {
+          "x": 0,
+          "y": 0
+        },
+        "residual": {
+          "dxPx": 0,
+          "dyPx": 0,
+          "errorPx": 0,
+          "normalizedError": 0
+        },
+        "evidenceClass": "synthetic-formula-only",
+        "status": "PASS"
+      },
+      {
+        "id": "x-right",
+        "input": {
+          "x": -2036,
+          "y": 3239
+        },
+        "expected": {
+          "x": 100,
+          "y": 0
+        },
+        "actual": {
+          "x": 99.99999999999999,
+          "y": 0
+        },
+        "residual": {
+          "dxPx": -1.4210854715202004e-14,
+          "dyPx": 0,
+          "errorPx": 1.4210854715202004e-14,
+          "normalizedError": 1.3877787807814457e-17
+        },
+        "evidenceClass": "synthetic-formula-only",
+        "status": "PASS"
+      },
+      {
+        "id": "y-up",
+        "input": {
+          "x": -2476,
+          "y": 3679
+        },
+        "expected": {
+          "x": 0,
+          "y": -100
+        },
+        "actual": {
+          "x": 0,
+          "y": -99.99999999999999
+        },
+        "residual": {
+          "dxPx": 0,
+          "dyPx": 1.4210854715202004e-14,
+          "errorPx": 1.4210854715202004e-14,
+          "normalizedError": 1.3877787807814457e-17
+        },
+        "evidenceClass": "synthetic-formula-only",
+        "status": "PASS"
+      },
+      {
+        "id": "center",
+        "input": {
+          "x": -223.2,
+          "y": 986.2
+        },
+        "expected": {
+          "x": 512,
+          "y": 512
+        },
+        "actual": {
+          "x": 512,
+          "y": 512
+        },
+        "residual": {
+          "dxPx": 0,
+          "dyPx": 0,
+          "errorPx": 0,
+          "normalizedError": 0
+        },
+        "evidenceClass": "synthetic-formula-only",
+        "status": "PASS"
+      },
+      {
+        "id": "bottom-right-edge",
+        "input": {
+          "x": 2029.6,
+          "y": -1266.6
+        },
+        "expected": {
+          "x": 1024,
+          "y": 1024
+        },
+        "actual": {
+          "x": 1024,
+          "y": 1024
+        },
+        "residual": {
+          "dxPx": 0,
+          "dyPx": 0,
+          "errorPx": 0,
+          "normalizedError": 0
+        },
+        "evidenceClass": "synthetic-formula-only",
+        "status": "PASS"
+      },
+      {
+        "id": "outside-left",
+        "input": {
+          "x": -2916,
+          "y": 3239
+        },
+        "expected": {
+          "x": -100,
+          "y": 0
+        },
+        "actual": {
+          "x": -99.99999999999999,
+          "y": 0
+        },
+        "residual": {
+          "dxPx": 1.4210854715202004e-14,
+          "dyPx": 0,
+          "errorPx": 1.4210854715202004e-14,
+          "normalizedError": 1.3877787807814457e-17
+        },
+        "evidenceClass": "synthetic-formula-only",
+        "status": "PASS"
+      },
+      {
+        "id": "outside-bottom",
+        "input": {
+          "x": -2476,
+          "y": -1706.6
+        },
+        "expected": {
+          "x": 0,
+          "y": 1124
+        },
+        "actual": {
+          "x": 0,
+          "y": 1124
+        },
+        "residual": {
+          "dxPx": 0,
+          "dyPx": 0,
+          "errorPx": 0,
+          "normalizedError": 0
+        },
+        "evidenceClass": "synthetic-formula-only",
+        "status": "PASS"
+      }
+    ],
+    "realQuery": {
+      "fields": [
+        "X",
+        "Y",
+        "Z",
+        "is_alive",
+        "team_num"
+      ],
+      "requestedTicks": [
+        2712,
+        21621,
+        43991,
+        61675,
+        70450,
+        91257,
+        101668,
+        114041,
+        124988,
+        144817,
+        161643,
+        183400,
+        199980
+      ],
+      "actualTicks": [
+        2712,
+        21621,
+        43991,
+        61675,
+        70450,
+        91257,
+        101668,
+        114041,
+        124988,
+        144817,
+        161643,
+        183400,
+        199980
+      ],
+      "returnedRows": 130,
+      "selectedRows": 22,
+      "missingSelectedRows": 0,
+      "selectionUsesHistoricalOutcomes": true
+    },
+    "regions": [
+      {
+        "id": "t-spawn",
+        "bounds": [
+          295,
+          875,
+          490,
+          960
+        ],
+        "sampleCount": 5,
+        "actualTicks": [
+          2712
+        ],
+        "insideCount": 5,
+        "independentCorrespondences": 0,
+        "pointResiduals": {
+          "count": 0,
+          "mean": null,
+          "median": null,
+          "max": null,
+          "p95": null,
+          "p95Status": "insufficient-sample"
+        },
+        "lowerBoundPx": {
+          "count": 5,
+          "mean": 0,
+          "median": 0,
+          "max": 0,
+          "p95": null,
+          "p95Status": "insufficient-sample"
+        },
+        "upperBoundPx": {
+          "count": 5,
+          "mean": 152.8185475075258,
+          "median": 164.17745136647144,
+          "max": 179.7266059674026,
+          "p95": null,
+          "p95Status": "insufficient-sample"
+        },
+        "status": "exploratory-only",
+        "compatibility": "unconfirmed",
+        "lowerBoundNormalized": {
+          "count": 5,
+          "mean": 0,
+          "median": 0,
+          "max": 0,
+          "p95": null,
+          "p95Status": "insufficient-sample"
+        },
+        "upperBoundNormalized": {
+          "count": 5,
+          "mean": 0.14923686280031817,
+          "median": 0.16032954235006977,
+          "max": 0.1755142636400416,
+          "p95": null,
+          "p95Status": "insufficient-sample"
+        }
+      },
+      {
+        "id": "ct-spawn",
+        "bounds": [
+          570,
+          150,
+          685,
+          265
+        ],
+        "sampleCount": 5,
+        "actualTicks": [
+          2712
+        ],
+        "insideCount": 5,
+        "independentCorrespondences": 0,
+        "pointResiduals": {
+          "count": 0,
+          "mean": null,
+          "median": null,
+          "max": null,
+          "p95": null,
+          "p95Status": "insufficient-sample"
+        },
+        "lowerBoundPx": {
+          "count": 5,
+          "mean": 0,
+          "median": 0,
+          "max": 0,
+          "p95": null,
+          "p95Status": "insufficient-sample"
+        },
+        "upperBoundPx": {
+          "count": 5,
+          "mean": 108.21026397965673,
+          "median": 109.1874646664341,
+          "max": 116.00323848030631,
+          "p95": null,
+          "p95Status": "insufficient-sample"
+        },
+        "status": "exploratory-only",
+        "compatibility": "unconfirmed",
+        "lowerBoundNormalized": {
+          "count": 5,
+          "mean": 0,
+          "median": 0,
+          "max": 0,
+          "p95": null,
+          "p95Status": "insufficient-sample"
+        },
+        "upperBoundNormalized": {
+          "count": 5,
+          "mean": 0.10567408591763353,
+          "median": 0.10662838346331455,
+          "max": 0.11328441257842413,
+          "p95": null,
+          "p95Status": "insufficient-sample"
+        }
+      },
+      {
+        "id": "east-bomb-area",
+        "bounds": [
+          775,
+          135,
+          855,
+          215
+        ],
+        "sampleCount": 7,
+        "actualTicks": [
+          21621,
+          43991,
+          91257,
+          101668,
+          124988,
+          144817,
+          183400
+        ],
+        "insideCount": 7,
+        "independentCorrespondences": 0,
+        "pointResiduals": {
+          "count": 0,
+          "mean": null,
+          "median": null,
+          "max": null,
+          "p95": null,
+          "p95Status": "insufficient-sample"
+        },
+        "lowerBoundPx": {
+          "count": 7,
+          "mean": 0,
+          "median": 0,
+          "max": 0,
+          "p95": null,
+          "p95Status": "insufficient-sample"
+        },
+        "upperBoundPx": {
+          "count": 7,
+          "mean": 78.83235486167216,
+          "median": 79.05231887119415,
+          "max": 91.76450204280594,
+          "p95": null,
+          "p95Status": "insufficient-sample"
+        },
+        "status": "exploratory-only",
+        "compatibility": "unconfirmed",
+        "lowerBoundNormalized": {
+          "count": 7,
+          "mean": 0,
+          "median": 0,
+          "max": 0,
+          "p95": null,
+          "p95Status": "insufficient-sample"
+        },
+        "upperBoundNormalized": {
+          "count": 7,
+          "mean": 0.07698472154460172,
+          "median": 0.07719953014765053,
+          "max": 0.08961377152617768,
+          "p95": null,
+          "p95Status": "insufficient-sample"
+        }
+      },
+      {
+        "id": "west-bomb-area",
+        "bounds": [
+          165,
+          78,
+          260,
+          180
+        ],
+        "sampleCount": 5,
+        "actualTicks": [
+          61675,
+          70450,
+          114041,
+          161643,
+          199980
+        ],
+        "insideCount": 5,
+        "independentCorrespondences": 0,
+        "pointResiduals": {
+          "count": 0,
+          "mean": null,
+          "median": null,
+          "max": null,
+          "p95": null,
+          "p95Status": "insufficient-sample"
+        },
+        "lowerBoundPx": {
+          "count": 5,
+          "mean": 0,
+          "median": 0,
+          "max": 0,
+          "p95": null,
+          "p95Status": "insufficient-sample"
+        },
+        "upperBoundPx": {
+          "count": 5,
+          "mean": 105.8091020811288,
+          "median": 110.7259030796522,
+          "max": 114.93308096857541,
+          "p95": null,
+          "p95Status": "insufficient-sample"
+        },
+        "status": "exploratory-only",
+        "compatibility": "unconfirmed",
+        "lowerBoundNormalized": {
+          "count": 5,
+          "mean": 0,
+          "median": 0,
+          "max": 0,
+          "p95": null,
+          "p95Status": "insufficient-sample"
+        },
+        "upperBoundNormalized": {
+          "count": 5,
+          "mean": 0.10332920125110234,
+          "median": 0.10813076472622285,
+          "max": 0.11223933688337442,
+          "p95": null,
+          "p95Status": "insufficient-sample"
+        }
+      }
+    ],
+    "independentResiduals": {
+      "count": 0,
+      "mean": null,
+      "median": null,
+      "max": null,
+      "p95": null,
+      "p95Status": "insufficient-sample"
+    },
+    "result": {
+      "coordinateProjectionArithmetic": "PASS",
+      "independentSpatialAccuracy": "BLOCKED",
+      "globalCoordinateConsistency": "BLOCKED",
+      "regionalCompatibility": "unconfirmed",
+      "staticCollision": "NOT RUN",
+      "nav": "NOT RUN",
+      "staticLOS": "NOT RUN",
+      "dynamicOcclusion": "NOT RUN"
+    }
+  },
+  "sources": [
+    {
+      "id": "S01",
+      "path": "apps/desktop/shared/replay-map-geometry.ts",
+      "role": "actual implementation under test"
+    },
+    {
+      "id": "S02",
+      "path": "docs/replay-resources.json",
+      "role": "display resource identity; no DEM match"
+    },
+    {
+      "id": "S03",
+      "path": "scripts/replay-calibration.mjs",
+      "role": "historical visual rectangles; derived point.pixel is NOT independent truth"
+    },
+    {
+      "id": "S04",
+      "path": "docs/replay-calibration.json",
+      "role": "prior-exposed historical region evidence; identities never copied into new record"
+    },
+    {
+      "id": "S05",
+      "path": "packages/dem-parser/dev/replay-probe.mjs",
+      "role": "historical server-row provenance and actor semantics"
+    },
+    {
+      "id": "S06",
+      "path": "packages/demoparser-native/index.cjs",
+      "role": "existing verified native loading/API"
+    },
+    {
+      "id": "S07",
+      "path": "packages/dem-parser/src/providers/converters.ts",
+      "role": "existing bomb event actor field semantics"
+    },
+    {
+      "id": "S08",
+      "path": "docs/demo-fixtures.md",
+      "role": "allowed local DEM filename and pinned identity"
+    },
+    {
+      "id": "S09",
+      "path": "docs/p8-1l2-distance-foundation.md",
+      "role": "distance independence and capability separation"
+    },
+    {
+      "id": "S10",
+      "path": "docs/p8-1l2-resource-inventory-2026-10-26.json",
+      "role": "prior identities; old results not new tests"
+    },
+    {
+      "id": "S11",
+      "path": "docs/p8-1l2-demo-map-binding-research-2026-10-26.json",
+      "role": "prior unconfirmed relationship; no historic build requirement added"
+    },
+    {
+      "id": "S12",
+      "url": "https://github.com/cs2-analyst/cs2-analyst-desk/blob/8f61854793f3d9230d1cd160b3fd01dedaafcadd/docs/p8-scope-decision-l1-l2-2026-10-25.md",
+      "role": "scope read via git show at fetched head"
+    }
+  ],
+  "independenceAudit": {
+    "validPointCorrespondences": 0,
+    "worldCoordinatesForImageReferences": null,
+    "qualifyingReferenceError": null,
+    "independentPointStatistics": {
+      "count": 0,
+      "mean": null,
+      "median": null,
+      "max": null,
+      "p95": null,
+      "p95Status": "insufficient-sample"
+    },
+    "rejectedSources": [
+      {
+        "source": "historical point.pixel",
+        "reason": "Generated with same overview transform; comparison would be circular."
+      },
+      {
+        "source": "overview spawn/bomb icon coordinates",
+        "reason": "No trusted correspondence to DEM actor origins; same resource metadata."
+      },
+      {
+        "source": "player freeze/plant position as region center",
+        "reason": "An area is not a fixed point; actor origin is not a landmark center."
+      },
+      {
+        "source": "east/west grouping by world X sign",
+        "reason": "Transform-sensitive grouping, not an independent image-site association."
+      }
+    ],
+    "whyBlocked": "Server positions and image features exist separately; no verified same-feature world/image pair with bounded uncertainty and target DEM association.",
+    "minimalEvidence": "Six distinct non-collinear held-out fixed landmarks in a declared area, target-DEM-linked world XYZ and independent same-feature image points. Uncertainty includes annotation plus world measurement propagated into pixels. Historical build-number recovery is not mandatory."
+  },
+  "coverage": {
+    "independentValidatedArea": null,
+    "imageOnlyReferenceCount": 8,
+    "coarseRegionCount": 4,
+    "coarseRectangleAreaPx2": 45890,
+    "coarseRectangleImageFraction": 0.04376411437988281,
+    "rectangleFractionIsNotValidatedOrPlayableArea": true,
+    "observedWorldExtent": {
+      "x": [
+        -1696.2841796875,
+        1235.9676513671875
+      ],
+      "y": [
+        -843,
+        2642.25244140625
+      ],
+      "z": [
+        -121.07666015625,
+        119.88401794433594
+      ]
+    },
+    "unit": "DEM-world-unit",
+    "metersConversion": null,
+    "uncovered": [
+      "central mid",
+      "long corridor",
+      "extreme edges",
+      "ramps/stairs Z truth",
+      "overlapping levels",
+      "region connections"
+    ],
+    "heightTruth": null
+  },
+  "compatibilityProposal": {
+    "productionEnum": false,
+    "identityKey": [
+      "targetDemoSha256",
+      "resourceSha256s",
+      "regionPolygon",
+      "heightRange",
+      "capability",
+      "methodVersion",
+      "thresholdVersion"
+    ],
+    "levels": {
+      "exactly-validated": "Resource identity relation and specifically claimed capability independently validated; no all-capability implication.",
+      "regionally-compatible": "Independent target-DEM-linked local evidence meets frozen uncertainty/residual/coverage criteria for this capability. Historical build number optional.",
+      "unconfirmed": "Missing evidence, or uncertainty interval crosses threshold; e+u>T alone is not mismatch.",
+      "mismatched": "Trusted contradictory evidence for declared capability and region after excluding bad pairing/measurement: e.g. lower error bound max(0,e-u)>T. Never infer mismatch solely from upper bound."
+    },
+    "current": [
+      {
+        "capability": "overview-local-projection",
+        "status": "BLOCKED",
+        "level": "unconfirmed"
+      },
+      {
+        "capability": "world-coordinate-local-consistency",
+        "status": "BLOCKED",
+        "level": "unconfirmed"
+      },
+      {
+        "capability": "static-collision-local-consistency",
+        "status": "NOT RUN",
+        "level": "unconfirmed"
+      },
+      {
+        "capability": "nav-local-reachability",
+        "status": "NOT RUN",
+        "level": "unconfirmed"
+      },
+      {
+        "capability": "static-los-local-consistency",
+        "status": "NOT RUN",
+        "level": "unconfirmed"
+      },
+      {
+        "capability": "dynamic-occlusion",
+        "status": "NOT RUN",
+        "level": "unconfirmed"
+      }
+    ],
+    "invalidation": "Changed DEM/resource/scope/method/thresholds require revalidation. Never propagate between capabilities or extrapolate outside supported scope."
+  },
+  "numericLimit": {
+    "extremeFiniteInputOverflowObserved": true,
+    "productionFix": false,
+    "arithmeticPassScope": "Enumerated examples, this run DEM projections and rejection/scaling tests only; no continuous-domain or all-finite-Number proof.",
+    "worldToRadarClamps": false,
+    "boundary1024IsArrayIndex": false,
+    "normalization": "hypot(dx/width,dy/height); square 1024 equals e_px/1024"
+  },
+  "localEvidence": {
+    "path": "C:/Users/evanpatchouli/Documents/Codex/2026-10-26/files-pasted-by-the-user-p8/work/spatial-benchmark-run.json",
+    "sha256": "5ca69994442f78882f495d32b2b6b47ab9c82d11ffd6aa0958679d4d7c6aef2f",
+    "contains": "22 unpaired anonymous isolated input XYZ/output UV snapshots and rectangle diagnostics; no identities or cross-tick aliases",
+    "gitCommitted": false,
+    "originalDemCopied": false,
+    "referenceResidualsAvailable": false,
+    "reproduce": "node docs/experiments/p8-1l2-spatial-benchmark.mjs <new absolute scratch JSON path outside repository>"
+  },
+  "distance": {
+    "productionUnchanged": true,
+    "resourceMatchRequired": false,
+    "existingRealTestRun": true,
+    "endpointPairs": 4,
+    "kindComparisons": 8,
+    "testCount": 1,
+    "unit": "DEM-world-unit",
+    "notImplied": [
+      "reachability",
+      "staticLOS",
+      "dynamicOcclusion",
+      "supportability",
+      "player-perception"
+    ]
+  },
+  "commands": [
+    {
+      "id": "P01",
+      "command": "Get-Content -LiteralPath 'C:\\Users\\evanpatchouli\\.agents\\AGENTS.md' -Raw",
+      "exitCode": 0,
+      "note": "Self-path only."
+    },
+    {
+      "id": "P02",
+      "command": "Get-Content -LiteralPath 'C:\\Users\\evanpatchouli\\.codex\\attachments\\2aa08262-63e5-47d8-8c34-e853a8d22ab6\\已粘贴的文本.txt' -Raw",
+      "exitCode": 0
+    },
+    {
+      "id": "P03",
+      "command": "Get-ChildItem -Force | Select-Object Mode,Name",
+      "exitCode": 0
+    },
+    {
+      "id": "P04",
+      "command": "git status --short --branch\n git remote -v\n git log -1 --format='%H %s'\n git branch -avv\n rg --files -g 'AGENTS.md' -g '*workflow*' -g '*spatial*' -g '*p8*' -g '*fixture*' -g '*replay*' -g 'package.json' -g 'pnpm-workspace.yaml'",
+      "exitCode": 0
+    },
+    {
+      "id": "P05",
+      "command": "Get-Content -LiteralPath AGENTS.md -Raw\n git fetch origin --prune\n git status --porcelain=v1\n git rev-parse HEAD origin/main origin/codex/p8-1l2-resource-inventory origin/codex/p8-1l2-demo-map-binding-research\n rg --files -g 'AGENTS.md' -g '*workflow*' -g '*WORKFLOW*' -g '*CONTRIBUT*' -g '*README*' -g '*dust2*'",
+      "exitCode": 0
+    },
+    {
+      "id": "P06",
+      "command": "Get-Content -LiteralPath '.agents/routing/model-routing.md','.agents/workflows/demo-analysis-development.md','.agents/workflows/feature-development.md' -Raw\n git show origin/docs/p8-scope-l1-l2-20261025:docs/p8-scope-decision-l1-l2-2026-10-25.md\n Get-Content -LiteralPath 'docs/p8-1l2-map-geometry-feasibility-2026-10-25.md','docs/p8-1l2-distance-foundation.md' -Raw",
+      "exitCode": 0,
+      "note": "Missing feature-development.md; batch exit 0 is not per-command success. Combined displayed output truncated; targeted reads followed."
+    },
+    {
+      "id": "P07",
+      "command": "Get-Content -LiteralPath 'docs/p8-1l2-resource-inventory-2026-10-26.md','docs/p8-1l2-demo-map-binding-research-2026-10-26.md','apps/desktop/shared/replay-map-geometry.ts','docs/demo-fixtures.md' -Raw",
+      "exitCode": 0,
+      "note": "Large output; targeted reads followed."
+    },
+    {
+      "id": "P08",
+      "command": "Get-Content -LiteralPath 'packages/dem-parser/src/providers/demoparser2-adapter.ts' | Select-Object -Skip 100 -First 40\nGet-Content -LiteralPath 'packages/dem-parser/src/providers/converters.ts' | Select-Object -Skip 140 -First 24\nGet-Content -LiteralPath 'apps/desktop/package.json' | Select-Object -First 18",
+      "exitCode": 0
+    },
+    {
+      "id": "local-baselines",
+      "command": "Get-Content -LiteralPath 'docs/p8-1l2-distance-foundation.md' -Raw\nGet-Content -LiteralPath 'docs/replay-calibration.json','docs/replay-resources.json','apps/desktop/renderer/src/assets/replay-overviews/de_dust2.txt' -Raw\nGet-Content -LiteralPath 'scripts/replay-calibration.mjs','docs/experiments/p8-1l2-distance-real.test.mjs','package.json' -Raw",
+      "exitCode": 0
+    },
+    {
+      "id": "preflight-json",
+      "command": "Get-Content -LiteralPath 'docs/p8-1l2-resource-inventory-2026-10-26.json' -Raw\nGet-Content -LiteralPath 'docs/p8-1l2-demo-map-binding-research-2026-10-26.json' -Raw",
+      "exitCode": 0
+    },
+    {
+      "id": "fixture-workflow",
+      "command": "rg --files --hidden .agents\nGet-Content -LiteralPath 'apps/desktop/tests/local-dem-fixture.mjs','packages/dem-parser/src/providers/spatial-evidence.ts','apps/desktop/tests/replay-map.test.mjs' -Raw\nrg -n 'parseTicks|parseEvents|round_start|bomb_planted|actualTick|targetTicks|tick' docs/experiments/p8-1b-r-dust2.mjs\ngit log --oneline origin/main..HEAD\ngit merge-base --is-ancestor origin/codex/p8-1l2-resource-inventory HEAD\ngit diff --name-status origin/codex/p8-1l2-demo-map-binding-research\nGet-Item -LiteralPath '.demo/dust2.dem','node_modules','packages/demoparser-native/index.cjs' | Select-Object Name,Length",
+      "exitCode": 0
+    },
+    {
+      "id": "focused-calibration",
+      "command": "Get-Content -LiteralPath 'scripts/replay-calibration.mjs','docs/experiments/p8-1l2-distance-real.test.mjs','.agents/workflows.md','.agents/roles/reviewer.md','.agents/roles/tester.md' -Raw\nnode --version\nnode -e 'const fs=require(\"fs\");for(const f of [\"docs/p8-1l2-resource-inventory-2026-10-26.json\",\"docs/p8-1l2-demo-map-binding-research-2026-10-26.json\",\"docs/replay-resources.json\"]){const j=JSON.parse(fs.readFileSync(f));console.log(f,Object.keys(j)); if(j.maps) console.log(JSON.stringify({resourceId:j.resourceId,versionMatch:j.versionMatch,dust2:j.maps.find(m=>m.map===\"de_dust2\")},null,2));} const c=JSON.parse(fs.readFileSync(\"docs/replay-calibration.json\")); console.log(\"historical reference summary\",JSON.stringify(c.observations.map(r=>({name:r.name,bounds:r.bounds,count:r.points.length,ticks:[...new Set(r.points.map(p=>p.tick))],kinds:[...new Set(r.points.map(p=>p.kind))]}))));'\nGet-Content -LiteralPath 'apps/desktop/renderer/src/assets/replay-overviews/de_dust2.txt' -Raw",
+      "exitCode": 0
+    },
+    {
+      "id": "read-inventory-binding",
+      "command": "Get-Content -LiteralPath 'docs/p8-1l2-resource-inventory-2026-10-26.md' -Raw\nrg --files --hidden .agents\nnode -e 'const fs=require(\"fs\");for(const [f,ks] of [[\"docs/p8-1l2-resource-inventory-2026-10-26.json\",[\"result\",\"replay\",\"bindingClues\"]],[\"docs/p8-1l2-demo-map-binding-research-2026-10-26.json\",[\"result\",\"capabilities\",\"bindingEdges\"]]]){const j=JSON.parse(fs.readFileSync(f));console.log(f,JSON.stringify(Object.fromEntries(ks.map(k=>[k,j[k]])),null,2));}'\nrg -n 'landmark|calibrat|bomb_planted|freeze_end|parseTicks|parseEvents' scripts/replay-smoke.mjs packages/dem-parser/dev/replay-probe.mjs packages/demoparser-native/index.d.ts",
+      "exitCode": 0
+    },
+    {
+      "id": "native-and-review-policy",
+      "command": "Get-Content -LiteralPath '.agents/agents/reviewer.md','.agents/agents/tester.md','packages/demoparser-native/index.cjs','packages/demoparser-native/package.json' -Raw\nGet-Content -LiteralPath 'packages/dem-parser/dev/replay-probe.mjs' | Select-Object -Skip 50 -First 45\nGet-Content -LiteralPath 'docs/p8-1l2-demo-map-binding-research-2026-10-26.md' | Select-Object -First 90",
+      "exitCode": 0
+    },
+    {
+      "id": "branch-and-api",
+      "command": "git switch -c codex/p8-1l2-spatial-benchmark\ngit ls-remote --heads origin main codex/p8-1l2-resource-inventory codex/p8-1l2-demo-map-binding-research docs/p8-scope-l1-l2-20261025\nGet-Content -LiteralPath 'scripts/replay-resource-audit.mjs' | Select-Object -First 120\nGet-Content -LiteralPath 'packages/dem-parser/src/providers/demoparser2-adapter.ts' | Select-Object -First 100\nGet-Content -LiteralPath 'apps/desktop/tests/local-dem-fixture.mjs' -Raw\nrg -n 'userid_steamid|user_steamid|bomb_planted' packages/dem-parser/src/providers -g '*.ts'",
+      "exitCode": 0
+    },
+    {
+      "id": "freeze-and-unit-tests",
+      "command": "@'\nimport { writeFileSync, readFileSync } from 'node:fs';\nimport { protocol, imageReferences, digest } from './docs/experiments/p8-1l2-spatial-benchmark.mjs';\nconst snapshot = { frozenAt: new Date().toISOString(), protocolSha256: digest(JSON.stringify(protocol)), scriptSha256: digest(readFileSync('docs/experiments/p8-1l2-spatial-benchmark.mjs')), protocol, imageReferences };\nwriteFileSync('C:/Users/evanpatchouli/Documents/Codex/2026-10-26/files-pasted-by-the-user-p8/work/spatial-protocol-frozen.json',JSON.stringify(snapshot,null,2)+'\\n',{flag:'wx'});\nconsole.log(JSON.stringify({frozenAt:snapshot.frozenAt,protocolSha256:snapshot.protocolSha256,scriptSha256:snapshot.scriptSha256}));\n'@ | node --input-type=module\nnode --test docs/experiments/p8-1l2-spatial-benchmark.test.mjs",
+      "exitCode": 0
+    },
+    {
+      "id": "real-dem-run",
+      "command": "node docs/experiments/p8-1l2-spatial-benchmark.mjs 'C:\\Users\\evanpatchouli\\Documents\\Codex\\2026-10-26\\files-pasted-by-the-user-p8\\work\\spatial-benchmark-run.json'",
+      "exitCode": 0
+    },
+    {
+      "id": "existing-regressions",
+      "command": "node --test apps/desktop/tests/replay-map.test.mjs scripts/replay-resource-audit.test.mjs docs/experiments/p8-1l2-distance-real.test.mjs\ngit diff --check\ngit status --short",
+      "exitCode": 0
+    },
+    {
+      "id": "read-run-aggregates",
+      "command": "@'\nimport { readFileSync } from 'node:fs';\nconst run=JSON.parse(readFileSync('C:/Users/evanpatchouli/Documents/Codex/2026-10-26/files-pasted-by-the-user-p8/work/spatial-benchmark-run.json'));\nconst a=run.protocol.regions.reduce((s,r)=>s+(r.bounds[2]-r.bounds[0])*(r.bounds[3]-r.bounds[1]),0);\nconsole.log(JSON.stringify({files:run.files,parser:run.parser,startedAt:run.startedAt,completedAt:run.completedAt,regionRectangleAreaPx2:a,rectangleImageFraction:a/(1024*1024),probeExtent:Object.fromEntries(['x','y','z'].map(k=>[k,[Math.min(...run.probes.map(p=>p.input[k])),Math.max(...run.probes.map(p=>p.input[k]))]])),arithmeticMaxResidualPx:Math.max(...run.arithmetic.map(a=>a.residual.errorPx))},null,2));\n'@ | node --input-type=module\ngit status --porcelain=v1",
+      "exitCode": 0
+    },
+    {
+      "id": "build-report",
+      "command": "node 'C:\\Users\\evanpatchouli\\Documents\\Codex\\2026-10-26\\files-pasted-by-the-user-p8\\work\\build-report.mjs'",
+      "exitCode": 0
+    },
+    {
+      "id": "document-validation-first",
+      "command": "git add -- docs/experiments/p8-1l2-spatial-benchmark.mjs docs/experiments/p8-1l2-spatial-benchmark.test.mjs docs/p8-1l2-spatial-benchmark-2026-10-26.md docs/p8-1l2-spatial-benchmark-2026-10-26.json\nnode 'C:\\Users\\evanpatchouli\\Documents\\Codex\\2026-10-26\\files-pasted-by-the-user-p8\\work\\validate-report.mjs'",
+      "exitCode": 0
+    },
+    {
+      "id": "final-remote-scope-check",
+      "command": "git ls-remote --heads origin main codex/p8-1l2-resource-inventory codex/p8-1l2-demo-map-binding-research docs/p8-scope-l1-l2-20261025\ngit diff --cached --stat\ngit status --short --branch",
+      "exitCode": 0
+    }
+  ],
+  "commandNotes": [
+    "Exit codes are per batch; missing feature-development.md and .agents/roles/* reads failed before correct paths were read.",
+    "Large historical reads had truncated display; later focused source reads established claims. Historical raw player identities were not copied.",
+    "Existing regressions batch ended with git status; node itself explicitly reported 9 passed and no failures/skips.",
+    "apply_patch initially rejected a duplicate delete/add operation on local scratch ledger; fixed with Update File, no repository effect.",
+    "Authoring uses apply_patch and local work/build-report.mjs, no resource or production writes."
+  ],
+  "toolCalls": [
+    {
+      "tool": "mcp__codex_app__list_projects",
+      "purpose": "locate checkout",
+      "exitCode": null
+    },
+    {
+      "tool": "mcp__codex_apps__github_get_pr_info",
+      "parameters": {
+        "repository_full_name": "cs2-analyst/cs2-analyst-desk",
+        "pr_number": 4
+      },
+      "result": "open draft not merged",
+      "exitCode": null
+    },
+    {
+      "tool": "view_image",
+      "path": "E:/cs2-analyst/apps/desktop/renderer/src/assets/replay-maps/de_dust2.png",
+      "purpose": "natural-size visual annotation",
+      "exitCode": null
+    },
+    {
+      "tool": "collaboration.spawn_agent",
+      "purpose": "independent reviewer required by project AGENTS",
+      "exitCode": null
+    },
+    {
+      "tool": "apply_patch",
+      "purpose": "new research files and scratch authoring",
+      "exitCode": null
+    },
+    {
+      "tool": "mcp__codex_apps__github_get_pr_info",
+      "purpose": "final state reconfirmation",
+      "result": "PR4 still open/draft/merged=false, same head",
+      "exitCode": null
+    }
+  ],
+  "validation": {
+    "unitTests": {
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0
+    },
+    "existingRelevantTests": {
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0
+    },
+    "uniqueRuntimeTests": 20,
+    "benchmarkRuns": 1,
+    "independentReview": {
+      "reviewer": "benchmark_review",
+      "scope": "Independent read-only review; no DEM execution, resource parsing, network, dependency installation, compilation or repository mutation",
+      "preliminaryResult": "PASS",
+      "blockingFindings": [],
+      "unitTests": {
+        "tests": 11,
+        "pass": 11,
+        "fail": 0,
+        "skip": 0
+      },
+      "scratchEvidenceChecks": {
+        "status": "PASS",
+        "assertions": 10,
+        "independentPairs": 0,
+        "returnedRows": 130,
+        "selectedRows": 22,
+        "protocolFrozenBeforeRun": true
+      },
+      "notes": [
+        "Arithmetic PASS must be scoped to executed cases and observed DEM inputs, not exhaustive validation of a continuous numeric envelope.",
+        "Global prospective floor of 24 landmarks across six regions does not grant each region the separate minimum-six-landmark regional compatibility condition.",
+        "Warmup !== true admits unknown values; disclose the exploratory selection semantics.",
+        "Reference uncertainty now explicitly combines image annotation and propagated world-coordinate measurement uncertainty."
+      ],
+      "commands": [
+        {
+          "id": "RV01",
+          "command": "git status --short --branch\nGet-Content -LiteralPath 'AGENTS.md','docs/experiments/p8-1l2-spatial-benchmark.mjs','docs/experiments/p8-1l2-spatial-benchmark.test.mjs','apps/desktop/shared/replay-map-geometry.ts','scripts/replay-calibration.mjs' -Raw",
+          "exitCode": 0,
+          "summary": "Read project policy and complete new scripts plus tested projection and historical calibration sources. No blocking issue."
+        },
+        {
+          "id": "RV02",
+          "command": "node --test docs/experiments/p8-1l2-spatial-benchmark.test.mjs",
+          "exitCode": 0,
+          "summary": "11 tests passed; zero failures/skips."
+        },
+        {
+          "id": "RV03",
+          "command": "git diff --check\ngit diff --name-status d58de2f156e08836c719bf72225c200287f4c196\nGet-Content -LiteralPath '.agents/routing/model-routing.md','.agents/agents/reviewer.md' -Raw\nrg -n 'frozenBefore|scope:|regionalMin|globalMin|warmup|referenceId: null|same-image|writeFileSync|versionMatch|result:' docs/experiments/p8-1l2-spatial-benchmark.mjs",
+          "exitCode": 0,
+          "summary": "Routing/reviewer role verified. No tracked differences at this preliminary point; new scripts still untracked. Diff checks do not cover untracked files yet."
+        },
+        {
+          "id": "RV04",
+          "command": "@'\nimport fs from 'node:fs';\nimport crypto from 'node:crypto';\nimport assert from 'node:assert/strict';\nconst base='C:/Users/evanpatchouli/Documents/Codex/2026-10-26/files-pasted-by-the-user-p8/work/';\nconst r=JSON.parse(fs.readFileSync(base+'spatial-benchmark-run.json'));\nconst p=JSON.parse(fs.readFileSync(base+'spatial-protocol-frozen.json'));\nconst sha=x=>crypto.createHash('sha256').update(x).digest('hex');\nassert.equal(r.protocolSha256,p.protocolSha256);\nassert.equal(sha(JSON.stringify(r.protocol)),p.protocolSha256);\nassert.ok(Date.parse(p.frozenAt)<Date.parse(r.startedAt));\nassert.deepEqual(r.realQuery.requestedTicks,r.realQuery.actualTicks);\nassert.equal(r.probes.length,22);\nassert.equal(r.regions.reduce((n,x)=>n+x.sampleCount,0),22);\nassert.ok(r.probes.every(p=>p.referenceId===null&&p.pointResidual===null));\nassert.ok(!/765611\\d{11}/.test(JSON.stringify(r)));\nassert.ok(r.imageReferences.every(p=>p.worldPosition===null&&p.validationEligible===false));\nassert.equal(r.independentResiduals.count,0);\nassert.ok(r.regions.every(x=>x.pointResiduals.mean===null&&x.pointResiduals.p95===null));\nconsole.log(JSON.stringify({status:'PASS',checks:10,scope:'read existing scratch results and frozen protocol only; no DEM execution',protocolSha256:r.protocolSha256,independentPairs:r.independentResiduals.count,realRows:r.realQuery.returnedRows,selected:r.probes.length}));\n'@ | node --input-type=module",
+          "exitCode": 0,
+          "summary": "Existing local scratch result matches pre-run protocol; actual tick set matches; no Steam IDs; independent residuals remain null. Reported 10 check groups."
+        },
+        {
+          "id": "RV05",
+          "command": "Get-Item -LiteralPath 'docs/p8-1l2-spatial-benchmark-2026-10-26.md','docs/p8-1l2-spatial-benchmark-2026-10-26.json' -ErrorAction SilentlyContinue | Select-Object Name,Length,LastWriteTime",
+          "exitCode": 1,
+          "summary": "At this intermediate moment MD existed but JSON had not yet been created; subsequent final read succeeded."
+        },
+        {
+          "id": "RV06",
+          "command": "Get-Content -LiteralPath 'docs/p8-1l2-spatial-benchmark-2026-10-26.md' -Raw",
+          "exitCode": 0,
+          "summary": "Full MD reviewed; identified upper-bound mismatch criterion and requested correction."
+        },
+        {
+          "id": "RV07",
+          "command": "@'\nimport fs from 'node:fs';\nconst j=JSON.parse(fs.readFileSync('docs/p8-1l2-spatial-benchmark-2026-10-26.json'));\nconsole.log(JSON.stringify({keys:Object.keys(j),result:j.result,baseline:j.baseline,validation:j.validation,git:j.git,executionKeys:Object.keys(j.execution||{}),capabilityKeys:Object.keys(j.compatibilityModel||{})},null,2));\n'@ | node --input-type=module\nrg -n 'mismatched|不确定性|mean|geometry|P95|NOT RUN|PASS|BLOCKED|unconfirmed|24|6 个' docs/p8-1l2-spatial-benchmark-2026-10-26.md",
+          "exitCode": 0,
+          "summary": "Reviewed final JSON structure and corrected MD state/threshold definitions."
+        },
+        {
+          "id": "RV08",
+          "command": "@'\nimport fs from 'node:fs';\nconst j=JSON.parse(fs.readFileSync('docs/p8-1l2-spatial-benchmark-2026-10-26.json'));\nconsole.log(JSON.stringify({freeze:j.freeze,independenceAudit:j.independenceAudit,coverage:j.coverage,compatibilityProposal:j.compatibilityProposal,numericLimit:j.numericLimit,localEvidence:j.localEvidence,distance:j.distance,sources:j.sources,commandSummaries:j.commands.map(c=>({id:c.id,exitCode:c.exitCode,summary:c.summary})),toolCalls:j.toolCalls,notRun:j.notRun},null,2));\n'@ | node --input-type=module",
+          "exitCode": 0,
+          "summary": "Read independent evidence, source references, compatibility proposal, numeric limits and command results."
+        },
+        {
+          "id": "RV09",
+          "command": "node 'C:\\Users\\evanpatchouli\\Documents\\Codex\\2026-10-26\\files-pasted-by-the-user-p8\\work\\review-docs.mjs'\ngit status --short --branch",
+          "exitCode": 0,
+          "summary": "11 final static check groups PASS; four additions only.",
+          "scriptSource": "import assert from 'node:assert/strict';\nimport { readFileSync, existsSync } from 'node:fs';\nimport { createHash } from 'node:crypto';\nimport { resolve } from 'node:path';\nconst repo = 'E:/cs2-analyst';\nconst work = 'C:/Users/evanpatchouli/Documents/Codex/2026-10-26/files-pasted-by-the-user-p8/work';\nconst record = JSON.parse(readFileSync(resolve(repo, 'docs/p8-1l2-spatial-benchmark-2026-10-26.json')));\nconst markdown = readFileSync(resolve(repo, 'docs/p8-1l2-spatial-benchmark-2026-10-26.md'), 'utf8');\nconst original = JSON.parse(readFileSync(resolve(work, 'spatial-benchmark-run.json')));\nconst frozen = JSON.parse(readFileSync(resolve(work, 'spatial-protocol-frozen.json')));\nconst sha = bytes => createHash('sha256').update(bytes).digest('hex');\nfunction subset(actual, expected) {\n  if (expected === null || typeof expected !== 'object') return assert.deepEqual(actual, expected);\n  if (Array.isArray(expected)) assert.equal(actual.length, expected.length);\n  for (const key of Object.keys(expected)) subset(actual[key], expected[key]);\n}\nconst groups = [];\nfor (const [key, value] of Object.entries(original)) if (key !== 'probes') subset(record.execution[key], value);\nassert.ok(!Object.hasOwn(record.execution, 'probes')); groups.push('all persisted execution values match original scratch result; raw probes omitted');\nassert.equal(sha(readFileSync(resolve(repo, 'docs/experiments/p8-1l2-spatial-benchmark.mjs'))), frozen.scriptSha256);\nassert.equal(record.freeze.protocolSha256, frozen.protocolSha256);\nassert.ok(Date.parse(frozen.frozenAt) < Date.parse(record.execution.startedAt)); groups.push('frozen protocol and unchanged runner digest');\nfor (const file of record.execution.files) {\n  const bytes = readFileSync(resolve(repo, file.path)); assert.equal(bytes.length, file.bytes); assert.equal(sha(bytes), file.sha256);\n}\ngroups.push('five existing text/image source identities independently rehashed');\nassert.equal(sha(readFileSync(record.localEvidence.path)), record.localEvidence.sha256);\ngroups.push('local evidence digest matches');\nassert.deepEqual(record.result, record.execution.result);\nassert.equal(record.result.coordinateProjectionArithmetic, 'PASS');\nassert.equal(record.result.independentSpatialAccuracy, 'BLOCKED');\nassert.equal(record.result.regionalCompatibility, 'unconfirmed');\nfor (const cap of ['nav', 'staticCollision', 'staticLOS', 'dynamicOcclusion']) assert.equal(record.result[cap], 'NOT RUN');\nassert.ok(record.compatibilityProposal.current.every(c => c.level === 'unconfirmed')); groups.push('capabilities remain separated');\nassert.equal(record.independenceAudit.validPointCorrespondences, 0);\nassert.equal(record.execution.imageReferences.length, 8);\nassert.ok(record.execution.imageReferences.every(r => r.worldPosition === null && r.validationEligible === false && r.trainingEligible === false));\nassert.ok(['mean', 'median', 'max', 'p95'].every(key => record.execution.independentResiduals[key] === null)); groups.push('zero independent truth is not zero error');\nlet area = 0;\nfor (const r of record.execution.regions) {\n  area += (r.bounds[2] - r.bounds[0]) * (r.bounds[3] - r.bounds[1]);\n  assert.equal(r.sampleCount, r.insideCount); assert.equal(r.independentCorrespondences, 0);\n  assert.equal(r.upperBoundPx.p95, null); assert.ok(r.upperBoundPx.max > 0);\n}\nassert.equal(record.coverage.coarseRectangleAreaPx2, area);\nassert.equal(record.coverage.coarseRectangleImageFraction, area / 1024 ** 2);\nfor (const key of ['x', 'y', 'z']) assert.deepEqual(record.coverage.observedWorldExtent[key], [Math.min(...original.probes.map(p => p.input[key])), Math.max(...original.probes.map(p => p.input[key]))]);\ngroups.push('region totals, conditional bounds and descriptive coverage');\nassert.equal(record.validation.uniqueRuntimeTests, 20);\nassert.equal(record.validation.unitTests.passed + record.validation.existingRelevantTests.passed, 20);\nassert.equal(record.distance.testCount, 1); assert.equal(record.distance.kindComparisons, 8); groups.push('test counts not inflated by reviewer rerun');\nconst localLinks = [...markdown.matchAll(/\\]\\(([^)]+)\\)/g)].map(m => m[1]).filter(href => !/^https?:/.test(href));\nfor (const link of localLinks) assert.ok(existsSync(resolve(repo, 'docs', link.split('#')[0])), link);\nfor (const source of record.sources) if (source.path) assert.ok(existsSync(resolve(repo, source.path)), source.path);\ngroups.push(`${localLinks.length} local Markdown links and ${record.sources.filter(s => s.path).length} local source paths exist`);\nassert.ok(!/765611\\d{11}/.test(JSON.stringify(record)));\nassert.ok(!/765611\\d{11}/.test(markdown)); groups.push('new report excludes Steam identity literals');\nassert.match(record.compatibilityProposal.levels.mismatched, /lower error bound/);\nassert.match(record.compatibilityProposal.levels.unconfirmed, /e\\+u>T alone is not mismatch/);\nassert.match(markdown, /世界坐标测量误差传播/);\nassert.match(markdown, /max\\(0,e−u\\)/); groups.push('uncertainty and mismatched-definition corrections verified');\nconsole.log(JSON.stringify({status: 'PASS', groups: groups.length, checks: groups, scope: 'Static report and existing scratch-output review; no DEM/native/game resource execution'}));\n"
+        },
+        {
+          "id": "RV10",
+          "command": "git diff --cached --check\ngit diff --cached --name-status\ngit diff --name-only d58de2f156e08836c719bf72225c200287f4c196 -- apps packages scripts package.json pnpm-lock.yaml docs/replay-resources.json",
+          "exitCode": 0,
+          "summary": "Staged whitespace clean; exactly four additions; no protected production/resource/dependency differences."
+        }
+      ],
+      "finalDocumentReview": {
+        "status": "PASS",
+        "blockingFindings": 0,
+        "staticCheckGroups": 11,
+        "localMarkdownLinks": 11,
+        "localSourcePaths": 11,
+        "stagedDiffCheck": "PASS",
+        "addedFiles": 4,
+        "protectedPathsUnchanged": true
+      },
+      "resolvedFindings": [
+        {
+          "severity": "P2",
+          "location": "report section 6 mismatched definition",
+          "issue": "A conservative upper error bound over threshold cannot prove mismatch.",
+          "resolution": "Use reviewed lower bound max(0,e-u)>T; interval crossing remains unconfirmed. Verified in MD and JSON."
+        }
+      ]
+    },
+    "documentChecks": {
+      "status": "PASS",
+      "groups": 11,
+      "checks": [
+        "JSON/status separation",
+        "required sections",
+        "local links exist",
+        "external links have pinned known destinations",
+        "source hashes unchanged",
+        "protocol predates current results and unchanged",
+        "actual query and aggregate consistency",
+        "candidate refs remain image only",
+        "no raw snapshots or player identifiers in deliverables",
+        "only four added files against baseline",
+        "git diff check staged and unstaged"
+      ],
+      "localLinkCount": 11,
+      "externalLinkCount": 2,
+      "externalVerification": "PR connector + fetched fixed git object; no general external-source claims",
+      "checkedAt": "2026-10-25T18:55:06.553Z"
+    },
+    "diffCheck": {
+      "status": "PASS",
+      "commands": [
+        "git diff --check",
+        "git diff --cached --check"
+      ],
+      "exitCodes": [
+        0,
+        0
+      ]
+    },
+    "postMetadataCheck": "The same validation is rerun after this metadata-only refresh; final commit/status receipt is in handoff."
+  },
+  "notRun": [
+    "full-repo typecheck/build/tests",
+    "GUI/installed-app",
+    "other fixtures",
+    "external landmark measurements",
+    "VPK/member/NAV/collision processing",
+    "static LOS",
+    "dynamic occlusion",
+    "AI Coach delivery",
+    "POV/perception inference",
+    "L2.2D or P8.2"
+  ],
+  "git": {
+    "commitSha": "Provided in final handoff; no self-reference",
+    "push": false,
+    "prCreated": false,
+    "merge": false,
+    "tagOrRelease": false,
+    "stopAfterThisTask": true
+  }
+}
