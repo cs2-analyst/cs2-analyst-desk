@@ -57,7 +57,7 @@ function portableDialog<T>(signal: AbortSignal, open: () => Promise<T>): Promise
   return new Promise((resolve, reject) => {
     const abort = () => reject(signal.reason ?? new Error('Portable archive operation cancelled.'));
     signal.addEventListener('abort', abort, { once: true });
-    void Promise.resolve().then(open).then(value => {
+    void Promise.resolve().then(() => { signal.throwIfAborted(); return open(); }).then(value => {
       signal.removeEventListener('abort', abort);
       if (signal.aborted) abort(); else resolve(value);
     }, error => { signal.removeEventListener('abort', abort); reject(error); });

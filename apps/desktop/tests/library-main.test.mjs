@@ -60,7 +60,7 @@ async function harness(options={}) {
     verification: options.realVerifier ? { ...archiveVerification,
       ArchiveVerificationBroker: class extends archiveVerification.ArchiveVerificationBroker {
         constructor(fork) { super(fork, options.verifierTimeoutMs ? { timeoutMs: options.verifierTimeoutMs } : {}); }
-      } } : undefined}),process:{env:options.env??{},platform:'win32',resourcesPath:'C:/owned-test/resources'},console:{error(){}},URL,Buffer,AbortController,
+      } } : undefined}),process:{env:options.env??{},platform:'win32',resourcesPath:'C:/owned-test/resources'},console:{error(){}},URL,Buffer,AbortController:options.AbortController??AbortController,
     setTimeout(fn,ms){const id=++timerSequence;timers.set(id,{fn,ms});return id;},clearTimeout(id){timers.delete(id);}});
   await tick();const trusted={sender:window.webContents,senderFrame:window.webContents.mainFrame};
   const start=async()=>{const promise=handlers.get('report:import-file')(trusted,'C:\\local\\dust2.dem');await tick();const worker=workers.at(-1);worker?.emit('spawn');return {promise,worker};};
@@ -680,4 +680,18 @@ test('portable cancellation can release an unresolved native chooser without sta
   const pending = h.handlers.get('library:import')(h.trusted); await tick();
   await h.handlers.get('report:cancel')(h.trusted);
   assert.equal((await pending).kind, 'cancelled'); assert.equal(h.workers.length, 0); assert.equal(h.service.sequence, 0);
+});
+
+test('a cancelled portable chooser never opens from its queued microtask', async () => {
+  class CancelOnListener extends AbortController {
+    constructor() {
+      super(); const add = this.signal.addEventListener.bind(this.signal);
+      this.signal.addEventListener = (type, listener, options) => { add(type, listener, options); if (type === 'abort') this.abort(); };
+    }
+  }
+  let calls = 0;
+  const h = await harness({ AbortController: CancelOnListener,
+    dialog: { showOpenDialog: async () => { calls++; return { canceled: true, filePaths: [] }; } } });
+  assert.equal((await h.handlers.get('library:import')(h.trusted)).kind, 'cancelled');
+  assert.equal(calls, 0); assert.equal(h.workers.length, 0); assert.equal(h.service.sequence, 0);
 });
