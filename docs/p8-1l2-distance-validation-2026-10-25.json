@@ -1,0 +1,493 @@
+{
+  "schemaVersion": 1,
+  "kind": "p8-1l2-distance-foundation-validation",
+  "date": "2026-10-25",
+  "timeZone": "Asia/Shanghai",
+  "result": "PASS: P8.1-L2.1 only",
+  "applicationVersion": "0.2.0",
+  "baseline": {
+    "repository": "cs2-analyst/cs2-analyst-desk",
+    "initialBranch": "codex/p8-1l2-map-geometry-feasibility",
+    "initialHead": "babcdd8cdff444dad86ff78e0f3e1f4499c54ddb",
+    "initialWorkingTree": "clean",
+    "originMain": "f44984e5464552c81737922c67df3d9f17c27c71",
+    "fetchCommand": "git fetch origin",
+    "fetchExitCode": 0,
+    "researchRemoteBranch": "origin/codex/p8-1l2-map-geometry-feasibility",
+    "researchPrSearch": "No result for exact head; do not assume merged",
+    "scopePr": {
+      "url": "https://github.com/cs2-analyst/cs2-analyst-desk/pull/4",
+      "state": "open",
+      "draft": true,
+      "merged": false,
+      "head": "8f61854793f3d9230d1cd160b3fd01dedaafcadd",
+      "readVia": "git show origin/docs/p8-scope-l1-l2-20261025:<path>"
+    },
+    "branch": "codex/p8-1l2-distance-foundation",
+    "finalCommitLookup": "git log -1 --format=%H -- docs/p8-1l2-distance-foundation.md",
+    "missingWorkflow": ".agents/workflows/feature-development.md; used .agents/workflows.md and tester role"
+  },
+  "environment": {
+    "platform": "win32",
+    "architecture": "x64",
+    "node": "v26.3.0",
+    "pnpm": "10.0.0",
+    "nativeVersion": "0.42.0-backport.363.1",
+    "nativeBinarySha256": "132d664125b60542dc80dc8bc270e2c8e181a0a55433fdac5be285ef4d9b0de1",
+    "nativeTarget": "x86_64-pc-windows-msvc"
+  },
+  "finalCommands": [
+    {
+      "name": "typecheck",
+      "command": "pnpm typecheck --force",
+      "startedAtUtc": "2026-10-25T08:07:57.2092897Z",
+      "exitCode": 0,
+      "log": ".tmp/p8-distance-validation/typecheck.log",
+      "sha256": "218fbb244271b80962395fe976477f31441eefd937581a41e7fe37e6d90a64d6",
+      "tests": {}
+    },
+    {
+      "name": "build",
+      "command": "pnpm build --force",
+      "startedAtUtc": "2026-10-25T08:08:10.5502001Z",
+      "exitCode": 0,
+      "log": ".tmp/p8-distance-validation/build.log",
+      "sha256": "0599307bea975789da457f603ba3d18c9529a3813f414ee3cd720f0f0e475318",
+      "tests": {}
+    },
+    {
+      "name": "model-contracts",
+      "command": "pnpm --filter @cs2-analyst/match-model test",
+      "startedAtUtc": "2026-10-25T08:08:37.1111933Z",
+      "exitCode": 0,
+      "log": ".tmp/p8-distance-validation/model-contracts.log",
+      "sha256": "d23ee64119dfdc9d85afd71f9998b15599eb44646be93208a957c89506fd8e9f",
+      "tests": {}
+    },
+    {
+      "name": "analytics-contracts",
+      "command": "pnpm --filter @cs2-analyst/analytics exec tsc -p tests/tsconfig.json",
+      "startedAtUtc": "2026-10-25T08:08:38.3875866Z",
+      "exitCode": 0,
+      "log": ".tmp/p8-distance-validation/analytics-contracts.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tests": {}
+    },
+    {
+      "name": "analytics",
+      "command": "node --test --test-concurrency=1 --test-reporter=tap packages/analytics/tests/*.test.mjs",
+      "startedAtUtc": "2026-10-25T08:08:41.7767134Z",
+      "exitCode": 0,
+      "log": ".tmp/p8-distance-validation/analytics.log",
+      "sha256": "295630146396f2b29b06f912dc0d5df0d041684049d79a1c64f107bcd4d4b13d",
+      "tests": {
+        "skipped": 0,
+        "tests": 195,
+        "cancelled": 0,
+        "pass": 195,
+        "fail": 0
+      }
+    },
+    {
+      "name": "deep-review",
+      "command": "node --test --test-concurrency=1 --test-reporter=tap packages/deep-review/tests/engagements.test.mjs packages/deep-review/tests/kill-impact.test.mjs packages/deep-review/tests/teamplay.test.mjs packages/deep-review/tests/utility.test.mjs packages/deep-review/tests/execution.test.mjs packages/deep-review/tests/findings.test.mjs",
+      "startedAtUtc": "2026-10-25T08:09:06.2754819Z",
+      "exitCode": 0,
+      "log": ".tmp/p8-distance-validation/deep-review.log",
+      "sha256": "db14fbba5d5284e6dc1112af121774b76c9eb04693feb373cc92eef8791fdef7",
+      "tests": {
+        "skipped": 0,
+        "tests": 192,
+        "cancelled": 0,
+        "pass": 192,
+        "fail": 0
+      }
+    },
+    {
+      "name": "findings",
+      "command": "node --test --test-reporter=tap packages/findings/tests/rules.test.mjs",
+      "startedAtUtc": "2026-10-25T08:09:07.6543777Z",
+      "exitCode": 0,
+      "log": ".tmp/p8-distance-validation/findings.log",
+      "sha256": "d9ce86a6bd1ca7d796c371dabf2d623b054d29e1cd642e0b8d32a9b338b77fea",
+      "tests": {
+        "skipped": 0,
+        "tests": 16,
+        "cancelled": 0,
+        "pass": 16,
+        "fail": 0
+      }
+    },
+    {
+      "name": "compatibility",
+      "command": "node --test --test-concurrency=1 --test-reporter=tap scripts/replay-resource-audit.test.mjs scripts/check-replay-map-assets.test.mjs apps/desktop/tests/replay-map.test.mjs apps/desktop/tests/heatmap.test.mjs apps/desktop/tests/library-archive.test.mjs apps/desktop/tests/archive-verification.test.mjs apps/desktop/tests/report.test.mjs",
+      "startedAtUtc": "2026-10-25T08:09:07.9157706Z",
+      "exitCode": 0,
+      "log": ".tmp/p8-distance-validation/compatibility.log",
+      "sha256": "609f6874b5ce91145fbab576c953e7ceadf26faa09abe2d235911ab7468cb61d",
+      "tests": {
+        "skipped": 0,
+        "tests": 66,
+        "cancelled": 0,
+        "pass": 66,
+        "fail": 0
+      }
+    },
+    {
+      "name": "assets",
+      "command": "node scripts/check-replay-map-assets.mjs",
+      "startedAtUtc": "2026-10-25T08:10:14.6732879Z",
+      "exitCode": 0,
+      "log": ".tmp/p8-distance-validation/assets.log",
+      "sha256": "e761116024febd6647317bb6ec74d91a8d4896c8e7b9218b3e5c057ec035390a",
+      "tests": {}
+    },
+    {
+      "name": "distance-real",
+      "command": "node --test --test-reporter=tap docs/experiments/p8-1l2-distance-real.test.mjs",
+      "startedAtUtc": "2026-10-25T08:10:15.0245097Z",
+      "exitCode": 0,
+      "log": ".tmp/p8-distance-validation/distance-real.log",
+      "sha256": "ae2f099ae35f54d2f0f6a8839b147014f1d7734804887f2998b6fdb4e7155045",
+      "tests": {
+        "skipped": 0,
+        "tests": 1,
+        "cancelled": 0,
+        "pass": 1,
+        "fail": 0
+      }
+    }
+  ],
+  "testCounts": {
+    "uniqueRuntimeTests": 470,
+    "passed": 470,
+    "failed": 0,
+    "skipped": 0,
+    "cancelled": 0,
+    "addedFoundationTests": 78,
+    "addedRealIntegrationTests": 1,
+    "addedTotal": 79,
+    "existingRegressionTests": 391,
+    "byGroup": {
+      "analyticsIncludingNew": 195,
+      "deepReviewSynthetic": 192,
+      "findingsSynthetic": 16,
+      "desktopAndResourceCompatibility": 66,
+      "dust2DistanceReal": 1
+    },
+    "counting": "Node TAP tests across disjoint final groups; 78 new foundation tests are included in analytics 195. Four real endpoint pairs/eight kind comparisons count as one test. Compilation assertions, failed runs and reviewer repetitions add zero unique tests."
+  },
+  "earlierRuns": {
+    "initialModelAndAnalyticsBuild": {
+      "commands": [
+        "pnpm --filter @cs2-analyst/match-model build",
+        "pnpm --filter @cs2-analyst/analytics build"
+      ],
+      "exitCodes": [
+        0,
+        0
+      ]
+    },
+    "firstFoundation": {
+      "command": "node --test --test-reporter=tap packages/analytics/tests/distance-foundation.test.mjs",
+      "exitCode": 1,
+      "tests": 77,
+      "passed": 76,
+      "failed": 1,
+      "reason": "Test helper default parameter replaced undefined position with origin. Fixed test construction, not product behavior.",
+      "log": "Initial tool transcript; no separate file captured"
+    },
+    "secondFoundation": {
+      "command": "node --test --test-reporter=tap packages/analytics/tests/distance-foundation.test.mjs",
+      "exitCode": 0,
+      "tests": 77,
+      "passed": 77,
+      "log": ".tmp/p8-distance-validation/foundation.tap",
+      "sha256": "800b868930acd8f8cf9acadd581dfae050454145b6fea1ff474011e636535e28"
+    },
+    "initialCommands": [
+      {
+        "name": "typecheck",
+        "command": "pnpm typecheck",
+        "startedAtUtc": "2026-10-25T08:05:13.2148736Z",
+        "exitCode": 0,
+        "log": ".tmp/p8-distance-validation/initial-typecheck.log",
+        "sha256": "10ec532bc76d7583c85f9a23756789a23e67b51e9dbecb50023a060666c34c3c",
+        "tests": {}
+      },
+      {
+        "name": "build",
+        "command": "pnpm build",
+        "startedAtUtc": "2026-10-25T08:05:30.3617055Z",
+        "exitCode": 0,
+        "log": ".tmp/p8-distance-validation/initial-build.log",
+        "sha256": "80bf6724d9e8ccb09326c25dfc47c142c61327118e591a2d56d7ecfa650f94ae",
+        "tests": {}
+      },
+      {
+        "name": "model-contracts",
+        "command": "pnpm --filter @cs2-analyst/match-model test",
+        "startedAtUtc": "2026-10-25T08:06:03.5069847Z",
+        "exitCode": 0,
+        "log": ".tmp/p8-distance-validation/initial-model-contracts.log",
+        "sha256": "d23ee64119dfdc9d85afd71f9998b15599eb44646be93208a957c89506fd8e9f",
+        "tests": {}
+      },
+      {
+        "name": "analytics-contracts",
+        "command": "pnpm --filter @cs2-analyst/analytics exec tsc -p tests/tsconfig.json",
+        "startedAtUtc": "2026-10-25T08:06:05.0415188Z",
+        "exitCode": 0,
+        "log": ".tmp/p8-distance-validation/initial-analytics-contracts.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "tests": {}
+      },
+      {
+        "name": "analytics",
+        "command": "node --test --test-concurrency=1 --test-reporter=tap packages/analytics/tests/*.test.mjs",
+        "startedAtUtc": "2026-10-25T08:06:08.1061092Z",
+        "exitCode": 1,
+        "log": ".tmp/p8-distance-validation/initial-analytics.log",
+        "sha256": "9063f4b81c0b47daf8760f26f88ab8554e9cf0508d4c847ffe4d6968721293c5",
+        "tests": {
+          "fail": 1,
+          "tests": 195,
+          "skipped": 0,
+          "pass": 194,
+          "cancelled": 0
+        }
+      }
+    ],
+    "cachedBuildFailure": "Initial broad analytics run: 194/195 pass. Review regression executed against pre-fix cached dist while source was being fixed; regression exposed metadata propagation. Forced all typecheck/build tasks and reran complete groups against current output.",
+    "localRunnerIssue": "Empty successful analytics-contracts log caused summary regex diagnostics; external command exit remained 0. Runner now coerces empty log to string. Final runner completed without this issue."
+  },
+  "resourceRecord": {
+    "schemaVersion": "map-resource-record-v1",
+    "identity": {
+      "schemaVersion": "map-resource-identity-v1",
+      "resourceId": "valve-730-2347770-2312433566686574487-vrf20.1",
+      "mapName": "de_dust2",
+      "source": {
+        "kind": "steam-distribution",
+        "reference": "app:730/depot:2347770/manifest:2312433566686574487; controlled-index:docs/replay-resources.json",
+        "version": "2312433566686574487"
+      },
+      "digest": {
+        "kind": "controlled-manifest",
+        "sha256": "a055ce462c1c8f464f54493b0bd7287fc16f5171bf29d2a3e1120de0a6e9f543"
+      },
+      "coordinateSpace": {
+        "system": "dem-server-xyz",
+        "unit": "DEM-world-unit",
+        "normalization": "native-unmodified-v1"
+      },
+      "match": {
+        "status": "unconfirmed",
+        "targetDemoSha256": null,
+        "evidenceRefs": []
+      },
+      "scope": "Existing Dust2 overview/radar identity and projection arithmetic only; no geographic accuracy claim",
+      "limitations": [
+        "No trusted DEM-to-map-build binding",
+        "Controlled manifest is an index, not collision/NAV content",
+        "Existing overview and PNG digests audited separately",
+        "No NAV, LOS, dynamic occlusion or tactical authorization"
+      ],
+      "producerVersion": "p8-1l2-distance-validation-v1"
+    },
+    "capabilities": {
+      "overview-projection-arithmetic": {
+        "status": "validated",
+        "methodVersion": "existing-worldToRadar-and-resource-audit-v1",
+        "evidenceRefs": [
+          "command:compatibility:resource-audit-and-replay-map-tests",
+          "command:assets:13-pinned-images"
+        ],
+        "boundIdentity": "[\"map-resource-identity-v1\",\"valve-730-2347770-2312433566686574487-vrf20.1\",\"de_dust2\",\"steam-distribution\",\"app:730/depot:2347770/manifest:2312433566686574487; controlled-index:docs/replay-resources.json\",\"2312433566686574487\",\"controlled-manifest\",\"a055ce462c1c8f464f54493b0bd7287fc16f5171bf29d2a3e1120de0a6e9f543\",\"dem-server-xyz\",\"DEM-world-unit\",\"native-unmodified-v1\",\"unconfirmed\",null,[],\"Existing Dust2 overview/radar identity and projection arithmetic only; no geographic accuracy claim\",[\"No trusted DEM-to-map-build binding\",\"Controlled manifest is an index, not collision/NAV content\",\"Existing overview and PNG digests audited separately\",\"No NAV, LOS, dynamic occlusion or tactical authorization\"],\"p8-1l2-distance-validation-v1\"]"
+      },
+      "horizontal-distance": {
+        "status": "not-run",
+        "methodVersion": "separate-dem-distance-v1-api",
+        "evidenceRefs": [],
+        "boundIdentity": "[\"map-resource-identity-v1\",\"valve-730-2347770-2312433566686574487-vrf20.1\",\"de_dust2\",\"steam-distribution\",\"app:730/depot:2347770/manifest:2312433566686574487; controlled-index:docs/replay-resources.json\",\"2312433566686574487\",\"controlled-manifest\",\"a055ce462c1c8f464f54493b0bd7287fc16f5171bf29d2a3e1120de0a6e9f543\",\"dem-server-xyz\",\"DEM-world-unit\",\"native-unmodified-v1\",\"unconfirmed\",null,[],\"Existing Dust2 overview/radar identity and projection arithmetic only; no geographic accuracy claim\",[\"No trusted DEM-to-map-build binding\",\"Controlled manifest is an index, not collision/NAV content\",\"Existing overview and PNG digests audited separately\",\"No NAV, LOS, dynamic occlusion or tactical authorization\"],\"p8-1l2-distance-validation-v1\"]"
+      },
+      "three-dimensional-distance": {
+        "status": "not-run",
+        "methodVersion": "separate-dem-distance-v1-api",
+        "evidenceRefs": [],
+        "boundIdentity": "[\"map-resource-identity-v1\",\"valve-730-2347770-2312433566686574487-vrf20.1\",\"de_dust2\",\"steam-distribution\",\"app:730/depot:2347770/manifest:2312433566686574487; controlled-index:docs/replay-resources.json\",\"2312433566686574487\",\"controlled-manifest\",\"a055ce462c1c8f464f54493b0bd7287fc16f5171bf29d2a3e1120de0a6e9f543\",\"dem-server-xyz\",\"DEM-world-unit\",\"native-unmodified-v1\",\"unconfirmed\",null,[],\"Existing Dust2 overview/radar identity and projection arithmetic only; no geographic accuracy claim\",[\"No trusted DEM-to-map-build binding\",\"Controlled manifest is an index, not collision/NAV content\",\"Existing overview and PNG digests audited separately\",\"No NAV, LOS, dynamic occlusion or tactical authorization\"],\"p8-1l2-distance-validation-v1\"]"
+      },
+      "version-matched-world-mapping": {
+        "status": "blocked",
+        "methodVersion": "not-implemented-v1",
+        "evidenceRefs": [],
+        "boundIdentity": "[\"map-resource-identity-v1\",\"valve-730-2347770-2312433566686574487-vrf20.1\",\"de_dust2\",\"steam-distribution\",\"app:730/depot:2347770/manifest:2312433566686574487; controlled-index:docs/replay-resources.json\",\"2312433566686574487\",\"controlled-manifest\",\"a055ce462c1c8f464f54493b0bd7287fc16f5171bf29d2a3e1120de0a6e9f543\",\"dem-server-xyz\",\"DEM-world-unit\",\"native-unmodified-v1\",\"unconfirmed\",null,[],\"Existing Dust2 overview/radar identity and projection arithmetic only; no geographic accuracy claim\",[\"No trusted DEM-to-map-build binding\",\"Controlled manifest is an index, not collision/NAV content\",\"Existing overview and PNG digests audited separately\",\"No NAV, LOS, dynamic occlusion or tactical authorization\"],\"p8-1l2-distance-validation-v1\"]"
+      },
+      "navigation-reachability": {
+        "status": "blocked",
+        "methodVersion": "not-implemented-v1",
+        "evidenceRefs": [],
+        "boundIdentity": "[\"map-resource-identity-v1\",\"valve-730-2347770-2312433566686574487-vrf20.1\",\"de_dust2\",\"steam-distribution\",\"app:730/depot:2347770/manifest:2312433566686574487; controlled-index:docs/replay-resources.json\",\"2312433566686574487\",\"controlled-manifest\",\"a055ce462c1c8f464f54493b0bd7287fc16f5171bf29d2a3e1120de0a6e9f543\",\"dem-server-xyz\",\"DEM-world-unit\",\"native-unmodified-v1\",\"unconfirmed\",null,[],\"Existing Dust2 overview/radar identity and projection arithmetic only; no geographic accuracy claim\",[\"No trusted DEM-to-map-build binding\",\"Controlled manifest is an index, not collision/NAV content\",\"Existing overview and PNG digests audited separately\",\"No NAV, LOS, dynamic occlusion or tactical authorization\"],\"p8-1l2-distance-validation-v1\"]"
+      },
+      "static-los": {
+        "status": "blocked",
+        "methodVersion": "not-implemented-v1",
+        "evidenceRefs": [],
+        "boundIdentity": "[\"map-resource-identity-v1\",\"valve-730-2347770-2312433566686574487-vrf20.1\",\"de_dust2\",\"steam-distribution\",\"app:730/depot:2347770/manifest:2312433566686574487; controlled-index:docs/replay-resources.json\",\"2312433566686574487\",\"controlled-manifest\",\"a055ce462c1c8f464f54493b0bd7287fc16f5171bf29d2a3e1120de0a6e9f543\",\"dem-server-xyz\",\"DEM-world-unit\",\"native-unmodified-v1\",\"unconfirmed\",null,[],\"Existing Dust2 overview/radar identity and projection arithmetic only; no geographic accuracy claim\",[\"No trusted DEM-to-map-build binding\",\"Controlled manifest is an index, not collision/NAV content\",\"Existing overview and PNG digests audited separately\",\"No NAV, LOS, dynamic occlusion or tactical authorization\"],\"p8-1l2-distance-validation-v1\"]"
+      },
+      "dynamic-occlusion": {
+        "status": "blocked",
+        "methodVersion": "not-implemented-v1",
+        "evidenceRefs": [],
+        "boundIdentity": "[\"map-resource-identity-v1\",\"valve-730-2347770-2312433566686574487-vrf20.1\",\"de_dust2\",\"steam-distribution\",\"app:730/depot:2347770/manifest:2312433566686574487; controlled-index:docs/replay-resources.json\",\"2312433566686574487\",\"controlled-manifest\",\"a055ce462c1c8f464f54493b0bd7287fc16f5171bf29d2a3e1120de0a6e9f543\",\"dem-server-xyz\",\"DEM-world-unit\",\"native-unmodified-v1\",\"unconfirmed\",null,[],\"Existing Dust2 overview/radar identity and projection arithmetic only; no geographic accuracy claim\",[\"No trusted DEM-to-map-build binding\",\"Controlled manifest is an index, not collision/NAV content\",\"Existing overview and PNG digests audited separately\",\"No NAV, LOS, dynamic occlusion or tactical authorization\"],\"p8-1l2-distance-validation-v1\"]"
+      }
+    }
+  },
+  "gateResults": [
+    {
+      "schemaVersion": "map-capability-gate-v1",
+      "capability": "overview-projection-arithmetic",
+      "allowed": true,
+      "reason": null
+    },
+    {
+      "schemaVersion": "map-capability-gate-v1",
+      "capability": "horizontal-distance",
+      "allowed": false,
+      "reason": "coordinate-distance-separate"
+    },
+    {
+      "schemaVersion": "map-capability-gate-v1",
+      "capability": "three-dimensional-distance",
+      "allowed": false,
+      "reason": "coordinate-distance-separate"
+    },
+    {
+      "schemaVersion": "map-capability-gate-v1",
+      "capability": "version-matched-world-mapping",
+      "allowed": false,
+      "reason": "not-implemented"
+    },
+    {
+      "schemaVersion": "map-capability-gate-v1",
+      "capability": "navigation-reachability",
+      "allowed": false,
+      "reason": "not-implemented"
+    },
+    {
+      "schemaVersion": "map-capability-gate-v1",
+      "capability": "static-los",
+      "allowed": false,
+      "reason": "not-implemented"
+    },
+    {
+      "schemaVersion": "map-capability-gate-v1",
+      "capability": "dynamic-occlusion",
+      "allowed": false,
+      "reason": "not-implemented"
+    }
+  ],
+  "capabilityOutcomes": {
+    "overviewArithmetic": "PASS within existing numeric transform and pinned overview/PNG audit; no independent map precision",
+    "horizontalDistance": "PASS through independent calculateDemDistance API, not resource-record permission",
+    "threeDimensionalDistance": "PASS through independent calculateDemDistance API, not resource-record permission",
+    "versionMatchedMapping": "BLOCKED / NOT IMPLEMENTED",
+    "navigation": "BLOCKED / NOT IMPLEMENTED",
+    "staticLos": "BLOCKED / NOT IMPLEMENTED",
+    "dynamicOcclusion": "BLOCKED / NOT IMPLEMENTED",
+    "resourceDistanceEntries": "not-run means not granted by this resource record; separate distance API is validated"
+  },
+  "realEvidence": {
+    "fixture": ".demo/dust2.dem",
+    "sha256": "db90fe85aab023a1d2c8a5996182e6120d98ef494f02a070b17982b235e4958c",
+    "bytes": 557650967,
+    "mapName": "de_dust2",
+    "actualTicks": [
+      92395,
+      185100,
+      194101,
+      201348
+    ],
+    "exactEndpointPairs": 4,
+    "kindComparisons": 8,
+    "newApiComparison": "Exact equality to existing Deep Review nested hypot semantics; same-tick native XYZ, no raw row output",
+    "otherExistingRegressionFixtures": [
+      ".demo/demo1.dem",
+      ".demo/demo2.dem",
+      ".demo/nuke.dem"
+    ],
+    "scope": "Frozen historical endpoints and trusted pinned native output only. Not new formation discovery, native decoder causality, geographic precision or tactical truth."
+  },
+  "independentReview": {
+    "result": "PASS after one P2 fixed",
+    "reviewer": "Separate read-only reviewer agent per project AGENTS.md",
+    "finding": "Object spreads in nested coordinate snapshots propagated future/playerKnown metadata",
+    "resolution": "Explicit scalar field whitelist; direct metadata perturbation regression compares entire output",
+    "independentCommand": "node --test --test-reporter=tap packages/analytics/tests/distance-foundation.test.mjs",
+    "exitCode": 0,
+    "tests": 78,
+    "passed": 78,
+    "failed": 0,
+    "skipped": 0,
+    "limits": "Reviewer did not independently rerun real DEM integration.",
+    "finalRecordReconciliation": {
+      "result": "PASS",
+      "logSha256Verified": 16,
+      "uniqueTapTestsReconciled": 470,
+      "forcedTypecheckTasks": 15,
+      "forcedBuildTasks": 8,
+      "cachedTasks": 0,
+      "assetsVerified": 13,
+      "resourceSnapshotAndGateResultsRecomputed": true,
+      "manifestUnchangedFromHeadAndOriginMain": true,
+      "manifestDigestScope": "Raw bytes of current Windows checkout (CRLF); Git blob is LF. No canonicalization or map-build equivalence is claimed.",
+      "remainingBlockingFindings": 0
+    }
+  },
+  "invariants": {
+    "command": "git diff --exit-code HEAD -- apps scripts docs/replay-resources.json pnpm-lock.yaml package.json packages/*/package.json",
+    "exitCode": 0,
+    "diffCheck": {
+      "command": "git diff --check",
+      "exitCode": 0
+    },
+    "oldPublicContractsUnchanged": true,
+    "productionUiOrArchiveIntegrationAdded": false,
+    "implicitDownloads": false,
+    "dependenciesAdded": false,
+    "gameResourcesAddedOrCopied": false,
+    "originalResourceDigestsChanged": false,
+    "applicationVersionChanged": false,
+    "tagOrReleaseCreated": false,
+    "mainPushedOrPrMerged": false
+  },
+  "notRun": [
+    "GUI/Electron runtime and Windows installer/installed application checks",
+    "Entire repository test suite and complete Deep Review cross-map/native acceptance; selected regressions only",
+    "DEM-to-map-build content binding and independent geographic ground truth",
+    "VPK/NAV/physics extraction or new geometry tools/dependencies/helper/services",
+    "Navigation reachability, static LOS, dynamic occlusion, smoke volume and multi-floor truth",
+    "AI models, network services, expert tactical assessment, P8.1C/D and P8.2",
+    "New standalone distance persistence, report/Findings integration, or existing consumer migration"
+  ],
+  "changes": {
+    "production": [
+      "packages/match-model/src/distance.ts",
+      "packages/match-model/src/map-resource.ts",
+      "packages/match-model/src/index.ts",
+      "packages/analytics/src/distance.ts",
+      "packages/analytics/src/map-resource.ts",
+      "packages/analytics/src/spatial-validation.ts",
+      "packages/analytics/src/index.ts"
+    ],
+    "tests": [
+      "packages/match-model/tests/distance-contracts.test.ts",
+      "packages/analytics/tests/distance-foundation.test.mjs",
+      "docs/experiments/p8-1l2-distance-real.test.mjs"
+    ],
+    "documentation": [
+      "docs/p8-1l2-distance-foundation.md",
+      "docs/p8-1l2-distance-validation-2026-10-25.json"
+    ]
+  }
+}

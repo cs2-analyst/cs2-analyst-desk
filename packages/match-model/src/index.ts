@@ -9,6 +9,13 @@ export type {
 } from "./round.js";
 export type { Match } from "./match.js";
 export type {
+  DemCoordinateSpaceV1, DemPositionEvidenceV1, DemDistanceKind, DemDistanceFailure, DemDistanceResultV1,
+} from "./distance.js";
+export type {
+  MapCapabilityV1, MapResourceMatchStatus, MapResourceIdentityV1, MapCapabilityEvidenceV1,
+  MapResourceRecordV1, MapCapabilityGateFailure, MapCapabilityGateV1,
+} from "./map-resource.js";
+export type {
   ReplayPlayerSample, ReplayFrame, ReplayRound, MatchReplay, ReplayTrajectoryPoint,
   ReplayUtilityFlight, ReplayUtilityKind, ReplayUtilityVariant, ReplayEffectEndSource,
   ReplayUtilityEffect, ReplayBlindWindow, ReplayBurnWindow,

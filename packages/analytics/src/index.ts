@@ -54,6 +54,8 @@ export type {
   RoundClutchResolution,
 } from "./clutch.js";
 export { analyzeMatch } from "./metrics.js";
+export { calculateDemDistance } from "./distance.js";
+export { gateMapResourceCapability, mapResourceIdentitySnapshot } from "./map-resource.js";
 export { computeRating, computePlayerPerformance, playerPerformanceInput, summarizePlayerPerformance, ratingAlgorithm, highlightRules } from './performance.js';
 export type { PlayerRating, RatingInput, PlayerHighlight, HighlightType, PlayerPerformance, PlayerPerformanceInput } from './performance.js';
 export { classifyUtilityWeapon, summarizeUtility } from "./utility.js";
