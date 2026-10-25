@@ -1,0 +1,561 @@
+{
+  "schemaVersion": 1,
+  "kind": "p8-1l2-map-geometry-feasibility-research",
+  "date": "2026-10-25",
+  "timeZone": "Asia/Shanghai",
+  "scope": {
+    "documentationOnly": true,
+    "productionChanged": false,
+    "dependenciesInstalled": false,
+    "mapOrDemoDownloaded": false,
+    "mapOrDemoCopied": false,
+    "geometryExtracted": false,
+    "geometryToolsBuiltOrRun": false,
+    "gameStartedOrInjected": false,
+    "implementationAuthorizedByThisReport": false,
+    "followingStagesStarted": false
+  },
+  "baseline": {
+    "repository": "cs2-analyst/cs2-analyst-desk",
+    "version": "0.2.0",
+    "initialBranch": "codex/p8-1b-r-l1-l2",
+    "head": "2596a3d22f4186f5226f5736ef8a7c35703fad06",
+    "originMain": "f44984e5464552c81737922c67df3d9f17c27c71",
+    "researchBranch": "codex/p8-1l2-map-geometry-feasibility",
+    "initialWorkingTree": "clean",
+    "fetch": {
+      "command": "git fetch origin --prune",
+      "exitCode": 0
+    },
+    "pr4": {
+      "url": "https://github.com/cs2-analyst/cs2-analyst-desk/pull/4",
+      "state": "open",
+      "draft": true,
+      "merged": false,
+      "head": "8f61854793f3d9230d1cd160b3fd01dedaafcadd",
+      "readFromRemoteHeadWithoutMerging": true
+    },
+    "inheritedChangesFromOriginMain": "Two P8.1B/B-R research commits; apps, packages, scripts and root dependency files identical to origin/main",
+    "taskDeliverables": [
+      "docs/p8-1l2-map-geometry-feasibility-2026-10-25.md",
+      "docs/p8-1l2-map-geometry-feasibility-2026-10-25.json"
+    ]
+  },
+  "localObservations": {
+    "demo": {
+      "path": ".demo/dust2.dem",
+      "bytes": 557650967,
+      "sha256": "db90fe85aab023a1d2c8a5996182e6120d98ef494f02a070b17982b235e4958c",
+      "hashRecomputed": true,
+      "map": "de_dust2",
+      "nativeHeader": {
+        "patch_version": "14055",
+        "demo_version_name": "valve_demo_2",
+        "demo_version_guid": "8e9d71ab-04a1-4c01-bb61-acfede27c046",
+        "addons": ""
+      },
+      "rawFileHeader": {
+        "status": "PASS",
+        "scope": "Read-only first-frame wire inspection against pinned generated schema; not a production decoder",
+        "command": 1,
+        "payloadBytes": 183,
+        "tickUnsigned": "4294967295",
+        "build_num": {
+          "tag": 13,
+          "wire": 0,
+          "value": 10231,
+          "exportedByCurrentNativeParseHeader": false
+        },
+        "server_start_tick": {
+          "tag": 15,
+          "wire": 0,
+          "value": 51144
+        },
+        "mapBuildIdentityProven": false
+      },
+      "parser": {
+        "version": "0.42.0-backport.363.1",
+        "target": "x86_64-pc-windows-msvc",
+        "baseCommit": "d3767705dc5846d73ed29db50eaeda58778dc934",
+        "verifiedBinarySha256": "132d664125b60542dc80dc8bc270e2c8e181a0a55433fdac5be285ef4d9b0de1",
+        "generatedProtobufSha256": "953ad3f19e1c1bd888d8d51292ff47cb1379a979353f07fb7977a4c152e4f5b5"
+      },
+      "matchingStatus": "unconfirmed",
+      "opaqueManifestMessages": {
+        "schemaRead": true,
+        "schemaFields": [
+          "CSVCMsg_ServerInfo.game_session_manifest",
+          "CNETMsg_SpawnGroup_Load.spawngroupmanifest",
+          "CNETMsg_SpawnGroup_Load.worldname",
+          "CNETMsg_SpawnGroup_Load.world_offset_pos"
+        ],
+        "fixtureMessagesDecoded": "NOT RUN",
+        "identitySemanticsVerified": "NOT RUN"
+      }
+    },
+    "installedGame": {
+      "discovery": "Steam registry path, libraryfolders.vdf and explicit appmanifest_730.acf; no full-disk search",
+      "root": "C:\\Steam\\steamapps\\common\\Counter-Strike Global Offensive",
+      "steamBuildId": "26144732",
+      "depotId": "2347770",
+      "depotManifestId": "67499503218971311",
+      "clientVersion": "2000935",
+      "serverVersion": "2000935",
+      "patchVersion": "1.41.9.2",
+      "sourceRevision": "11162119",
+      "versionDate": "Oct 22 2026",
+      "versionTime": "14:13:16",
+      "versionTimeZone": null,
+      "files": [
+        {
+          "path": "game/csgo/steam.inf",
+          "bytes": 190,
+          "sha256": "67bb5f38cdcfb57331eea7dbcf2d337f46ea6ed998d3482e2637f830f7210a06"
+        },
+        {
+          "path": "game/csgo/maps/de_dust2.vpk",
+          "bytes": 262476433,
+          "sha256": "51d6bb432b6553bfae6c38219a527c5de2464a2b107080f2b8be7d8427ebb885"
+        },
+        {
+          "path": "game/csgo/pak01_dir.vpk",
+          "bytes": 7708830,
+          "sha256": "562972293ed7a5d40e341c4df7d6b0ee06430452694177142f0c1239dd3f2c8b"
+        }
+      ],
+      "vpkContentsInspected": "NOT RUN",
+      "navFormatMeasured": "NOT RUN",
+      "physicsClosureMeasured": "NOT RUN",
+      "equivalenceToTargetDemo": "BLOCKED"
+    },
+    "replayResources": {
+      "resourceId": "valve-730-2347770-2312433566686574487-vrf20.1",
+      "appId": 730,
+      "depotId": 2347770,
+      "manifestId": "2312433566686574487",
+      "buildId": null,
+      "clientVersion": null,
+      "overviewSha256": "97947e99bc7930fc06dc15af3dcf942dbca5ca1c6f36119a089615fd4b383620",
+      "imageSha256": "0828297130ce26db25a299806ff743df9104de634a3e64b52b358f6f4399354d",
+      "transform": {
+        "posX": -2476,
+        "posY": 3239,
+        "scale": 4.4,
+        "width": 1024,
+        "height": 1024
+      },
+      "versionMatch": "unconfirmed",
+      "independentNewLandmarkMeasurement": "NOT RUN"
+    }
+  },
+  "sourceSnapshots": [
+    {
+      "repository": "ValveResourceFormat/ValveResourceFormat",
+      "commit": "651253f52bbcc989b4f924fa5e0d70f0fc84abfa",
+      "defaultBranch": "master",
+      "pushedAt": "2026-10-24T21:36:10Z",
+      "licenseMetadata": "MIT",
+      "licenseTextRead": true,
+      "latestReleaseObserved": {
+        "tag": "20.1",
+        "publishedAt": "2026-10-15T07:55:06Z"
+      }
+    },
+    {
+      "repository": "pnxenopoulos/awpy",
+      "commit": "afb1537f1e8cfe5ebcd54b29fb001707ab2bd5d2",
+      "defaultBranch": "main",
+      "pushedAt": "2026-10-21T18:11:24Z",
+      "licenseMetadata": "MIT",
+      "licenseTextRead": true,
+      "latestReleaseObserved": {
+        "tag": "awpy-v3.1.1",
+        "publishedAt": "2026-10-21T03:35:21Z"
+      }
+    },
+    {
+      "repository": "pnxenopoulos/awpy-data",
+      "commit": "7c73907f74521d271f0eb40bcbe14a4912184e05",
+      "defaultBranch": "main",
+      "pushedAt": "2026-10-23T06:12:47Z",
+      "licenseMetadata": "MIT",
+      "licenseTextRead": true,
+      "latestReleaseObserved": {
+        "tag": "2000935",
+        "publishedAt": "2026-10-23T06:12:47Z"
+      }
+    },
+    {
+      "repository": "JanEricNitschke/cs2_meeting_points",
+      "commit": "f12d8a9c3ed1558e36426660c91e0b0d04889ca6",
+      "defaultBranch": "main",
+      "pushedAt": "2026-10-23T03:05:46Z",
+      "licenseMetadata": "MIT",
+      "licenseTextRead": true,
+      "latestReleaseObserved": {
+        "tag": "v0.3.20",
+        "publishedAt": "2026-10-16T13:04:08Z"
+      }
+    },
+    {
+      "repository": "gkjohnson/three-mesh-bvh",
+      "commit": "16d6ae6383e9a20600152be2955851b20914b1ca",
+      "defaultBranch": "master",
+      "pushedAt": "2026-10-22T12:46:15Z",
+      "licenseMetadata": "MIT",
+      "licenseTextRead": true,
+      "latestReleaseObserved": {
+        "tag": "v0.9.16",
+        "publishedAt": "2026-10-08T05:44:44Z"
+      }
+    },
+    {
+      "repository": "ata4/bspsrc",
+      "commit": "eaac417f16d3a4d8ef55bb637ecd7bff28740209",
+      "defaultBranch": "master",
+      "pushedAt": "2026-10-11T21:45:46Z",
+      "licenseMetadata": "NOASSERTION",
+      "licenseTextRead": true,
+      "latestReleaseObserved": null
+    }
+  ],
+  "candidates": [
+    {
+      "id": "vrf",
+      "name": "ValveResourceFormat / Source 2 Viewer",
+      "sourceCommit": "651253f52bbcc989b4f924fa5e0d70f0fc84abfa",
+      "pinnedExistingTool": {
+        "tag": "20.1",
+        "commit": "9e2e6c7f67e3c4e5a5f443a60c3a5d841ba8f304"
+      },
+      "inputs": [
+        "VPK containers and referenced compiled Source 2 map/world/model/entity/physics resources",
+        "Source 2 NAV 30-36"
+      ],
+      "outputs": [
+        "NAV areas/polygons/connections/hulls/ladders",
+        "collision mesh/hull/sphere/capsule and tags",
+        "glTF / decompiled resources"
+      ],
+      "staticEvidence": "Source checked; 20.1 NAV accepts 30-36; 20.1 NavTests cover 30/35; master NavTest adds 36; physics export includes bind pose and node transforms",
+      "runtimeStatus": "NOT RUN",
+      "windowsEvidence": "20.1 cli-windows-x64 release; master Windows CI publish; no local geometry tool run",
+      "requiredResources": "Existing local VPK/member dependency closure; no running game, injection or online service required for explicit-file parsing",
+      "dynamicStateReconstruction": "UNSUPPORTED",
+      "mapIdentity": "Source hashes and provenance possible; DEM binding not provided by tool",
+      "license": "MIT code; game fixtures/assets excluded",
+      "recommendation": "Primary offline extraction candidate"
+    },
+    {
+      "id": "awpy",
+      "name": "Awpy Rust NAV and geometry",
+      "sourceCommit": "afb1537f1e8cfe5ebcd54b29fb001707ab2bd5d2",
+      "inputs": [
+        "Source 2 NAV 30-36",
+        "AWMH v1 mesh"
+      ],
+      "outputs": [
+        "directed nav queries",
+        "static segment/BVH intersections"
+      ],
+      "staticEvidence": "nav.rs, geometry.rs, synthetic NAV/wall tests, release workflow and data resolver inspected",
+      "runtimeStatus": "NOT RUN",
+      "windowsEvidence": "Python Windows x64 wheel workflow; Rust core; no Electron/local run",
+      "requiredResources": "Explicit local NAV/mesh sufficient; map-name helpers can download latest and must be bypassed",
+      "dynamicStateReconstruction": "UNSUPPORTED",
+      "mapIdentity": "Explicit version selects asset release but does not prove target DEM map",
+      "license": "MIT",
+      "recommendation": "Offline comparator or helper core; retain existing DEM parser"
+    },
+    {
+      "id": "awpy-data",
+      "name": "awpy-data preprocessing scripts",
+      "sourceCommit": "7c73907f74521d271f0eb40bcbe14a4912184e05",
+      "inputs": [
+        "Existing CS2 install VPKs",
+        "steam.inf",
+        "external S2V CLI"
+      ],
+      "outputs": [
+        "raw NAV",
+        "radar/overview",
+        "AWMH mesh",
+        "release manifest"
+      ],
+      "staticEvidence": "Extractor, raw POSITION weld, material filter, default grid 8, package manifest and Linux 19.2 tool installer inspected",
+      "runtimeStatus": "NOT RUN",
+      "windowsEvidence": "Python portable path logic; actual installer and CI Linux; Windows end-to-end not proven",
+      "requiredResources": "Existing local install; default pipeline may fetch game/tools and was not run",
+      "dynamicStateReconstruction": "UNSUPPORTED",
+      "mapIdentity": "ClientVersion/sourceRevision/buildid and ZIP hashes; no verified source-closure DEM binding",
+      "license": "MIT scripts only; Valve owns extracted assets",
+      "recommendation": "Reference C architecture; do not import defaults unchanged"
+    },
+    {
+      "id": "cs2-nav",
+      "name": "JanEricNitschke/cs2_meeting_points",
+      "sourceCommit": "f12d8a9c3ed1558e36426660c91e0b0d04889ca6",
+      "version": "0.3.20",
+      "inputs": [
+        "NAV 30-35",
+        "JSON",
+        "TRI"
+      ],
+      "outputs": [
+        "nav/visibility utilities"
+      ],
+      "nav36Support": "UNSUPPORTED",
+      "staticEvidence": "src/nav.rs rejects outside 30..=35; Cargo, README, integration tests and MSVC publish inspected",
+      "runtimeStatus": "NOT RUN",
+      "windowsEvidence": "MSVC binary release/workflow and Python bindings",
+      "requiredResources": "Local files; no injection or live game requirement for file queries",
+      "dynamicStateReconstruction": "UNSUPPORTED",
+      "mapIdentity": "No verified automatic target DEM map binding",
+      "license": "MIT",
+      "recommendation": "Not selected for current NAV36"
+    },
+    {
+      "id": "sourcenav",
+      "name": "sourcenav",
+      "version": "1.0.0",
+      "source": "https://cdn.jsdelivr.net/npm/sourcenav@1.0.0/index.js",
+      "inputs": [
+        "Source 1 NAV16"
+      ],
+      "outputs": [
+        "legacy area/connection data"
+      ],
+      "cs2Support": "UNSUPPORTED",
+      "staticEvidence": "Published README, index.js, package.json and LICENSE inspected; old BSPSize/places/4-direction layout; only magic guard",
+      "runtimeStatus": "NOT RUN",
+      "windowsEvidence": "Node CommonJS; Windows test not run",
+      "requiredResources": "Local NAV; binary-parser/commander dependencies not installed",
+      "dynamicStateReconstruction": "UNSUPPORTED",
+      "mapIdentity": "None verified",
+      "license": "MIT",
+      "publishedAt": "2018-03-14T18:53:58.386Z",
+      "registryModifiedAt": "2022-05-18T09:10:05.616Z",
+      "recommendation": "Reject as Source 2 reader"
+    },
+    {
+      "id": "three-mesh-bvh",
+      "name": "three-mesh-bvh",
+      "sourceCommit": "16d6ae6383e9a20600152be2955851b20914b1ca",
+      "inputs": [
+        "Three.js BufferGeometry"
+      ],
+      "outputs": [
+        "BVH raycastFirst / spatial query"
+      ],
+      "source2FileParsing": "UNSUPPORTED",
+      "staticEvidence": "README, package, segment-capable near/far query source and randomized raycast comparison tests inspected",
+      "runtimeStatus": "NOT RUN",
+      "windowsEvidence": "Pure JS and Node test/benchmark scripts; no local/Electron run",
+      "requiredResources": "Verified converted geometry and Three.js; no game process/service",
+      "dynamicStateReconstruction": "UNSUPPORTED",
+      "mapIdentity": "Caller responsibility",
+      "license": "MIT",
+      "recommendation": "Candidate local query core after validated preprocessing"
+    },
+    {
+      "id": "bspsrc",
+      "name": "BSPSource",
+      "sourceCommit": "eaac417f16d3a4d8ef55bb637ecd7bff28740209",
+      "inputs": [
+        "Source 1 VBSP BSP"
+      ],
+      "outputs": [
+        "VMF"
+      ],
+      "cs2Support": "UNSUPPORTED",
+      "staticEvidence": "README explicitly excludes Source 2; BspFile.java reads VBSP; license/pom inspected",
+      "runtimeStatus": "NOT RUN",
+      "windowsEvidence": "Windows package / Java 24+ jar documented",
+      "requiredResources": "Source 1 BSP; not target CS2 geometry",
+      "dynamicStateReconstruction": "UNSUPPORTED",
+      "mapIdentity": "Source 1 metadata irrelevant to target closure",
+      "license": "Unlicense code; third-party notices",
+      "recommendation": "Exclude"
+    }
+  ],
+  "capabilities": [
+    {
+      "id": "world-to-overview",
+      "status": "BLOCKED",
+      "subcapability": {
+        "status": "PASS",
+        "scope": "Existing arithmetic, stored coarse registration and pinned display-asset regression; 9 tests rerun this review"
+      },
+      "newIndependentGroundTruth": "NOT RUN",
+      "reason": "No target DEM to map closure binding or new point precision validation"
+    },
+    {
+      "id": "distance",
+      "status": "PASS",
+      "scope": "Historical B-R four same-tick raw XYZ numeric pairs only; not rerun here; world units, no navigation/tactical claim",
+      "productionBoundaryValidation": "NOT RUN"
+    },
+    {
+      "id": "navigation",
+      "status": "BLOCKED",
+      "runtime": "NOT RUN",
+      "reason": "No verified target-bound Dust2 NAV/topology/hull or independent positive/negative cases"
+    },
+    {
+      "id": "static-los",
+      "status": "BLOCKED",
+      "runtime": "NOT RUN",
+      "reason": "No bound complete occluder closure, validated transforms/tag policy or independent labels"
+    },
+    {
+      "id": "multi-level",
+      "status": "BLOCKED",
+      "runtime": "NOT RUN",
+      "reason": "Dust2 display default layer does not encode platforms/connections"
+    },
+    {
+      "id": "dynamic-occlusion",
+      "status": "BLOCKED",
+      "runtime": "NOT RUN",
+      "reason": "No validated smoke volume/lifecycle or dynamic entity state"
+    },
+    {
+      "id": "support-conditions",
+      "status": "BLOCKED",
+      "runtime": "NOT RUN",
+      "reason": "Joint route/time/occlusion/action prerequisites missing"
+    }
+  ],
+  "excludedCapabilities": {
+    "status": "UNSUPPORTED",
+    "items": [
+      "POV analysis",
+      "actual attention or perception",
+      "psychology or intention",
+      "distance-alone trade/crossfire claims"
+    ]
+  },
+  "recommendation": {
+    "implementationReadiness": "partial",
+    "firstAuthorizedFutureUnit": "Resource identity and fail-closed capability gating plus same-tick raw XY/XYZ distances; requires separate authorization",
+    "preferredArchitecture": "C trusted offline preprocessing plus A deterministic local queries; B isolated helper if needed",
+    "firstActualMapExperiment": "NAV format/topology and limited adjacency after trustworthy same-build binding and independent coordinate/route/height labels",
+    "criticalBlockers": [
+      "Auditable old DEM -> actual map resource closure association",
+      "Independent same-build Dust2 spatial ground truth",
+      "Extraction coordinate/tag/completeness validation",
+      "Separate asset use/distribution decision"
+    ],
+    "existingFixtureVersionMatch": "unconfirmed",
+    "automaticStageProgression": false
+  },
+  "validation": {
+    "runtimeEnvironment": {
+      "node": "v26.3.0",
+      "pnpm": "10.0.0",
+      "platform": "Windows x64"
+    },
+    "commands": [
+      {
+        "command": "Get-FileHash .demo/dust2.dem -Algorithm SHA256",
+        "exitCode": 0,
+        "status": "PASS",
+        "scope": "File identity only"
+      },
+      {
+        "command": "node stdin: native.parseHeader('.demo/dust2.dem'); native.getBindingProvenance()",
+        "exitCode": 0,
+        "status": "PASS",
+        "scope": "Existing parser header and binary identity"
+      },
+      {
+        "command": "node stdin: first-frame protobuf wire inspection (full reproducible command in report section 10)",
+        "exitCode": 0,
+        "status": "PASS",
+        "scope": "Actual tag13 build_num, not map build"
+      },
+      {
+        "command": "Read Steam registry/libraryfolders/appmanifest/steam.inf; Get-FileHash explicit existing VPKs",
+        "exitCode": 0,
+        "status": "PASS",
+        "scope": "Local file/install metadata only"
+      },
+      {
+        "command": "node --test --test-reporter=tap scripts/replay-resource-audit.test.mjs scripts/check-replay-map-assets.test.mjs apps/desktop/tests/replay-map.test.mjs",
+        "exitCode": 0,
+        "status": "PASS",
+        "tests": 9,
+        "passed": 9,
+        "failed": 0,
+        "skipped": 0,
+        "scope": "Existing display assets and numeric regressions; not geometry validation"
+      },
+      {
+        "command": "node scripts/check-replay-map-assets.mjs",
+        "exitCode": 0,
+        "status": "PASS",
+        "result": {
+          "prepared": 13,
+          "expected": 13,
+          "mode": "verified-assets"
+        }
+      },
+      {
+        "command": "New documentation JSON/status/link/reference/scope checks",
+        "status": "PASS",
+        "exitCode": 0,
+        "result": {
+          "capabilities": 7,
+          "candidates": 7,
+          "sourceCommitReferences": 6,
+          "referenceDefinitions": 24,
+          "localLinksChecked": 1,
+          "newDocumentationFiles": 2,
+          "existingTrackedFilesModified": 0
+        }
+      },
+      {
+        "command": "git diff --check and git diff --cached --check",
+        "status": "PASS",
+        "exitCode": 0
+      }
+    ],
+    "uniqueRuntimeTests": 9,
+    "upstreamTestsRun": false,
+    "notRun": [
+      "Candidate binary installation/build/execution",
+      "VPK extraction or actual NAV/physics parsing",
+      "Opaque session/spawn manifest decoding",
+      "Independent Dust2 coordinates/routes/LOS/heights/smoke ground truth",
+      "Windows helper/IPC/crash/limit/installer tests",
+      "Whole-repository typecheck/build (docs-only)",
+      "Full DEM parse rerun",
+      "AI/service work"
+    ],
+    "reviewer": {
+      "status": "PASS",
+      "scope": "Independent read-only review of report and JSON consistency; not a geometry acceptance",
+      "findings": [
+        "No blocking source-evidence, capability-status or scope issue found",
+        "Changed permanent unconfirmed wording to remain unconfirmed until trustworthy new binding evidence",
+        "Windows path rechecked by character codes and filesystem existence; initial escaping concern withdrawn"
+      ],
+      "independentlyChecked": [
+        "cs2-nav rejects NAV36; Awpy NAV area and tail limitations; awpy-data filter and default grid; VRF20.1 transform",
+        "Local raw build_num=10231, patch_version=14055, server_start_tick=51144 and steam.inf",
+        "Existing 9 tests, 13 assets and whitespace checks; repeated counts not added to uniqueRuntimeTests",
+        "JSON parsing and Markdown consistency"
+      ],
+      "notIndependentlyReverified": [
+        "All remote repository metadata and license texts",
+        "Map internal geometry or candidate execution"
+      ]
+    },
+    "accessLimitations": [
+      "Valve Developer Community VMAP/VPK/CS2 Workshop pages inaccessible (403); not used as passed evidence",
+      "Current branch lacks PR4 scope/contract files; read remote PR head without merging",
+      "Old .tmp/p6-resources, .tmp/p6-depot and .tmp/p6-official absent; actual Steam install separately located",
+      "sourcenav repository not resolved; used pinned published textual package source instead"
+    ]
+  }
+}
