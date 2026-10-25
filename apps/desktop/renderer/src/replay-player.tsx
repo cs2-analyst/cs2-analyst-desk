@@ -17,6 +17,7 @@ import type { ReplayEffectImages } from './replay-effect-assets';
 import { replayFloorAt } from './replay-floor';
 import type { ReplayFloorState, ReplayFloorStatus } from './replay-floor';
 import { ReplayMapImages } from './replay-map-images';
+import { mountReplayEffectImages, releaseReplayCanvases } from './replay-render-resources';
 import { resolveReplayFollow } from './replay-follow';
 import { LoadingRows, LoadingOverlay, MapSkeleton, useLoadingFeedback } from './loading-ui';
 
@@ -507,13 +508,10 @@ export function ReplayPlayer({ metadata, fileName, initialPlayerId, active, jump
     target.dataset.drawP95=String([...times].sort((a,b)=>a-b)[Math.floor(times.length*.95)]??0);
   }
   useEffect(()=>{
-    let disposed=false;
-    const images=Object.entries(replayEffectAssetUrls).map(([key,url])=>{
-      const img=new Image();
-      img.onload=()=>{if(!disposed)effectImages.current[key as keyof ReplayEffectImages]=img;};
-      img.src=url;return img;
+    const dispose=mountReplayEffectImages(replayEffectAssetUrls,(key,image)=>{
+      effectImages.current[key as keyof ReplayEffectImages]=image;
     });
-    return()=>{disposed=true;for(const img of images)img.onload=null;effectImages.current={};};
+    return()=>{dispose();effectImages.current={};};
   },[]);
   useEffect(()=>()=>{generation.current++;cache.current.clear();resume.current=false;},[metadata.sessionId]);
   useEffect(()=>{if(jump)selectRound(jump.round,jump.tick);},[jump?.sequence]);
@@ -564,6 +562,7 @@ export function ReplayPlayer({ metadata, fileName, initialPlayerId, active, jump
   useEffect(()=>{
     const host=mapColumn.current,map=box.current;
     if(!host||!map)return;
+    const ownedCanvases=[baseCanvas.current,canvas.current];
     const apply=()=>{
       const rect=host.getBoundingClientRect();
       const style=getComputedStyle(host);
@@ -588,7 +587,7 @@ export function ReplayPlayer({ metadata, fileName, initialPlayerId, active, jump
       resolution.addEventListener('change',watchResolution);
     };
     watchResolution();
-    return()=>{observer.disconnect();resolution.removeEventListener('change',watchResolution);};
+    return()=>{observer.disconnect();resolution.removeEventListener('change',watchResolution);releaseReplayCanvases(ownedCanvases);ownedCanvases.length=0;};
   },[availableMap]);
   if(!metadata.available||!info)return <section className={s.root} aria-label="比赛回放"><div className={s.group}><Title2>比赛回放</Title2><Body1>{metadata.unavailableReason??'本场缺少可靠回放窗口，比赛报告仍可用。'}</Body1></div></section>;
   const eventsHelp=`仅显示当前播放进度已到达的事件。同 tick 不推断先后顺序。${metadata.excludedRounds.length?` ${metadata.excludedRounds.length} 个回合窗口不可靠，未开放回放。`:''}`;
