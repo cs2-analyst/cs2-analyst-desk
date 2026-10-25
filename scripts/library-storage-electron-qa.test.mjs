@@ -29,6 +29,7 @@ test('phase peaks isolate primary opens from alternate-match switches and retain
     AnalysisUtility: 55 * 1024, VerificationUtility: 0 },
     'simultaneous candidate and active Utilities are summed within a sample');
   assert.equal(open.peakNodeMemory.Utility.rss, 400);
+  assert.equal(open.peakTrackedWorkingSetBytes, 88 * 1024, 'Main/Renderer/total Utility are summed in the same observation');
   assert.equal(switched.peakNodeMemory.Utility.rss, 900);
   assert.equal(open.peakRendererHeap.usedSize, 40);
   assert.equal(switched.peakRendererHeap.usedSize, 100);
@@ -38,6 +39,7 @@ test('phase peaks isolate primary opens from alternate-match switches and retain
   assert.equal(released.lastRendererHeap.usedSize, 20);
   assert.equal(released.peakNodeMemory.Utility, null, 'no Utility JS observations is unavailable, not zero');
   assert.equal(empty.peakWorkingSetBytes, null); assert.equal(empty.lastWorkingSetBytes, null);
+  assert.equal(empty.peakTrackedWorkingSetBytes, null); assert.equal(empty.lastTrackedWorkingSetBytes, null);
   assert.deepEqual(empty.peakNodeMemory, { Main: null, Utility: null, AnalysisUtility: null, VerificationUtility: null });
   assert.equal(empty.peakRendererHeap, null); assert.equal(empty.lastRendererHeap, null);
   assert.equal(result.workingSet.Utility.peakConcurrentWorkingSetBytes, 90 * 1024);

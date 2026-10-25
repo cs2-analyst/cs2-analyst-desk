@@ -258,6 +258,8 @@ export function summarizeMemory(rows, renderer, phases) {
   } }));
   // Electron memory-info is KiB. Keep observer logs as returned and convert only this summary.
   const concurrentWorkingSet = (values, role) => values.map(row => row.roles[role].reduce((n, p) => n + p.memory.workingSetSize * 1024, 0));
+  const trackedWorkingSet = row => ['Main', 'Renderer', 'Utility'].reduce((sum, role) =>
+    sum + row.roles[role].reduce((n, p) => n + p.memory.workingSetSize * 1024, 0), 0);
   const byRole = Object.fromEntries(processRoles.map(role => [role, {
     peakConcurrentWorkingSetBytes: maximum(concurrentWorkingSet(workingSets, role)),
     peakProcessWorkingSetBytes: maximum(workingSets.flatMap(row => row.roles[role].map(p => p.memory.peakWorkingSetSize * 1024))),
@@ -269,12 +271,14 @@ export function summarizeMemory(rows, renderer, phases) {
     const nodes = rows.filter(row => row.at >= phase.at && row.at < end);
     return { phase: phase.label, matchId: phase.matchId ?? null, at: phase.at, endAt: Number.isFinite(end) ? end : null,
       samples: values.length, rendererSamples: heaps.length,
+      peakTrackedWorkingSetBytes: maximum(values.map(trackedWorkingSet)),
       peakWorkingSetBytes: values.length ? Object.fromEntries(processRoles.map(role => [role,
         maximum(concurrentWorkingSet(values, role))])) : null,
       peakNodeMemory: Object.fromEntries(nodeRoles.map(role => [role, peakFields(nodeFor(nodes, role), nodeFields, row => row.memory)])),
       peakRendererHeap: peakFields(heaps, rendererFields),
       lastWorkingSetBytes: values.length ? Object.fromEntries(processRoles.map(role => [role,
         values.at(-1).roles[role].reduce((n, p) => n + p.memory.workingSetSize * 1024, 0)])) : null,
+      lastTrackedWorkingSetBytes: values.length ? trackedWorkingSet(values.at(-1)) : null,
       lastNodeMemory: Object.fromEntries(nodeRoles.map(role => [role, nodeFor(nodes, role).at(-1)?.memory ?? null])),
       lastRendererHeap: heaps.at(-1) ?? null };
   });
@@ -296,6 +300,7 @@ export function summarizeMemory(rows, renderer, phases) {
     nodeObserverStartedAt: rows.find(row => row.pid === state.pid && row.reason === 'observer-start')?.at ?? null,
     nodeObserverExitAt: rows.find(row => row.pid === state.pid && row.reason === 'exit')?.at ?? null }));
   return { unit: 'bytes', observerIntervalMs: 100, node, workingSet: byRole, phases: windows, utilityLifecycle,
+    peakTrackedWorkingSetBytes: maximum(workingSets.map(trackedWorkingSet)),
     childProcessGoneEvents: rows.filter(row => row.childProcess).map(row => ({ at: row.at, ...row.childProcess })),
     rendererHeapPeak: peakFields(renderer, rendererFields),
     interpretation: 'Node RSS and JS heap are different measurements. Utility totals include AnalysisUtility and VerificationUtility; their separate columns expose transferred verification work. Node peaks are per-process role high waters; working-set values sum simultaneous processes within each role, including overlapping old/new Utilities during a switch. external includes native-bound objects; arrayBuffers is a subset and must not be added to it. Chromium backingStorage/embedder values are CDP observations, not a complete native heap. Working sets come from app.getAppMetrics; Node lifetime maxRSS catches RSS spikes between timers. No GC is requested. Brief JS heap spikes during blocking work can fall between samples. A phase with no observations returns null; an observed working-set sample with no active library Utility is measured zero. Lifecycle creationTime is the OS timestamp, first/last/absence are 100ms observations, and nodeObserverExitAt is present only when the normal Node exit observer ran. Whole-flow peaks include the alternate match; use the named phases and matchId for per-match open/seek/release comparisons.' };
