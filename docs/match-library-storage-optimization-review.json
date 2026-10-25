@@ -7,9 +7,21 @@
   "runtime": "Independent code tests used Node 26.3.0. Reviewed real-data evidence used bundled Electron 44.5.1 / Node 24.21.0 on Windows x64 without explicit GC.",
   "realDataReviewScope": "The independent reviewer checked existing primary-agent-run raw results and recomputed evidence accounting; it did not reparse DEMs or rerun the complete GUI measurement campaign.",
   "tests": {
-    "firstIndependentRegression": { "passed": 104, "failed": 0, "skipped": 0 },
-    "postMemoryFixCodecAndOptimizationRegression": { "passed": 15, "failed": 0, "skipped": 0 },
-    "oneShotVerificationIndependentRegression": { "passed": 12, "failed": 0, "skipped": 0 },
+    "firstIndependentRegression": {
+      "passed": 104,
+      "failed": 0,
+      "skipped": 0
+    },
+    "postMemoryFixCodecAndOptimizationRegression": {
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0
+    },
+    "oneShotVerificationIndependentRegression": {
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0
+    },
     "additionalSyntheticBombAndSubdivisionCheck": {
       "trials": 40,
       "byteExactChunks": 610,
@@ -86,7 +98,12 @@
     },
     "regularGuiSamples": 24,
     "finalPortableSamples": 12,
-    "finalPortableSamplesPerFormat": { "demo1.dem": 1, "demo2.dem": 1, "dust2.dem": 1, "nuke.dem": 3 },
+    "finalPortableSamplesPerFormat": {
+      "demo1.dem": 1,
+      "demo2.dem": 1,
+      "dust2.dem": 1,
+      "nuke.dem": 3
+    },
     "finalPortableProductionRevision": "a07174bb3a3f5bf5d3f4e71aa772ff61973437f3",
     "finalPortableBuiltArchiveVerifierSha256": "2189277ab655b1a816faf3b99c1de5e1596be254d03a16d2eb66186bcaada977",
     "nativeReanalysisCount": 4,
@@ -96,27 +113,66 @@
       "metadataComparisons": 8,
       "chunks": 499,
       "passed": true,
-      "excludedFields": ["temporary sessionId"],
+      "excludedFields": [
+        "temporary sessionId"
+      ],
       "floatingPointTolerance": false
     },
     "heatmapFilterCases": 1389,
-    "archiveBytes": { "v1": 51190600, "v2": 27155711, "saved": 24034889, "savedFraction": 0.46951762628295035 },
+    "archiveBytes": {
+      "v1": 51190600,
+      "v2": 27155711,
+      "saved": 24034889,
+      "savedFraction": 0.46951762628295035
+    },
     "noFingerprintControls": 2
   },
   "observedMemoryLimits": {
     "unit": "bytes",
     "finalPortableImportPeakConcurrentTrackedWorkingSet": [
-      { "fixture": "demo1.dem", "samplesPerFormat": 1, "v1": 887099392, "v2": 926912512 },
-      { "fixture": "demo2.dem", "samplesPerFormat": 1, "v1": 694611968, "v2": 748138496 },
-      { "fixture": "dust2.dem", "samplesPerFormat": 1, "v1": 859017216, "v2": 926912512 },
-      { "fixture": "nuke.dem", "samplesPerFormat": 3, "aggregation": "median of per-trial phase peaks", "v1": 812515328, "v2": 848240640 }
+      {
+        "fixture": "demo1.dem",
+        "samplesPerFormat": 1,
+        "v1": 887099392,
+        "v2": 926912512
+      },
+      {
+        "fixture": "demo2.dem",
+        "samplesPerFormat": 1,
+        "v1": 694611968,
+        "v2": 748138496
+      },
+      {
+        "fixture": "dust2.dem",
+        "samplesPerFormat": 1,
+        "v1": 859017216,
+        "v2": 926912512
+      },
+      {
+        "fixture": "nuke.dem",
+        "samplesPerFormat": 3,
+        "aggregation": "median of per-trial phase peaks",
+        "v1": 812515328,
+        "v2": 848240640
+      }
     ],
     "nukeNoFingerprintPortableReleasedIdle": {
       "samplesPerFormat": 1,
       "idleObservationMs": 1000,
-      "rendererWorkingSet": { "v1": 125898752, "v2": 157614080, "difference": 31715328 },
-      "rendererUsedHeap": { "v1": 7921476, "v2": 33200568, "difference": 25279092 },
-      "analysisAndVerificationUtilityWorkingSetAtEnd": { "v1": 0, "v2": 0 },
+      "rendererWorkingSet": {
+        "v1": 125898752,
+        "v2": 157614080,
+        "difference": 31715328
+      },
+      "rendererUsedHeap": {
+        "v1": 7921476,
+        "v2": 33200568,
+        "difference": 25279092
+      },
+      "analysisAndVerificationUtilityWorkingSetAtEnd": {
+        "v1": 0,
+        "v2": 0
+      },
       "interpretation": "A labelled observation with no explicit GC or fingerprint allocations. It does not prove a leak, establish a long-term steady state or justify a claim that every process uses less memory."
     }
   },
@@ -139,5 +195,16 @@
     "Retain the observed Renderer working-set and heap increase as a cost, not an unproven GC dismissal",
     "New-process first open does not imply cleared OS filesystem cache",
     "Do not use explicit GC to pass production budgets"
-  ]
+  ],
+  "rendererLifecycleFollowup": {
+    "date": "2026-10-25",
+    "report": "docs/renderer-memory-lifecycle.md",
+    "measurements": "docs/renderer-memory-lifecycle-measurements.json",
+    "productionFixes": [
+      "137defd",
+      "debc6a0"
+    ],
+    "measuredFinalBuild": "fa7cc93",
+    "scope": "Preserves the original single-point observation. New same-Renderer cycles establish natural recovery of tracked IPC objects, identify explicit Replay resource cleanup gaps, reproduce detached Image retention for removeAttribute in helper/direct controls, and verify empty-src cleanup. Remaining working-set differences are disclosed; not a claim of complete native memory recovery."
+  }
 }

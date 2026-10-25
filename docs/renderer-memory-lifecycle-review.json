@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-25",
+  "reviewType": "Independent read-only implementation and raw-evidence audit",
+  "reviewer": "review_boundary",
+  "status": "pass-with-disclosed-working-set-difference",
+  "blockingFindingsRemaining": 0,
+  "productionFixRevisions": ["137defd", "debc6a0"],
+  "finalMeasuredBuildRevision": "fa7cc93d00528dbe149f56ef2bcb47fc33118fc7",
+  "scope": "The independent reviewer inspected source, original raw checkpoints, matrices, archived diagnostic source SHA and final summary. It did not independently rerun the complete GUI campaign.",
+  "evidence": "docs/renderer-memory-lifecycle-measurements.json",
+  "checks": {
+    "isolatedLibrariesAndProfiles": true,
+    "noDemReadCopyRenameOrDownload": true,
+    "noExplicitGcSnapshotsObjectQueriesOrPressure": true,
+    "originalHistoricalMeasurementsPreserved": true,
+    "sameProductionBuildWithinBeforeCohorts": true,
+    "qaAndProbeDefinitionsSeparated": true,
+    "currentFiberAndMatchIdentityChecked": true,
+    "lateImageCallbackAndReplacementOwnerIsolation": true,
+    "setupOwnedCanvasNodesAvoidNewRefDamage": true,
+    "realReplayCacheClearedOrCollected": true,
+    "allBusinessUtilitiesRetiredAtRelease": true,
+    "sourceRemovalAttemptFailureDisclosed": true,
+    "helperAndDirectClearingModeControlsAgree": true,
+    "allOldBirthCyclesRecomputed": true,
+    "noCausalRssImprovementPercentageClaimed": true
+  },
+  "finalResourceAudit": {
+    "processes": 2,
+    "cyclesPerProcess": 8,
+    "realUiOpenAndLeavePairs": 32,
+    "resourceSamples": 46,
+    "nonemptySourceUrlsAtRelease": 0,
+    "largeReplayCanvasesAtRelease": 0,
+    "nonemptyReplayCachesAtRelease": 0,
+    "perFormatImagesBornInCyclesZeroThroughSix": { "live": 0, "collected": 112 },
+    "perFormatImagesBornInFinalCycle": { "live": 8, "collected": 8 },
+    "remainingSourceAttributesPerFormat": 8,
+    "remainingSourceAttributeValues": "empty string"
+  },
+  "finalTerminalMemoryBytes": {
+    "v1": { "rendererHeapUsed": 21218756, "rendererWorkingSet": 146112512 },
+    "v2": { "rendererHeapUsed": 21582160, "rendererWorkingSet": 265850880 },
+    "workingSetDifference": 119738368,
+    "interpretation": "Working sets include shared pages and are not PSS. Similar JS/DOM and released explicit resources do not prove all native/browser/GPU caches have returned to the same level. The remaining difference is disclosed rather than labelled resolved."
+  },
+  "validation": {
+    "rootTypecheckTasksPassed": 15,
+    "finalRelevantRegressionPassed": 47,
+    "desktopProductionBuild": "PASS",
+    "testSetOverlapNotSummed": true
+  },
+  "notClaimed": [
+    "The historical 31.7 MB IPC single-point difference was wholly caused by Replay image resources",
+    "Every recent weak target has already been collected",
+    "All Renderer working-set differences or browser native caches are resolved",
+    "An exact Blink-internal retainer chain",
+    "Unlimited or 24-hour memory stability, all GPU drivers or minimized-window behavior"
+  ]
+}

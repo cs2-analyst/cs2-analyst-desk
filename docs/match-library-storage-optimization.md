@@ -1,5 +1,7 @@
 # 分析归档无损存储优化：v2 格式与验证
 
+后续内存排查：[Renderer 长循环与资源释放修复](./renderer-memory-lifecycle.md)、[完整机器证据](./renderer-memory-lifecycle-measurements.json)。原 31.7 MB 单点保留为历史观测；新长测未发现其为持续累积的 IPC 业务对象强根，并另外确认、修复了真实 UI 的图片/canvas 清理问题。工作集仍有波动，不能把后续修复表述成所有内存差额已消除。
+
 2026-10-25。起始 HEAD 为 `9318ed9`、工作区干净；以当前代码实施，没有回退分析算法或修改用户比赛库。四份真实 DEM 的容量、严格字节比较、24 次真实 GUI 打开/seek/释放、最终便携路径与原 DEM 重新分析均已完成。体积与加载改善，部分瞬时总工作集和释放后 Renderer 内存增加；下文保留这些成本，不宣称全部内存降低。
 
 关联：[容量调查](./match-library-compression-audit.md)、[本地存储](./match-library-storage.md)、[便携格式](./match-library-portable-format.md)、[重新分析](./match-library-reanalysis.md)、[回放契约](./replay-contract.md)、[机器可读测量](./match-library-storage-optimization-measurements.json)、[独立复审](./match-library-storage-optimization-review.json)。
