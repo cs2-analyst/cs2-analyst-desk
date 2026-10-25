@@ -399,22 +399,35 @@ async function launchTrial(config, benchmark, version, trial, name, { forcePorta
       window.__storageQaWeak=[];window.__storageQaCycle=-1;
       window.__storageQaRemember=(value,kind)=>{if(value&&typeof value==='object')window.__storageQaWeak.push({kind,cycle:window.__storageQaCycle,ref:new WeakRef(value)});};
       window.__storageQaReferenceState=()=>{
-        const counts={};for(const item of window.__storageQaWeak){const key=item.cycle+':'+item.kind;
-          const entry=counts[key]??={live:0,dead:0};entry[item.ref.deref()?'live':'dead']++;}
-        return {reportRootCleared:window.__storageQaReport===null,counts};
+        const counts={};let nonEmptyReplayCaches=0;
+        for(const item of window.__storageQaWeak){const key=item.cycle+':'+item.kind,value=item.ref.deref();
+          const entry=counts[key]??={live:0,dead:0};entry[value?'live':'dead']++;
+          if(item.kind==='ui-cache'&&value?.entries?.size>0)nonEmptyReplayCaches++;}
+        return {reportRootCleared:window.__storageQaReport===null,counts,nonEmptyReplayCaches};
       };
-      window.__storageQaRememberUi=()=>{
+      window.__storageQaRememberUi=(captureReplay=false)=>{
         const host=document.getElementById('root')?.firstElementChild;
         const key=Object.keys(host??{}).find(key=>key.startsWith('__reactFiber$'));
         let root=host?.[key];while(root?.return)root=root.return;
         root=root?.stateNode?.current;
-        const stack=root?[root]:[],seen=new Set(),reports=new Set();
+        const stack=root?[root]:[],seen=new Set(),reports=new Set(),caches=new Set();let chunks=0;
         while(stack.length&&seen.size<50000){const fiber=stack.pop();if(!fiber||seen.has(fiber))continue;seen.add(fiber);
           const report=fiber.memoizedProps?.report;
-          if(report?.match?.id&&!reports.has(report)){reports.add(report);window.__storageQaRemember(report,'ui-report');window.__storageQaRemember(report.players,'ui-players');}
+          if(report?.match?.id&&!reports.has(report)){reports.add(report);if(!captureReplay){window.__storageQaRemember(report,'ui-report');window.__storageQaRemember(report.players,'ui-players');}}
+          const props=fiber.memoizedProps;
+          if(captureReplay&&props?.metadata?.available&&typeof props.fileName==='string'&&typeof props.initialPlayerId==='string')
+          for(let hook=fiber.memoizedState;hook;hook=hook.next){
+            const cache=hook.memoizedState?.current;
+            if(cache?.entries instanceof Map&&typeof cache.get==='function'&&typeof cache.put==='function'&&typeof cache.clear==='function'&&!caches.has(cache)){
+              caches.add(cache);window.__storageQaRemember(cache,'ui-cache');
+              for(const chunk of cache.entries.values()){
+                if(!Array.isArray(chunk.frames))throw new Error('Unexpected UI cache entry');
+                chunks++;window.__storageQaRemember(chunk,'ui-chunk');window.__storageQaRemember(chunk.frames,'ui-frames');}
+            }
+          }
           stack.push(fiber.child,fiber.sibling);
         }
-        return {fibers:seen.size,reports:reports.size,matchIds:[...reports].map(report=>report.match.id)};
+        return {fibers:seen.size,reports:reports.size,matchIds:[...reports].map(report=>report.match.id),caches:caches.size,chunks};
       };
     })()`);
     const poll = () => {
@@ -579,7 +592,9 @@ async function soakCycles(page, directory, primary, alternate, phase, options, o
     phase(`soak-${cycle}-release`);
     await page.evaluate(`(async()=>{await window.cs2Analyst.session.release(${JSON.stringify(switched.metadata.sessionId)});window.__storageQaReport=null;})()`);
     const ui = [];
-    if (options.uiEvery && cycle % options.uiEvery === 0) for (const entry of [primary, alternate]) {
+    // The actual-UI cohort finishes each cycle with Nuke, including its latest
+    // two-floor resources and chunks, before observing release without another open.
+    if (options.uiEvery && cycle % options.uiEvery === 0) for (const entry of [alternate, primary]) {
       phase(`soak-${cycle}-ui-open`, entry.matchId);
       await page.evaluate(`document.querySelector('[data-library-entry="${entry.matchId}"]').click()`);
       await waitFor(() => page.evaluate('document.querySelector("main")?.dataset.status === "success"'), 60000, 'soak UI open');
@@ -604,10 +619,17 @@ async function soakCycles(page, directory, primary, alternate, phase, options, o
       await waitFor(() => page.evaluate(`(()=>{const root=document.querySelector('[data-heatmap-session]');return Boolean(document.querySelector('#heatmap-panel canvas'))
         &&root?.dataset.heatmapUpdating==='false'&&Number(root.dataset.heatmapAppliedResolution)>0&&!document.querySelector('#heatmap-panel [role=alert]');})()`), 30000, 'soak UI applied heatmap');
       await delay(500);
+      const cacheReferences = await page.evaluate('window.__storageQaRememberUi(true)');
+      assert.deepEqual(cacheReferences.matchIds, [entry.matchId]);
+      assert.equal(cacheReferences.caches, 1, 'Track the real session-owned Replay cache');
+      assert.ok(cacheReferences.chunks >= 1 && cacheReferences.chunks <= 3);
       phase(`soak-${cycle}-ui-release`);
       await page.evaluate('document.querySelector("[data-nav-action=home]").click()');
       await waitFor(() => page.evaluate('!document.querySelector("[data-replay-session]") && Boolean(document.querySelector("[data-library-entry]"))'), 30000, 'soak UI release');
-      ui.push({ matchId: entry.matchId, references, positions });
+      // Passive effect cleanup may follow the DOM commit. Wait for that ordinary
+      // lifecycle work, never for a forced GC or an artificial allocation workload.
+      await waitFor(() => page.evaluate('window.__storageQaReferenceState().nonEmptyReplayCaches===0'), 15000, 'actual Replay caches cleared after unmount');
+      ui.push({ matchId: entry.matchId, references, cacheReferences, positions, nonEmptyReplayCachesAfterUnmount: 0 });
     }
     phase(`soak-${cycle}-released-idle`);
     const immediate = await sample(cycle, 'immediate');
