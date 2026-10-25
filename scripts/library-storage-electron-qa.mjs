@@ -1,5 +1,6 @@
 // Serial GUI/IPC companion to library-storage-optimization-benchmark.mjs.
 // node scripts/library-storage-electron-qa.mjs <benchmark directory or run.json> [--trials=3] [--requests=40]
+// node scripts/library-storage-electron-qa.mjs '$soak' <existing gui-run.json> nuke.dem [trials=3] [cycles=8] [idleMs=10000] [finalIdleMs=60000] [uiEvery=0]
 // The caller builds first. This tool never builds, parses/copies a DEM, forces GC, or clears OS caches.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
@@ -22,6 +23,7 @@ const desktop = join(repository, 'apps', 'desktop');
 const allowed = ['demo1.dem', 'demo2.dem', 'dust2.dem', 'nuke.dem'];
 const json = path => JSON.parse(readFileSync(path, 'utf8'));
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
+const qaScriptSha256 = digest(readFileSync(here));
 const require = createRequire(join(desktop, 'package.json'));
 
 function save(owner, path, value) {
@@ -187,6 +189,8 @@ const browserHelpers = `(() => {
     const at=performance.now(),reply=await window.cs2Analyst.library.open(id),ms=performance.now()-at;
     if(reply.kind!=='success')throw new Error(JSON.stringify(reply));
     window.__storageQaReport=reply.report;
+    window.__storageQaRemember?.(reply.report,'report');
+    window.__storageQaRemember?.(reply.report.players,'players');
     if(reply.report.match?.id!==id)throw new Error('Opened match identity mismatch');
     return {ms,metadata:reply.report.replay,heatmapAvailable:reply.report.heatmap?.available,
       report:window.__storageQaFingerprints?await window.__storageQaHash(reply.report):null};
@@ -196,6 +200,8 @@ const browserHelpers = `(() => {
     if(reply.kind!=='success')throw new Error(JSON.stringify(reply));
     if(reply.chunk?.sessionId!==request.sessionId||reply.chunk.round!==request.round||reply.chunk.block!==request.block
       ||!Array.isArray(reply.chunk.frames)||reply.chunk.frames.length===0)throw new Error('Chunk identity/count mismatch');
+    window.__storageQaRemember?.(reply.chunk,'chunk');
+    window.__storageQaRemember?.(reply.chunk.frames,'frames');
     return {ms,fingerprint:window.__storageQaFingerprints?await window.__storageQaHash(reply.chunk):null,frames:reply.chunk.frames.length,
       utilities:reply.chunk.utilities?.length??0};
   };
@@ -329,7 +335,7 @@ async function sixViews(page, directory, matchId) {
   return views;
 }
 
-async function launchTrial(config, benchmark, version, trial, name, { forcePortable = false, fingerprints = true } = {}) {
+async function launchTrial(config, benchmark, version, trial, name, { forcePortable = false, fingerprints = true, soak = null } = {}) {
   const run = config.runs[version], base = join(run.output, `${basename(name, '.dem')}${fingerprints ? '' : '-no-fingerprint'}-trial-${trial}`);
   let directory = assertOwnedPath(run, base), attempt = 1;
   while (existsSync(directory)) { assert.ok(attempt < 20, 'Too many preserved trial attempts'); directory = assertOwnedPath(run, base + '-attempt-' + ++attempt); }
@@ -345,6 +351,7 @@ async function launchTrial(config, benchmark, version, trial, name, { forcePorta
     fingerprintMemoryIncluded: fingerprints,
     sourceRevision: config.sourceRevision, sourceWorktreeDirty: config.sourceWorktreeDirty,
     builtEntryFingerprints: config.builtEntryFingerprints,
+    qaScriptSha256: config.qaScriptSha256,
     coldDefinition: 'First archive open in a new GUI Electron process. OS filesystem cache is not cleared; profile is reused within this format.',
     baselineDefinition: 'v1 and v2 both use the current common production reader/worker. This isolates format differences; it is not the original 9318ed9 worker with its former repeated source decoding.',
     directIpcExcludesReactRendering: true, explicitGc: false, osFileCacheCleared: false };
@@ -388,6 +395,28 @@ async function launchTrial(config, benchmark, version, trial, name, { forcePorta
     await waitFor(() => page.evaluate(`document.querySelectorAll('[data-library-entry]').length===${seeded.length}`), 30_000, 'meaningful seeded library rows');
     await page.evaluate(browserHelpers);
     if (!fingerprints) await page.evaluate('window.__storageQaFingerprints=false');
+    if (soak) await page.evaluate(`(()=>{
+      window.__storageQaWeak=[];window.__storageQaCycle=-1;
+      window.__storageQaRemember=(value,kind)=>{if(value&&typeof value==='object')window.__storageQaWeak.push({kind,cycle:window.__storageQaCycle,ref:new WeakRef(value)});};
+      window.__storageQaReferenceState=()=>{
+        const counts={};for(const item of window.__storageQaWeak){const key=item.cycle+':'+item.kind;
+          const entry=counts[key]??={live:0,dead:0};entry[item.ref.deref()?'live':'dead']++;}
+        return {reportRootCleared:window.__storageQaReport===null,counts};
+      };
+      window.__storageQaRememberUi=()=>{
+        const host=document.getElementById('root')?.firstElementChild;
+        const key=Object.keys(host??{}).find(key=>key.startsWith('__reactFiber$'));
+        let root=host?.[key];while(root?.return)root=root.return;
+        root=root?.stateNode?.current;
+        const stack=root?[root]:[],seen=new Set(),reports=new Set();
+        while(stack.length&&seen.size<50000){const fiber=stack.pop();if(!fiber||seen.has(fiber))continue;seen.add(fiber);
+          const report=fiber.memoizedProps?.report;
+          if(report?.match?.id&&!reports.has(report)){reports.add(report);window.__storageQaRemember(report,'ui-report');window.__storageQaRemember(report.players,'ui-players');}
+          stack.push(fiber.child,fiber.sibling);
+        }
+        return {fibers:seen.size,reports:reports.size,matchIds:[...reports].map(report=>report.match.id)};
+      };
+    })()`);
     const poll = () => {
       if (polling || closing) return;
       polling = page.send('Runtime.getHeapUsage').then(value => observations.push({ at: Date.now(), ...value }))
@@ -468,7 +497,10 @@ async function launchTrial(config, benchmark, version, trial, name, { forcePorta
       await page.evaluate('window.__storageQaReport=null');
       phase('portable-released-idle'); await delay(1000);
     }
-    if (trial === 0 && name === benchmark.fixtures[0]) {
+    if (soak) result.soak = await soakCycles(page, directory, primary, alternate, phase, soak, observations, async () => {
+      clearInterval(timer); timer = null; if (polling) await polling;
+    });
+    if (!soak && trial === 0 && name === benchmark.fixtures[0]) {
       phase('actual-six-view-ui', primary.matchId); result.views = await sixViews(page, directory, primary.matchId);
       phase('ui-returned-home'); await delay(500);
     }
@@ -490,6 +522,9 @@ async function launchTrial(config, benchmark, version, trial, name, { forcePorta
     page.socket.close(); scope.sessions.delete(page.socket);
     const rows = readObservations(directory);
     result.memory = summarizeMemory(rows, observations, phases);
+    if (soak) for (const phase of result.memory.phases.filter(phase => /^soak-\d+-released-idle$|^soak-(quiet-)?final-idle$/.test(phase.phase))) {
+      assert.equal(phase.lastWorkingSetBytes?.Utility, 0, 'Each soak release must retire every business Utility');
+    }
     result.rendererHeapObservations = observations;
     const released = rows.filter(row => row.processes && row.at >= phases.find(item => item.label === 'released-idle').at
       && row.at < (phases.find(item => item.label === 'actual-six-view-ui')?.at ?? phases.find(item => item.label === 'before-close').at));
@@ -516,6 +551,120 @@ async function launchTrial(config, benchmark, version, trial, name, { forcePorta
     if (cleanupError && !primaryFailed) throw cleanupError;
   }
   return result;
+}
+
+// Weak references and ordinary business activity only: snapshots/queryObjects and
+// memory-pressure/GC commands are deliberately absent from this experiment.
+async function soakCycles(page, directory, primary, alternate, phase, options, observations, pauseObserver) {
+  const cycles = [], sample = async (cycle, label) => {
+    const at = Date.now(), heap = await page.send('Runtime.getHeapUsage'); observations.push({ at, ...heap });
+    return { cycle, label, at, heap, dom: await page.send('Memory.getDOMCounters'),
+      references: await page.evaluate('window.__storageQaReferenceState()') };
+  };
+  const baseline = await sample(-1, 'original-no-fingerprint-portable-release');
+  for (let cycle = 0; cycle < options.cycles; cycle++) {
+    await page.evaluate(`window.__storageQaCycle=${cycle}`);
+    phase(`soak-${cycle}-open`, primary.matchId);
+    const opened = await page.evaluate(`window.__storageQaOpen(${JSON.stringify(primary.matchId)})`);
+    phase(`soak-${cycle}-seek`);
+    const chosen = targets(opened.metadata, options.requests), latencies = [];
+    for (const target of chosen) {
+      const request = { ...target, sessionId: opened.metadata.sessionId };
+      latencies.push((await page.evaluate(`window.__storageQaChunk(${JSON.stringify(request)})`)).ms);
+    }
+    phase(`soak-${cycle}-switch`, alternate.matchId);
+    const switched = await page.evaluate(`window.__storageQaOpen(${JSON.stringify(alternate.matchId)})`);
+    const request = { ...targets(switched.metadata, 8)[0], sessionId: switched.metadata.sessionId };
+    await page.evaluate(`window.__storageQaChunk(${JSON.stringify(request)})`);
+    phase(`soak-${cycle}-release`);
+    await page.evaluate(`(async()=>{await window.cs2Analyst.session.release(${JSON.stringify(switched.metadata.sessionId)});window.__storageQaReport=null;})()`);
+    const ui = [];
+    if (options.uiEvery && cycle % options.uiEvery === 0) for (const entry of [primary, alternate]) {
+      phase(`soak-${cycle}-ui-open`, entry.matchId);
+      await page.evaluate(`document.querySelector('[data-library-entry="${entry.matchId}"]').click()`);
+      await waitFor(() => page.evaluate('document.querySelector("main")?.dataset.status === "success"'), 60000, 'soak UI open');
+      const references = await page.evaluate('window.__storageQaRememberUi()');
+      assert.equal(references.reports, 1, 'Track the actually mounted UI report with weak references');
+      assert.deepEqual(references.matchIds, [entry.matchId], 'The current Fiber tree must belong to the newly opened match');
+      await page.evaluate('document.getElementById("replay-tab").click()');
+      await waitFor(() => page.evaluate('Number(document.querySelector("#replay-panel canvas[role=img]")?.dataset.playerCount)>0'), 30000, 'soak UI replay');
+      const positions = [];
+      for (const key of ['End', 'Home', 'End', 'Home']) {
+        await page.evaluate('document.querySelector("#replay-panel input[aria-label=回放进度]").focus()');
+        await page.send('Input.dispatchKeyEvent', { type: 'keyDown', key, code: key, windowsVirtualKeyCode: key === 'End' ? 35 : 36 });
+        await page.send('Input.dispatchKeyEvent', { type: 'keyUp', key, code: key, windowsVirtualKeyCode: key === 'End' ? 35 : 36 });
+        await delay(150);
+        await waitFor(() => page.evaluate(`(()=>{const root=document.querySelector('[data-replay-session]'),canvas=document.querySelector('#replay-panel canvas[role=img]');
+          return root?.dataset.replayWaiting==='false'&&!document.querySelector('#replay-panel [role=alert]')&&canvas?.dataset.tick===root.dataset.replayTick;})()`), 30000, 'soak UI seek and displayed frame');
+        positions.push(await page.evaluate('(()=>{const e=document.querySelector("[data-replay-session]");return {tick:Number(e.dataset.replayTick),cache:Number(e.dataset.replayCache),session:e.dataset.replaySession};})()'));
+      }
+      assert.ok(positions[0].tick > positions[1].tick, 'Trusted slider keyboard input must change the displayed tick');
+      assert.ok(positions.every(position => position.cache <= 3), 'Renderer Chunk cache remains bounded');
+      await page.evaluate('document.getElementById("heatmap-tab").click()');
+      await waitFor(() => page.evaluate(`(()=>{const root=document.querySelector('[data-heatmap-session]');return Boolean(document.querySelector('#heatmap-panel canvas'))
+        &&root?.dataset.heatmapUpdating==='false'&&Number(root.dataset.heatmapAppliedResolution)>0&&!document.querySelector('#heatmap-panel [role=alert]');})()`), 30000, 'soak UI applied heatmap');
+      await delay(500);
+      phase(`soak-${cycle}-ui-release`);
+      await page.evaluate('document.querySelector("[data-nav-action=home]").click()');
+      await waitFor(() => page.evaluate('!document.querySelector("[data-replay-session]") && Boolean(document.querySelector("[data-library-entry]"))'), 30000, 'soak UI release');
+      ui.push({ matchId: entry.matchId, references, positions });
+    }
+    phase(`soak-${cycle}-released-idle`);
+    const immediate = await sample(cycle, 'immediate');
+    await delay(options.idleMs);
+    const idle = await sample(cycle, 'idle');
+    assert.equal(idle.references.reportRootCleared, true);
+    cycles.push({ cycle, openMs: opened.ms, switchMs: switched.ms, requests: chosen.length, ui,
+      seekMs: quantiles(latencies), immediate, idle });
+    console.log(JSON.stringify({ phase: 'soak-cycle', cycle, heapUsed: idle.heap.usedSize,
+      liveReferences: Object.values(idle.references.counts).reduce((sum, item) => sum + item.live, 0) }));
+  }
+  phase('soak-final-idle');
+  const idle = [], observedMs = Math.floor(options.finalIdleMs / 2), quietMs = options.finalIdleMs - observedMs;
+  for (let elapsed = 0; elapsed < observedMs; elapsed += 5000) {
+    await delay(Math.min(5000, observedMs - elapsed)); idle.push(await sample(options.cycles, 'final-idle'));
+  }
+  await pauseObserver(); phase('soak-quiet-final-idle');
+  // This labelled control removes Renderer CDP polling, not application work or GC.
+  // Main's passive OS process observations continue, without Renderer V8 commands.
+  await delay(quietMs);
+  const quiet = { durationMs: quietMs, sample: await sample(options.cycles, 'after-no-renderer-cdp-traffic') };
+  phase('soak-final-screenshot');
+  const screenshot = await page.send('Page.captureScreenshot', { format: 'png' });
+  writeFileSync(join(directory, 'soak-final.png'), Buffer.from(screenshot.data, 'base64'), { flag: 'wx' });
+  return { options, baseline, cycles, idle, quiet, explicitGc: false, artificialAllocationPressure: false,
+    retentionProbe: 'WeakRef only; dereference jobs retain no values in later jobs. Counts distinguish previous cycles from the last cycle; uncleared objects before a natural GC do not prove a leak.' };
+}
+
+async function soakRun(configPath, name = 'nuke.dem', trials = 3, cycles = 8, idleMs = 10000, finalIdleMs = 60000, uiEvery = 0) {
+  assert.ok(Number.isInteger(trials) && trials >= 1 && trials <= 5);
+  assert.ok(Number.isInteger(cycles) && cycles >= 2 && cycles <= 100);
+  assert.ok(Number.isInteger(idleMs) && idleMs >= 1000 && idleMs <= 60000);
+  assert.ok(Number.isInteger(finalIdleMs) && finalIdleMs >= 10000 && finalIdleMs <= 300000);
+  assert.ok(Number.isInteger(uiEvery) && uiEvery >= 0 && uiEvery <= cycles);
+  const previous = readGuiConfig(configPath), benchmark = readBenchmark(previous.benchmark);
+  assert.ok(benchmark.fixtures.includes(name));
+  const owner = createOwnedTempDirectory('renderer-memory-soak', { parent: realpathSync.native(tmpdir()) });
+  const app = prepareApp(owner), runs = Object.fromEntries([1, 2].map(version =>
+    [version, createOwnedQaRun(`renderer-soak-v${version}`, { parent: owner.directory })]));
+  const config = { ...previous, owner, runs, app, trials, requests: 40,
+    sourceRevision: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repository, encoding: 'utf8', windowsHide: true }).trim(), qaScriptSha256,
+    sourceWorktreeDirty: execFileSync('git', ['status', '--porcelain', '--untracked-files=no'], { cwd: repository, encoding: 'utf8', windowsHide: true }).trim().length > 0,
+    builtEntryFingerprints: { main: app.original['electron/main.js'], reportWorker: app.original['electron/report-worker.js'], archiveVerifier: app.original['electron/archive-verifier.js'] },
+    createdAt: new Date().toISOString(), soak: { name, cycles, idleMs, finalIdleMs, requests: 40, uiEvery },
+    purpose: 'Long-lived no-fingerprint Renderer lifecycle experiment; new owned libraries and profiles, original archives and results untouched.' };
+  const path = join(owner.directory, 'gui-run.json'); save(owner, path, config);
+  console.log(JSON.stringify({ phase: 'soak-start', config: path, trials, cycles, idleMs, finalIdleMs, uiEvery }));
+  for (const version of [1, 2]) await runSeed(require('electron'), path, version);
+  const results = [];
+  for (let trial = 0; trial < trials; trial++) for (const version of trial % 2 ? [2, 1] : [1, 2]) {
+    const result = await launchTrial(config, benchmark, version, trial, name, { forcePortable: true, fingerprints: false,
+      soak: { cycles, idleMs, finalIdleMs, requests: 40, uiEvery } });
+    results.push(result); save(owner, join(owner.directory, `soak-v${version}-trial-${trial}.json`), result);
+  }
+  save(owner, join(owner.directory, 'results.json'), { schemaVersion: 1, serial: true, explicitGc: false,
+    originalConfig: configPath, sourceRevision: config.sourceRevision, qaScriptSha256, builtEntryFingerprints: config.builtEntryFingerprints, results });
+  console.log(JSON.stringify({ success: true, results: join(owner.directory, 'results.json') }));
 }
 
 async function main(args) {
@@ -667,6 +816,7 @@ if (process.argv[1] && resolve(process.argv[1]) === here) {
   else if (mode === '$portable-repeats') await portableRepeats(resolve(args[0]), args[1]);
   else if (mode === '$portable-probes') await portableRepeats(resolve(args[0]), args[1], { samples: args[2] ? Number(args[2]) : 3, includeOriginal: false });
   else if (mode === '$memory-control') await memoryControl(resolve(args[0]), args[1]);
+  else if (mode === '$soak') await soakRun(resolve(args[0]), args[1], ...args.slice(2).map(Number));
   else if (mode === '$refreeze') refreeze(resolve(args[0]));
   else if (mode === '$resume') {
     const path = resolve(args[0]), config = readGuiConfig(path);
