@@ -177,6 +177,7 @@ async function runSeed(electron, configPath, version) {
 
 // Hashes are calculated after each measured IPC interval; no full chunks are retained in the Renderer.
 const browserHelpers = `(() => {
+  window.__storageQaFingerprints=true;
   window.__storageQaHash = async value => {
     const bytes=new TextEncoder().encode(JSON.stringify(value,(key,item)=>key==='sessionId'?undefined:item));
     const hash=await crypto.subtle.digest('SHA-256',bytes);
@@ -186,13 +187,16 @@ const browserHelpers = `(() => {
     const at=performance.now(),reply=await window.cs2Analyst.library.open(id),ms=performance.now()-at;
     if(reply.kind!=='success')throw new Error(JSON.stringify(reply));
     window.__storageQaReport=reply.report;
+    if(reply.report.match?.id!==id)throw new Error('Opened match identity mismatch');
     return {ms,metadata:reply.report.replay,heatmapAvailable:reply.report.heatmap?.available,
-      report:await window.__storageQaHash(reply.report)};
+      report:window.__storageQaFingerprints?await window.__storageQaHash(reply.report):null};
   };
   window.__storageQaChunk = async request => {
     const at=performance.now(),reply=await window.cs2Analyst.replay.getChunk(request),ms=performance.now()-at;
     if(reply.kind!=='success')throw new Error(JSON.stringify(reply));
-    return {ms,fingerprint:await window.__storageQaHash(reply.chunk),frames:reply.chunk.frames.length,
+    if(reply.chunk?.sessionId!==request.sessionId||reply.chunk.round!==request.round||reply.chunk.block!==request.block
+      ||!Array.isArray(reply.chunk.frames)||reply.chunk.frames.length===0)throw new Error('Chunk identity/count mismatch');
+    return {ms,fingerprint:window.__storageQaFingerprints?await window.__storageQaHash(reply.chunk):null,frames:reply.chunk.frames.length,
       utilities:reply.chunk.utilities?.length??0};
   };
 })()`;
@@ -325,8 +329,8 @@ async function sixViews(page, directory, matchId) {
   return views;
 }
 
-async function launchTrial(config, benchmark, version, trial, name, { forcePortable = false } = {}) {
-  const run = config.runs[version], base = join(run.output, `${basename(name, '.dem')}-trial-${trial}`);
+async function launchTrial(config, benchmark, version, trial, name, { forcePortable = false, fingerprints = true } = {}) {
+  const run = config.runs[version], base = join(run.output, `${basename(name, '.dem')}${fingerprints ? '' : '-no-fingerprint'}-trial-${trial}`);
   let directory = assertOwnedPath(run, base), attempt = 1;
   while (existsSync(directory)) { assert.ok(attempt < 20, 'Too many preserved trial attempts'); directory = assertOwnedPath(run, base + '-attempt-' + ++attempt); }
   mkdirSync(directory);
@@ -337,6 +341,8 @@ async function launchTrial(config, benchmark, version, trial, name, { forcePorta
   const phases = [], observations = [], consoleMessages = [], errors = [];
   const result = { name, version, trial, attempt, outputDirectory: directory, primary, alternate, phases, startupAt: Date.now(),
     supplementalPortableProbe: forcePortable,
+    measurementLabel: fingerprints ? 'full-json-fingerprint-integrity' : 'no-fingerprint-memory-control',
+    fingerprintMemoryIncluded: fingerprints,
     sourceRevision: config.sourceRevision, sourceWorktreeDirty: config.sourceWorktreeDirty,
     builtEntryFingerprints: config.builtEntryFingerprints,
     coldDefinition: 'First archive open in a new GUI Electron process. OS filesystem cache is not cleared; profile is reused within this format.',
@@ -381,6 +387,7 @@ async function launchTrial(config, benchmark, version, trial, name, { forcePorta
     await page.evaluate('document.getElementById("global-library-tab")?.click()');
     await waitFor(() => page.evaluate(`document.querySelectorAll('[data-library-entry]').length===${seeded.length}`), 30_000, 'meaningful seeded library rows');
     await page.evaluate(browserHelpers);
+    if (!fingerprints) await page.evaluate('window.__storageQaFingerprints=false');
     const poll = () => {
       if (polling || closing) return;
       polling = page.send('Runtime.getHeapUsage').then(value => observations.push({ at: Date.now(), ...value }))
@@ -397,7 +404,7 @@ async function launchTrial(config, benchmark, version, trial, name, { forcePorta
       phase(label, id);
       const opened = await page.evaluate(`window.__storageQaOpen(${JSON.stringify(id)})`);
       assert.ok(opened.metadata?.available && opened.heatmapAvailable, 'GUI restore must retain Replay and Heatmap');
-      if (expectedReport) same(opened.report, expectedReport, label + ' full report');
+      if (fingerprints && expectedReport) same(opened.report, expectedReport, label + ' full report');
       return opened;
     };
     const cold = await open(primary.matchId, 'new-process-first-open', expected.report);
@@ -408,12 +415,13 @@ async function launchTrial(config, benchmark, version, trial, name, { forcePorta
     for (const target of requests) {
       const request = { ...target, sessionId: cold.metadata.sessionId }, key = `${target.round}:${target.block}`;
       const miss = await page.evaluate(`window.__storageQaChunk(${JSON.stringify(request)})`);
-      same(miss.fingerprint, expected.chunks[key], key + ' uncached IPC chunk'); misses.push({ ...target, ...miss });
+      if (fingerprints) same(miss.fingerprint, expected.chunks[key], key + ' uncached IPC chunk'); misses.push({ ...target, ...miss });
       const hit = await page.evaluate(`window.__storageQaChunk(${JSON.stringify(request)})`);
-      same(hit.fingerprint, expected.chunks[key], key + ' repeated IPC chunk'); hits.push({ ...target, ...hit });
+      if (fingerprints) same(hit.fingerprint, expected.chunks[key], key + ' repeated IPC chunk');
+      assert.equal(hit.frames, miss.frames, key + ' repeated frame count'); hits.push({ ...target, ...hit });
     }
     result.seek = { unique: quantiles(misses.map(item => item.ms)), repeated: quantiles(hits.map(item => item.ms)),
-      requests: misses, repeats: hits, wholeChunkJsonByteExact: true,
+      requests: misses, repeats: hits, wholeChunkJsonByteExact: fingerprints ? true : null,
       cacheMeaning: version === 2 ? 'Each unique block misses the bounded derived-chunk LRU; its immediate repeat hits it.'
         : 'v1 has no application chunk cache. Repeated requests are OS-cache-warm file reads and decompression.' };
     const repeated = await open(primary.matchId, 'same-process-reopen', expected.report);
@@ -455,7 +463,7 @@ async function launchTrial(config, benchmark, version, trial, name, { forcePorta
       result.portable.importMs = imported.ms; result.portable.deletedAndRestoredSameId = true;
       const importedOpen = await open(primary.matchId, 'portable-offline-reopen', expected.report);
       const portableChunk = await page.evaluate(`window.__storageQaChunk(${JSON.stringify({ ...requests.at(-1), sessionId: importedOpen.metadata.sessionId })})`);
-      same(portableChunk.fingerprint, expected.chunks[`${requests.at(-1).round}:${requests.at(-1).block}`], 'portable Main round-trip final chunk');
+      if (fingerprints) same(portableChunk.fingerprint, expected.chunks[`${requests.at(-1).round}:${requests.at(-1).block}`], 'portable Main round-trip final chunk');
       await page.evaluate(`window.cs2Analyst.session.release(${JSON.stringify(importedOpen.metadata.sessionId)})`);
       await page.evaluate('window.__storageQaReport=null');
       phase('portable-released-idle'); await delay(1000);
@@ -613,6 +621,25 @@ async function portableRepeats(configPath, name = 'nuke.dem', { samples = 2, inc
     throw error;
   }
 }
+async function memoryControl(configPath, name = 'nuke.dem') {
+  const config = readGuiConfig(configPath), benchmark = readBenchmark(config.benchmark), formal = formalGuiResults(config);
+  assert.ok(benchmark.fixtures.includes(name)); assert.ok(formal.results.every(result => result.status === 'PASS'));
+  const results = [];
+  for (const version of [1, 2]) {
+    const checkpoint = join(config.owner.directory, `memory-control-v${version}-${basename(name, '.dem')}.json`);
+    if (existsSync(checkpoint)) { const result = json(checkpoint); assert.equal(result.status, 'PASS'); results.push(result); continue; }
+    console.log(JSON.stringify({ phase: 'no-fingerprint-memory-control', name, version }));
+    const result = await launchTrial(config, benchmark, version, config.trials + 100, name, { forcePortable: true, fingerprints: false });
+    save(config.owner, checkpoint, result); results.push(result);
+  }
+  assert.deepEqual(results[0].seek.requests.map(value => [value.round, value.block, value.frames]),
+    results[1].seek.requests.map(value => [value.round, value.block, value.frames]), 'Control targets/frame counts must match across formats');
+  const path = join(config.owner.directory, `no-fingerprint-control-${basename(name, '.dem')}.json`);
+  save(config.owner, path, { schemaVersion: 1, name, measurementLabel: 'no-fingerprint-memory-control', observationsPerFormat: 1,
+    sourceRevision: config.sourceRevision, builtEntryFingerprints: config.builtEntryFingerprints, results,
+    interpretation: 'Same snapshot, targets, IPC and complete open/seek/switch/release/portable flow. Checks kind/session/match/round/block/frame-count only; no full JSON, TextEncoder or crypto fingerprints are computed. This controls QA allocation overhead and does not replace the formal full-integrity timings or byte-equivalence proofs.' });
+  console.log(JSON.stringify({ success: true, noFingerprintControl: path }));
+}
 function refreeze(configPath) {
   const previous = readGuiConfig(configPath), benchmark = readBenchmark(previous.benchmark), formal = formalGuiResults(previous);
   assert.equal(formal.results.length, previous.trials * benchmark.fixtures.length * 2);
@@ -638,6 +665,7 @@ if (process.argv[1] && resolve(process.argv[1]) === here) {
   else if (mode === '$summarize') correctMemory(resolve(args[0]));
   else if (mode === '$portable-repeats') await portableRepeats(resolve(args[0]), args[1]);
   else if (mode === '$portable-probes') await portableRepeats(resolve(args[0]), args[1], { samples: args[2] ? Number(args[2]) : 3, includeOriginal: false });
+  else if (mode === '$memory-control') await memoryControl(resolve(args[0]), args[1]);
   else if (mode === '$refreeze') refreeze(resolve(args[0]));
   else if (mode === '$resume') {
     const path = resolve(args[0]), config = readGuiConfig(path);
