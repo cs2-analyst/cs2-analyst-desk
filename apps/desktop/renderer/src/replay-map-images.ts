@@ -27,7 +27,7 @@ export class ReplayMapImages {
     for (const { image } of this.entries.values()) {
       image.onload = null;
       image.onerror = null;
-      image.removeAttribute('src');
+      image.src = '';
     }
     this.entries.clear();
   }

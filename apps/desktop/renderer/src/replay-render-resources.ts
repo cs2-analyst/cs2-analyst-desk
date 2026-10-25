@@ -18,7 +18,9 @@ export function mountReplayEffectImages(urls: Readonly<Record<string, string>>,
     images = [];
     for (const image of owned) {
       image.onload = image.onerror = null;
-      image.removeAttribute('src');
+      // In the bundled Electron, removing src retained detached Image wrappers
+      // across natural collections. Empty src releases both the source and wrapper.
+      image.src = '';
     }
   };
 }

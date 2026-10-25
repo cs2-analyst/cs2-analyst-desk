@@ -5,7 +5,7 @@ import { mountReplayEffectImages, releaseReplayCanvases } from '../renderer/src/
 test('retiring an effect-image owner releases native sources and late callbacks cannot publish into its replacement', () => {
   const oldImages = [], nextImages = [], published = [];
   const create = destination => () => {
-    const image = { src: '', onload: null, onerror: null, removeAttribute(name) { assert.equal(name, 'src'); this.src = ''; } };
+    const image = { src: '', onload: null, onerror: null, removeAttribute() { throw new Error('Use empty src: removeAttribute retained wrappers in the bundled Electron diagnostic'); } };
     destination.push(image); return image;
   };
   const old = mountReplayEffectImages({ flash: 'old.svg', fire: 'old.png' }, (key, image) => published.push(['old', key, image.src]), create(oldImages));

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { ReplayMapImages } from '../renderer/src/replay-map-images.ts';
 const deferred = () => { let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject}; };
-function fakeImage(){const decoding=deferred();return {src:'',onload:null,onerror:null,decode:()=>decoding.promise,removeAttribute(){this.src='';},decoding};}
+function fakeImage(){const decoding=deferred();return {src:'',onload:null,onerror:null,decode:()=>decoding.promise,removeAttribute(){throw new Error('Detached image cleanup must use empty src in the bundled Electron');},decoding};}
 const flush=()=>new Promise(resolve=>setImmediate(resolve));
 
 test('finite map cache exposes only decoded resources and reuses the same image across floor/unknown changes',async()=>{
