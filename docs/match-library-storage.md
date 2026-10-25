@@ -1,5 +1,7 @@
 # CS2 Analyst · 本地比赛存储与可移植档案设计（规划）
 
+2026-10-25 实施补充：新写入采用 **archive v2、逐成员 Brotli-6、无损 Replay tuple 与按需再生 UI 块**。v1 gzip 保持读取兼容，普通打开/导入不会迁移或重新分析旧内容。下文 L0–L5 的 gzip 与保存全块描述为原冻结格式的历史记录；当前格式、兼容边界及验证见[无损存储优化](./match-library-storage-optimization.md)。SQLite 仍为 v3、不可变归档代。
+
 > **状态：L0–L5 Gate 与人工验收均已通过。** 完整热力图规范源 A、独立 gzip-6 分块及 Electron 内置 SQLite 已由 L1 冻结；L2 验证无 DEM 离线重开，L3 验证 `.cs2a` 导出/导入与删除，L4 验证导航与库 UI。实测见 [L0 报告](./match-library-l0-storage-evidence.md)、[L1](./match-library-l1-foundation-evidence.md)、[L2](./match-library-l2-offline-restore-evidence.md)、[L3](./match-library-l3-data-operations-evidence.md)、[L4](./match-library-l4-navigation-evidence.md) 与 [JSON](./match-library-size-benchmark.json)。与 [比赛库计划](./match-library-plan.md)、[导航设计](./match-library-navigation.md) 配套。
 >
 > 核心决定：默认把用户主动导入的 DEM **解析后、分析后的完整可复用结果保存在 Windows 本机**；**不保存 DEM 原文件**、不建设个人比赛历史公共服务端、不要求账号、不上传个人 DEM。用户可删除、导出及导入单场归档。P8 职业知识管线/AI Coach 服务是另外一条独立路线，不与本地比赛库混淆。

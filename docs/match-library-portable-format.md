@@ -1,5 +1,9 @@
 # `.cs2a` 便携比赛归档格式（L3 冻结候选）
 
+2026-10-25：传输 envelope 保持 `schemaVersion: 1`，现支持 `archiveSchemaVersion: 1 | 2`。v2 内层使用 Brotli 与 projection，文件、codec、encoding、压缩摘要均按内层版本精确校验，禁止新旧成员混搭。v1 原字节导出/导入保持不变；下文文件列表示例为 v1。当前 v2 inventory、预算与操作见[无损存储优化](./match-library-storage-optimization.md)。
+
+完整规范源和派生块验证在一次性 Utility 中执行；Main 校验 manifest/receipt 绑定并等待进程实际退出，再提交导入或完成导出。流式 payload 摘要、目录/链接与预算保护仍保留。取消若尚未确认子进程退出，则延后临时目录清理和解锁；不会提前复用仍被处理的 staging。最终真实 Main 的新旧格式结果与内存成本见上述验证报告。
+
 > 状态：L3 实施前的总线冻结候选。L2 已证明本地目录归档可离线恢复；本格式只把同一目录无损打包为单文件，不改变内部组件、不重新分析、不携带 DEM。
 >
 > 关联：[存储设计](./match-library-storage.md) · [阶段计划](./match-library-plan.md) · [执行台账](./match-library-execution.md)。

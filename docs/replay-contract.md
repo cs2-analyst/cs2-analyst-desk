@@ -1,5 +1,7 @@
 # P6.2 回放契约与兼容性
 
+2026-10-25 存储补充：UI IPC schema 与 guard/效果/follow/预算不变。archive v2 持久化规范 Replay 与版本化投影上下文，使用固定的 `replay-projection-v1` 帧/炸弹恢复器按目标块生成；不调用未来版本 ReplaySession 重做文案、楼层或切块。v1 继续读取已保存完整 Chunk。详见[存储格式与验收](./match-library-storage-optimization.md)。
+
 ## 2026-10-19 — P7 死亡后跟随
 
 schema-v1 Chunk 新增可选 `follow`：整回合精确死亡归属、原子同 tick 存活/死亡集合变化、可靠观测的楼层 ID 变化。

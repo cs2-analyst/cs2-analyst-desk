@@ -1,13 +1,15 @@
 {
   "schemaVersion": 1,
   "date": "2026-10-25",
-  "reviewedThroughRevision": "a6915538a453d4093472f318e7a5309047e79e7d",
-  "reviewType": "Independent read-only implementation review and targeted verification",
-  "status": "pass-with-measurements-pending",
-  "runtime": "Node 26.3.0; these are code-level tests, not bundled Electron production performance measurements",
+  "reviewedThroughRevision": "a07174bb3a3f5bf5d3f4e71aa772ff61973437f3",
+  "reviewType": "Independent implementation, targeted regression and final evidence-accounting review",
+  "status": "pass-with-observed-memory-costs-and-limits",
+  "runtime": "Independent code tests used Node 26.3.0. Reviewed real-data evidence used bundled Electron 44.5.1 / Node 24.21.0 on Windows x64 without explicit GC.",
+  "realDataReviewScope": "The independent reviewer checked existing primary-agent-run raw results and recomputed evidence accounting; it did not reparse DEMs or rerun the complete GUI measurement campaign.",
   "tests": {
     "firstIndependentRegression": { "passed": 104, "failed": 0, "skipped": 0 },
     "postMemoryFixCodecAndOptimizationRegression": { "passed": 15, "failed": 0, "skipped": 0 },
+    "oneShotVerificationIndependentRegression": { "passed": 12, "failed": 0, "skipped": 0 },
     "additionalSyntheticBombAndSubdivisionCheck": {
       "trials": 40,
       "byteExactChunks": 610,
@@ -28,9 +30,26 @@
     {
       "id": "verification-source-memory-risk",
       "priority": "performance-review-point",
-      "status": "implementation-mitigated-runtime-measurements-pending",
-      "fixRevision": "7b1b6da81f86abf3b249ec9fff30edc7dac38ee7",
-      "summary": "Verification no longer retains Match/Spatial unnecessarily; owned tuple input is consumed after complete preflight; canonical byte accounting avoids whole-source JSON strings."
+      "status": "fixed-main-residency-with-disclosed-total-memory-cost",
+      "fixRevisions": [
+        "7b1b6da81f86abf3b249ec9fff30edc7dac38ee7",
+        "0fe5b29dc501ba5a2b85895f26a9f485e7e9b87b",
+        "80e1a131b1555311f4bf1e4d8ebeccb510b74e4e",
+        "ed2beaf66166f39682e381160e044d16fe401df6"
+      ],
+      "summary": "Owned tuple decoding and verification order reduce redundant roots; production portable full verification now runs in a one-shot Utility. Main receives only a checked small receipt, and commit/export/cleanup wait for confirmed Utility exit. Final portable measurements show Main no longer retaining decoded canonical arrays. Total concurrent working-set cost and Renderer release observations remain explicitly disclosed."
+    },
+    {
+      "id": "remaining-portable-concurrent-memory-cost",
+      "priority": "observed-performance-cost",
+      "status": "disclosed-not-claimed-as-an-improvement",
+      "summary": "Final portable import peak concurrent tracked working-set totals are about 4.40% to 7.90% higher for v2. Most fixtures have one final sample per format; Nuke has three. Working-set totals are simultaneous observations, not sums of independent maxima or PSS."
+    },
+    {
+      "id": "renderer-release-memory-control",
+      "priority": "observed-cost-and-unverified-long-term-boundary",
+      "status": "disclosed-no-unbounded-root-identified",
+      "summary": "In one no-fingerprint Nuke control per format, after portable release v2 Renderer working set and used heap remain higher. Direct QA chunks were not inserted into the UI cache, the QA report root was cleared, and Analysis/Verification Utilities exited. Read-only review identified no v2-specific Renderer cache or unbounded strong-reference path. Natural GC timing is a hypothesis, not a proven cause; no claim of complete long-term memory recovery or absence of every leak is made."
     }
   ],
   "checkedBoundaries": [
@@ -39,18 +58,85 @@
     "saved presentation templates and fixed frame/bomb projection decoder",
     "random block generation, LRU eviction, stale work and release",
     "portable v1/v2 inner and outer inventory/version checks",
-    "SQLite v3 generation replacement, cancellation, crash recovery, preserved preferences and corrupt-pointer protection"
+    "SQLite v3 generation replacement, cancellation, crash recovery, preserved preferences and corrupt-pointer protection",
+    "single verified Chunk serialization, LRU reuse and retained projection-context charging within the existing 64 MiB session ceiling",
+    "private one-shot verification jobs, bounded receipts, SHA/job/worker correlation, Main manifest recheck and real process-exit confirmation",
+    "abort/timeout early failure with retained late-spawn guards, deferred staging/temp cleanup, busy state and SQLite ownership until verifier exit",
+    "portable default full verifier, Main-only callback seam, subsequent compressed commit verification and streamed member digests",
+    "unsupported-version errors before verifier launch and cancellation before queued native chooser display"
   ],
+  "evidenceAccounting": {
+    "status": "independently-recomputed-pass",
+    "summaryFile": "docs/match-library-storage-optimization-measurements.json",
+    "sources": {
+      "backend": "cs2-storage-optimization-MgLp5R/results.json",
+      "regularGui": "cs2-storage-electron-qa-Rn4i81/results-memory-final.json",
+      "finalPortable": "cs2-storage-portable-qa-vGaTJo/portable-probed-<fixture>.json",
+      "nativeReanalysis": "cs2-storage-reanalysis-qa-Lv5SGF/results.json",
+      "explicitByteEquality": "cs2-storage-byte-equivalence-RUPvA0/results.json",
+      "noFingerprintControl": "cs2-storage-portable-qa-vGaTJo/no-fingerprint-control-nuke.json"
+    },
+    "oldPortableExperimentsExcludedFromFinalMemory": true,
+    "documentTableChecks": {
+      "primaryRoleMemoryUsesSourceMatchIdAndFirstOpenSeekReopenOnly": true,
+      "regularConcurrentWorkingSetTablesUsePhaseMaximaAcrossThreeTrials": true,
+      "finalNukePortableMainRssUsesMaximumAndImportTotalUsesMedian": true,
+      "regularGuiAndFinalPortableBuildsKeptDistinct": true,
+      "singlePortableSamplesAndSingleNoFingerprintControlsLabelled": true
+    },
+    "regularGuiSamples": 24,
+    "finalPortableSamples": 12,
+    "finalPortableSamplesPerFormat": { "demo1.dem": 1, "demo2.dem": 1, "dust2.dem": 1, "nuke.dem": 3 },
+    "finalPortableProductionRevision": "a07174bb3a3f5bf5d3f4e71aa772ff61973437f3",
+    "finalPortableBuiltArchiveVerifierSha256": "2189277ab655b1a816faf3b99c1de5e1596be254d03a16d2eb66186bcaada977",
+    "nativeReanalysisCount": 4,
+    "byteEqualitySamples": 4,
+    "explicitBufferEquals": {
+      "fullReportAndCanonicalRoleComparisons": 16,
+      "metadataComparisons": 8,
+      "chunks": 499,
+      "passed": true,
+      "excludedFields": ["temporary sessionId"],
+      "floatingPointTolerance": false
+    },
+    "heatmapFilterCases": 1389,
+    "archiveBytes": { "v1": 51190600, "v2": 27155711, "saved": 24034889, "savedFraction": 0.46951762628295035 },
+    "noFingerprintControls": 2
+  },
+  "observedMemoryLimits": {
+    "unit": "bytes",
+    "finalPortableImportPeakConcurrentTrackedWorkingSet": [
+      { "fixture": "demo1.dem", "samplesPerFormat": 1, "v1": 887099392, "v2": 926912512 },
+      { "fixture": "demo2.dem", "samplesPerFormat": 1, "v1": 694611968, "v2": 748138496 },
+      { "fixture": "dust2.dem", "samplesPerFormat": 1, "v1": 859017216, "v2": 926912512 },
+      { "fixture": "nuke.dem", "samplesPerFormat": 3, "aggregation": "median of per-trial phase peaks", "v1": 812515328, "v2": 848240640 }
+    ],
+    "nukeNoFingerprintPortableReleasedIdle": {
+      "samplesPerFormat": 1,
+      "idleObservationMs": 1000,
+      "rendererWorkingSet": { "v1": 125898752, "v2": 157614080, "difference": 31715328 },
+      "rendererUsedHeap": { "v1": 7921476, "v2": 33200568, "difference": 25279092 },
+      "analysisAndVerificationUtilityWorkingSetAtEnd": { "v1": 0, "v2": 0 },
+      "interpretation": "A labelled observation with no explicit GC or fingerprint allocations. It does not prove a leak, establish a long-term steady state or justify a claim that every process uses less memory."
+    }
+  },
   "blockingFindingsRemaining": 0,
   "notClaimed": [
-    "Four-fixture real DEM performance or complete acceptance matrix",
-    "Actual GUI Main/Utility/Renderer process memory and latency",
+    "All processes or all memory metrics improving",
+    "Proven natural-GC cause for the remaining Renderer difference",
+    "Long-running multi-match memory plateau or complete recovery after every release",
+    "Cold physical-disk behavior or cleared OS filesystem cache",
+    "Three independent native parses per DEM or a first-import GUI SLA",
     "Installer UI, cross-display DPI or physical power-loss validation",
     "Unknown future application version interoperability"
   ],
   "measurementCautions": [
     "Exclude strict equivalence fingerprint overhead from production open timing",
-    "Measure portable import/export Main memory, not only Utility open memory",
+    "Use final one-shot-verifier portable samples rather than earlier Main-decoding experiments",
+    "Keep the 24 regular GUI samples, final portable probes and two no-fingerprint controls labelled separately",
+    "Main/Renderer/Utility simultaneous working-set totals include shared pages and exclude GPU/network; they are not PSS",
+    "Distinguish single final samples from the three Nuke portable repetitions",
+    "Retain the observed Renderer working-set and heap increase as a cost, not an unproven GC dismissal",
     "New-process first open does not imply cleared OS filesystem cache",
     "Do not use explicit GC to pass production budgets"
   ]

@@ -1,5 +1,7 @@
 # 本地分析归档容量与无损优化调查
 
+后续实施：[archive v2 无损存储优化及实测](./match-library-storage-optimization.md)。本文与 JSON 保留 `9318ed9` 调查时的基线及理论估计，不作为已实施收益；当前新写入格式及最终测量以上述报告为准。
+
 2026-10-25。范围：调查及离线原型，**没有修改生产压缩格式、分析规则、用户归档或数据库**。机器结果：[JSON](./match-library-compression-audit.json)；可复现工具：`scripts/library-compression-audit.mjs`。原格式及约束见[存储设计](./match-library-storage.md)。
 
 ## 1. 结论

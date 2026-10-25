@@ -1,5 +1,7 @@
 # 比赛库：使用源 DEM 重新分析
 
+2026-10-25 存储更新：明确重新分析现在写入 archive v2（Brotli、无损 Replay tuple、版本化按需回放）；仍沿用本文 SQLite v3 不可变归档代和提交边界。v1 不会在普通打开或重复导入时自动迁移。兼容及完整性验证见[无损存储优化](./match-library-storage-optimization.md)。
+
 2026-10-25，用户明确授权新增。入口：比赛数据 → 单场记录「更多操作」→「重新分析」。选择这场比赛原始 DEM 后，使用当前安装版本的 Parser、Analytics、Findings、Deep Review、Replay 与 Heatmap 生产链路重新生成完整归档；完成后直接打开新报告。无需先删除比赛记录，不自动批量升级，不保存 DEM 路径或源文件。
 
 ## 用户行为与身份
