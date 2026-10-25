@@ -399,18 +399,21 @@ async function launchTrial(config, benchmark, version, trial, name, { forcePorta
       window.__storageQaWeak=[];window.__storageQaCycle=-1;
       window.__storageQaRemember=(value,kind)=>{if(value&&typeof value==='object')window.__storageQaWeak.push({kind,cycle:window.__storageQaCycle,ref:new WeakRef(value)});};
       window.__storageQaReferenceState=()=>{
-        const counts={};let nonEmptyReplayCaches=0;
+        const counts={};let nonEmptyReplayCaches=0,boundEffectImages=0,largeReplayCanvases=0;
         for(const item of window.__storageQaWeak){const key=item.cycle+':'+item.kind,value=item.ref.deref();
           const entry=counts[key]??={live:0,dead:0};entry[value?'live':'dead']++;
           if(item.kind==='ui-cache'&&value?.entries?.size>0)nonEmptyReplayCaches++;}
-        return {reportRootCleared:window.__storageQaReport===null,counts,nonEmptyReplayCaches};
+        for(const item of window.__storageQaWeak){const value=item.ref.deref();
+          if(item.kind==='ui-effect-image'&&value?.hasAttribute('src'))boundEffectImages++;
+          if(item.kind==='ui-replay-canvas'&&value&&(value.width>1||value.height>1))largeReplayCanvases++;}
+        return {reportRootCleared:window.__storageQaReport===null,counts,nonEmptyReplayCaches,boundEffectImages,largeReplayCanvases};
       };
       window.__storageQaRememberUi=(captureReplay=false)=>{
         const host=document.getElementById('root')?.firstElementChild;
         const key=Object.keys(host??{}).find(key=>key.startsWith('__reactFiber$'));
         let root=host?.[key];while(root?.return)root=root.return;
         root=root?.stateNode?.current;
-        const stack=root?[root]:[],seen=new Set(),reports=new Set(),caches=new Set();let chunks=0;
+        const stack=root?[root]:[],seen=new Set(),reports=new Set(),caches=new Set(),images=new Set();let chunks=0;
         while(stack.length&&seen.size<50000){const fiber=stack.pop();if(!fiber||seen.has(fiber))continue;seen.add(fiber);
           const report=fiber.memoizedProps?.report;
           if(report?.match?.id&&!reports.has(report)){reports.add(report);if(!captureReplay){window.__storageQaRemember(report,'ui-report');window.__storageQaRemember(report.players,'ui-players');}}
@@ -418,6 +421,8 @@ async function launchTrial(config, benchmark, version, trial, name, { forcePorta
           if(captureReplay&&props?.metadata?.available&&typeof props.fileName==='string'&&typeof props.initialPlayerId==='string')
           for(let hook=fiber.memoizedState;hook;hook=hook.next){
             const cache=hook.memoizedState?.current;
+            if(cache&&Object.getPrototypeOf(cache)===Object.prototype)for(const image of Object.values(cache)){
+              if(image instanceof HTMLImageElement&&!images.has(image)){images.add(image);window.__storageQaRemember(image,'ui-effect-image');}}
             if(cache?.entries instanceof Map&&typeof cache.get==='function'&&typeof cache.put==='function'&&typeof cache.clear==='function'&&!caches.has(cache)){
               caches.add(cache);window.__storageQaRemember(cache,'ui-cache');
               for(const chunk of cache.entries.values()){
@@ -427,7 +432,9 @@ async function launchTrial(config, benchmark, version, trial, name, { forcePorta
           }
           stack.push(fiber.child,fiber.sibling);
         }
-        return {fibers:seen.size,reports:reports.size,matchIds:[...reports].map(report=>report.match.id),caches:caches.size,chunks};
+        const canvases=captureReplay?[...document.querySelectorAll('#replay-panel canvas')]:[];
+        for(const canvas of canvases)window.__storageQaRemember(canvas,'ui-replay-canvas');
+        return {fibers:seen.size,reports:reports.size,matchIds:[...reports].map(report=>report.match.id),caches:caches.size,chunks,effectImages:images.size,canvases:canvases.length};
       };
     })()`);
     const poll = () => {
@@ -623,6 +630,8 @@ async function soakCycles(page, directory, primary, alternate, phase, options, o
       assert.deepEqual(cacheReferences.matchIds, [entry.matchId]);
       assert.equal(cacheReferences.caches, 1, 'Track the real session-owned Replay cache');
       assert.ok(cacheReferences.chunks >= 1 && cacheReferences.chunks <= 3);
+      assert.equal(cacheReferences.effectImages, 8, 'Track all eight actually loaded effect images');
+      assert.equal(cacheReferences.canvases, 2, 'Track both real Replay canvas backing stores');
       phase(`soak-${cycle}-ui-release`);
       await page.evaluate('document.querySelector("[data-nav-action=home]").click()');
       await waitFor(() => page.evaluate('!document.querySelector("[data-replay-session]") && Boolean(document.querySelector("[data-library-entry]"))'), 30000, 'soak UI release');
@@ -636,6 +645,10 @@ async function soakCycles(page, directory, primary, alternate, phase, options, o
     await delay(options.idleMs);
     const idle = await sample(cycle, 'idle');
     assert.equal(idle.references.reportRootCleared, true);
+    if (options.nativeReleaseExpected) {
+      assert.equal(idle.references.boundEffectImages, 0, 'Released images still bind source resources');
+      assert.equal(idle.references.largeReplayCanvases, 0, 'Released canvases still own full-size backing stores');
+    }
     cycles.push({ cycle, openMs: opened.ms, switchMs: switched.ms, requests: chosen.length, ui,
       seekMs: quantiles(latencies), immediate, idle });
     console.log(JSON.stringify({ phase: 'soak-cycle', cycle, heapUsed: idle.heap.usedSize,
@@ -658,12 +671,13 @@ async function soakCycles(page, directory, primary, alternate, phase, options, o
     retentionProbe: 'WeakRef only; dereference jobs retain no values in later jobs. Counts distinguish previous cycles from the last cycle; uncleared objects before a natural GC do not prove a leak.' };
 }
 
-async function soakRun(configPath, name = 'nuke.dem', trials = 3, cycles = 8, idleMs = 10000, finalIdleMs = 60000, uiEvery = 0) {
+async function soakRun(configPath, name = 'nuke.dem', trials = 3, cycles = 8, idleMs = 10000, finalIdleMs = 60000, uiEvery = 0, nativeReleaseExpected = 0) {
   assert.ok(Number.isInteger(trials) && trials >= 1 && trials <= 5);
   assert.ok(Number.isInteger(cycles) && cycles >= 2 && cycles <= 100);
   assert.ok(Number.isInteger(idleMs) && idleMs >= 1000 && idleMs <= 60000);
   assert.ok(Number.isInteger(finalIdleMs) && finalIdleMs >= 10000 && finalIdleMs <= 300000);
   assert.ok(Number.isInteger(uiEvery) && uiEvery >= 0 && uiEvery <= cycles);
+  assert.ok(nativeReleaseExpected === 0 || nativeReleaseExpected === 1);
   const previous = readGuiConfig(configPath), benchmark = readBenchmark(previous.benchmark);
   assert.ok(benchmark.fixtures.includes(name));
   const owner = createOwnedTempDirectory('renderer-memory-soak', { parent: realpathSync.native(tmpdir()) });
@@ -673,7 +687,7 @@ async function soakRun(configPath, name = 'nuke.dem', trials = 3, cycles = 8, id
     sourceRevision: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repository, encoding: 'utf8', windowsHide: true }).trim(), qaScriptSha256,
     sourceWorktreeDirty: execFileSync('git', ['status', '--porcelain', '--untracked-files=no'], { cwd: repository, encoding: 'utf8', windowsHide: true }).trim().length > 0,
     builtEntryFingerprints: { main: app.original['electron/main.js'], reportWorker: app.original['electron/report-worker.js'], archiveVerifier: app.original['electron/archive-verifier.js'] },
-    createdAt: new Date().toISOString(), soak: { name, cycles, idleMs, finalIdleMs, requests: 40, uiEvery },
+    createdAt: new Date().toISOString(), soak: { name, cycles, idleMs, finalIdleMs, requests: 40, uiEvery, nativeReleaseExpected },
     purpose: 'Long-lived no-fingerprint Renderer lifecycle experiment; new owned libraries and profiles, original archives and results untouched.' };
   const path = join(owner.directory, 'gui-run.json'); save(owner, path, config);
   console.log(JSON.stringify({ phase: 'soak-start', config: path, trials, cycles, idleMs, finalIdleMs, uiEvery }));
@@ -681,7 +695,7 @@ async function soakRun(configPath, name = 'nuke.dem', trials = 3, cycles = 8, id
   const results = [];
   for (let trial = 0; trial < trials; trial++) for (const version of trial % 2 ? [2, 1] : [1, 2]) {
     const result = await launchTrial(config, benchmark, version, trial, name, { forcePortable: true, fingerprints: false,
-      soak: { cycles, idleMs, finalIdleMs, requests: 40, uiEvery } });
+      soak: { cycles, idleMs, finalIdleMs, requests: 40, uiEvery, nativeReleaseExpected } });
     results.push(result); save(owner, join(owner.directory, `soak-v${version}-trial-${trial}.json`), result);
   }
   save(owner, join(owner.directory, 'results.json'), { schemaVersion: 1, serial: true, explicitGc: false,
