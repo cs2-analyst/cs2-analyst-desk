@@ -1,0 +1,2058 @@
+{
+  "schemaVersion": 1,
+  "kind": "p8-1l2-resource-inventory-research",
+  "date": "2026-10-26",
+  "timeZone": "Asia/Shanghai",
+  "stage": "P8.1-L2.2A",
+  "result": {
+    "auditStatus": "PASS",
+    "auditScope": "read-only identity and partial dependency inventory; accepted uncertainty",
+    "directoryReadStatus": "PASS",
+    "dependencyClosureStatus": "partial",
+    "dependencyClosureVerification": "BLOCKED",
+    "resourceParsing": "NOT RUN",
+    "matchingStatus": "unconfirmed",
+    "demoResourceBinding": "BLOCKED",
+    "verifiedSemanticDependencyEdges": 0,
+    "verifiedStorageEdges": 11,
+    "nextStageStarted": false
+  },
+  "scope": {
+    "documentationOnly": true,
+    "onlyNewFiles": [
+      "docs/p8-1l2-resource-inventory-2026-10-26.md",
+      "docs/p8-1l2-resource-inventory-2026-10-26.json"
+    ],
+    "productionChanged": false,
+    "manifestChanged": false,
+    "dependenciesInstalled": false,
+    "externalMapParserRun": false,
+    "helperCompiled": false,
+    "vpkUnpacked": false,
+    "memberContentExtracted": false,
+    "navOrCollisionParsed": false,
+    "geometryConverted": false,
+    "assetsDownloaded": false,
+    "assetsCopied": false,
+    "gameStarted": false,
+    "processMemoryRead": false,
+    "playerIdentityOrTrajectoryPublished": false,
+    "extractorIdentity": null
+  },
+  "baseline": {
+    "repository": "cs2-analyst/cs2-analyst-desk",
+    "version": "0.2.0",
+    "initialBranch": "codex/p8-1l2-distance-foundation",
+    "initialHead": "623caaccbbd479e538c6b1166b8890170ab4c8f1",
+    "initialWorkingTree": "clean",
+    "originMain": "f44984e5464552c81737922c67df3d9f17c27c71",
+    "fetchExitCode": 0,
+    "remoteHeads": {
+      "codex/p8-1l2-map-geometry-feasibility": "babcdd8cdff444dad86ff78e0f3e1f4499c54ddb",
+      "codex/p8-1l2-distance-foundation": "623caaccbbd479e538c6b1166b8890170ab4c8f1"
+    },
+    "ancestorChecks": {
+      "geometryToMain": {
+        "exitCode": 1,
+        "meaning": "not ancestor"
+      },
+      "distanceToMain": {
+        "exitCode": 1,
+        "meaning": "not ancestor"
+      }
+    },
+    "inheritedChanges": "P8.1B/B-R/geometry docs plus distance-foundation production/types/tests; task delta measured against initialHead, not origin/main",
+    "researchBranch": "codex/p8-1l2-resource-inventory",
+    "pr4": {
+      "url": "https://github.com/cs2-analyst/cs2-analyst-desk/pull/4",
+      "state": "open",
+      "draft": true,
+      "merged": false,
+      "head": "8f61854793f3d9230d1cd160b3fd01dedaafcadd",
+      "base": "f44984e5464552c81737922c67df3d9f17c27c71",
+      "precomputedMergeCommitIsNotMergeEvidence": true
+    },
+    "routing": "Reasoning work: identity namespaces, provenance and binary metadata boundaries; independent reviewer required by project AGENTS",
+    "workflow": "AGENTS/global pointer, routing, workflows.md, DEM/domain workflows, reviewer/tester read. No separate feature-development.md or test workflow in baseline."
+  },
+  "demo": {
+    "path": ".demo/dust2.dem",
+    "bytes": 557650967,
+    "sha256": "db90fe85aab023a1d2c8a5996182e6120d98ef494f02a070b17982b235e4958c",
+    "stableDuringHash": true,
+    "nativeHeader": {
+      "demo_file_stamp": "PBDEMS2\u0000",
+      "patch_version": "14055",
+      "map_name": "de_dust2",
+      "fullpackets_version": "2",
+      "allow_clientside_entities": "true",
+      "allow_clientside_particles": "true",
+      "addons": "",
+      "demo_version_name": "valve_demo_2",
+      "demo_version_guid": "8e9d71ab-04a1-4c01-bb61-acfede27c046"
+    },
+    "nativeExportedKeyNames": [
+      "addons",
+      "allow_clientside_entities",
+      "allow_clientside_particles",
+      "client_name",
+      "demo_file_stamp",
+      "demo_version_guid",
+      "demo_version_name",
+      "fullpackets_version",
+      "game_directory",
+      "map_name",
+      "patch_version",
+      "server_name"
+    ],
+    "rawHeader": {
+      "magic": "PBDEMS2",
+      "cmd": 1,
+      "tickUnsigned": "4294967295",
+      "payloadBytes": 183,
+      "fields": [
+        {
+          "tag": 1,
+          "wire": 2,
+          "value": "PBDEMS2\u0000"
+        },
+        {
+          "tag": 2,
+          "wire": 0,
+          "value": "14055"
+        },
+        {
+          "tag": 5,
+          "wire": 2,
+          "value": "de_dust2"
+        },
+        {
+          "tag": 7,
+          "wire": 0,
+          "value": "2"
+        },
+        {
+          "tag": 8,
+          "wire": 0,
+          "value": "1"
+        },
+        {
+          "tag": 9,
+          "wire": 0,
+          "value": "1"
+        },
+        {
+          "tag": 10,
+          "wire": 2,
+          "value": ""
+        },
+        {
+          "tag": 11,
+          "wire": 2,
+          "value": "valve_demo_2"
+        },
+        {
+          "tag": 12,
+          "wire": 2,
+          "value": "8e9d71ab-04a1-4c01-bb61-acfede27c046"
+        },
+        {
+          "tag": 13,
+          "wire": 0,
+          "value": "10231"
+        },
+        {
+          "tag": 15,
+          "wire": 0,
+          "value": "51144"
+        }
+      ]
+    },
+    "parser": {
+      "packageVersion": "0.42.0-backport.363.1",
+      "binarySha256": "132d664125b60542dc80dc8bc270e2c8e181a0a55433fdac5be285ef4d9b0de1",
+      "target": "x86_64-pc-windows-msvc",
+      "source": {
+        "repository": "https://github.com/LaihoE/demoparser.git",
+        "baseTag": "v0.42.0",
+        "baseCommit": "d3767705dc5846d73ed29db50eaeda58778dc934",
+        "upstreamPullRequest": 363,
+        "fixCommit": "451321a517ec9c0c6be7f0103dd07e7a805c3345",
+        "fixHeadCommit": "cc214aed17d23fa996929305df5413505a7dd40b",
+        "target": "x86_64-pc-windows-msvc",
+        "rustVersion": "1.90.0",
+        "patches": {
+          "entity-handle-363.patch": "f1b4e750a0fbb38136e4e5bf29c02d974b84c7eeee2aaf45353ceb8253bec8f9",
+          "backport-363.patch": "47a9b2bfcb5fd9ee0358f1362e7a5ccc61bdd0a69e526ba1717cd70b13fc2c68",
+          "build-support.patch": "94172e708cdb487ef3ae27248554260256f3dc653a5eddd107674c458772fd97"
+        },
+        "protobufSha256": "953ad3f19e1c1bd888d8d51292ff47cb1379a979353f07fb7977a4c152e4f5b5",
+        "cargoLockSha256": "316232d192147c84050bd9b069919dc66d45e3f113ffd2e7b5508852e9f0992c",
+        "generatedSourceHashes": {
+          "src/csgoproto/src/protobuf.rs": "953ad3f19e1c1bd888d8d51292ff47cb1379a979353f07fb7977a4c152e4f5b5",
+          "src/csgoproto/src/message_type.rs": "3db1c6244d8a9f8ec8701cc980c4bd13f2aad86cdde11ea69f305dd011c986f4",
+          "src/csgoproto/src/maps.rs": "82206b2cddfafc8b8cb60d78ce8cad8e9153a9177f16ac31075a63f1d4233a07"
+        }
+      }
+    },
+    "formatVersion": {
+      "magic": "PBDEMS2",
+      "demoVersionName": "valve_demo_2",
+      "fullpacketsVersion": 2,
+      "meaning": "format clues; fullpackets_version is not map or overall engine build"
+    },
+    "rawObservedFields": {
+      "build_num": {
+        "tag": 13,
+        "wire": 0,
+        "type": "optional int32",
+        "value": 10231,
+        "status": "observed",
+        "exportedByNativeHeader": false
+      },
+      "server_start_tick": {
+        "tag": 15,
+        "wire": 0,
+        "type": "optional int32",
+        "value": 51144,
+        "status": "observed",
+        "exportedByNativeHeader": false
+      }
+    },
+    "rawReadScope": "First 65536 bytes buffered; only uncompressed first-frame 183-byte header decoded; no packet/entity/trajectory scan",
+    "schemaProvenance": [
+      {
+        "path": "vendor/demoparser/.build/work/src/csgoproto/src/protobuf.rs",
+        "bytes": 464157,
+        "sha256": "953ad3f19e1c1bd888d8d51292ff47cb1379a979353f07fb7977a4c152e4f5b5"
+      },
+      {
+        "path": "vendor/demoparser/.build/work/src/parser/src/first_pass/parser.rs",
+        "bytes": 17329,
+        "sha256": "08db73742d6e54426600afc1b96261196046d6902f5625f918b4a6e39593b8c2"
+      },
+      {
+        "path": "vendor/demoparser/.build/work/src/parser/src/second_pass/parser.rs",
+        "bytes": 20255,
+        "sha256": "f5a0291e89d746a8932c8ecd8915a4f491e02c529d525ea4cc7da1eaf11f95da"
+      }
+    ],
+    "privacy": "nativeHeader values allowlisted; server/client/game-directory strings and private installation fields omitted"
+  },
+  "steam": {
+    "appId": "730",
+    "buildId": "26144732",
+    "installDir": "Counter-Strike Global Offensive",
+    "installedDepots": {
+      "731": {
+        "manifest": "1914580569200573996",
+        "size": "8"
+      },
+      "732": {
+        "manifest": "871988017289064757",
+        "size": "8"
+      },
+      "735": {
+        "manifest": "839756631616985732",
+        "size": "8"
+      },
+      "736": {
+        "manifest": "7228373013602568657",
+        "size": "8"
+      },
+      "737": {
+        "manifest": "4501692027218845309",
+        "size": "8"
+      },
+      "738": {
+        "manifest": "7772149859359653541",
+        "size": "8"
+      },
+      "2347770": {
+        "manifest": "67499503218971311",
+        "size": "65046717914"
+      },
+      "2347771": {
+        "manifest": "5751660862748360256",
+        "size": "7753522674"
+      },
+      "2347774": {
+        "manifest": "6845003340509320862",
+        "size": "1142065743"
+      }
+    },
+    "steamInf": {
+      "ClientVersion": "2000935",
+      "ServerVersion": "2000935",
+      "PatchVersion": "1.41.9.2",
+      "ProductName": "cs2",
+      "appID": "730",
+      "ServerAppID": "2347773",
+      "SourceRevision": "11162119",
+      "VersionDate": "Oct 22 2026",
+      "VersionTime": "14:13:16"
+    },
+    "privateFields": "LastOwner, LastPlayed, UserConfig and unrelated library apps omitted",
+    "root": "C:/Steam/steamapps/common/Counter-Strike Global Offensive",
+    "discovery": "Known SteamPath registry + explicit libraryfolders/appmanifest_730/steam.inf only; no disk scan",
+    "metadataFiles": [
+      {
+        "path": "C:/Steam/steamapps/libraryfolders.vdf",
+        "bytes": 587,
+        "sha256": "4998294afb8a1d065fff3604eff18da95123bed9f512b45e8220fc05129a3f79",
+        "stableDuringHash": true
+      },
+      {
+        "path": "C:/Steam/steamapps/appmanifest_730.acf",
+        "bytes": 1479,
+        "sha256": "0b7a01c99922dff011d16edd8e458e9d4cdf436962d33c161beccf20779056de",
+        "stableDuringHash": true
+      },
+      {
+        "path": "C:/Steam/steamapps/common/Counter-Strike Global Offensive/game/csgo/steam.inf",
+        "bytes": 190,
+        "sha256": "67bb5f38cdcfb57331eea7dbcf2d337f46ea6ed998d3482e2637f830f7210a06",
+        "stableDuringHash": true
+      }
+    ],
+    "versionTimeZone": null,
+    "identityStrength": "Installation declaration only; does not attest loaded/mounted resources or recording environment"
+  },
+  "vpk": {
+    "files": [
+      {
+        "path": "C:/Steam/steamapps/common/Counter-Strike Global Offensive/game/csgo/maps/de_dust2.vpk",
+        "bytes": 262476433,
+        "sha256": "51d6bb432b6553bfae6c38219a527c5de2464a2b107080f2b8be7d8427ebb885",
+        "stableDuringHash": true
+      },
+      {
+        "path": "C:/Steam/steamapps/common/Counter-Strike Global Offensive/game/csgo/pak01_dir.vpk",
+        "bytes": 7708830,
+        "sha256": "562972293ed7a5d40e341c4df7d6b0ee06430452694177142f0c1239dd3f2c8b",
+        "stableDuringHash": true
+      }
+    ],
+    "selectedShardHashes": [
+      {
+        "path": "C:/Steam/steamapps/common/Counter-Strike Global Offensive/game/csgo/pak01_022.vpk",
+        "bytes": 111048084,
+        "sha256": "f96763d0dc5a126c7f7051dca0823b570ab5027c6a122acc5a3e2e532e4d4322",
+        "stableDuringHash": true,
+        "scope": "whole-container opaque hash; member content not decoded"
+      },
+      {
+        "path": "C:/Steam/steamapps/common/Counter-Strike Global Offensive/game/csgo/pak01_339.vpk",
+        "bytes": 107971185,
+        "sha256": "d0d925a4fd2e94549e9497823e50b51b6a084c5332e414c586779e90f8358bdf",
+        "stableDuringHash": true,
+        "scope": "whole-container opaque hash; member content not decoded"
+      }
+    ],
+    "containers": [
+      {
+        "path": "maps/de_dust2.vpk",
+        "bytes": 262476433,
+        "header": {
+          "magic": "0x55aa1234",
+          "version": 2,
+          "headerSize": 28,
+          "treeSize": 36011,
+          "fileDataSectionSize": 262432236,
+          "archiveMD5SectionSize": 7028,
+          "otherMD5SectionSize": 48,
+          "signatureSectionSize": 20
+        },
+        "treeConsumedExactly": true,
+        "entryCount": 632,
+        "typeCounts": {
+          "occlusion": 1,
+          "nav": 1,
+          "vmap_c": 1,
+          "vdata_c": 1,
+          "vents_c": 1,
+          "vmdl_c": 570,
+          "vtex_c": 7,
+          "dat": 43,
+          "kv3": 1,
+          "vrman_c": 3,
+          "vwrld_c": 1,
+          "vvis_c": 1,
+          "vwnod_c": 1
+        },
+        "skippedPreloadBytes": 0,
+        "duplicates": [],
+        "outOfBounds": [],
+        "selectedEntries": [
+          {
+            "path": "maps/de_dust2.nav",
+            "type": "nav",
+            "crc32": "77ee421b",
+            "preloadBytes": 0,
+            "archiveIndex": 32767,
+            "offset": 257685772,
+            "entryLength": 481872,
+            "totalBytes": 481872
+          },
+          {
+            "path": "maps/de_dust2.vmap_c",
+            "type": "vmap_c",
+            "crc32": "d2542890",
+            "preloadBytes": 0,
+            "archiveIndex": 32767,
+            "offset": 257550284,
+            "entryLength": 135488,
+            "totalBytes": 135488
+          },
+          {
+            "path": "maps/de_dust2/entities/default_ents.vents_c",
+            "type": "vents_c",
+            "crc32": "d8aecbc3",
+            "preloadBytes": 0,
+            "archiveIndex": 32767,
+            "offset": 256599468,
+            "entryLength": 45073,
+            "totalBytes": 45073
+          },
+          {
+            "path": "maps/de_dust2/world_physics.vmdl_c",
+            "type": "vmdl_c",
+            "crc32": "54c48ad4",
+            "preloadBytes": 0,
+            "archiveIndex": 32767,
+            "offset": 234537592,
+            "entryLength": 21843224,
+            "totalBytes": 21843224
+          },
+          {
+            "path": "maps/de_dust2/world_physics.vrman_c",
+            "type": "vrman_c",
+            "crc32": "bfd864cd",
+            "preloadBytes": 0,
+            "archiveIndex": 32767,
+            "offset": 3975380,
+            "entryLength": 901,
+            "totalBytes": 901
+          },
+          {
+            "path": "maps/de_dust2/world.vwrld_c",
+            "type": "vwrld_c",
+            "crc32": "54ca519b",
+            "preloadBytes": 0,
+            "archiveIndex": 32767,
+            "offset": 3972517,
+            "entryLength": 1961,
+            "totalBytes": 1961
+          },
+          {
+            "path": "maps/de_dust2/worldnodes/n0.vwnod_c",
+            "type": "vwnod_c",
+            "crc32": "1fb04fed",
+            "preloadBytes": 0,
+            "archiveIndex": 32767,
+            "offset": 0,
+            "entryLength": 70445,
+            "totalBytes": 70445
+          }
+        ],
+        "selectedEntryCount": 7,
+        "candidateNameCount": 632,
+        "readScope": {
+          "semanticReads": "header + NUL strings + 18-byte entry metadata only; seek over preload; no member payload read",
+          "memberCrcVerified": false,
+          "memberSha256Computed": false,
+          "archiveHashSectionsRead": false,
+          "signatureVerified": false
+        },
+        "archiveSummary": {
+          "count": 1,
+          "minIndex": 32767,
+          "maxIndex": 32767,
+          "missingCount": 0,
+          "missingFiles": [],
+          "totalContainerBytes": 262476433,
+          "checkedOnlyByStat": true,
+          "allExternalShardDigests": "NOT RUN",
+          "selectedArchives": [
+            {
+              "archiveIndex": 32767,
+              "file": "de_dust2.vpk",
+              "exists": true,
+              "bytes": 262476433,
+              "entries": 632,
+              "maxEnd": 262432236,
+              "sha256": null
+            }
+          ]
+        }
+      },
+      {
+        "path": "pak01_dir.vpk",
+        "bytes": 7708830,
+        "header": {
+          "magic": "0x55aa1234",
+          "version": 2,
+          "headerSize": 28,
+          "treeSize": 6279392,
+          "fileDataSectionSize": 0,
+          "archiveMD5SectionSize": 1428280,
+          "otherMD5SectionSize": 48,
+          "signatureSectionSize": 20
+        },
+        "treeConsumedExactly": true,
+        "entryCount": 137734,
+        "typeCounts": {
+          "apng": 1,
+          "bmp": 1,
+          "db": 4,
+          "gameevents": 2,
+          "gif": 11,
+          "json": 30,
+          "kv3": 72,
+          "res": 6,
+          "sofa": 2,
+          "txt": 112,
+          "vcompmat_c": 1530,
+          "vcss_c": 240,
+          "vdata_c": 16,
+          "vdsp_c": 1,
+          "vfont": 1,
+          "vjs_c": 46,
+          "vmat_c": 22010,
+          "vmdl_c": 13105,
+          "vmix_c": 40,
+          "vnmclip_c": 2735,
+          "vnmgraph_c": 232,
+          "vnmskel_c": 70,
+          "vpcf_c": 2622,
+          "vpost_c": 101,
+          "vpulse_c": 5,
+          "vrman_c": 6,
+          "vrr_c": 33,
+          "vsc": 2,
+          "vsmart_c": 320,
+          "vsnap_c": 98,
+          "vsnd_c": 20470,
+          "vsndevts_c": 183,
+          "vsndstck_c": 5,
+          "vsurf_c": 1,
+          "vsvg_c": 1177,
+          "vtex_c": 71966,
+          "vts_c": 191,
+          "vxml_c": 287
+        },
+        "skippedPreloadBytes": 0,
+        "duplicates": [],
+        "outOfBounds": [],
+        "selectedEntries": [
+          {
+            "path": "resource/overviews/de_dust2.txt",
+            "type": "txt",
+            "crc32": "ca427be7",
+            "preloadBytes": 0,
+            "archiveIndex": 22,
+            "offset": 49618256,
+            "entryLength": 541,
+            "totalBytes": 541
+          },
+          {
+            "path": "panorama/images/overheadmaps/de_dust2_radar_psd.vtex_c",
+            "type": "vtex_c",
+            "crc32": "c757b3ef",
+            "preloadBytes": 0,
+            "archiveIndex": 339,
+            "offset": 28689824,
+            "entryLength": 212310,
+            "totalBytes": 212310
+          }
+        ],
+        "selectedEntryCount": 2,
+        "candidateNameCount": 172,
+        "readScope": {
+          "semanticReads": "header + NUL strings + 18-byte entry metadata only; seek over preload; no member payload read",
+          "memberCrcVerified": false,
+          "memberSha256Computed": false,
+          "archiveHashSectionsRead": false,
+          "signatureVerified": false
+        },
+        "archiveSummary": {
+          "count": 505,
+          "minIndex": 0,
+          "maxIndex": 504,
+          "missingCount": 0,
+          "missingFiles": [],
+          "totalContainerBytes": 53213813207,
+          "checkedOnlyByStat": true,
+          "allExternalShardDigests": "NOT RUN",
+          "selectedArchives": [
+            {
+              "archiveIndex": 22,
+              "file": "pak01_022.vpk",
+              "exists": true,
+              "bytes": 111048084,
+              "entries": 109,
+              "maxEnd": 111048084,
+              "sha256": null
+            },
+            {
+              "archiveIndex": 339,
+              "file": "pak01_339.vpk",
+              "exists": true,
+              "bytes": 107971185,
+              "entries": 338,
+              "maxEnd": 107971185,
+              "sha256": null
+            }
+          ]
+        }
+      }
+    ],
+    "treeDigests": [
+      {
+        "path": "C:/Steam/steamapps/common/Counter-Strike Global Offensive/game/csgo/maps/de_dust2.vpk",
+        "sha256": "51d6bb432b6553bfae6c38219a527c5de2464a2b107080f2b8be7d8427ebb885",
+        "treeBytes": 36011,
+        "treeSha256": "3db59b38a9defbfcae9162ca47cb50db2ed3c7873f60f46206860251a86caebe",
+        "treeHashScope": "index only; prior probe observed zero preload bytes",
+        "declaredSectionTotal": 262475371,
+        "actualBytes": 262476433,
+        "signatureAndTrailerInterpretation": "NOT RUN; signature bytes may extend beyond 20-byte signature header"
+      },
+      {
+        "path": "C:/Steam/steamapps/common/Counter-Strike Global Offensive/game/csgo/pak01_dir.vpk",
+        "sha256": "562972293ed7a5d40e341c4df7d6b0ee06430452694177142f0c1239dd3f2c8b",
+        "treeBytes": 6279392,
+        "treeSha256": "25ab1a990a7db599074874b55e32d5d2667b4224ebc73691ad9d77624fe4939f",
+        "treeHashScope": "index only; prior probe observed zero preload bytes",
+        "declaredSectionTotal": 7707768,
+        "actualBytes": 7708830,
+        "signatureAndTrailerInterpretation": "NOT RUN; signature bytes may extend beyond 20-byte signature header"
+      }
+    ],
+    "crossContainer": {
+      "duplicatePathCount": 0,
+      "sameCrcAndSizeCount": 0,
+      "contentIdentityVerified": false,
+      "mountPriority": "unresolved; no gameinfo/runtime verification"
+    },
+    "additionalMapIndex": {
+      "manifestEntries": [
+        {
+          "path": "maps/de_dust2/world.vrman_c",
+          "type": "vrman_c",
+          "crc32": "63a09a2a",
+          "preloadBytes": 0,
+          "archiveIndex": 32767,
+          "offset": 3976281,
+          "entryLength": 908,
+          "totalBytes": 908
+        },
+        {
+          "path": "maps/de_dust2/world_physics.vrman_c",
+          "type": "vrman_c",
+          "crc32": "bfd864cd",
+          "preloadBytes": 0,
+          "archiveIndex": 32767,
+          "offset": 3975380,
+          "entryLength": 901,
+          "totalBytes": 901
+        },
+        {
+          "path": "maps/de_dust2/worldnodes/n0.vrman_c",
+          "type": "vrman_c",
+          "crc32": "041d13b7",
+          "preloadBytes": 0,
+          "archiveIndex": 32767,
+          "offset": 3974478,
+          "entryLength": 902,
+          "totalBytes": 902
+        }
+      ],
+      "separateVphysCount": 0,
+      "embeddedPhysicsDecoded": false
+    },
+    "method": "Inline Node built-ins, metadata only; no third-party reader/library or CLI executed. Whole-file SHA reads bytes opaquely; no member data decoded. All 0-byte preloads; index exact end + terminators checked.",
+    "limitations": [
+      "CRC32 is a stored index value, not recomputed member integrity or collision-resistant content identity",
+      "All 505 shard names statted from indices only; only 022 and 339 hashed; no shard members read",
+      "VPK cryptographic hash describes a container; pak01_dir SHA/tree SHA does not hash external shard contents",
+      "Declared v2 section sums are each 1062 bytes below file length; new 20-byte signature-header convention observed in source, local trailer/signature interpretation NOT RUN; no corruption claim",
+      "No mount search paths, runtime overlays or other containers inspected; absent candidates do not imply missing dependencies"
+    ]
+  },
+  "replay": {
+    "resourceId": "valve-730-2347770-2312433566686574487-vrf20.1",
+    "source": {
+      "kind": "Valve Steam distribution; locally extracted with open-source tools",
+      "appId": 730,
+      "depotId": 2347770,
+      "manifestId": "2312433566686574487",
+      "manifestSha256": "c0616aacbf03fc201c7b20c3aa2b87e8332ce0473143e1c91ccf6fe25d56f755",
+      "buildId": null,
+      "clientVersion": null,
+      "tools": [
+        {
+          "name": "DepotDownloader",
+          "version": "3.4.0"
+        },
+        {
+          "name": "Source2Viewer-CLI",
+          "version": "20.1.7467+9e2e6c7f67e3c4e5a5f443a60c3a5d841ba8f304"
+        }
+      ]
+    },
+    "manifest": {
+      "path": "docs/replay-resources.json",
+      "bytes": 21974,
+      "sha256": "a055ce462c1c8f464f54493b0bd7287fc16f5171bf29d2a3e1120de0a6e9f543",
+      "stableDuringHash": true
+    },
+    "overview": {
+      "path": "apps/desktop/renderer/src/assets/replay-overviews/de_dust2.txt",
+      "bytes": 541,
+      "sha256": "97947e99bc7930fc06dc15af3dcf942dbca5ca1c6f36119a089615fd4b383620",
+      "stableDuringHash": true
+    },
+    "image": {
+      "path": "apps/desktop/renderer/src/assets/replay-maps/de_dust2.png",
+      "bytes": 175761,
+      "sha256": "0828297130ce26db25a299806ff743df9104de634a3e64b52b358f6f4399354d",
+      "stableDuringHash": true
+    },
+    "width": 1024,
+    "height": 1024,
+    "transform": {
+      "posX": -2476,
+      "posY": 3239,
+      "scale": 4.4
+    },
+    "layers": [],
+    "demVersionMatch": "unconfirmed",
+    "versionMatch": "unconfirmed",
+    "bytesMatchManifest": true
+  },
+  "dependencyInventory": {
+    "label": "partial dependency inventory",
+    "nodes": [
+      {
+        "id": "R01",
+        "resourcePath": "maps/de_dust2.nav",
+        "container": "maps/de_dust2.vpk",
+        "resourceType": "nav",
+        "sizeBytes": 481872,
+        "sha256": null,
+        "sha256Status": "NOT RUN: member content not read",
+        "indexMetadata": {
+          "crc32": "77ee421b",
+          "crcVerified": false,
+          "preloadBytes": 0,
+          "archiveIndex": 32767,
+          "offset": 257685772,
+          "entryLength": 481872
+        },
+        "identitySource": {
+          "kind": "observed-vpk-directory-entry",
+          "containerSha256": "51d6bb432b6553bfae6c38219a527c5de2464a2b107080f2b8be7d8427ebb885",
+          "command": "C08/C14"
+        },
+        "directReferenceEvidence": false,
+        "indirectReferenceEvidence": false,
+        "status": "candidate",
+        "currentConfirmation": {
+          "directoryPresence": "verified",
+          "physicalLocation": "verified-index-and-stat-only",
+          "semanticType": "inferred-from-extension",
+          "contentParsed": false,
+          "dependencyRole": "unresolved"
+        }
+      },
+      {
+        "id": "R02",
+        "resourcePath": "maps/de_dust2.vmap_c",
+        "container": "maps/de_dust2.vpk",
+        "resourceType": "vmap_c",
+        "sizeBytes": 135488,
+        "sha256": null,
+        "sha256Status": "NOT RUN: member content not read",
+        "indexMetadata": {
+          "crc32": "d2542890",
+          "crcVerified": false,
+          "preloadBytes": 0,
+          "archiveIndex": 32767,
+          "offset": 257550284,
+          "entryLength": 135488
+        },
+        "identitySource": {
+          "kind": "observed-vpk-directory-entry",
+          "containerSha256": "51d6bb432b6553bfae6c38219a527c5de2464a2b107080f2b8be7d8427ebb885",
+          "command": "C08/C14"
+        },
+        "directReferenceEvidence": false,
+        "indirectReferenceEvidence": false,
+        "status": "candidate",
+        "currentConfirmation": {
+          "directoryPresence": "verified",
+          "physicalLocation": "verified-index-and-stat-only",
+          "semanticType": "inferred-from-extension",
+          "contentParsed": false,
+          "dependencyRole": "unresolved"
+        }
+      },
+      {
+        "id": "R03",
+        "resourcePath": "maps/de_dust2/entities/default_ents.vents_c",
+        "container": "maps/de_dust2.vpk",
+        "resourceType": "vents_c",
+        "sizeBytes": 45073,
+        "sha256": null,
+        "sha256Status": "NOT RUN: member content not read",
+        "indexMetadata": {
+          "crc32": "d8aecbc3",
+          "crcVerified": false,
+          "preloadBytes": 0,
+          "archiveIndex": 32767,
+          "offset": 256599468,
+          "entryLength": 45073
+        },
+        "identitySource": {
+          "kind": "observed-vpk-directory-entry",
+          "containerSha256": "51d6bb432b6553bfae6c38219a527c5de2464a2b107080f2b8be7d8427ebb885",
+          "command": "C08/C14"
+        },
+        "directReferenceEvidence": false,
+        "indirectReferenceEvidence": false,
+        "status": "candidate",
+        "currentConfirmation": {
+          "directoryPresence": "verified",
+          "physicalLocation": "verified-index-and-stat-only",
+          "semanticType": "inferred-from-extension",
+          "contentParsed": false,
+          "dependencyRole": "unresolved"
+        }
+      },
+      {
+        "id": "R04",
+        "resourcePath": "maps/de_dust2/world_physics.vmdl_c",
+        "container": "maps/de_dust2.vpk",
+        "resourceType": "vmdl_c",
+        "sizeBytes": 21843224,
+        "sha256": null,
+        "sha256Status": "NOT RUN: member content not read",
+        "indexMetadata": {
+          "crc32": "54c48ad4",
+          "crcVerified": false,
+          "preloadBytes": 0,
+          "archiveIndex": 32767,
+          "offset": 234537592,
+          "entryLength": 21843224
+        },
+        "identitySource": {
+          "kind": "observed-vpk-directory-entry",
+          "containerSha256": "51d6bb432b6553bfae6c38219a527c5de2464a2b107080f2b8be7d8427ebb885",
+          "command": "C08/C14"
+        },
+        "directReferenceEvidence": false,
+        "indirectReferenceEvidence": false,
+        "status": "candidate",
+        "currentConfirmation": {
+          "directoryPresence": "verified",
+          "physicalLocation": "verified-index-and-stat-only",
+          "semanticType": "inferred-from-extension",
+          "contentParsed": false,
+          "dependencyRole": "unresolved"
+        }
+      },
+      {
+        "id": "R05",
+        "resourcePath": "maps/de_dust2/world_physics.vrman_c",
+        "container": "maps/de_dust2.vpk",
+        "resourceType": "vrman_c",
+        "sizeBytes": 901,
+        "sha256": null,
+        "sha256Status": "NOT RUN: member content not read",
+        "indexMetadata": {
+          "crc32": "bfd864cd",
+          "crcVerified": false,
+          "preloadBytes": 0,
+          "archiveIndex": 32767,
+          "offset": 3975380,
+          "entryLength": 901
+        },
+        "identitySource": {
+          "kind": "observed-vpk-directory-entry",
+          "containerSha256": "51d6bb432b6553bfae6c38219a527c5de2464a2b107080f2b8be7d8427ebb885",
+          "command": "C08/C14"
+        },
+        "directReferenceEvidence": false,
+        "indirectReferenceEvidence": false,
+        "status": "candidate",
+        "currentConfirmation": {
+          "directoryPresence": "verified",
+          "physicalLocation": "verified-index-and-stat-only",
+          "semanticType": "inferred-from-extension",
+          "contentParsed": false,
+          "dependencyRole": "unresolved"
+        }
+      },
+      {
+        "id": "R06",
+        "resourcePath": "maps/de_dust2/world.vwrld_c",
+        "container": "maps/de_dust2.vpk",
+        "resourceType": "vwrld_c",
+        "sizeBytes": 1961,
+        "sha256": null,
+        "sha256Status": "NOT RUN: member content not read",
+        "indexMetadata": {
+          "crc32": "54ca519b",
+          "crcVerified": false,
+          "preloadBytes": 0,
+          "archiveIndex": 32767,
+          "offset": 3972517,
+          "entryLength": 1961
+        },
+        "identitySource": {
+          "kind": "observed-vpk-directory-entry",
+          "containerSha256": "51d6bb432b6553bfae6c38219a527c5de2464a2b107080f2b8be7d8427ebb885",
+          "command": "C08/C14"
+        },
+        "directReferenceEvidence": false,
+        "indirectReferenceEvidence": false,
+        "status": "candidate",
+        "currentConfirmation": {
+          "directoryPresence": "verified",
+          "physicalLocation": "verified-index-and-stat-only",
+          "semanticType": "inferred-from-extension",
+          "contentParsed": false,
+          "dependencyRole": "unresolved"
+        }
+      },
+      {
+        "id": "R07",
+        "resourcePath": "maps/de_dust2/worldnodes/n0.vwnod_c",
+        "container": "maps/de_dust2.vpk",
+        "resourceType": "vwnod_c",
+        "sizeBytes": 70445,
+        "sha256": null,
+        "sha256Status": "NOT RUN: member content not read",
+        "indexMetadata": {
+          "crc32": "1fb04fed",
+          "crcVerified": false,
+          "preloadBytes": 0,
+          "archiveIndex": 32767,
+          "offset": 0,
+          "entryLength": 70445
+        },
+        "identitySource": {
+          "kind": "observed-vpk-directory-entry",
+          "containerSha256": "51d6bb432b6553bfae6c38219a527c5de2464a2b107080f2b8be7d8427ebb885",
+          "command": "C08/C14"
+        },
+        "directReferenceEvidence": false,
+        "indirectReferenceEvidence": false,
+        "status": "candidate",
+        "currentConfirmation": {
+          "directoryPresence": "verified",
+          "physicalLocation": "verified-index-and-stat-only",
+          "semanticType": "inferred-from-extension",
+          "contentParsed": false,
+          "dependencyRole": "unresolved"
+        }
+      },
+      {
+        "id": "R08",
+        "resourcePath": "maps/de_dust2/world.vrman_c",
+        "container": "maps/de_dust2.vpk",
+        "resourceType": "vrman_c",
+        "sizeBytes": 908,
+        "sha256": null,
+        "sha256Status": "NOT RUN: member content not read",
+        "indexMetadata": {
+          "crc32": "63a09a2a",
+          "crcVerified": false,
+          "preloadBytes": 0,
+          "archiveIndex": 32767,
+          "offset": 3976281,
+          "entryLength": 908
+        },
+        "identitySource": {
+          "kind": "observed-vpk-directory-entry",
+          "containerSha256": "51d6bb432b6553bfae6c38219a527c5de2464a2b107080f2b8be7d8427ebb885",
+          "command": "C08/C14"
+        },
+        "directReferenceEvidence": false,
+        "indirectReferenceEvidence": false,
+        "status": "candidate",
+        "currentConfirmation": {
+          "directoryPresence": "verified",
+          "physicalLocation": "verified-index-and-stat-only",
+          "semanticType": "inferred-from-extension",
+          "contentParsed": false,
+          "dependencyRole": "unresolved"
+        }
+      },
+      {
+        "id": "R09",
+        "resourcePath": "maps/de_dust2/worldnodes/n0.vrman_c",
+        "container": "maps/de_dust2.vpk",
+        "resourceType": "vrman_c",
+        "sizeBytes": 902,
+        "sha256": null,
+        "sha256Status": "NOT RUN: member content not read",
+        "indexMetadata": {
+          "crc32": "041d13b7",
+          "crcVerified": false,
+          "preloadBytes": 0,
+          "archiveIndex": 32767,
+          "offset": 3974478,
+          "entryLength": 902
+        },
+        "identitySource": {
+          "kind": "observed-vpk-directory-entry",
+          "containerSha256": "51d6bb432b6553bfae6c38219a527c5de2464a2b107080f2b8be7d8427ebb885",
+          "command": "C08/C14"
+        },
+        "directReferenceEvidence": false,
+        "indirectReferenceEvidence": false,
+        "status": "candidate",
+        "currentConfirmation": {
+          "directoryPresence": "verified",
+          "physicalLocation": "verified-index-and-stat-only",
+          "semanticType": "inferred-from-extension",
+          "contentParsed": false,
+          "dependencyRole": "unresolved"
+        }
+      },
+      {
+        "id": "R10",
+        "resourcePath": "resource/overviews/de_dust2.txt",
+        "container": "pak01_dir.vpk",
+        "resourceType": "txt",
+        "sizeBytes": 541,
+        "sha256": null,
+        "sha256Status": "NOT RUN: member content not read",
+        "indexMetadata": {
+          "crc32": "ca427be7",
+          "crcVerified": false,
+          "preloadBytes": 0,
+          "archiveIndex": 22,
+          "offset": 49618256,
+          "entryLength": 541
+        },
+        "identitySource": {
+          "kind": "observed-vpk-directory-entry",
+          "containerSha256": "562972293ed7a5d40e341c4df7d6b0ee06430452694177142f0c1239dd3f2c8b",
+          "command": "C08"
+        },
+        "directReferenceEvidence": false,
+        "indirectReferenceEvidence": false,
+        "status": "candidate",
+        "currentConfirmation": {
+          "directoryPresence": "verified",
+          "physicalLocation": "verified-index-and-stat-only",
+          "semanticType": "inferred-from-extension",
+          "contentParsed": false,
+          "dependencyRole": "unresolved"
+        }
+      },
+      {
+        "id": "R11",
+        "resourcePath": "panorama/images/overheadmaps/de_dust2_radar_psd.vtex_c",
+        "container": "pak01_dir.vpk",
+        "resourceType": "vtex_c",
+        "sizeBytes": 212310,
+        "sha256": null,
+        "sha256Status": "NOT RUN: member content not read",
+        "indexMetadata": {
+          "crc32": "c757b3ef",
+          "crcVerified": false,
+          "preloadBytes": 0,
+          "archiveIndex": 339,
+          "offset": 28689824,
+          "entryLength": 212310
+        },
+        "identitySource": {
+          "kind": "observed-vpk-directory-entry",
+          "containerSha256": "562972293ed7a5d40e341c4df7d6b0ee06430452694177142f0c1239dd3f2c8b",
+          "command": "C08"
+        },
+        "directReferenceEvidence": false,
+        "indirectReferenceEvidence": false,
+        "status": "candidate",
+        "currentConfirmation": {
+          "directoryPresence": "verified",
+          "physicalLocation": "verified-index-and-stat-only",
+          "semanticType": "inferred-from-extension",
+          "contentParsed": false,
+          "dependencyRole": "unresolved"
+        }
+      }
+    ],
+    "resourceEdges": [
+      {
+        "id": "E01",
+        "from": "R02",
+        "to": "R08",
+        "kind": "candidate-resource-reference",
+        "status": "candidate",
+        "evidenceSource": "S03:GetLumpFolderFromVmapRERL; naming + directory candidates",
+        "actuallyVerified": false,
+        "missingEvidence": "Local vmap RERL not read"
+      },
+      {
+        "id": "E02",
+        "from": "R02",
+        "to": "R06",
+        "kind": "candidate-resource-reference",
+        "status": "candidate",
+        "evidenceSource": "S03:InitMapExtract; expected loader convention",
+        "actuallyVerified": false,
+        "missingEvidence": "Local RERL-selected lump folder and loader resolution not verified"
+      },
+      {
+        "id": "E03",
+        "from": "R06",
+        "to": "R03",
+        "kind": "candidate-resource-reference",
+        "status": "candidate",
+        "evidenceSource": "S03:World.GetEntityLumpNames; directory/name candidate",
+        "actuallyVerified": false,
+        "missingEvidence": "Local world DATA entity-lump list not read"
+      },
+      {
+        "id": "E04",
+        "from": "R06",
+        "to": "R07",
+        "kind": "candidate-resource-reference",
+        "status": "candidate",
+        "evidenceSource": "S03:World.GetWorldNodeNames; directory/name candidate",
+        "actuallyVerified": false,
+        "missingEvidence": "Local world DATA world-node list not read"
+      },
+      {
+        "id": "E05",
+        "from": "R06",
+        "to": "R05",
+        "kind": "candidate-resource-reference",
+        "status": "candidate",
+        "evidenceSource": "S03:GetWorldPhysicsName; static loader convention",
+        "actuallyVerified": false,
+        "missingEvidence": "Local world identity and loader invocation not verified"
+      },
+      {
+        "id": "E06",
+        "from": "R05",
+        "to": "R04",
+        "kind": "candidate-resource-reference",
+        "status": "candidate",
+        "evidenceSource": "S03:manifest.Resources.First().FirstOrDefault + model PHYS branch; name candidate",
+        "actuallyVerified": false,
+        "missingEvidence": "Local manifest resource list and model PHYS not read"
+      },
+      {
+        "id": "E07",
+        "from": "R07",
+        "to": "R09",
+        "kind": "candidate-association",
+        "status": "candidate",
+        "evidenceSource": "Directory basename only",
+        "actuallyVerified": false,
+        "missingEvidence": "No verified reference direction or semantics; candidate association only"
+      },
+      {
+        "id": "E08",
+        "from": "R02",
+        "to": "R01",
+        "kind": "candidate-association",
+        "status": "candidate",
+        "evidenceSource": "Map basename only; index presence",
+        "actuallyVerified": false,
+        "missingEvidence": "No local reference or NAV contents read; association only, direction does not assert runtime load"
+      }
+    ],
+    "storageEdges": [
+      {
+        "from": "maps/de_dust2.vpk",
+        "to": "R01",
+        "kind": "directory-storage-location",
+        "status": "verified",
+        "evidenceSource": "C08/C14:archiveIndex/offset/length + stat bounds",
+        "actuallyVerified": true,
+        "semanticDependency": false,
+        "contentVerified": false
+      },
+      {
+        "from": "maps/de_dust2.vpk",
+        "to": "R02",
+        "kind": "directory-storage-location",
+        "status": "verified",
+        "evidenceSource": "C08/C14:archiveIndex/offset/length + stat bounds",
+        "actuallyVerified": true,
+        "semanticDependency": false,
+        "contentVerified": false
+      },
+      {
+        "from": "maps/de_dust2.vpk",
+        "to": "R03",
+        "kind": "directory-storage-location",
+        "status": "verified",
+        "evidenceSource": "C08/C14:archiveIndex/offset/length + stat bounds",
+        "actuallyVerified": true,
+        "semanticDependency": false,
+        "contentVerified": false
+      },
+      {
+        "from": "maps/de_dust2.vpk",
+        "to": "R04",
+        "kind": "directory-storage-location",
+        "status": "verified",
+        "evidenceSource": "C08/C14:archiveIndex/offset/length + stat bounds",
+        "actuallyVerified": true,
+        "semanticDependency": false,
+        "contentVerified": false
+      },
+      {
+        "from": "maps/de_dust2.vpk",
+        "to": "R05",
+        "kind": "directory-storage-location",
+        "status": "verified",
+        "evidenceSource": "C08/C14:archiveIndex/offset/length + stat bounds",
+        "actuallyVerified": true,
+        "semanticDependency": false,
+        "contentVerified": false
+      },
+      {
+        "from": "maps/de_dust2.vpk",
+        "to": "R06",
+        "kind": "directory-storage-location",
+        "status": "verified",
+        "evidenceSource": "C08/C14:archiveIndex/offset/length + stat bounds",
+        "actuallyVerified": true,
+        "semanticDependency": false,
+        "contentVerified": false
+      },
+      {
+        "from": "maps/de_dust2.vpk",
+        "to": "R07",
+        "kind": "directory-storage-location",
+        "status": "verified",
+        "evidenceSource": "C08/C14:archiveIndex/offset/length + stat bounds",
+        "actuallyVerified": true,
+        "semanticDependency": false,
+        "contentVerified": false
+      },
+      {
+        "from": "maps/de_dust2.vpk",
+        "to": "R08",
+        "kind": "directory-storage-location",
+        "status": "verified",
+        "evidenceSource": "C08/C14:archiveIndex/offset/length + stat bounds",
+        "actuallyVerified": true,
+        "semanticDependency": false,
+        "contentVerified": false
+      },
+      {
+        "from": "maps/de_dust2.vpk",
+        "to": "R09",
+        "kind": "directory-storage-location",
+        "status": "verified",
+        "evidenceSource": "C08/C14:archiveIndex/offset/length + stat bounds",
+        "actuallyVerified": true,
+        "semanticDependency": false,
+        "contentVerified": false
+      },
+      {
+        "from": "pak01_dir.vpk",
+        "to": "R10",
+        "kind": "directory-storage-location",
+        "status": "verified",
+        "evidenceSource": "C08:archiveIndex/offset/length + stat bounds",
+        "actuallyVerified": true,
+        "semanticDependency": false,
+        "contentVerified": false
+      },
+      {
+        "from": "pak01_dir.vpk",
+        "to": "R11",
+        "kind": "directory-storage-location",
+        "status": "verified",
+        "evidenceSource": "C08:archiveIndex/offset/length + stat bounds",
+        "actuallyVerified": true,
+        "semanticDependency": false,
+        "contentVerified": false
+      }
+    ],
+    "verifiedSemanticEdges": 0,
+    "observedActualReferences": [],
+    "closureStatus": "partial",
+    "closureVerification": "BLOCKED",
+    "resourceParserSuccess": "NOT RUN",
+    "unresolved": [
+      {
+        "status": "unresolved",
+        "item": "vmap RERL -> world manifest / folder",
+        "missing": "Local compiled resource content; outside this audit"
+      },
+      {
+        "status": "unresolved",
+        "item": "world DATA -> entities/worldnodes/static model instances",
+        "missing": "World/worldnode/entity DATA + transforms + full external reference lists"
+      },
+      {
+        "status": "unresolved",
+        "item": "physics manifest -> model -> PHYS or external vphys",
+        "missing": "Manifest resource list and model blocks not read; vphys_c count 0 in this map index is not proof of missing physics"
+      },
+      {
+        "status": "unresolved",
+        "item": "NAV major/subversion/hull/topology",
+        "missing": "Member header/content not read"
+      },
+      {
+        "status": "unresolved",
+        "item": "shared pak01 models/materials/surfaces needed by Dust2",
+        "missing": "Actual Dust2 references not read; shared-container membership alone is insufficient"
+      },
+      {
+        "status": "unresolved",
+        "item": "same-identity complete closure + mount resolution",
+        "missing": "Member digests and actual reference discovery + search/mount policy"
+      }
+    ],
+    "missingVerifiedDependencies": [],
+    "missingStatusMeaning": "No dependency is marked missing because no actual expected-reference set has been established"
+  },
+  "bindingClues": [
+    {
+      "id": "B01",
+      "clue": "CDemoFileHeader.build_num",
+      "status": "observed",
+      "value": 10231,
+      "definition": "optional int32 tag 13; source provides no verified map-build namespace or map-digest semantics",
+      "semanticConfidence": "unconfirmed",
+      "mappingToSteamOrMapBuild": "unconfirmed",
+      "source": "S04/C04/C11"
+    },
+    {
+      "id": "B02",
+      "clue": "patch_version",
+      "status": "observed",
+      "value": "14055",
+      "source": "native.parseHeader and raw tag 2",
+      "mappingToSteamBuildOrSourceRevision": "unconfirmed"
+    },
+    {
+      "id": "B03",
+      "clue": "map_name / GUID / demo_version_name",
+      "status": "observed",
+      "value": {
+        "map": "de_dust2",
+        "guid": "8e9d71ab-04a1-4c01-bb61-acfede27c046",
+        "format": "valve_demo_2"
+      },
+      "strength": "candidate filter/format clues; no map content binding"
+    },
+    {
+      "id": "B04",
+      "clue": "CSVCMsg_ServerInfo.game_session_manifest",
+      "status": "schema-only",
+      "definition": "optional bytes tag 20",
+      "localDemoValue": null,
+      "currentParser": "ServerInfo decoded in second pass; only max_classes consumed; bytes not exported or preserved by adapter",
+      "directBinding": "unconfirmed",
+      "sources": [
+        "S04:7886-7919",
+        "S06:457-464"
+      ]
+    },
+    {
+      "id": "B05",
+      "clue": "CNETMsg_SpawnGroup_Load.worldname/spawngroupmanifest",
+      "status": "schema-only",
+      "definition": "optional string tag 1 / optional bytes tag 8; offsets tags 6/7; manifestincomplete tag 11; creationsequence tag 16",
+      "localDemoValue": null,
+      "currentParser": "No explicit SpawnGroup handler found; first/second-pass fallback ignores other messages; no exposed manifest API",
+      "directBinding": "unconfirmed",
+      "sources": [
+        "S04:4420-4460",
+        "S05",
+        "S06"
+      ]
+    },
+    {
+      "id": "B06",
+      "clue": "local container SHA-256 and index CRC",
+      "status": "observed",
+      "strength": "SHA identifies sampled container bytes; CRC unverified; no corresponding local DEM digest field identified/decoded",
+      "directBinding": "unconfirmed"
+    },
+    {
+      "id": "B07",
+      "clue": "Steam installation versus existing replay manifest",
+      "status": "observed",
+      "value": {
+        "installedDepotManifest": "67499503218971311",
+        "replayDepotManifest": "2312433566686574487"
+      },
+      "interpretation": "Different installation declarations; does not prove map changed or remained equal; no mismatched verdict"
+    },
+    {
+      "id": "B08",
+      "clue": "loader convention maps -> world -> physics",
+      "status": "inferred",
+      "source": "S03",
+      "interpretation": "Static tool behavior suggests candidates; not observed local references or parser success"
+    }
+  ],
+  "manifestProposal": {
+    "proposalOnly": true,
+    "productionTypeImplemented": false,
+    "sourceIdentity": {
+      "kind": "steam-install-declaration",
+      "appId": "730",
+      "buildId": "26144732",
+      "depots": {
+        "731": {
+          "manifest": "1914580569200573996",
+          "size": "8"
+        },
+        "732": {
+          "manifest": "871988017289064757",
+          "size": "8"
+        },
+        "735": {
+          "manifest": "839756631616985732",
+          "size": "8"
+        },
+        "736": {
+          "manifest": "7228373013602568657",
+          "size": "8"
+        },
+        "737": {
+          "manifest": "4501692027218845309",
+          "size": "8"
+        },
+        "738": {
+          "manifest": "7772149859359653541",
+          "size": "8"
+        },
+        "2347770": {
+          "manifest": "67499503218971311",
+          "size": "65046717914"
+        },
+        "2347771": {
+          "manifest": "5751660862748360256",
+          "size": "7753522674"
+        },
+        "2347774": {
+          "manifest": "6845003340509320862",
+          "size": "1142065743"
+        }
+      },
+      "metadataEvidence": "steam.metadataFiles",
+      "containerEvidence": "vpk.files/vpk.selectedShardHashes",
+      "mountResolution": "unconfirmed"
+    },
+    "entryResource": {
+      "resourcePath": "maps/de_dust2.vmap_c",
+      "container": "maps/de_dust2.vpk",
+      "containerSha256": "51d6bb432b6553bfae6c38219a527c5de2464a2b107080f2b8be7d8427ebb885",
+      "memberSha256": null,
+      "entryEvidence": "R02"
+    },
+    "dependencyInventory": {
+      "reference": "dependencyInventory",
+      "coverage": "observed index candidates only; storage edges separated"
+    },
+    "dependencyClosureStatus": "partial",
+    "extractorIdentity": null,
+    "coordinateSpace": {
+      "dem": {
+        "system": "dem-server-xyz",
+        "axes": "native X/Y/Z",
+        "unit": "DEM-world-unit",
+        "normalization": "native-unmodified-v1"
+      },
+      "map": {
+        "axes": null,
+        "unit": null,
+        "transformToDem": null,
+        "verification": "NOT RUN"
+      },
+      "overview": {
+        "origin": {
+          "posX": -2476,
+          "posY": 3239,
+          "scale": 4.4
+        },
+        "axes": "u grows with +X; v grows with -Y",
+        "referencePixels": 1024,
+        "source": "S09; existing overview arithmetic only",
+        "geometryRegistration": "unconfirmed"
+      }
+    },
+    "targetDemoIdentity": {
+      "path": ".demo/dust2.dem",
+      "sha256": "db90fe85aab023a1d2c8a5996182e6120d98ef494f02a070b17982b235e4958c",
+      "patchVersion": "14055",
+      "buildNum": 10231,
+      "format": "PBDEMS2/valve_demo_2"
+    },
+    "bindingEvidence": {
+      "clueRefs": [
+        "B01",
+        "B02",
+        "B03",
+        "B04",
+        "B05",
+        "B06",
+        "B07"
+      ],
+      "verifiedContentBindings": []
+    },
+    "matchingStatus": "unconfirmed",
+    "limitations": [
+      "No member hashes, actual resource-reference graph or complete shared-dependency closure",
+      "No DEM-to-content-ID mapping",
+      "No geometry frame registration or capability validation",
+      "Manifest's own SHA does not attest described resources"
+    ]
+  },
+  "notRun": [
+    {
+      "item": "Local compiled member RERL/REDI/NTRO/DATA/PHYS parsing or resource parser invocation",
+      "status": "NOT RUN",
+      "reason": "Requires separately authorized content reading/parser experiment; no unpack/convert in this unit"
+    },
+    {
+      "item": "NAV/physics/collision extraction or geometry conversion",
+      "status": "NOT RUN",
+      "reason": "Explicitly prohibited"
+    },
+    {
+      "item": "DEM packet session/spawn manifest extraction",
+      "status": "NOT RUN",
+      "reason": "Current interface does not expose it; raw non-header decoding not attempted; no parser changes"
+    },
+    {
+      "item": "All shard payload hashes, member CRCs/SHA, archive hash sections/signatures",
+      "status": "NOT RUN",
+      "reason": "Not needed for index inventory; cannot be called content closure validation"
+    },
+    {
+      "item": "Complete resource closure and exact DEM binding",
+      "status": "BLOCKED",
+      "reason": "Actual reference set and DEM-content identity semantics unknown"
+    },
+    {
+      "item": "Application typecheck/build/full tests/GUI/installer/model calls",
+      "status": "NOT RUN",
+      "reason": "Only two documentation files added; no runtime change; existing read-only resource checks sufficient"
+    },
+    {
+      "item": "P8.1-L2.2B and later stages",
+      "status": "NOT RUN",
+      "reason": "No authorization; stop after this unit"
+    }
+  ],
+  "nextMinimalExperiments": [
+    {
+      "authorization": "separate approval required; not run",
+      "goal": "Validate direct reference list in memory for the fixed local map container",
+      "steps": [
+        "Freeze container hashes; explicit read-only member allowlist for vmap RERL and small world/physics manifests",
+        "If authorized, use a pinned already-available reader to report referenced paths and block metadata only; no geometry export",
+        "Resolve real listed paths to index+container identity, distinguish missing from unknown; do not infer closure from names"
+      ],
+      "boundary": "This request does not authorize member extraction or external reader execution"
+    },
+    {
+      "authorization": "separate approval required; not run",
+      "goal": "Inspect actual DEM session/spawn manifest identity fields",
+      "steps": [
+        "Authorize a read-only non-production decoder/probe with no trajectory outputs and pinned schema",
+        "Observe message presence, byte lengths and interpreted identifiers; establish namespace and hash coverage independently",
+        "Compare only verified identifier semantics against local resource identity; stay unconfirmed if no trustworthy mapping"
+      ],
+      "boundary": "No production parser changes or target fixture replacement in this unit"
+    }
+  ],
+  "sources": [
+    {
+      "id": "S01",
+      "url": "https://github.com/cs2-analyst/cs2-analyst-desk/pull/4",
+      "kind": "GitHub connector get_pr_info",
+      "result": "open, draft=true, merged=false; sampled 2026-10-26 Asia/Shanghai"
+    },
+    {
+      "id": "S02",
+      "url": "https://github.com/ValveResourceFormat/ValvePak/blob/32c9858f2305bf4d12320374753b951ddeb6042d/ValvePak/ValvePak/Package.Read.cs",
+      "kind": "pinned primary source",
+      "blobSha": "d77c38caa035ba38c5e1bea72e55c85ee326cf05",
+      "result": "VPK header/tree layout, metadata, embedded index 0x7FFF, shard naming, CRC validation separate from entry listing; source read only"
+    },
+    {
+      "id": "S03",
+      "url": "https://github.com/ValveResourceFormat/ValveResourceFormat/blob/651253f52bbcc989b4f924fa5e0d70f0fc84abfa/ValveResourceFormat/IO/Extract/MapExtract.cs",
+      "kind": "pinned primary source",
+      "blobSha": "4f2d1be527b1abeac5e38f904f4246237796514d",
+      "lineRanges": [
+        [
+          350,
+          487
+        ],
+        [
+          480,
+          575
+        ]
+      ],
+      "result": "RERL world.vrman selection; world data getters; physics manifest first resource; model embedded PHYS or external physics branch. No local members decoded"
+    },
+    {
+      "id": "S04",
+      "path": "vendor/demoparser/.build/work/src/csgoproto/src/protobuf.rs",
+      "sha256": "953ad3f19e1c1bd888d8d51292ff47cb1379a979353f07fb7977a4c152e4f5b5",
+      "kind": "local pinned generated schema",
+      "lines": [
+        636,
+        666,
+        4420,
+        4460,
+        7886,
+        7919
+      ]
+    },
+    {
+      "id": "S05",
+      "path": "vendor/demoparser/.build/work/src/parser/src/first_pass/parser.rs",
+      "sha256": "08db73742d6e54426600afc1b96261196046d6902f5625f918b4a6e39593b8c2",
+      "kind": "local fixed native build source",
+      "lines": [
+        311,
+        335
+      ]
+    },
+    {
+      "id": "S06",
+      "path": "vendor/demoparser/.build/work/src/parser/src/second_pass/parser.rs",
+      "sha256": "f5a0291e89d746a8932c8ecd8915a4f491e02c529d525ea4cc7da1eaf11f95da",
+      "kind": "local fixed native build source",
+      "lines": [
+        263,
+        278,
+        457,
+        464
+      ]
+    },
+    {
+      "id": "S07",
+      "path": "packages/demoparser-native/source.json",
+      "kind": "tracked provenance contract"
+    },
+    {
+      "id": "S08",
+      "path": "docs/replay-resources.json",
+      "sha256": "a055ce462c1c8f464f54493b0bd7287fc16f5171bf29d2a3e1120de0a6e9f543",
+      "kind": "tracked display resource manifest"
+    },
+    {
+      "id": "S09",
+      "path": "apps/desktop/shared/replay-map-geometry.ts",
+      "kind": "tracked projection/versionMatch source"
+    },
+    {
+      "id": "S10",
+      "path": "packages/dem-parser/src/providers/demoparser2-adapter.ts",
+      "kind": "tracked production adapter"
+    }
+  ],
+  "commands": [
+    {
+      "id": "P01",
+      "command": "Get-Content -LiteralPath 'C:\\Users\\evanpatchouli\\.codex\\attachments\\483a0cb3-6bd1-49c3-8b45-dbeab69e41c2\\已粘贴的文本.txt' -Raw; Get-Content -LiteralPath 'C:\\Users\\evanpatchouli\\.agents\\AGENTS.md' -Raw",
+      "exitCode": 0,
+      "result": "Read task and global AGENTS (file contains its own path literal)"
+    },
+    {
+      "id": "P02",
+      "command": "Get-Location; git status --short --branch; git log -1 --format=fuller; git remote -v; Get-Content AGENTS.md -Raw; Get-Content .agents/routing/model-routing.md -Raw; Get-ChildItem .agents/workflows | Select-Object Name; rg --files docs | rg 'p8-1l2|replay-resources'; rg --files | rg 'resource|proto|header|steam|vpk'",
+      "exitCode": 0,
+      "result": "Clean initial branch and HEAD; workflow and source discovery"
+    },
+    {
+      "id": "P03",
+      "command": "git fetch origin --prune; git ls-remote --heads origin main codex/p8-1l2-map-geometry-feasibility codex/p8-1l2-distance-foundation; git show-ref --verify refs/remotes/origin/main; git log -5 --oneline origin/main",
+      "exitCode": 0,
+      "result": "Fetch and ls-remote successful; exact remote refs in baseline"
+    },
+    {
+      "id": "P04",
+      "command": "Get-Content .agents/workflows/demo-analysis-development.md -Raw; Get-Content .agents/workflows/domain-model-change.md -Raw; rg --files .agents; Get-Content docs/p8-1l2-map-geometry-feasibility-2026-10-25.md -Raw; Get-Content docs/p8-1l2-distance-foundation.md -Raw; Get-Content docs/replay-resources.json -Raw",
+      "exitCode": 0,
+      "result": "Read workflows/research/manifest; combined tool output truncated, relevant sections reread in subsequent commands"
+    },
+    {
+      "id": "P05",
+      "command": "Get-Content docs/p8-1l2-distance-foundation.md -Raw; Get-Content .agents/workflows.md -Raw; Get-Content .agents/agents/reviewer.md -Raw; Get-Content docs/demo-fixtures.md -Raw; Get-Content scripts/replay-resource-audit.mjs -TotalCount 100; Get-Content packages/demoparser-native/index.js -TotalCount 100; Get-Content packages/demoparser-native/source.json -TotalCount 100; rg -n 'steam|proto|header|VPK|commands|command|source|local' docs/p8-1l2-map-geometry-feasibility-2026-10-25.json docs/p8-1l2-distance-validation-2026-10-25.json; rg --files packages/demoparser-native .tools .local 2>$null",
+      "exitCode": 1,
+      "result": "Exploration had absent index.js/.tools/.local paths. Actual entry is index.cjs; recovered P06/C05-C11; no audit PASS based on missing paths"
+    },
+    {
+      "id": "P06",
+      "command": "git switch -c codex/p8-1l2-resource-inventory; Get-Content packages/demoparser-native/index.cjs -TotalCount 140; Get-Content packages/demoparser-native/source.json -Raw; Get-Content .agents/agents/tester.md -Raw; Get-Content docs/p8-1l2-map-geometry-feasibility-2026-10-25.md | Select-Object -Skip 235 -First 100; Get-Content docs/p8-1l2-map-geometry-feasibility-2026-10-25.json | Select-Object -First 150; Get-Content scripts/replay-resource-audit.mjs | Select-Object -Skip 65 -First 100; rg --files -uuu .local .tmp 2>$null | rg '(demo\\.rs|parser\\.rs|netmessages|demo\\.proto|networkbasetypes|Package\\.cs|PackageEntry)' | Select-Object -First 35",
+      "exitCode": 1,
+      "result": "Branch successfully created; final rg includes missing .local; local DEM parser sources located, no game-directory scan"
+    },
+    {
+      "id": "C01",
+      "command": "Get-Content scripts/replay-resource-audit.mjs -Raw; Get-Content docs/replay-resources.json -TotalCount 48; Get-Content docs/p8-1l2-map-geometry-feasibility-2026-10-25.md | Select-Object -Skip 160 -First 72; Get-Content .tmp/demo2-diagnostic/demoparser/src/csgoproto/GameTracking-CS2/Protobufs/demo.proto -TotalCount 65; rg -n 'parse_header|build_num|game_session_manifest|spawngroupmanifest|SpawnGroup|worldname|ServerInfo' .tmp/demo2-diagnostic/demoparser/src/parser/src .tmp/demo2-diagnostic/demoparser/src/csgoproto/GameTracking-CS2/Protobufs/netmessages.proto .tmp/demo2-diagnostic/demoparser/src/csgoproto/GameTracking-CS2/Protobufs/networkbasetypes.proto; Get-ItemProperty -LiteralPath 'HKCU:\\Software\\Valve\\Steam' -Name SteamPath | Select-Object SteamPath; Get-Content 'C:\\Steam\\steamapps\\libraryfolders.vdf' -Raw; Get-Content 'C:\\Steam\\steamapps\\appmanifest_730.acf' -Raw; Get-Content 'C:\\Steam\\steamapps\\common\\Counter-Strike Global Offensive\\game\\csgo\\steam.inf' -Raw; git merge-base --is-ancestor babcdd8cdff444dad86ff78e0f3e1f4499c54ddb origin/main; Write-Output \"geometryAncestorExit=$LASTEXITCODE\"; git merge-base --is-ancestor 623caaccbbd479e538c6b1166b8890170ab4c8f1 origin/main; Write-Output \"distanceAncestorExit=$LASTEXITCODE\"; git diff --name-status origin/main HEAD",
+      "exitCode": 0,
+      "result": "Read existing script/manifest/source/Steam metadata. Ancestor checks returned 1 each; final diff command 0. Raw appmanifest private fields not copied to this log.",
+      "outputStored": "sanitized summary only"
+    },
+    {
+      "id": "C02",
+      "command": "Get-ChildItem .tmp -Directory | Select-Object -ExpandProperty Name; Get-Content scripts/build-fixed-demoparser.ps1 -TotalCount 110 -ErrorAction SilentlyContinue; rg -n 'dp-src|demo2-diagnostic|first_pass|protobuf' scripts/*parser* packages/demoparser-native/native/provenance.json; Get-Content .tmp/demo2-diagnostic/demoparser/src/parser/src/first_pass/parser.rs | Select-Object -Skip 305 -First 40; Get-Content .tmp/demo2-diagnostic/demoparser/src/parser/src/second_pass/parser.rs | Select-Object -Skip 248 -First 38; Get-Content .tmp/demo2-diagnostic/demoparser/src/parser/src/second_pass/parser.rs | Select-Object -Skip 464 -First 25; rg -n 'game_session_manifest|spawngroupmanifest|pub struct CdemoFileHeader|pub struct CsvcMsgServerInfo|pub struct CnetMsgSpawnGroupLoad' .tmp/demo2-diagnostic/demoparser/src/csgoproto/src/protobuf.rs; Get-Content packages/dem-parser/src/providers/demoparser2-adapter.ts -TotalCount 80; Get-Content apps/desktop/shared/replay-map-geometry.ts -TotalCount 100",
+      "exitCode": 0,
+      "result": "Exploratory diagnostic parser source read; rg wildcard error (123), missing build script path; shell final exit 0 masks intermediate errors. This diagnostic schema was not trusted after hash mismatch.",
+      "outputStored": "sanitized summary only"
+    },
+    {
+      "id": "C03",
+      "command": "@'\n\nconst fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),assert=require('node:assert/strict');\nconst root='C:/Steam/steamapps/common/Counter-Strike Global Offensive/game/csgo';\nfunction inspect(rel){\n const file=path.join(root,rel), fd=fs.openSync(file,'r'), stat=fs.fstatSync(fd);\n function read(n,p){const b=Buffer.alloc(n);assert.equal(fs.readSync(fd,b,0,n,p),n);return b;}\n const h=read(12,0),magic=h.readUInt32LE(),version=h.readUInt32LE(4),treeSize=h.readUInt32LE(8);\n assert.equal(magic,0x55aa1234); assert.ok([1,2].includes(version));\n const headerSize=version===2?28:12, sections=version===2?read(16,12):Buffer.alloc(16);\n const header={magic:'0x55aa1234',version,headerSize,treeSize,fileDataSectionSize:sections.readUInt32LE(0),archiveMD5SectionSize:sections.readUInt32LE(4),otherMD5SectionSize:sections.readUInt32LE(8),signatureSectionSize:sections.readUInt32LE(12)};\n const end=headerSize+treeSize;assert.ok(end<=stat.size);\n let p=headerSize,skippedPreloadBytes=0;const single=Buffer.alloc(1), entries=[];\n function z(){let bytes=[];while(p<end){assert.equal(fs.readSync(fd,single,0,1,p++),1);if(single[0]===0)return Buffer.from(bytes).toString('utf8');bytes.push(single[0]);}throw Error('unterminated tree string');}\n while(true){let ext=z();if(!ext)break;while(true){let dir=z();if(!dir)break;while(true){let name=z();if(!name)break;assert.ok(p+18<=end);const m=read(18,p);p+=18;assert.equal(m.readUInt16LE(16),0xffff);const preloadBytes=m.readUInt16LE(4);assert.ok(p+preloadBytes<=end);p+=preloadBytes;skippedPreloadBytes+=preloadBytes;\n const full=[dir===' '?'':dir,name+(ext===' '?'':'.'+ext)].filter(Boolean).join('/');\n entries.push({path:full,type:ext,crc32:m.readUInt32LE().toString(16).padStart(8,'0'),preloadBytes,archiveIndex:m.readUInt16LE(6),offset:m.readUInt32LE(8),entryLength:m.readUInt32LE(12),totalBytes:preloadBytes+m.readUInt32LE(12)});\n }}}\n assert.equal(p,end);fs.closeSync(fd);\n const counts={},duplicates=[],seen=new Map(),archives=new Map(),outOfBounds=[];\n for(const e of entries){counts[e.type]=(counts[e.type]||0)+1;let key=e.path.toLowerCase();if(seen.has(key))duplicates.push(key);seen.set(key,e);let a=archives.get(e.archiveIndex);if(!a){let archivePath=e.archiveIndex===32767?file:file.replace(/_dir\\.vpk$/,'')+'_'+String(e.archiveIndex).padStart(3,'0')+'.vpk';let s;try{s=fs.statSync(archivePath)}catch{}a={archiveIndex:e.archiveIndex,file:path.basename(archivePath),exists:!!s,bytes:s?.size??null,entries:0,maxEnd:0,sha256:null};archives.set(e.archiveIndex,a)}a.entries++;a.maxEnd=Math.max(a.maxEnd,e.offset+e.entryLength); const bound=e.archiveIndex===32767?(version===2?header.fileDataSectionSize:stat.size-end):a.bytes;if(bound!==null&&e.offset+e.entryLength>bound)outOfBounds.push(e.path);\n }\n const relevant=entries.filter(e=> /^(maps\\/de_dust2(?:\\.vmap_c|\\.nav|\\/(?:world\\.vwrld_c|world_physics\\.vrman_c|world_physics\\.vmdl_c|world_physics\\.vphys_c|worldspawn\\.vents_c|entities\\/default_ents\\.vents_c|worldnodes\\/.+\\.vwnod_c)))$/.test(e.path)|| /(?:resource\\/overviews\\/de_dust2\\.txt|panorama\\/images\\/overheadmaps\\/de_dust2_radar_psd\\.vtex_c)$/.test(e.path));\n const candidates=entries.filter(e=>/(?:dust2|world_physics)/i.test(e.path)).length;\n return {path:rel,bytes:stat.size,header,treeConsumedExactly:p===end,entryCount:entries.length,typeCounts:counts,skippedPreloadBytes,duplicates,archives:[...archives.values()].sort((a,b)=>a.archiveIndex-b.archiveIndex),outOfBounds,selectedEntries:relevant.slice(0,24),selectedEntryCount:relevant.length,candidateNameCount:candidates,readScope:{semanticReads:'header + NUL strings + 18-byte entry metadata only; seek over preload; no member payload read',memberCrcVerified:false,memberSha256Computed:false,archiveHashSectionsRead:false,signatureVerified:false},_entries:entries};\n}\nconst maps=inspect('maps/de_dust2.vpk'),global=inspect('pak01_dir.vpk');\nconst globalByPath=new Map(global._entries.map(e=>[e.path.toLowerCase(),e]));\nconst overlaps=maps._entries.filter(e=>globalByPath.has(e.path.toLowerCase()));\nconst cross={duplicatePathCount:overlaps.length,sameCrcAndSizeCount:overlaps.filter(e=>{let b=globalByPath.get(e.path.toLowerCase());return b.crc32===e.crc32&&b.totalBytes===e.totalBytes}).length,contentIdentityVerified:false,mountPriority:'unresolved; no gameinfo/runtime verification'};\ndelete maps._entries;delete global._entries;\nconsole.log(JSON.stringify({containers:[maps,global],crossContainer:cross}));\n\n'@ | node",
+      "exitCode": 0,
+      "result": "Index probe process exit 0; output was oversized and tool truncated it. Orchestrator JSON.parse failed on truncation prefix. C08 repeats same metadata walk with aggregate output; full entry list never emitted or committed.",
+      "outputStored": "sanitized summary only"
+    },
+    {
+      "id": "C04",
+      "command": "@'\n\nconst fs=require('node:fs'), crypto=require('node:crypto'), assert=require('node:assert/strict');\nconst sha=b=>crypto.createHash('sha256').update(b).digest('hex');\nasync function identity(path){const before=fs.statSync(path);const hash=crypto.createHash('sha256');for await(const b of fs.createReadStream(path))hash.update(b);const after=fs.statSync(path);assert.equal(before.size,after.size);assert.equal(before.mtimeMs,after.mtimeMs);return {path,bytes:after.size,sha256:hash.digest('hex'),stableDuringHash:true};}\n(async()=>{\nconst demo=await identity('.demo/dust2.dem');assert.equal(demo.sha256,'db90fe85aab023a1d2c8a5996182e6120d98ef494f02a070b17982b235e4958c');\nconst native=require('./packages/demoparser-native/index.cjs'),h=native.parseHeader('.demo/dust2.dem'),provenance=native.getBindingProvenance();\nconst safeKeys=['demo_file_stamp','patch_version','map_name','fullpackets_version','allow_clientside_entities','allow_clientside_particles','addons','demo_version_name','demo_version_guid'];\nconst nativeHeader=Object.fromEntries(safeKeys.map(k=>[k,h[k]??null]));\nconst fd=fs.openSync('.demo/dust2.dem','r'),b=Buffer.alloc(65536),len=fs.readSync(fd,b,0,b.length,0);fs.closeSync(fd);assert.equal(b.subarray(0,8).toString(),'PBDEMS2\\0');\nlet p=16,limit=len;function v(){let x=0n,s=0n;for(let i=0;i<10;i++){assert.ok(p<limit);const c=b[p++];x|=BigInt(c&127)<<s;if(!(c&128))return x;s+=7n;}throw Error('varint');}\nconst cmd=Number(v()),tickUnsigned=v().toString(),payloadBytes=Number(v());assert.equal(cmd,1);limit=p+payloadBytes;assert.ok(limit<=len);const fields=[];\nwhile(p<limit){const key=Number(v()),tag=key>>>3,wire=key&7;let value=null;if(wire===0)value=v().toString();else if(wire===2){const n=Number(v());assert.ok(p+n<=limit);if([1,5,10,11,12,14].includes(tag))value=b.subarray(p,p+n).toString();p+=n;}else if(wire===1)p+=8;else if(wire===5)p+=4;else throw Error('wire');assert.ok(p<=limit);if([1,2,5,7,8,9,10,11,12,13,14,15].includes(tag))fields.push({tag,wire,value});}\nconst paths=['C:/Steam/steamapps/libraryfolders.vdf','C:/Steam/steamapps/appmanifest_730.acf','C:/Steam/steamapps/common/Counter-Strike Global Offensive/game/csgo/steam.inf','C:/Steam/steamapps/common/Counter-Strike Global Offensive/game/csgo/maps/de_dust2.vpk','C:/Steam/steamapps/common/Counter-Strike Global Offensive/game/csgo/pak01_dir.vpk','.tmp/demo2-diagnostic/demoparser/src/csgoproto/src/protobuf.rs','.tmp/demo2-diagnostic/demoparser/src/parser/src/first_pass/parser.rs','.tmp/demo2-diagnostic/demoparser/src/parser/src/second_pass/parser.rs'];\nconst files=[];for(const path of paths)files.push(await identity(path));\nconst manifest=JSON.parse(fs.readFileSync('docs/replay-resources.json')),m=manifest.maps.find(x=>x.map==='de_dust2');\nconst overviewPath='apps/desktop/renderer/src/assets/replay-overviews/de_dust2.txt',pngPath='apps/desktop/renderer/src/assets/replay-maps/de_dust2.png';\nconst overview=await identity(overviewPath),image=await identity(pngPath),png=fs.readFileSync(pngPath);\nassert.equal(overview.sha256,m.overview.sha256);assert.equal(image.sha256,m.images[0].sha256);assert.equal(png.readUInt32BE(16),1024);assert.equal(png.readUInt32BE(20),1024);\nconst {parseOverview}=await import('./scripts/replay-resource-audit.mjs');const parsed=parseOverview(fs.readFileSync(overviewPath,'utf8'),'de_dust2');assert.deepEqual(parsed.transform,m.overview.transform);\nconsole.log(JSON.stringify({demo:{...demo,nativeHeader,nativeExportedKeyNames:Object.keys(h).sort(),rawHeader:{magic:'PBDEMS2',cmd,tickUnsigned,payloadBytes,fields},parser:{packageVersion:require('./packages/demoparser-native/package.json').version,binarySha256:provenance.verifiedSha256,target:provenance.target,source:provenance.source}},files,replay:{resourceId:manifest.resourceId,source:{kind:manifest.source.kind,appId:manifest.source.appId,depotId:manifest.source.depotId,manifestId:manifest.source.manifestId,manifestSha256:manifest.source.manifestSha256,buildId:manifest.source.buildId,clientVersion:manifest.source.clientVersion,tools:manifest.source.tools.map(t=>({name:t.name,version:t.version}))},manifest:await identity('docs/replay-resources.json'),overview,image,width:1024,height:1024,transform:parsed.transform,layers:parsed.layers,demVersionMatch:m.demVersionMatch,versionMatch:'unconfirmed',bytesMatchManifest:true}}));\n})().catch(e=>{console.error(e);process.exitCode=1});\n\n'@ | node",
+      "exitCode": 0,
+      "result": "PASS whitelist DEM/native/raw header hashes and replay metadata. Diagnostic .tmp schema SHA 748119... differs from fixed provenance; not used as current-parser definition. C07/C11 correct this.",
+      "outputStored": "sanitized summary only"
+    },
+    {
+      "id": "C05",
+      "command": "rg --files -uuu .tmp/dp-src | rg '(protobuf.rs|first_pass|Cargo.lock)$'; rg --files scripts | rg '(parser|native)'; Get-Content packages/demoparser-native/native/provenance.json -Raw; Get-Content .tmp/dp-src/src/parser/src/second_pass/parser.rs -TotalCount 30; Get-ChildItem -LiteralPath '.tmp/dp-src/src' -Directory | Select-Object Name; Get-ChildItem -LiteralPath 'packages/demoparser-native' -Force | Select-Object Name",
+      "exitCode": 0,
+      "result": "Located build metadata/provenance; native work source discovery continued. Poll of C03 still running; later completion under C07.",
+      "outputStored": "sanitized summary only"
+    },
+    {
+      "id": "C06",
+      "command": "rg -n '953ad3f|parser:build-fixed|dp-src|build-fixed' package.json scripts docs/parser* .gitignore; Get-ChildItem .tools -Force -ErrorAction SilentlyContinue | Select-Object Name; rg --files -uuu -g protobuf.rs -g parser.rs -g '*fixed*' -g '!**/target/**' -g '!**/node_modules/**' -g '!**/.git/**' | Select-Object -First 60",
+      "exitCode": 0,
+      "result": "Located vendor/demoparser/.build/work. rg docs/parser* wildcard invalid on Windows; later explicit paths used. No binaries compiled.",
+      "outputStored": "sanitized summary only"
+    },
+    {
+      "id": "C07",
+      "command": "Get-FileHash -Algorithm SHA256 -LiteralPath 'vendor/demoparser/.build/work/src/csgoproto/src/protobuf.rs','vendor/demoparser/.build/work/src/parser/src/first_pass/parser.rs','vendor/demoparser/.build/work/src/parser/src/second_pass/parser.rs'; rg -n -A 40 'pub struct CDemoFileHeader|pub struct CsvcMsgServerInfo|pub struct CnetMsgSpawnGroupLoad' vendor/demoparser/.build/work/src/csgoproto/src/protobuf.rs; Get-Content vendor/demoparser/.build/work/src/parser/src/first_pass/parser.rs | Select-Object -Skip 308 -First 31; rg -n -A 15 -B 5 'svc_ServerInfo|parse_server_info|SpawnGroup|spawngroupmanifest|game_session_manifest' vendor/demoparser/.build/work/src/parser/src/first_pass vendor/demoparser/.build/work/src/parser/src/second_pass/parser.rs; Get-Content vendor/demoparser/build.ps1 -TotalCount 45 -ErrorAction SilentlyContinue",
+      "exitCode": 1,
+      "result": "Verified fixed protobuf/source hashes and schema/dispatch. Last optional Get-Content vendor/demoparser/build.ps1 absent => overall exit 1. Successful hashes independently asserted C11. Poll C03 exit 0; orchestration parse failed due output truncation.",
+      "outputStored": "sanitized summary only"
+    },
+    {
+      "id": "C08",
+      "command": "@'\n\nconst fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),assert=require('node:assert/strict');\nconst root='C:/Steam/steamapps/common/Counter-Strike Global Offensive/game/csgo';\nfunction inspect(rel){\n const file=path.join(root,rel), fd=fs.openSync(file,'r'), stat=fs.fstatSync(fd);\n function read(n,p){const b=Buffer.alloc(n);assert.equal(fs.readSync(fd,b,0,n,p),n);return b;}\n const h=read(12,0),magic=h.readUInt32LE(),version=h.readUInt32LE(4),treeSize=h.readUInt32LE(8);\n assert.equal(magic,0x55aa1234); assert.ok([1,2].includes(version));\n const headerSize=version===2?28:12, sections=version===2?read(16,12):Buffer.alloc(16);\n const header={magic:'0x55aa1234',version,headerSize,treeSize,fileDataSectionSize:sections.readUInt32LE(0),archiveMD5SectionSize:sections.readUInt32LE(4),otherMD5SectionSize:sections.readUInt32LE(8),signatureSectionSize:sections.readUInt32LE(12)};\n const end=headerSize+treeSize;assert.ok(end<=stat.size);\n let p=headerSize,skippedPreloadBytes=0;const single=Buffer.alloc(1), entries=[];\n function z(){let bytes=[];while(p<end){assert.equal(fs.readSync(fd,single,0,1,p++),1);if(single[0]===0)return Buffer.from(bytes).toString('utf8');bytes.push(single[0]);}throw Error('unterminated tree string');}\n while(true){let ext=z();if(!ext)break;while(true){let dir=z();if(!dir)break;while(true){let name=z();if(!name)break;assert.ok(p+18<=end);const m=read(18,p);p+=18;assert.equal(m.readUInt16LE(16),0xffff);const preloadBytes=m.readUInt16LE(4);assert.ok(p+preloadBytes<=end);p+=preloadBytes;skippedPreloadBytes+=preloadBytes;\n const full=[dir===' '?'':dir,name+(ext===' '?'':'.'+ext)].filter(Boolean).join('/');\n entries.push({path:full,type:ext,crc32:m.readUInt32LE().toString(16).padStart(8,'0'),preloadBytes,archiveIndex:m.readUInt16LE(6),offset:m.readUInt32LE(8),entryLength:m.readUInt32LE(12),totalBytes:preloadBytes+m.readUInt32LE(12)});\n }}}\n assert.equal(p,end);fs.closeSync(fd);\n const counts={},duplicates=[],seen=new Map(),archives=new Map(),outOfBounds=[];\n for(const e of entries){counts[e.type]=(counts[e.type]||0)+1;let key=e.path.toLowerCase();if(seen.has(key))duplicates.push(key);seen.set(key,e);let a=archives.get(e.archiveIndex);if(!a){let archivePath=e.archiveIndex===32767?file:file.replace(/_dir\\.vpk$/,'')+'_'+String(e.archiveIndex).padStart(3,'0')+'.vpk';let s;try{s=fs.statSync(archivePath)}catch{}a={archiveIndex:e.archiveIndex,file:path.basename(archivePath),exists:!!s,bytes:s?.size??null,entries:0,maxEnd:0,sha256:null};archives.set(e.archiveIndex,a)}a.entries++;a.maxEnd=Math.max(a.maxEnd,e.offset+e.entryLength); const bound=e.archiveIndex===32767?(version===2?header.fileDataSectionSize:stat.size-end):a.bytes;if(bound!==null&&e.offset+e.entryLength>bound)outOfBounds.push(e.path);\n }\n const relevant=entries.filter(e=> /^(maps\\/de_dust2(?:\\.vmap_c|\\.nav|\\/(?:world\\.vwrld_c|world_physics\\.vrman_c|world_physics\\.vmdl_c|world_physics\\.vphys_c|worldspawn\\.vents_c|entities\\/default_ents\\.vents_c|worldnodes\\/.+\\.vwnod_c)))$/.test(e.path)|| /(?:resource\\/overviews\\/de_dust2\\.txt|panorama\\/images\\/overheadmaps\\/de_dust2_radar_psd\\.vtex_c)$/.test(e.path));\n const candidates=entries.filter(e=>/(?:dust2|world_physics)/i.test(e.path)).length;\n return {path:rel,bytes:stat.size,header,treeConsumedExactly:p===end,entryCount:entries.length,typeCounts:counts,skippedPreloadBytes,duplicates,archives:[...archives.values()].sort((a,b)=>a.archiveIndex-b.archiveIndex),outOfBounds,selectedEntries:relevant.slice(0,24),selectedEntryCount:relevant.length,candidateNameCount:candidates,readScope:{semanticReads:'header + NUL strings + 18-byte entry metadata only; seek over preload; no member payload read',memberCrcVerified:false,memberSha256Computed:false,archiveHashSectionsRead:false,signatureVerified:false},_entries:entries};\n}\nconst maps=inspect('maps/de_dust2.vpk'),global=inspect('pak01_dir.vpk');\nconst globalByPath=new Map(global._entries.map(e=>[e.path.toLowerCase(),e]));\nconst overlaps=maps._entries.filter(e=>globalByPath.has(e.path.toLowerCase()));\nconst cross={duplicatePathCount:overlaps.length,sameCrcAndSizeCount:overlaps.filter(e=>{let b=globalByPath.get(e.path.toLowerCase());return b.crc32===e.crc32&&b.totalBytes===e.totalBytes}).length,contentIdentityVerified:false,mountPriority:'unresolved; no gameinfo/runtime verification'};\ndelete maps._entries;delete global._entries;\n\nfor(const c of [maps,global]){\n const a=c.archives;const ids=a.map(x=>x.archiveIndex);\n c.archiveSummary={count:a.length,minIndex:Math.min(...ids),maxIndex:Math.max(...ids),missingCount:a.filter(x=>!x.exists).length,missingFiles:a.filter(x=>!x.exists).map(x=>x.file),totalContainerBytes:a.reduce((n,x)=>n+(x.bytes||0),0),checkedOnlyByStat:true,allExternalShardDigests:'NOT RUN',selectedArchives:a.filter(x=>c.selectedEntries.some(e=>e.archiveIndex===x.archiveIndex))};\n delete c.archives;\n}\nconsole.log(JSON.stringify({containers:[maps,global],crossContainer:cross}));\n\n\n'@ | node",
+      "exitCode": 0,
+      "result": "PASS exact VPK tree/entry metadata probe and stat bounds; compact output retained; no member payload read. 632 / 137734 entries; 1 embedded / 505 external archive indices.",
+      "outputStored": "sanitized summary only"
+    },
+    {
+      "id": "C09",
+      "command": "Get-Content docs/p8-1l2-distance-validation-2026-10-25.json | Select-Object -Skip 264 -First 52; Get-Content docs/p8-1l2-map-geometry-feasibility-2026-10-25.md | Select-Object -Skip 98 -First 63; Get-Content packages/dem-parser/src/providers/demoparser2-adapter.ts | Select-Object -Skip 78 -First 50; Get-Content vendor/demoparser/.build/work/src/parser/src/first_pass/parser.rs | Select-Object -Skip 92 -First 62; rg -n 'SpawnGroup|game_session_manifest|spawngroupmanifest|worldname|build_num' vendor/demoparser/.build/work/src/parser/src vendor/demoparser/.build/work/src/node/src; Get-Content package.json -TotalCount 14; Get-Content apps/desktop/package.json -TotalCount 12",
+      "exitCode": 0,
+      "result": "Read missing research sections, current adapter, fixed first-pass dispatch and version files. No header/SpawnGroup manifest export found. Combined output partly truncated; fixed definitions already fully observed C07.",
+      "outputStored": "sanitized summary only"
+    },
+    {
+      "id": "C10",
+      "command": "Get-Content scripts/check-replay-map-assets.mjs -TotalCount 125; Get-Content scripts/replay-resource-audit.test.mjs -TotalCount 140; Get-Content scripts/check-replay-map-assets.test.mjs -TotalCount 90; Get-Content vendor/demoparser/.build/work/src/parser/src/first_pass/parser.rs | Select-Object -Skip 235 -First 69",
+      "exitCode": 0,
+      "result": "Read existing resource audit/check tests and first-pass message dispatch. Avoided mutating check-replay-map-assets.test.mjs; ran read-only audit test C12.",
+      "outputStored": "sanitized summary only"
+    },
+    {
+      "id": "C11",
+      "command": "@'\nconst fs=require('node:fs'),c=require('node:crypto'),a=require('node:assert/strict');const root='vendor/demoparser/.build/work/';const paths=['src/csgoproto/src/protobuf.rs','src/parser/src/first_pass/parser.rs','src/parser/src/second_pass/parser.rs'];const files=paths.map(p=>{const b=fs.readFileSync(root+p);return {path:root+p,bytes:b.length,sha256:c.createHash('sha256').update(b).digest('hex')}});a.equal(files[0].sha256,require('./packages/demoparser-native/source.json').protobufSha256);console.log(JSON.stringify(files));\n'@ | node",
+      "exitCode": 0,
+      "result": "PASS fixed generated schema hash asserted equal source.json; three correct native source identities recorded.",
+      "outputStored": "sanitized summary only"
+    },
+    {
+      "id": "C12",
+      "command": "node --test --test-reporter=tap scripts/replay-resource-audit.test.mjs",
+      "exitCode": 0,
+      "result": "PASS 3/3 existing resource tests, fail 0, skip 0; 10 overviews and 13 PNGs verified; not geometry tests.",
+      "outputStored": "sanitized summary only"
+    },
+    {
+      "id": "C13",
+      "command": "node scripts/check-replay-map-assets.mjs",
+      "exitCode": 0,
+      "result": "PASS prepared=13 expected=13 mode=verified-assets; read-only script.",
+      "outputStored": "sanitized summary only"
+    },
+    {
+      "id": "C14",
+      "command": "@'\n\nconst fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),assert=require('node:assert/strict');\nconst root='C:/Steam/steamapps/common/Counter-Strike Global Offensive/game/csgo';\nfunction inspect(rel){\n const file=path.join(root,rel), fd=fs.openSync(file,'r'), stat=fs.fstatSync(fd);\n function read(n,p){const b=Buffer.alloc(n);assert.equal(fs.readSync(fd,b,0,n,p),n);return b;}\n const h=read(12,0),magic=h.readUInt32LE(),version=h.readUInt32LE(4),treeSize=h.readUInt32LE(8);\n assert.equal(magic,0x55aa1234); assert.ok([1,2].includes(version));\n const headerSize=version===2?28:12, sections=version===2?read(16,12):Buffer.alloc(16);\n const header={magic:'0x55aa1234',version,headerSize,treeSize,fileDataSectionSize:sections.readUInt32LE(0),archiveMD5SectionSize:sections.readUInt32LE(4),otherMD5SectionSize:sections.readUInt32LE(8),signatureSectionSize:sections.readUInt32LE(12)};\n const end=headerSize+treeSize;assert.ok(end<=stat.size);\n let p=headerSize,skippedPreloadBytes=0;const single=Buffer.alloc(1), entries=[];\n function z(){let bytes=[];while(p<end){assert.equal(fs.readSync(fd,single,0,1,p++),1);if(single[0]===0)return Buffer.from(bytes).toString('utf8');bytes.push(single[0]);}throw Error('unterminated tree string');}\n while(true){let ext=z();if(!ext)break;while(true){let dir=z();if(!dir)break;while(true){let name=z();if(!name)break;assert.ok(p+18<=end);const m=read(18,p);p+=18;assert.equal(m.readUInt16LE(16),0xffff);const preloadBytes=m.readUInt16LE(4);assert.ok(p+preloadBytes<=end);p+=preloadBytes;skippedPreloadBytes+=preloadBytes;\n const full=[dir===' '?'':dir,name+(ext===' '?'':'.'+ext)].filter(Boolean).join('/');\n entries.push({path:full,type:ext,crc32:m.readUInt32LE().toString(16).padStart(8,'0'),preloadBytes,archiveIndex:m.readUInt16LE(6),offset:m.readUInt32LE(8),entryLength:m.readUInt32LE(12),totalBytes:preloadBytes+m.readUInt32LE(12)});\n }}}\n assert.equal(p,end);fs.closeSync(fd);\n const counts={},duplicates=[],seen=new Map(),archives=new Map(),outOfBounds=[];\n for(const e of entries){counts[e.type]=(counts[e.type]||0)+1;let key=e.path.toLowerCase();if(seen.has(key))duplicates.push(key);seen.set(key,e);let a=archives.get(e.archiveIndex);if(!a){let archivePath=e.archiveIndex===32767?file:file.replace(/_dir\\.vpk$/,'')+'_'+String(e.archiveIndex).padStart(3,'0')+'.vpk';let s;try{s=fs.statSync(archivePath)}catch{}a={archiveIndex:e.archiveIndex,file:path.basename(archivePath),exists:!!s,bytes:s?.size??null,entries:0,maxEnd:0,sha256:null};archives.set(e.archiveIndex,a)}a.entries++;a.maxEnd=Math.max(a.maxEnd,e.offset+e.entryLength); const bound=e.archiveIndex===32767?(version===2?header.fileDataSectionSize:stat.size-end):a.bytes;if(bound!==null&&e.offset+e.entryLength>bound)outOfBounds.push(e.path);\n }\n const relevant=entries.filter(e=> /^(maps\\/de_dust2(?:\\.vmap_c|\\.nav|\\/(?:world\\.vwrld_c|world_physics\\.vrman_c|world_physics\\.vmdl_c|world_physics\\.vphys_c|worldspawn\\.vents_c|entities\\/default_ents\\.vents_c|worldnodes\\/.+\\.vwnod_c)))$/.test(e.path)|| /(?:resource\\/overviews\\/de_dust2\\.txt|panorama\\/images\\/overheadmaps\\/de_dust2_radar_psd\\.vtex_c)$/.test(e.path));\n const candidates=entries.filter(e=>/(?:dust2|world_physics)/i.test(e.path)).length;\n return {path:rel,bytes:stat.size,header,treeConsumedExactly:p===end,entryCount:entries.length,typeCounts:counts,skippedPreloadBytes,duplicates,archives:[...archives.values()].sort((a,b)=>a.archiveIndex-b.archiveIndex),outOfBounds,selectedEntries:relevant.slice(0,24),selectedEntryCount:relevant.length,candidateNameCount:candidates,readScope:{semanticReads:'header + NUL strings + 18-byte entry metadata only; seek over preload; no member payload read',memberCrcVerified:false,memberSha256Computed:false,archiveHashSectionsRead:false,signatureVerified:false},_entries:entries};\n}\n\nconst maps=inspect('maps/de_dust2.vpk');\nconst extra=maps._entries.filter(e=>e.type==='vrman_c');\nconsole.log(JSON.stringify({manifestEntries:extra,separateVphysCount:maps._entries.filter(e=>e.type==='vphys_c').length,embeddedPhysicsDecoded:false}));\nprocess.exit(0);\nconst global=inspect('pak01_dir.vpk');\nconst globalByPath=new Map(global._entries.map(e=>[e.path.toLowerCase(),e]));\nconst overlaps=maps._entries.filter(e=>globalByPath.has(e.path.toLowerCase()));\nconst cross={duplicatePathCount:overlaps.length,sameCrcAndSizeCount:overlaps.filter(e=>{let b=globalByPath.get(e.path.toLowerCase());return b.crc32===e.crc32&&b.totalBytes===e.totalBytes}).length,contentIdentityVerified:false,mountPriority:'unresolved; no gameinfo/runtime verification'};\ndelete maps._entries;delete global._entries;\n\nfor(const c of [maps,global]){\n const a=c.archives;const ids=a.map(x=>x.archiveIndex);\n c.archiveSummary={count:a.length,minIndex:Math.min(...ids),maxIndex:Math.max(...ids),missingCount:a.filter(x=>!x.exists).length,missingFiles:a.filter(x=>!x.exists).map(x=>x.file),totalContainerBytes:a.reduce((n,x)=>n+(x.bytes||0),0),checkedOnlyByStat:true,allExternalShardDigests:'NOT RUN',selectedArchives:a.filter(x=>c.selectedEntries.some(e=>e.archiveIndex===x.archiveIndex))};\n delete c.archives;\n}\nconsole.log(JSON.stringify({containers:[maps,global],crossContainer:cross}));\n\n\n'@ | node",
+      "exitCode": 0,
+      "result": "PASS map-only extra manifest entries and vphys extension count. No standalone vphys_c entries in this map index; embedded physics remains unparsed.",
+      "outputStored": "sanitized summary only"
+    },
+    {
+      "id": "C15",
+      "command": "@'\n\nconst fs=require('node:fs'),c=require('node:crypto'),a=require('node:assert/strict');\n(async()=>{const root='C:/Steam/steamapps/common/Counter-Strike Global Offensive/game/csgo/';const result=[];for(const name of ['pak01_022.vpk','pak01_339.vpk']){const p=root+name,s=fs.statSync(p),h=c.createHash('sha256');for await(const b of fs.createReadStream(p))h.update(b);const after=fs.statSync(p);a.equal(s.mtimeMs,after.mtimeMs);a.equal(s.size,after.size);result.push({path:p,bytes:s.size,sha256:h.digest('hex'),stableDuringHash:true,scope:'whole-container opaque hash; member content not decoded'})}console.log(JSON.stringify(result))})().catch(e=>{console.error(e);process.exitCode=1});\n\n'@ | node",
+      "exitCode": 0,
+      "result": "PASS opaque SHA-256 of explicit pak01_022.vpk and pak01_339.vpk; no member decoding.",
+      "outputStored": "sanitized summary only"
+    },
+    {
+      "id": "C16",
+      "command": "@'\n\nconst fs=require('node:fs'),c=require('node:crypto'),a=require('node:assert/strict');\nfunction kv(text){const t=text.match(/\"[^\"]*\"|[{}]/g)||[];let p=0;const s=()=>{const v=t[p++];a.ok(v?.startsWith('\"'));return v.slice(1,-1)};function obj(){a.equal(t[p++],'{');const o={};while(t[p]!=='}'){const k=s();o[k]=t[p]==='{'?obj():s()}p++;return o}const name=s();const data=obj();return {name,data};}\nconst app=kv(fs.readFileSync('C:/Steam/steamapps/appmanifest_730.acf','utf8')).data;\nconst inf=Object.fromEntries(fs.readFileSync('C:/Steam/steamapps/common/Counter-Strike Global Offensive/game/csgo/steam.inf','utf8').trim().split(/\\r?\\n/).map(l=>{const i=l.indexOf('=');return [l.slice(0,i),l.slice(i+1)]}));\nconst roots=['maps/de_dust2.vpk','pak01_dir.vpk'].map(p=>'C:/Steam/steamapps/common/Counter-Strike Global Offensive/game/csgo/'+p);\nconst trees=roots.map(path=>{const b=fs.readFileSync(path),size=b.readUInt32LE(8);return {path,sha256:c.createHash('sha256').update(b).digest('hex'),treeBytes:size,treeSha256:c.createHash('sha256').update(b.subarray(28,28+size)).digest('hex'),treeHashScope:'index only; prior probe observed zero preload bytes',declaredSectionTotal:28+size+b.readUInt32LE(12)+b.readUInt32LE(16)+b.readUInt32LE(20)+b.readUInt32LE(24),actualBytes:b.length,signatureAndTrailerInterpretation:'NOT RUN; signature bytes may extend beyond 20-byte signature header'}});a.equal(trees[0].sha256,'51d6bb432b6553bfae6c38219a527c5de2464a2b107080f2b8be7d8427ebb885');a.equal(trees[1].sha256,'562972293ed7a5d40e341c4df7d6b0ee06430452694177142f0c1239dd3f2c8b');\nconsole.log(JSON.stringify({steam:{appId:app.appid,buildId:app.buildid,installDir:app.installdir,installedDepots:app.InstalledDepots,steamInf:inf,privateFields:'LastOwner, LastPlayed, UserConfig and unrelated library apps omitted'},trees}));\n\n'@ | node",
+      "exitCode": 0,
+      "result": "PASS sanitized Steam fields; two container SHA values unchanged; tree SHA and section-size observations. Whole-file buffer used opaquely for hashing; no member parsing.",
+      "outputStored": "sanitized summary only"
+    },
+    {
+      "id": "C17",
+      "command": "@'\n\nconst fs=require('node:fs'),a=require('node:assert/strict'),path=require('node:path'),cp=require('node:child_process');\nconst mdPath='docs/p8-1l2-resource-inventory-2026-10-26.md',jsonPath=mdPath.replace(/\\.md$/,'.json');\nconst md=fs.readFileSync(mdPath,'utf8'),raw=fs.readFileSync(jsonPath,'utf8'),j=JSON.parse(raw),checks=[];\nfunction check(label,fn){fn();checks.push(label);}\ncheck('document structure',()=>{a.ok(md.startsWith('# P8.1-L2.2A'));for(let i=1;i<=11;i++)a.match(md,new RegExp('^## '+i+'\\\\.','m'));a.ok(!md.includes('**不正确'));});\nconst localLinks=[...md.matchAll(/\\[[^\\]]+\\]\\(([^)]+)\\)/g)].map(m=>m[1]).filter(p=>!/^https?:|^#/.test(p));\ncheck('local links',()=>{for(const p of localLinks)a.ok(fs.existsSync(path.resolve('docs',p.split('#')[0])),p)});\nconst refs=[...md.matchAll(/^\\[(S\\d+)\\]: (https:\\/\\/\\S+)$/gm)];\ncheck('source reference links',()=>{a.equal(refs.length,3);for(const [,id,url]of refs)a.ok(j.sources.some(s=>s.id===id&&s.url===url));for(const m of md.matchAll(/\\[[^\\]]+\\]\\[(S\\d+)\\]/g))a.ok(refs.some(r=>r[1]===m[1]));});\ncheck('identity and state consistency',()=>{a.equal(j.demo.sha256,'db90fe85aab023a1d2c8a5996182e6120d98ef494f02a070b17982b235e4958c');a.equal(j.demo.rawObservedFields.build_num.value,10231);a.equal(j.demo.schemaProvenance[0].sha256,j.demo.parser.source.protobufSha256);a.equal(j.result.matchingStatus,'unconfirmed');a.equal(j.manifestProposal.matchingStatus,'unconfirmed');a.equal(j.replay.versionMatch,'unconfirmed');a.equal(j.replay.demVersionMatch,'unconfirmed');a.equal(j.result.dependencyClosureVerification,'BLOCKED');a.equal(j.manifestProposal.extractorIdentity,null);});\ncheck('hash table and index evidence',()=>{const files=[j.demo,...j.steam.metadataFiles,...j.vpk.files,...j.vpk.selectedShardHashes,j.replay.manifest,j.replay.overview,j.replay.image,...j.demo.schemaProvenance];for(const f of files){a.match(f.sha256,/^[a-f0-9]{64}$/);a.ok(md.includes(f.sha256),f.path);}for(const f of j.vpk.treeDigests)a.ok(md.includes(f.treeSha256));a.equal(j.vpk.containers[0].entryCount,632);a.equal(j.vpk.containers[1].entryCount,137734);a.equal(j.vpk.containers[1].archiveSummary.count,505);for(const c of j.vpk.containers){a.equal(c.skippedPreloadBytes,0);a.equal(c.treeConsumedExactly,true);a.deepEqual(c.duplicates,[]);a.deepEqual(c.outOfBounds,[]);a.equal(c.archiveSummary.missingCount,0);}});\ncheck('graph references and evidence strength',()=>{const g=j.dependencyInventory,ids=new Set(g.nodes.map(n=>n.id));a.equal(ids.size,11);a.equal(g.resourceEdges.length,8);a.equal(g.storageEdges.length,11);a.equal(g.verifiedSemanticEdges,0);a.deepEqual(g.observedActualReferences,[]);for(const n of g.nodes){a.ok(md.includes(n.resourcePath));a.equal(n.sha256,null);a.equal(n.directReferenceEvidence,false);a.equal(n.indirectReferenceEvidence,false);a.equal(n.currentConfirmation.contentParsed,false);}for(const e of g.resourceEdges){a.ok(ids.has(e.from)&&ids.has(e.to));a.equal(e.status,'candidate');a.equal(e.actuallyVerified,false);a.ok(e.missingEvidence);a.ok(md.includes(e.id));}for(const e of g.storageEdges){a.ok(ids.has(e.to));a.equal(e.status,'verified');a.equal(e.semanticDependency,false);a.equal(e.contentVerified,false);}});\ncheck('privacy and prohibited operations declarations',()=>{a.ok(!/\\b7656119\\d{10}\\b/.test(md+raw));a.ok(!/\"(?:server_name|client_name|LastOwner)\"\\s*:/.test(raw));for(const [key,value]of Object.entries(j.scope)){if(key!=='documentationOnly'&&typeof value==='boolean')a.equal(value,false,key)}a.equal(j.result.nextStageStarted,false);a.equal(j.scope.extractorIdentity,null);});\ncheck('only two new documentation files',()=>{const tracked=cp.execFileSync('git',['diff','--name-only',j.baseline.initialHead],{encoding:'utf8'}).trim();a.equal(tracked,'');const untracked=cp.execFileSync('git',['ls-files','--others','--exclude-standard'],{encoding:'utf8'}).trim().split(/\\r?\\n/).sort();a.deepEqual(untracked,[jsonPath,mdPath].sort());});\ncheck('command result accounting',()=>{a.equal(j.commands.length,22);for(const c of j.commands){a.equal(typeof c.command,'string');a.equal(typeof c.exitCode,'number');a.ok(c.result);a.ok(md.includes(c.id));}a.ok(j.commands.some(c=>c.exitCode===1));a.equal(j.commands.find(c=>c.id==='C12').exitCode,0);});\nconsole.log(JSON.stringify({status:'PASS',checks,localLinks:localLinks.length,externalSourceLinks:refs.length,nodes:11,candidateEdges:8,verifiedStorageEdges:11,verifiedSemanticEdges:0}));\n\n'@ | node",
+      "exitCode": 0,
+      "result": "PASS first document validator: 9 check groups; JSON parse, 13 local links, 3 external source reference links, identities, state, graph and privacy; only two untracked docs.",
+      "outputStored": "sanitized summary only"
+    },
+    {
+      "id": "C18",
+      "command": "git add -- docs/p8-1l2-resource-inventory-2026-10-26.md docs/p8-1l2-resource-inventory-2026-10-26.json",
+      "exitCode": 0,
+      "result": "PASS staged only two authorized documents; Git warned about future LF->CRLF conversion, no content change.",
+      "outputStored": "sanitized summary only"
+    },
+    {
+      "id": "C19",
+      "command": "git diff --cached --check; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; git diff --cached --stat; git diff --cached --name-status; git status --short --branch; git diff --exit-code 623caaccbbd479e538c6b1166b8890170ab4c8f1 -- apps packages scripts package.json pnpm-lock.yaml docs/replay-resources.json",
+      "exitCode": 2,
+      "result": "FAIL exit 2: staged diff --check found one extra EOF blank line in each document. Guard stopped later commands; not treated as PASS.",
+      "outputStored": "sanitized summary only"
+    },
+    {
+      "id": "C20",
+      "command": "@'\nconst fs=require('node:fs');\nfor(const ext of ['md','json']){\n const p='docs/p8-1l2-resource-inventory-2026-10-26.'+ext;\n let text=fs.readFileSync(p,'utf8');\n if(ext==='md')text=text.replaceAll('E:\\\\\\\\cs2-analyst','E:\\\\cs2-analyst').replaceAll('PBDEMS2\\\\\\\\0','PBDEMS2\\\\0');\n fs.writeFileSync(p,text.trimEnd()+'\\n');\n}\nconsole.log('Removed extra EOF blank lines and corrected literal path/magic notation.');\n'@ | node",
+      "exitCode": 0,
+      "result": "PASS removed extra EOF blank lines and adjusted literal backslash notation; documentation-only edit.",
+      "outputStored": "sanitized summary only"
+    },
+    {
+      "id": "C21",
+      "command": "git add -- docs/p8-1l2-resource-inventory-2026-10-26.md docs/p8-1l2-resource-inventory-2026-10-26.json; git diff --cached --check; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; git diff --cached --stat; git diff --cached --name-status; git status --short --branch; git diff --exit-code 623caaccbbd479e538c6b1166b8890170ab4c8f1 -- apps packages scripts package.json pnpm-lock.yaml docs/replay-resources.json",
+      "exitCode": 0,
+      "result": "PASS restaged docs; cached diff --check, scope diff and status; exactly two added files, production/manifest/dependency delta empty.",
+      "outputStored": "sanitized summary only",
+      "executionCount": 2
+    },
+    {
+      "id": "C22",
+      "command": "Get-Content docs/p8-1l2-resource-inventory-2026-10-26.md | Select-Object -First 42; Get-Content docs/p8-1l2-resource-inventory-2026-10-26.md | Select-Object -Skip 98 -First 8; git diff --cached --numstat",
+      "exitCode": 0,
+      "result": "PASS final document excerpt/numstat inspection before validation-log update.",
+      "outputStored": "sanitized summary only"
+    },
+    {
+      "id": "C23",
+      "command": "@'\n\nconst fs=require('node:fs'),a=require('node:assert/strict'),path=require('node:path'),cp=require('node:child_process');\nconst mdPath='docs/p8-1l2-resource-inventory-2026-10-26.md',jsonPath=mdPath.replace(/\\.md$/,'.json');\nconst md=fs.readFileSync(mdPath,'utf8'),raw=fs.readFileSync(jsonPath,'utf8'),j=JSON.parse(raw),checks=[];\nfunction check(label,fn){fn();checks.push(label);}\ncheck('document structure',()=>{a.ok(md.startsWith('# P8.1-L2.2A'));for(let i=1;i<=11;i++)a.match(md,new RegExp('^## '+i+'\\\\.','m'));a.ok(!md.includes('**不正确'));});\nconst localLinks=[...md.matchAll(/\\[[^\\]]+\\]\\(([^)]+)\\)/g)].map(m=>m[1]).filter(p=>!/^https?:|^#/.test(p));\ncheck('local links',()=>{for(const p of localLinks)a.ok(fs.existsSync(path.resolve('docs',p.split('#')[0])),p)});\nconst refs=[...md.matchAll(/^\\[(S\\d+)\\]: (https:\\/\\/\\S+)$/gm)];\ncheck('source reference links',()=>{a.equal(refs.length,3);for(const [,id,url]of refs)a.ok(j.sources.some(s=>s.id===id&&s.url===url));for(const m of md.matchAll(/\\[[^\\]]+\\]\\[(S\\d+)\\]/g))a.ok(refs.some(r=>r[1]===m[1]));});\ncheck('identity and state consistency',()=>{a.equal(j.demo.sha256,'db90fe85aab023a1d2c8a5996182e6120d98ef494f02a070b17982b235e4958c');a.equal(j.demo.rawObservedFields.build_num.value,10231);a.equal(j.demo.schemaProvenance[0].sha256,j.demo.parser.source.protobufSha256);a.equal(j.result.matchingStatus,'unconfirmed');a.equal(j.manifestProposal.matchingStatus,'unconfirmed');a.equal(j.replay.versionMatch,'unconfirmed');a.equal(j.replay.demVersionMatch,'unconfirmed');a.equal(j.result.dependencyClosureVerification,'BLOCKED');a.equal(j.manifestProposal.extractorIdentity,null);});\ncheck('hash table and index evidence',()=>{const files=[j.demo,...j.steam.metadataFiles,...j.vpk.files,...j.vpk.selectedShardHashes,j.replay.manifest,j.replay.overview,j.replay.image,...j.demo.schemaProvenance];for(const f of files){a.match(f.sha256,/^[a-f0-9]{64}$/);a.ok(md.includes(f.sha256),f.path);}for(const f of j.vpk.treeDigests)a.ok(md.includes(f.treeSha256));a.equal(j.vpk.containers[0].entryCount,632);a.equal(j.vpk.containers[1].entryCount,137734);a.equal(j.vpk.containers[1].archiveSummary.count,505);for(const c of j.vpk.containers){a.equal(c.skippedPreloadBytes,0);a.equal(c.treeConsumedExactly,true);a.deepEqual(c.duplicates,[]);a.deepEqual(c.outOfBounds,[]);a.equal(c.archiveSummary.missingCount,0);}});\ncheck('graph references and evidence strength',()=>{const g=j.dependencyInventory,ids=new Set(g.nodes.map(n=>n.id));a.equal(ids.size,11);a.equal(g.resourceEdges.length,8);a.equal(g.storageEdges.length,11);a.equal(g.verifiedSemanticEdges,0);a.deepEqual(g.observedActualReferences,[]);for(const n of g.nodes){a.ok(md.includes(n.resourcePath));a.equal(n.sha256,null);a.equal(n.directReferenceEvidence,false);a.equal(n.indirectReferenceEvidence,false);a.equal(n.currentConfirmation.contentParsed,false);}for(const e of g.resourceEdges){a.ok(ids.has(e.from)&&ids.has(e.to));a.equal(e.status,'candidate');a.equal(e.actuallyVerified,false);a.ok(e.missingEvidence);a.ok(md.includes(e.id));}for(const e of g.storageEdges){a.ok(ids.has(e.to));a.equal(e.status,'verified');a.equal(e.semanticDependency,false);a.equal(e.contentVerified,false);}});\ncheck('privacy and prohibited operations declarations',()=>{a.ok(!/\\b7656119\\d{10}\\b/.test(md+raw));a.ok(!/\"(?:server_name|client_name|LastOwner)\"\\s*:/.test(raw));for(const [key,value]of Object.entries(j.scope)){if(key!=='documentationOnly'&&typeof value==='boolean')a.equal(value,false,key)}a.equal(j.result.nextStageStarted,false);a.equal(j.scope.extractorIdentity,null);});\ncheck('only two new documentation files',()=>{const tracked=cp.execFileSync('git',['diff','--name-only',j.baseline.initialHead],{encoding:'utf8'}).trim().split(/\\r?\\n/).sort();a.deepEqual(tracked,[jsonPath,mdPath].sort());const untracked=cp.execFileSync('git',['ls-files','--others','--exclude-standard'],{encoding:'utf8'}).trim();a.equal(untracked,'');});\ncheck('command result accounting',()=>{a.ok(j.commands.length>=22);for(const c of j.commands){a.equal(typeof c.command,'string');a.equal(typeof c.exitCode,'number');a.ok(c.result);a.ok(md.includes(c.id));}a.ok(j.commands.some(c=>c.exitCode===1));a.equal(j.commands.find(c=>c.id==='C12').exitCode,0);});\ncheck('final validation status and whitespace',()=>{a.equal(j.validation.status,'PASS');a.equal(j.validation.independentReview.status,'PASS');a.equal(j.validation.independentReview.blockingIssues,0);a.ok(!md.endsWith('\\n\\n'));a.ok(!raw.endsWith('\\n\\n'));a.equal(j.commands.find(c=>c.id==='C19').exitCode,2);});\nconsole.log(JSON.stringify({status:'PASS',checks,localLinks:localLinks.length,externalSourceLinks:refs.length,nodes:11,candidateEdges:8,verifiedStorageEdges:11,verifiedSemanticEdges:0}));\n\n'@ | node",
+      "exitCode": 0,
+      "executionCount": 2,
+      "result": "PASS final validator after log update; 10 groups including whitespace/final statuses, JSON parsing, 13 local links, 3 source links, all identities/graph/privacy/scope. Repeated after recording this result.",
+      "outputStored": "sanitized summary only"
+    }
+  ],
+  "validation": {
+    "status": "PASS",
+    "jsonParse": "PASS",
+    "documentStructure": "PASS",
+    "localLinks": {
+      "status": "PASS",
+      "checked": 13
+    },
+    "referenceConsistency": {
+      "status": "PASS",
+      "externalSourceLinks": 3
+    },
+    "privacyAndScope": "PASS",
+    "firstDocumentValidator": {
+      "commandRef": "C17",
+      "result": {
+        "status": "PASS",
+        "checks": [
+          "document structure",
+          "local links",
+          "source reference links",
+          "identity and state consistency",
+          "hash table and index evidence",
+          "graph references and evidence strength",
+          "privacy and prohibited operations declarations",
+          "only two new documentation files",
+          "command result accounting"
+        ],
+        "localLinks": 13,
+        "externalSourceLinks": 3,
+        "nodes": 11,
+        "candidateEdges": 8,
+        "verifiedStorageEdges": 11,
+        "verifiedSemanticEdges": 0
+      }
+    },
+    "diffCheck": {
+      "status": "PASS",
+      "initialFailure": {
+        "commandRef": "C19",
+        "exitCode": 2,
+        "reason": "extra blank line at EOF in both new docs"
+      },
+      "repair": "C20",
+      "verified": "C21; repeated after final logging"
+    },
+    "independentReview": {
+      "status": "PASS",
+      "reviewer": "independent audit_reviewer",
+      "blockingIssues": 0,
+      "findings": "No evidence-strength/state/privacy inconsistency; cosmetic literal escapes corrected; initial reviewer git diff did not cover untracked docs",
+      "commands": [
+        {
+          "id": "RV01",
+          "command": "Get-Content docs/p8-1l2-resource-inventory-2026-10-26.md -Raw; git status --short; git diff --check",
+          "exitCode": 0,
+          "result": "Read report/status. diff --check only covered tracked paths at that moment; not a check of untracked file whitespace."
+        },
+        {
+          "id": "RV02",
+          "command": "@'\nconst fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');\nconst base='docs/p8-1l2-resource-inventory-2026-10-26',raw=fs.readFileSync(base+'.json','utf8'),d=JSON.parse(raw),md=fs.readFileSync(base+'.md','utf8');\nconsole.log(JSON.stringify({result:d.result,validation:d.validation,demo:d.demo.rawObservedFields,steam:d.steam.steamInf,containers:d.vpk.containers.map(x=>({path:x.path,entryCount:x.entryCount,archives:x.archiveSummary})),nodes:d.dependencyInventory.nodes.length,edges:d.dependencyInventory.resourceEdges.length,storage:d.dependencyInventory.storageEdges.length,sources:d.sources},null,2));\nassert.equal(d.result.matchingStatus,'unconfirmed');assert.equal(d.result.dependencyClosureStatus,'partial');assert.equal(d.dependencyInventory.verifiedSemanticEdges,0);assert.deepEqual(d.dependencyInventory.observedActualReferences,[]);\nconst ids=new Set(d.dependencyInventory.nodes.map(n=>n.id));\nfor(const n of d.dependencyInventory.nodes){assert.equal(n.sha256,null);assert.equal(n.directReferenceEvidence,false);assert.equal(n.indirectReferenceEvidence,false);assert.ok(md.includes(n.resourcePath));assert.ok(md.includes(String(n.sizeBytes)));assert.ok(md.includes(n.indexMetadata.crc32));}\nfor(const e of d.dependencyInventory.resourceEdges){assert.ok(ids.has(e.from)&&ids.has(e.to));assert.equal(e.status,'candidate');assert.equal(e.actuallyVerified,false);assert.ok(e.missingEvidence);}\nfor(const e of d.dependencyInventory.storageEdges){assert.equal(e.status,'verified');assert.equal(e.semanticDependency,false);assert.equal(e.contentVerified,false);}\nfor(const m of md.matchAll(/\\[[^\\]]*\\]\\(([^)]+)\\)/g)){const target=m[1];if(!/^https?:/.test(target))assert.ok(fs.existsSync(path.resolve('docs',target)),target);}\nconst sourceIds=new Set(d.sources.map(s=>s.id));for(const n of d.dependencyInventory.nodes){assert.equal(n.currentConfirmation.contentParsed,false);}\nassert.equal(d.manifestProposal.extractorIdentity,null);assert.equal(d.manifestProposal.matchingStatus,'unconfirmed');\nconst identities=[d.demo,...d.steam.metadataFiles,...d.vpk.files,...d.vpk.selectedShardHashes,d.replay.manifest,d.replay.overview,d.replay.image,...d.demo.schemaProvenance];\nfor(const f of identities){assert.ok(md.includes(f.path));assert.ok(md.includes(f.sha256));}\nassert.ok(!/7656119\\d{10}/.test(raw));assert.ok(!/7656119\\d{10}/.test(md));\nconsole.log('REVIEW STRUCTURE/STATE/EDGES/IDENTITY/LINK/PRIVACY CHECKS PASS');\n'@ | node",
+          "exitCode": 0,
+          "result": "PASS state/edges/identities/links/privacy"
+        },
+        {
+          "id": "RV03",
+          "command": "@'\nconst fs=require('node:fs'),c=require('node:crypto'),a=require('node:assert/strict');const d=JSON.parse(fs.readFileSync('docs/p8-1l2-resource-inventory-2026-10-26.json','utf8'));for(const f of d.demo.schemaProvenance){const b=fs.readFileSync(f.path);a.equal(c.createHash('sha256').update(b).digest('hex'),f.sha256);a.equal(b.length,f.bytes)}\nconst p=fs.readFileSync(d.demo.schemaProvenance[0].path,'utf8');a.ok(/optional, tag=\"13\"\\)\\]\\s+pub build_num/.test(p));a.ok(/optional, tag=\"20\"\\)\\]\\s+pub game_session_manifest/.test(p));const second=fs.readFileSync(d.demo.schemaProvenance[2].path,'utf8');a.ok(second.includes('svc_ServerInfo => self.parse_server_info(msg_bytes)'));a.ok(second.includes('let class_count = server_info.max_classes();'));a.ok(!second.includes('game_session_manifest'));a.ok(!second.includes('spawngroupmanifest'));\nconst first=fs.readFileSync(d.demo.schemaProvenance[1].path,'utf8'),header=first.slice(first.indexOf('pub fn parse_header('),first.indexOf('fn handle_short_header'));a.ok(!header.includes('build_num'));a.ok(!header.includes('server_start_tick'));\nfor(const id of ['P05','P06','C07'])a.equal(d.commands.find(x=>x.id===id).exitCode,1);a.ok(d.commands.find(x=>x.id==='C03').result.includes('JSON.parse failed'));a.ok(d.toolCalls.some(x=>x.result.includes('404')));a.ok(d.toolCalls.some(x=>x.result.includes('restricted')));\nconsole.log('REVIEW FIXED SCHEMA/SOURCE HASHES/HEADER EXPORT/MANIFEST HANDLING/FAILURE LOG PASS');\n'@ | node",
+          "exitCode": 0,
+          "result": "PASS fixed schema and parser source hashes/header exports/manifest handling/failure logs"
+        }
+      ]
+    },
+    "finalDocumentValidator": {
+      "commandRef": "C23",
+      "exitCode": 0,
+      "result": {
+        "status": "PASS",
+        "checks": [
+          "document structure",
+          "local links",
+          "source reference links",
+          "identity and state consistency",
+          "hash table and index evidence",
+          "graph references and evidence strength",
+          "privacy and prohibited operations declarations",
+          "only two new documentation files",
+          "command result accounting",
+          "final validation status and whitespace"
+        ],
+        "localLinks": 13,
+        "externalSourceLinks": 3,
+        "nodes": 11,
+        "candidateEdges": 8,
+        "verifiedStorageEdges": 11,
+        "verifiedSemanticEdges": 0
+      }
+    }
+  },
+  "git": {
+    "commitPolicy": "Focused local documentation commit after validation; no push/PR/merge/tag/release",
+    "commitShaLookup": "git log -1 --format=%H -- docs/p8-1l2-resource-inventory-2026-10-26.md",
+    "taskDeltaBase": "623caaccbbd479e538c6b1166b8890170ab4c8f1",
+    "finalization": {
+      "commitCommand": "git commit -m \"docs(p8): audit local Dust2 resource identities and dependency inventory\"",
+      "verifyCommands": [
+        "git diff --cached --check",
+        "git diff --check",
+        "git status --short --branch",
+        "git log -1 --format=%H"
+      ],
+      "results": "Commit SHA and final clean-state evidence are reported in final handoff; final Git operations cannot embed their resulting commit SHA in the same commit."
+    }
+  },
+  "toolCalls": [
+    {
+      "tool": "GitHub get_pr_info",
+      "args": {
+        "repository_full_name": "cs2-analyst/cs2-analyst-desk",
+        "pr_number": 4
+      },
+      "result": "success; S01; no shell exit code"
+    },
+    {
+      "tool": "web search_query",
+      "args": {
+        "q": "site.github.com ValvePak Package.cs ReadTree ArchiveIndex 0x7fff"
+      },
+      "result": "discovery only; secondary results not used as format evidence"
+    },
+    {
+      "tool": "GitHub fetch_file",
+      "args": {
+        "repository_full_name": "ValveResourceFormat/ValveResourceFormat",
+        "ref": "651253f52bbcc989b4f924fa5e0d70f0fc84abfa",
+        "path": "ValveResourceFormat/IO/Extract/MapExtract.cs",
+        "lineRanges": [
+          [
+            480,
+            575
+          ],
+          [
+            350,
+            487
+          ]
+        ]
+      },
+      "result": "success twice; S03"
+    },
+    {
+      "tool": "GitHub fetch_file",
+      "args": {
+        "repository_full_name": "ValveResourceFormat/ValvePak",
+        "ref": "32c9858f2305bf4d12320374753b951ddeb6042d",
+        "path": "ValvePak/Package.Read.cs"
+      },
+      "result": "404 NOT_FOUND; incorrect nested path, corrected using contents/tree API"
+    },
+    {
+      "tool": "web open",
+      "args": {
+        "url": "https://github.com/ValveResourceFormat/ValvePak/tree/32c9858f2305bf4d12320374753b951ddeb6042d"
+      },
+      "result": "restricted URL; not evidence"
+    },
+    {
+      "tool": "GitHub fetch",
+      "args": {
+        "urls": [
+          "https://api.github.com/repos/ValveResourceFormat/ValvePak/contents?ref=32c9858f2305bf4d12320374753b951ddeb6042d",
+          "https://api.github.com/repos/ValveResourceFormat/ValvePak/git/trees/32c9858f2305bf4d12320374753b951ddeb6042d?recursive=1"
+        ]
+      },
+      "result": "success; exact nested source path found"
+    },
+    {
+      "tool": "GitHub fetch_file",
+      "args": {
+        "repository_full_name": "ValveResourceFormat/ValvePak",
+        "ref": "32c9858f2305bf4d12320374753b951ddeb6042d",
+        "path": "ValvePak/ValvePak/Package.Read.cs"
+      },
+      "result": "success; S02; source text only, not installed or executed"
+    }
+  ],
+  "auditLogNotes": [
+    "Commands are exact PowerShell batches as executed; each batch exit code is not every constituent command's exit. Known intermediate errors explicitly retained.",
+    "Tool discovery/listing and result-orchestration helpers are not shell commands. Polling C03/C08 adds no new file operation.",
+    "Document creation/editing uses apply_patch, not shell-generated commands. Subsequent validator and Git operations will be recorded before the final commit; commit SHA/status reported in handoff to avoid self-reference."
+  ]
+}
