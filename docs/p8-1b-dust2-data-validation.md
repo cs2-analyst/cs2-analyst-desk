@@ -1,3 +1,128 @@
+# P8.1B-R：按 L1/L2 范围重新复核 Dust2 数据适配
+
+日期：2026-10-25（Asia/Shanghai）。**L1 子能力局部 PASS；L2 仅数值子能力 PASS；P8.1B-R 整体 BLOCKED / NOT PASS。** P8.1 尚未完成，P8.1C/D 不自动放行，P8.2 继续禁止进入。
+
+本轮使用真实 DEM 重新验证了非空服务器事实输入；`availableTick` 缺失不再整体阻断 L1。单 tick 状态、服务器人数变化及原始 XYZ 距离可以描述；玩家当时知道/看到什么、战术优劣和未经验证的几何结论仍不成立。原 P8.1B 的 **BLOCKED / NOT PASS** 未被追认或改写，其完整报告原文保留在本文后半部。
+
+## R1. 基线、范围与历史核验
+
+- 开始时工作区干净，HEAD 和远端原验证分支均为 [3c09ee7944ee82aa2ad12703477fe1c006aa8fe3](https://github.com/cs2-analyst/cs2-analyst-desk/commit/3c09ee7944ee82aa2ad12703477fe1c006aa8fe3)，main / origin/main 为 `f44984e5464552c81737922c67df3d9f17c27c71`；已实际 `git fetch origin --prune`。
+- [范围决策 PR #4](https://github.com/cs2-analyst/cs2-analyst-desk/pull/4) 核对结果为 **open、draft、merged=false**，head `8f61854793f3d9230d1cd160b3fd01dedaafcadd`。通过已 fetch 的对应提交读取 [范围决策](https://github.com/cs2-analyst/cs2-analyst-desk/blob/8f61854793f3d9230d1cd160b3fd01dedaafcadd/docs/p8-scope-decision-l1-l2-2026-10-25.md)、[技术路线](https://github.com/cs2-analyst/cs2-analyst-desk/blob/8f61854793f3d9230d1cd160b3fd01dedaafcadd/docs/ai-coach-technical-route.md)、[P8.1A 契约第 12 节](https://github.com/cs2-analyst/cs2-analyst-desk/blob/8f61854793f3d9230d1cd160b3fd01dedaafcadd/docs/p8-1a-decision-evidence-contract.md)。这些仍是未合并文档；依据本任务明确的用户范围决策开展实验，没有将草案导入为正式 API。
+- 独立分支 `codex/p8-1b-r-l1-l2` 从原 P8.1B 提交创建；生产代码与当前 main 相同。版本保持 0.2.0。未合并其他分支，未修改生产代码/公共契约/依赖/阈值/回放/归档/统计，未创建服务、模型调用、tag 或 Release。
+- 已读全局/项目 AGENTS、fixture 白名单、DEM/domain 工作流、模型路由、架构和 roadmap。按仓库要求安排独立 reviewer，只读复审；所有新增可执行逻辑都位于 `docs/experiments/`。
+- 原 JSON 与 `git show 3c09ee7:docs/p8-1b-validation-2026-10-25.json` **字节一致**，SHA-256 为 `df147dda80b00400130956cf29f03705ebe5d2a47ac15767ee14dff4ed7dc699`。原记录的 14 项命令日志均存在，全部摘要吻合。由此核实历史：24 回合、4 形成点/8 观察者切片、72 次比较、21/21 边界、48/48 parser、192/192 deep-review、typecheck/build 通过、3452 个历史 optional tick 消失，以及 availableTick 缺口与未通过结论。
+
+[机器证据](p8-1b-validation-2026-10-25.json) 采用新 envelope：`historical.record` 完整保留原 JSON 对象，`historical.audit` 保存这次核对结果；`currentRun` 单独记录本轮命令、实测、摘要、复审及未执行项。历史复跑次数不累计为本轮唯一测试。
+
+## R2. 新的 L1 验收口径与实际数据
+
+只接纳可信本地 pinned native 查询链上的服务器记录；本实验不是接收任意客户端 JSON 的认证机制。`ServerStateAtTick`、`SpatialActionContext` 是建议职责名；本轮没有生产类型。实验 body 版本为 `p8-1b-r-server-facts-experiment-v1`，显式标注 `L1-server-facts; NOT PlayerKnowledge`、whole-tick 终态和 map geometry `unconfirmed`。
+
+| 本轮重新实测 | 结果 |
+| --- | --- |
+| 文件 / 大小 | `.demo/dust2.dem` / 557650967 bytes；原文件未移动、复制或修改 |
+| SHA-256 | `db90fe85aab023a1d2c8a5996182e6120d98ef494f02a070b17982b235e4958c` |
+| 地图 / tick rate / 回合 / 玩家 | `de_dust2` / 64 / 24 / 10；64 为全场解析审计值，不带入前缀输入 |
+| header patch | `14055`；不证明地图几何版本 |
+| parser / native | dem-parser 0.2.0；`0.42.0-backport.363.1` / Windows MSVC；完整 source/fix/patch provenance 见 JSON |
+| native binary SHA-256 | `132d664125b60542dc80dc8bc270e2c8e181a0a55433fdac5be285ef4d9b0de1` |
+| 精确查询 | 每个锚点 1 tick × 2 个前缀存活者 × 9 个 native 字段，共 8 行；实际返回 tick 全部等于请求 tick |
+| 规范化字段 | 每行 position/view/health/side/alive/weapon 六项，共 **48/48** 有效；0 缺失；不代表 native 全字段完整性 |
+| 同源交叉检查 | 与 4702 core tick 查询中的对应行完全相等；每点全体 alive 集合一致；4 次独立 freeze 查询共 40 行与原 adapter 基线一致 |
+
+每项 snapshot 事实带 actual tick、局部引用；本地引用通过 DEM SHA、native/source 版本、tick、唯一存活阵营身份和规范化行摘要复现。人数变化另有 freeze 基线 tick/摘要及逐条死亡 tick/内容摘要。原 `round.events` 的 eventIndex 放在本地报告，不用于排列同 tick 动作，不进入模型可见 body，也不因未来行数产生别名偏移。私有 SteamID、昵称、原始坐标行与完整轨迹不写入提交。
+
+| 回合 | g / cutTick | freeze tick | 形成事件索引 | 服务器人数 CT:T | 同 tick XYZ 距离（world units） |
+| --- | --- | ---: | ---: | --- | ---: |
+| 11 | 92395 / 92396 | 85208 | 255 | 1:2 → 1:1 | 247.927151 |
+| 22 | 185100 / 185101 | 178895 | 280 | 2:1 → 1:1 | 628.007403 |
+| 23 | 194101 / 194102 | 187245 | 260 | 2:1 → 1:1 | 798.938374 |
+| 24 | 201348 / 201349 | 195874 | 287 | 2:1 → 1:1 | 465.430808 |
+
+上述每个 g 的原子死亡组均只有 1 次死亡；多个同 tick 死亡的原子处理、互相击杀、冲突死亡、缺失身份、baseline 冲突与生命周期中断由合成边界测试覆盖，不能冒称该 fixture 覆盖了所有异常场景。所有 native 行都是 g 结束时的服务器状态，`cutTick=g+1` 只接纳 `<cutTick`；没有 g 内的 subtick 顺序。
+
+四个形成点可以支持“此 tick 后双方各存活一人”“服务器记录 HP/位置/朝向/活动武器为何”“同 tick 两端点相距多少”等事实复盘。它们**不是四个合格教练案例**：未建立行动机会、替代动作可行性、移动窗口、匹配几何或专家标签。距最终结束 39/416/44/213 tick 仅在离线审计中保留，既不进入输入，也不用于确定战术机会。合格战术决策案例仍为 **0**。
+
+## R3. 固定 tick 查询与未来信息隔离
+
+[独立构造器](experiments/p8-1b-r-server.mjs) 在转换前裁剪事件/边界状态，仅使用前缀重建基线、原子死亡和存活者。输入顺序稳定化，对完全相同的投影记录去重；不相同的同键 snapshot/baseline 或同 victim 死亡保持冲突并拒绝。无法定位 tick 或死亡身份不能静默丢弃；本轮复审发现 converter 会忽略未知 victim，已在实验层转换前加守卫及回归。原生产 converter 不变。
+
+固定计划 `p8-1b-r-exact-final-tick-v1` 只查 `g=cutTick-1`、前缀确定的两个存活者和九个指定字段。没有 optional 预算、旧值填充、插值、全场 coverage、最终 winner、game_time、全量 roster 或最终片段长度。缺失字段、冲突与无效值保持 unknown；缺乏玩家接收时间不伪造 availableTick。L2 距离仅在双方 XYZ 均有效时计算，非法/溢出拒绝，不把异常坐标转为 0。
+
+**候选枚举与输入隔离须区分：**本轮离线枚举仍读取完整 Match 的正式回合窗口来重新定位历史四个锚点；其结果用于本地核对，不宣称全量候选枚举具有前缀稳定性。扰动测试锁定这些 round/cutTick 参数，再独立比较前缀 `selection`、query plan 和完整 body。未来 round end/restart 不参与固定锚点的接纳判定。未来若要在线/窗口化候选发现，需单独设计和验收，不能复用离线选择结果作为模型质量标记。
+
+[真实实测程序](experiments/p8-1b-r-dust2.mjs) 对 4 个双人输入分别执行下列 10 类变化，共 **40 次完整比较**：
+
+1. 未来实体 XYZ、HP、yaw/pitch、武器变化（含对手）；明确检查未来行存在。
+2. 新增未来伤害/击杀/开火/道具事件。
+3. 移除未来上述战斗/道具事件。
+4. 改写最终胜负和结束快照。
+5. 未来名单、spawn/disconnect/team、同号 round restart，额外 effect/离线 coverage/finalScore metadata。
+6. 追加 30000 条未来事件，测试全场预算压力。
+7. 移除所有事件、effect expiry、边界及实体行的未来后缀，清除全场 roster。
+8. 改写未来 game_time、header playback/tick-rate metadata。
+9. 倒置行顺序并加入完全相同重复行。
+10. 另加 513 条未来事件改变密度。
+
+每次深比较整个返回值：非空字段、规范化缺失标记、truncated、coverage、局部引用及本地映射、schema、模型可见 metadata、采样选择、玩家选择与 formation eligibility。没有只比较 HP，也没有沿用旧版全 unknown 的稳定性结论。另有 **8 个正对照**：每锚点修改历史 HP/XYZ 必须改变相关状态/距离；移除形成死亡必须改变 selection。40/8 是循环内比较次数，不计作 48 项唯一运行时测试。
+
+同一未改写 DEM 的稀疏精确请求与密集查询、基线重查提供 native 实测支撑；受控变化在 **native-output 边界**进行。没有重写、截断 DEM 二进制重新解码，因此不宣称证明任意 native decoder 的全因果性。L1 PASS 仅限此固定 fixture、pinned native、四锚点与已测字段。单 tick 不能证明移动轨迹、完整决策过程或历史窗口。
+
+现有 `planSpatialSampling()` 风险仍在：真实前缀保留、未来增加开火后，core 4702→78362，optional 6835→0，3452 个截断前 optional tick 消失。旧边界测试 L01 还保留 budget=5、仅增加 `weapon_fire@300` 即删除历史 tick 92 的最小复现。**风险有效隔离于本实验输入路径，未修复原采样器，也未为产品上线验收。**该路径使用自己的明确请求，既不消费旧 sampler 选择也不输出其 coverage。
+
+## R4. L2 的真实边界
+
+完整门控见 [L1/L2 能力矩阵](p8-1b-r-l1-l2-capabilities.md)。本轮读取本地原始 overview 和 PNG，核实与固定 manifest 的 SHA、1024×1024 尺寸及 `posX=-2476,posY=3239,scale=4.4` 一致。八个真实端点算术投影均有效且在图内；最大逆变换浮点误差约 `2.27e-13` world units。**这是算术一致性，不是独立地图地标误差。**已有历史 P6 地域校准未被重新计作本轮验证。
+
+| L2 能力 | 本轮结论 |
+| --- | --- |
+| 世界坐标→雷达算术及本地资源身份 | PASS，限定数字投影子能力 |
+| DEM 与地图版本匹配、真实地图位置精度 | BLOCKED，versionMatch 仍 unconfirmed，独立地理误差未知 |
+| 同 tick 玩家间 XY/XYZ 距离 | PASS，4 对端点、原生世界单位；不等同路线/到达时间/支援性 |
+| 某段时间位置变化 | NOT RUN，单 tick 不构成时间序列 |
+| 导航可达性、静态 LOS/遮挡 | BLOCKED；缺版本匹配数据与基准，几何实测 NOT RUN |
+| 多楼层关系 | BLOCKED；Dust2 只有无界 default 层，ΔZ 不代表楼层 |
+| 烟雾/动态遮挡、协同/支援 | BLOCKED；缺空间体积/通路/时间/交战条件的联合验证 |
+| POV、实际注意力/心理推断 | UNSUPPORTED，产品范围排除 |
+
+没有下载替代地图或 DEM。没有将雷达资源、工具声称的功能或“能计算距离”当作已验证碰撞几何。
+
+## R5. 实际检查、复审与门禁
+
+复现入口（仓库根目录，Windows）：
+
+```powershell
+node docs/experiments/p8-1b-r-checks.mjs
+```
+
+| 本轮检查 | 结果 | 退出码 |
+| --- | --- | ---: |
+| 四个新增 mjs 语法检查 | PASS | 各 0 |
+| 新 L1/L2 边界与前缀测试 | 26/26（10 前缀扰动测试 + 16 边界/正对照）；0 fail/skip | 0 |
+| 原 P8.1B 实验回归（本轮重跑） | 21/21；0 fail/skip，含旧 sampler 限制见证 | 0 |
+| 选定 parser 回归，固定 Dust2 | 48/48；0 fail/skip，含真实 provider/replay | 0 |
+| 选定 deep-review 回归 | 192/192；0 fail/skip | 0 |
+| match-model 编译式测试、parser/deep-review 类型契约 | PASS；没有虚构运行时测试数 | 各 0 |
+| 强制 typecheck / build | 15/15 / 8/8 Turbo 任务，PASS | 各 0 |
+| 新真实 DEM 程序 | 实验断言 PASS；L1 局部 PASS；阶段 BLOCKED | 0 |
+| 地图几何真值实测 | NOT RUN，前置匹配资源/基准缺失 | 不适用 |
+
+本轮唯一运行时测试 **287 项**（26+21+48+192），0 失败、0 跳过。编译任务、真实脚本内断言、40 次比较和 8 正对照不叠加为测试项。独立 reviewer 的重复执行与修订后的针对性复跑也不重复累计。准确命令、退出码、起止时间、摘要、日志 SHA 以及最终脚本 SHA 均保存在 JSON `currentRun`；原始日志仅留 `.tmp/p8-1b-r/`，不提交私有日志。
+
+独立复审促成三项修订：无效死亡身份必须在转换前拒绝；“移除完整后缀”覆盖 effect expiry；明确离线全量候选枚举仍使用完整回合边界。均仅修改实验/证据，针对最终源再执行语法、新边界和真实程序。详见 JSON 复审记录。
+
+其余 NOT RUN：改写 DEM 二进制的 native 因果实验、连续/窗口轨迹、其他地图/个人 fixture、全 Electron/安装版/交互回归、地图几何真值、客户端接收/感知、部署/native/SQLite 服务兼容、鉴权/配额/保留、模型输出、专家教练标注、来源许可/去重分组/隔离保留集/评测协议与 P8.2。原因分别是本轮单 tick 限定、必要证据缺失或未获后续阶段授权。
+
+六项最终要求中，真实来源、L1 字段时间边界、限定前缀稳定、服务器事实不冒充认知、L2 逐项状态和命令交付均有证据。但完整 L2 未通过，故按本任务最终门禁，**不得将 P8.1B-R 整体标 PASS**。L1 局部通过不解除 P8.1C/D 和 P8.2 的门禁。
+
+Git 交付为本独立分支上的聚焦提交；最终 SHA 用 `git log -1 --format=%H -- docs/p8-1b-dust2-data-validation.md` 读取，避免自引用。本轮不直接推送 main、不合并 PR。没有需要修改生产代码才能完成本轮局部 L1 验证的阻塞；剩余 L2 与后续 P8.1 工作需另行作产品决定。
+
+## R6. 变更记录与历史记录边界
+
+2026-10-25：新增本节 R1–R6、独立服务器事实实验/测试/运行器和能力矩阵；JSON 将原对象完整移至 `historical.record`，新增 `currentRun`。原四个 P8.1B 实验文件未改。以下是提交 `3c09ee7` 的报告原文字节内容；其中“本轮”“当前”等均指原 P8.1B，不是上面的 P8.1B-R。
+
+---
+
 # P8.1B：Dust2 1v1 决策证据真实数据适配验证
 
 日期：2026-10-25（Asia/Shanghai）。**P8.1B：BLOCKED / NOT PASS。**
