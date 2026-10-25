@@ -1,0 +1,2474 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-25",
+  "timezone": "Asia/Shanghai",
+  "workUnit": "P8.1B",
+  "stageStatus": "BLOCKED",
+  "stagePassed": false,
+  "baseline": {
+    "localBranchBefore": "main",
+    "head": "f44984e5464552c81737922c67df3d9f17c27c71",
+    "originMain": "f44984e5464552c81737922c67df3d9f17c27c71",
+    "initialWorktree": "clean",
+    "remoteFetched": true,
+    "prs": [
+      {
+        "url": "https://github.com/cs2-analyst/cs2-analyst-desk/pull/1",
+        "number": 1,
+        "state": "open",
+        "merged": false,
+        "draft": false,
+        "head": "audit/ai-coach-data-capability-20261025",
+        "head_sha": "ad80128c227188b267eb5f978ae1b962713e2aa7",
+        "base": "main",
+        "base_sha": "f44984e5464552c81737922c67df3d9f17c27c71",
+        "updated_at": "2026-10-25T04:12:07Z"
+      },
+      {
+        "url": "https://github.com/cs2-analyst/cs2-analyst-desk/pull/2",
+        "number": 2,
+        "state": "open",
+        "merged": false,
+        "draft": true,
+        "head": "p8/1a-decision-evidence-20261025",
+        "head_sha": "a289d8d92881b1431a3d530d6f92663909d7dfb4",
+        "base": "main",
+        "base_sha": "f44984e5464552c81737922c67df3d9f17c27c71",
+        "updated_at": "2026-10-25T04:35:17Z"
+      }
+    ]
+  },
+  "validationCompletion": {
+    "branch": "codex/p8-1b-dust2-data-validation",
+    "head": "f44984e5464552c81737922c67df3d9f17c27c71",
+    "commitCreated": false,
+    "pushed": false,
+    "prCreated": false,
+    "reason": "Historical snapshot at validation completion, before the user's subsequent explicit authorization to commit and push. The P8.1B gate remains BLOCKED."
+  },
+  "delivery": {
+    "authorization": "User subsequently explicitly requested commit and push of the blocked validation work unit.",
+    "branch": "codex/p8-1b-dust2-data-validation",
+    "remote": "origin",
+    "remoteRef": "refs/heads/codex/p8-1b-dust2-data-validation",
+    "finalHead": "The Git commit containing this report; resolve with finalHeadCommand to avoid a self-referential hash.",
+    "finalHeadCommand": "git log -1 --format=%H -- docs/p8-1b-dust2-data-validation.md",
+    "remoteVerificationCommand": "git ls-remote --heads origin refs/heads/codex/p8-1b-dust2-data-validation",
+    "policy": "Focused evidence commit and push only; no main merge, release or stage-gate promotion. Actual commit SHA and remote verification are recorded in the handoff."
+  },
+  "changedFiles": [
+    "docs/p8-1b-dust2-data-validation.md",
+    "docs/p8-1b-validation-2026-10-25.json",
+    "docs/experiments/p8-1b-prefix.mjs",
+    "docs/experiments/p8-1b-dust2.mjs",
+    "docs/experiments/p8-1b-prefix.test.mjs",
+    "docs/experiments/p8-1b-checks.mjs"
+  ],
+  "contractCompatibility": {
+    "structural": "Compatible; no production API changes; P8.1A prototype not imported",
+    "semanticBlocker": "Native observedTick cannot be assigned to observer availableTick without an observation-channel proof.",
+    "localServerFacts": "nonempty auditedSelf, observedTick exact, availableTick null; never model input",
+    "strictModel": "all gameplay facts unknown; zero eligible tactical/known-gameplay inputs",
+    "globalQCGatesSelf": false
+  },
+  "informationWhitelist": {
+    "modelKeys": [
+      "schema",
+      "observer",
+      "cut",
+      "self",
+      "publicAliveCounts",
+      "enemyLastKnownPosition",
+      "inventory",
+      "bombKnowledge",
+      "sampling",
+      "capabilities",
+      "evidenceRefs",
+      "timeSemantics"
+    ],
+    "selfKeys": [
+      "position",
+      "view",
+      "health",
+      "side",
+      "alive"
+    ],
+    "allSelfKnownValuesAdmitted": false,
+    "modelEvidenceRefs": [],
+    "samplingKeys": [
+      "version",
+      "requestedTicks",
+      "tickBudget",
+      "returnedTicks",
+      "truncated",
+      "missing"
+    ],
+    "fixedSampler": "p8-1b-exact-previous-tick-v1",
+    "noGlobalOrFutureMetadata": true,
+    "sourceAuthentication": "trusted local pinned native only, not external client attestation"
+  },
+  "gates": [
+    {
+      "id": 1,
+      "status": "PASS",
+      "detail": "Allowed real Dust2 parsed and field coverage checked."
+    },
+    {
+      "id": 2,
+      "status": "PASS",
+      "detail": "4 formation anchors / 162 formal death groups / 24 rounds; 8 observer slices; tactical opportunities unproven."
+    },
+    {
+      "id": 3,
+      "status": "BLOCKED",
+      "detail": "Refusal whitelist and hidden-state isolation validated, but no nonempty strict player-available gameplay facts."
+    },
+    {
+      "id": 4,
+      "status": "BLOCKED",
+      "detail": "Real server-state prefix and controlled mutations pass; offline sampling unsuitable; strict observation timing still unproved."
+    },
+    {
+      "id": 5,
+      "status": "PASS",
+      "detail": "Unsupported tactical tasks abstain."
+    },
+    {
+      "id": 6,
+      "status": "PASS",
+      "detail": "Production/contracts/version unchanged; applicable regressions executed."
+    },
+    {
+      "id": 7,
+      "status": "PASS",
+      "detail": "Commands/evidence/not-run items delivered in a focused commit under subsequent explicit user authorization; the stage gate remains BLOCKED."
+    }
+  ],
+  "taskEvidenceGates": [
+    {
+      "task": "describe-self",
+      "available": "8/8 server own snapshots",
+      "playerInput": "BLOCKED: availableTick unverified",
+      "fallback": "abstain"
+    },
+    {
+      "task": "both-alive-counts",
+      "available": "4/4 prefix-native survivor agreement",
+      "playerInput": "BLOCKED: public observation channel unavailable",
+      "fallback": "abstain"
+    },
+    {
+      "task": "last-known-enemy",
+      "available": "no verified observations",
+      "playerInput": "unknown",
+      "fallback": "unknown"
+    },
+    {
+      "task": "route-safety",
+      "available": "map geometry version unconfirmed; no validated topology/LOS/dynamic occlusion",
+      "playerInput": "abstain",
+      "fallback": "abstain"
+    },
+    {
+      "task": "specific-utility",
+      "available": "bounded native inventory probe only; no validated observation/action/effect contract",
+      "playerInput": "abstain",
+      "fallback": "abstain"
+    },
+    {
+      "task": "counterstrafe-reaction",
+      "available": "no reliable action/velocity/fine-time verification",
+      "playerInput": "abstain",
+      "fallback": "abstain"
+    },
+    {
+      "task": "counterfactual-win-gain",
+      "available": "no validated counterfactual method",
+      "playerInput": "abstain",
+      "fallback": "abstain"
+    }
+  ],
+  "independentReview": {
+    "status": "PASS_WITH_STAGE_BLOCKED",
+    "reviewer": "review_prefix independent agent required by AGENTS.md",
+    "scope": [
+      "experiment code",
+      "report versus real.json",
+      "boundary test independently executed"
+    ],
+    "command": "node --test --test-reporter=tap docs/experiments/p8-1b-prefix.test.mjs",
+    "exitCode": 0,
+    "tests": 21,
+    "passed": 21,
+    "skipped": 0,
+    "notAdditionalUniqueTests": true,
+    "realDemRunByReviewer": false,
+    "findingsResolved": [
+      "availableTick inference removed",
+      "global prefix QC decoupled from own missingness",
+      "unlocatable ticks rejected",
+      "core samples counted separately",
+      "four-anchor query description corrected",
+      "both fixture environment variables pinned"
+    ],
+    "finalJsonReviewed": true,
+    "finalJsonChecks": [
+      "four script sizes/SHA-256 match",
+      "embedded real evidence and digest match",
+      "14 commands and superseded runs consistent",
+      "production diff empty and final HEAD match"
+    ]
+  },
+  "notRun": [
+    {
+      "item": "full all-tick native extraction",
+      "reason": "Unnecessary for bounded anchor feasibility; cannot claim every-tick field coverage."
+    },
+    {
+      "item": "other fixtures / Nuke-only / cross-map / calibration / personal golden suites",
+      "reason": "This work validates one Dust2; selected regressions keep fixture whitelist."
+    },
+    {
+      "item": "full desktop UI / Electron / installed app / archive interaction suites",
+      "reason": "No production changes; build/typecheck and relevant parser/domain/deep-review checks selected."
+    },
+    {
+      "item": "client receipt/HUD/visibility/radar/sound/comms/attention",
+      "reason": "No verified observation source; stage blocker."
+    },
+    {
+      "item": "map topology/LOS/dynamic occlusion validation",
+      "reason": "Not supplied; map version remains unconfirmed."
+    },
+    {
+      "item": "alternate DEM bytes with changed hidden/future state",
+      "reason": "No DEM modification/replacement; controlled mutations start at native output."
+    },
+    {
+      "item": "native/SQLite backend deployment, auth/quota/retention/model adaptation",
+      "reason": "P8.1C scope not authorized/executed."
+    },
+    {
+      "item": "corpus permissions/dedup/splits/expert blind evaluation/release protocol",
+      "reason": "P8.1D not executed."
+    },
+    {
+      "item": "model call/training/counterfactual coaching efficacy/P8.2",
+      "reason": "Outside authorized scope; P8.2 prohibited."
+    },
+    {
+      "item": "P8.1A synthetic script rerun",
+      "reason": "Read from unmerged branch; not imported or counted."
+    }
+  ],
+  "nextStages": {
+    "P8_1": "INCOMPLETE",
+    "P8_1C_D": "NOT AUTOMATICALLY AUTHORIZED; dependent work waits for B resolution or explicitly approved scope adjustment",
+    "P8_2": "PROHIBITED"
+  },
+  "environment": {
+    "platform": "win32",
+    "arch": "x64",
+    "node": "v26.3.0",
+    "pnpm": "10.0.0"
+  },
+  "realEvidence": {
+    "status": "BLOCKED",
+    "fixture": {
+      "filename": ".demo/dust2.dem",
+      "sha256": "db90fe85aab023a1d2c8a5996182e6120d98ef494f02a070b17982b235e4958c",
+      "bytes": 557650967,
+      "map": "de_dust2",
+      "tickRate": 64,
+      "rounds": 24,
+      "players": 10,
+      "patchVersion": "14055",
+      "mapGeometryVersion": "unconfirmed"
+    },
+    "parser": {
+      "adapter": "demoparser2",
+      "packageVersion": "0.42.0-backport.363.1",
+      "source": {
+        "repository": "https://github.com/LaihoE/demoparser.git",
+        "baseTag": "v0.42.0",
+        "baseCommit": "d3767705dc5846d73ed29db50eaeda58778dc934",
+        "upstreamPullRequest": 363,
+        "fixCommit": "451321a517ec9c0c6be7f0103dd07e7a805c3345",
+        "fixHeadCommit": "cc214aed17d23fa996929305df5413505a7dd40b",
+        "target": "x86_64-pc-windows-msvc",
+        "rustVersion": "1.90.0",
+        "patches": {
+          "entity-handle-363.patch": "f1b4e750a0fbb38136e4e5bf29c02d974b84c7eeee2aaf45353ceb8253bec8f9",
+          "backport-363.patch": "47a9b2bfcb5fd9ee0358f1362e7a5ccc61bdd0a69e526ba1717cd70b13fc2c68",
+          "build-support.patch": "94172e708cdb487ef3ae27248554260256f3dc653a5eddd107674c458772fd97"
+        },
+        "protobufSha256": "953ad3f19e1c1bd888d8d51292ff47cb1379a979353f07fb7977a4c152e4f5b5",
+        "cargoLockSha256": "316232d192147c84050bd9b069919dc66d45e3f113ffd2e7b5508852e9f0992c",
+        "generatedSourceHashes": {
+          "src/csgoproto/src/protobuf.rs": "953ad3f19e1c1bd888d8d51292ff47cb1379a979353f07fb7977a4c152e4f5b5",
+          "src/csgoproto/src/message_type.rs": "3db1c6244d8a9f8ec8701cc980c4bd13f2aad86cdde11ea69f305dd011c986f4",
+          "src/csgoproto/src/maps.rs": "82206b2cddfafc8b8cb60d78ce8cad8e9153a9177f16ac31075a63f1d4233a07"
+        }
+      },
+      "target": "x86_64-pc-windows-msvc",
+      "binarySha256": "132d664125b60542dc80dc8bc270e2c8e181a0a55433fdac5be285ef4d9b0de1"
+    },
+    "nativeEventCounts": {
+      "bomb_begindefuse": 4,
+      "bomb_beginplant": 15,
+      "bomb_defused": 4,
+      "bomb_dropped": 59,
+      "bomb_exploded": 5,
+      "bomb_pickup": 69,
+      "bomb_planted": 12,
+      "decoy_started": 1,
+      "flashbang_detonate": 229,
+      "hegrenade_detonate": 82,
+      "inferno_startburn": 138,
+      "player_blind": 500,
+      "player_death": 166,
+      "player_disconnect": 1,
+      "player_hurt": 629,
+      "player_spawn": 240,
+      "player_team": 10,
+      "round_end": 24,
+      "round_freeze_end": 25,
+      "round_start": 25,
+      "smokegrenade_detonate": 182,
+      "weapon_fire": 3991
+    },
+    "domainEventCounts": {
+      "bomb": 167,
+      "damage": 629,
+      "flash": 500,
+      "kill": 166,
+      "utility": 632,
+      "weapon_fire": 3989
+    },
+    "nativeEventFields": {
+      "bomb_begindefuse": [
+        "event_name",
+        "game_time",
+        "haskit",
+        "is_warmup_period",
+        "tick",
+        "total_rounds_played",
+        "user_is_alive",
+        "user_name",
+        "user_steamid",
+        "user_team_num"
+      ],
+      "bomb_beginplant": [
+        "event_name",
+        "game_time",
+        "is_warmup_period",
+        "site",
+        "tick",
+        "total_rounds_played",
+        "user_is_alive",
+        "user_name",
+        "user_steamid",
+        "user_team_num"
+      ],
+      "bomb_defused": [
+        "event_name",
+        "game_time",
+        "is_warmup_period",
+        "site",
+        "tick",
+        "total_rounds_played",
+        "user_is_alive",
+        "user_name",
+        "user_steamid",
+        "user_team_num"
+      ],
+      "bomb_dropped": [
+        "entindex",
+        "event_name",
+        "game_time",
+        "is_warmup_period",
+        "tick",
+        "total_rounds_played",
+        "user_is_alive",
+        "user_name",
+        "user_steamid",
+        "user_team_num"
+      ],
+      "bomb_exploded": [
+        "event_name",
+        "game_time",
+        "is_warmup_period",
+        "site",
+        "tick",
+        "total_rounds_played",
+        "user_is_alive",
+        "user_name",
+        "user_steamid",
+        "user_team_num"
+      ],
+      "bomb_pickup": [
+        "event_name",
+        "game_time",
+        "is_warmup_period",
+        "tick",
+        "total_rounds_played",
+        "user_is_alive",
+        "user_name",
+        "user_steamid",
+        "user_team_num"
+      ],
+      "bomb_planted": [
+        "event_name",
+        "game_time",
+        "is_warmup_period",
+        "site",
+        "tick",
+        "total_rounds_played",
+        "user_is_alive",
+        "user_name",
+        "user_steamid",
+        "user_team_num"
+      ],
+      "decoy_started": [
+        "entityid",
+        "event_name",
+        "game_time",
+        "is_warmup_period",
+        "tick",
+        "total_rounds_played",
+        "user_is_alive",
+        "user_name",
+        "user_steamid",
+        "user_team_num",
+        "x",
+        "y",
+        "z"
+      ],
+      "flashbang_detonate": [
+        "entityid",
+        "event_name",
+        "game_time",
+        "is_warmup_period",
+        "tick",
+        "total_rounds_played",
+        "user_is_alive",
+        "user_name",
+        "user_steamid",
+        "user_team_num",
+        "x",
+        "y",
+        "z"
+      ],
+      "hegrenade_detonate": [
+        "entityid",
+        "event_name",
+        "game_time",
+        "is_warmup_period",
+        "tick",
+        "total_rounds_played",
+        "user_is_alive",
+        "user_name",
+        "user_steamid",
+        "user_team_num",
+        "x",
+        "y",
+        "z"
+      ],
+      "inferno_startburn": [
+        "entityid",
+        "event_name",
+        "game_time",
+        "is_warmup_period",
+        "tick",
+        "total_rounds_played",
+        "user_is_alive",
+        "user_name",
+        "user_steamid",
+        "user_team_num",
+        "x",
+        "y",
+        "z"
+      ],
+      "player_blind": [
+        "attacker_is_alive",
+        "attacker_name",
+        "attacker_steamid",
+        "attacker_team_num",
+        "blind_duration",
+        "entityid",
+        "event_name",
+        "game_time",
+        "is_warmup_period",
+        "tick",
+        "total_rounds_played",
+        "user_is_alive",
+        "user_name",
+        "user_steamid",
+        "user_team_num"
+      ],
+      "player_death": [
+        "assistedflash",
+        "assister_is_alive",
+        "assister_name",
+        "assister_steamid",
+        "assister_team_num",
+        "attacker_is_alive",
+        "attacker_name",
+        "attacker_steamid",
+        "attacker_team_num",
+        "attackerblind",
+        "attackerinair",
+        "distance",
+        "dmg_armor",
+        "dmg_health",
+        "dominated",
+        "event_name",
+        "game_time",
+        "headshot",
+        "hitgroup",
+        "is_warmup_period",
+        "noreplay",
+        "noscope",
+        "penetrated",
+        "revenge",
+        "thrusmoke",
+        "tick",
+        "total_rounds_played",
+        "user_is_alive",
+        "user_name",
+        "user_steamid",
+        "user_team_num",
+        "weapon",
+        "weapon_fauxitemid",
+        "weapon_itemid",
+        "weapon_originalowner_xuid",
+        "wipe"
+      ],
+      "player_disconnect": [
+        "PlayerID",
+        "event_name",
+        "game_time",
+        "is_warmup_period",
+        "name",
+        "networkid",
+        "reason",
+        "tick",
+        "total_rounds_played",
+        "user_is_alive",
+        "user_name",
+        "user_steamid",
+        "user_team_num",
+        "xuid"
+      ],
+      "player_hurt": [
+        "armor",
+        "attacker_is_alive",
+        "attacker_name",
+        "attacker_steamid",
+        "attacker_team_num",
+        "dmg_armor",
+        "dmg_health",
+        "event_name",
+        "game_time",
+        "health",
+        "hitgroup",
+        "is_warmup_period",
+        "tick",
+        "total_rounds_played",
+        "user_is_alive",
+        "user_name",
+        "user_steamid",
+        "user_team_num",
+        "weapon"
+      ],
+      "player_spawn": [
+        "event_name",
+        "game_time",
+        "is_warmup_period",
+        "tick",
+        "total_rounds_played",
+        "user_is_alive",
+        "user_name",
+        "user_steamid",
+        "user_team_num"
+      ],
+      "player_team": [
+        "disconnect",
+        "event_name",
+        "game_time",
+        "is_warmup_period",
+        "isbot",
+        "oldteam",
+        "silent",
+        "team",
+        "tick",
+        "total_rounds_played",
+        "user_is_alive",
+        "user_name",
+        "user_steamid",
+        "user_team_num"
+      ],
+      "round_end": [
+        "event_name",
+        "game_time",
+        "is_warmup_period",
+        "reason",
+        "round",
+        "tick",
+        "total_rounds_played",
+        "winner"
+      ],
+      "round_freeze_end": [
+        "event_name",
+        "game_time",
+        "is_warmup_period",
+        "tick",
+        "total_rounds_played"
+      ],
+      "round_start": [
+        "event_name",
+        "game_time",
+        "is_warmup_period",
+        "round",
+        "tick",
+        "total_rounds_played"
+      ],
+      "smokegrenade_detonate": [
+        "entityid",
+        "event_name",
+        "game_time",
+        "is_warmup_period",
+        "tick",
+        "total_rounds_played",
+        "user_is_alive",
+        "user_name",
+        "user_steamid",
+        "user_team_num",
+        "x",
+        "y",
+        "z"
+      ],
+      "weapon_fire": [
+        "event_name",
+        "game_time",
+        "is_warmup_period",
+        "silenced",
+        "tick",
+        "total_rounds_played",
+        "user_is_alive",
+        "user_name",
+        "user_steamid",
+        "user_team_num",
+        "weapon"
+      ]
+    },
+    "boundaryRows": {
+      "tick": {
+        "total": 720,
+        "present": 720,
+        "valid": 720
+      },
+      "steamid": {
+        "total": 720,
+        "present": 720,
+        "valid": 720
+      },
+      "team_num": {
+        "total": 720,
+        "present": 720,
+        "valid": 720
+      },
+      "is_alive": {
+        "total": 720,
+        "present": 720,
+        "valid": 720
+      }
+    },
+    "boundaries": [
+      {
+        "round": 1,
+        "startTick": 1016,
+        "freezeEndTick": 2712,
+        "endTick": 6768,
+        "snapshots": [
+          {
+            "boundary": "start",
+            "tick": 1016,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "freeze_end",
+            "tick": 2712,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "end",
+            "tick": 6768,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          }
+        ],
+        "lifecycle": {}
+      },
+      {
+        "round": 2,
+        "startTick": 7216,
+        "freezeEndTick": 8496,
+        "endTick": 14077,
+        "snapshots": [
+          {
+            "boundary": "start",
+            "tick": 7216,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "freeze_end",
+            "tick": 8496,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "end",
+            "tick": 14077,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          }
+        ],
+        "lifecycle": {
+          "spawn": 10
+        }
+      },
+      {
+        "round": 3,
+        "startTick": 14525,
+        "freezeEndTick": 15805,
+        "endTick": 22938,
+        "snapshots": [
+          {
+            "boundary": "start",
+            "tick": 14525,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "freeze_end",
+            "tick": 15805,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "end",
+            "tick": 22938,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          }
+        ],
+        "lifecycle": {
+          "spawn": 10
+        }
+      },
+      {
+        "round": 4,
+        "startTick": 23386,
+        "freezeEndTick": 26926,
+        "endTick": 31725,
+        "snapshots": [
+          {
+            "boundary": "start",
+            "tick": 23386,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "freeze_end",
+            "tick": 26926,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "end",
+            "tick": 31725,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          }
+        ],
+        "lifecycle": {
+          "spawn": 10
+        }
+      },
+      {
+        "round": 5,
+        "startTick": 32173,
+        "freezeEndTick": 33453,
+        "endTick": 36604,
+        "snapshots": [
+          {
+            "boundary": "start",
+            "tick": 32173,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "freeze_end",
+            "tick": 33453,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "end",
+            "tick": 36604,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          }
+        ],
+        "lifecycle": {
+          "spawn": 10
+        }
+      },
+      {
+        "round": 6,
+        "startTick": 37052,
+        "freezeEndTick": 38332,
+        "endTick": 44985,
+        "snapshots": [
+          {
+            "boundary": "start",
+            "tick": 37052,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "freeze_end",
+            "tick": 38332,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "end",
+            "tick": 44985,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          }
+        ],
+        "lifecycle": {
+          "spawn": 10
+        }
+      },
+      {
+        "round": 7,
+        "startTick": 45433,
+        "freezeEndTick": 48697,
+        "endTick": 53334,
+        "snapshots": [
+          {
+            "boundary": "start",
+            "tick": 45433,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "freeze_end",
+            "tick": 48697,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "end",
+            "tick": 53334,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          }
+        ],
+        "lifecycle": {
+          "spawn": 10
+        }
+      },
+      {
+        "round": 8,
+        "startTick": 53782,
+        "freezeEndTick": 55062,
+        "endTick": 64035,
+        "snapshots": [
+          {
+            "boundary": "start",
+            "tick": 53782,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "freeze_end",
+            "tick": 55062,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "end",
+            "tick": 64035,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          }
+        ],
+        "lifecycle": {
+          "spawn": 10
+        }
+      },
+      {
+        "round": 9,
+        "startTick": 64483,
+        "freezeEndTick": 65763,
+        "endTick": 73074,
+        "snapshots": [
+          {
+            "boundary": "start",
+            "tick": 64483,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "freeze_end",
+            "tick": 65763,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "end",
+            "tick": 73074,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          }
+        ],
+        "lifecycle": {
+          "spawn": 10
+        }
+      },
+      {
+        "round": 10,
+        "startTick": 73522,
+        "freezeEndTick": 74802,
+        "endTick": 81156,
+        "snapshots": [
+          {
+            "boundary": "start",
+            "tick": 73522,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "freeze_end",
+            "tick": 74802,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "end",
+            "tick": 81156,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          }
+        ],
+        "lifecycle": {
+          "spawn": 10
+        }
+      },
+      {
+        "round": 11,
+        "startTick": 81604,
+        "freezeEndTick": 85208,
+        "endTick": 92435,
+        "snapshots": [
+          {
+            "boundary": "start",
+            "tick": 81604,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "freeze_end",
+            "tick": 85208,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "end",
+            "tick": 92435,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          }
+        ],
+        "lifecycle": {
+          "spawn": 10
+        }
+      },
+      {
+        "round": 12,
+        "startTick": 92883,
+        "freezeEndTick": 96398,
+        "endTick": 103058,
+        "snapshots": [
+          {
+            "boundary": "start",
+            "tick": 92883,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "freeze_end",
+            "tick": 96398,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "end",
+            "tick": 103058,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          }
+        ],
+        "lifecycle": {
+          "spawn": 10
+        }
+      },
+      {
+        "round": 13,
+        "startTick": 106546,
+        "freezeEndTick": 108242,
+        "endTick": 114604,
+        "snapshots": [
+          {
+            "boundary": "start",
+            "tick": 106546,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "freeze_end",
+            "tick": 108242,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "end",
+            "tick": 114604,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          }
+        ],
+        "lifecycle": {
+          "side_change": 10,
+          "spawn": 10
+        }
+      },
+      {
+        "round": 14,
+        "startTick": 115052,
+        "freezeEndTick": 116332,
+        "endTick": 118927,
+        "snapshots": [
+          {
+            "boundary": "start",
+            "tick": 115052,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "freeze_end",
+            "tick": 116332,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "end",
+            "tick": 118927,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          }
+        ],
+        "lifecycle": {
+          "spawn": 10
+        }
+      },
+      {
+        "round": 15,
+        "startTick": 119375,
+        "freezeEndTick": 120655,
+        "endTick": 127612,
+        "snapshots": [
+          {
+            "boundary": "start",
+            "tick": 119375,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "freeze_end",
+            "tick": 120655,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "end",
+            "tick": 127612,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          }
+        ],
+        "lifecycle": {
+          "spawn": 10
+        }
+      },
+      {
+        "round": 16,
+        "startTick": 128060,
+        "freezeEndTick": 131748,
+        "endTick": 138373,
+        "snapshots": [
+          {
+            "boundary": "start",
+            "tick": 128060,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "freeze_end",
+            "tick": 131748,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "end",
+            "tick": 138373,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          }
+        ],
+        "lifecycle": {
+          "spawn": 10
+        }
+      },
+      {
+        "round": 17,
+        "startTick": 138821,
+        "freezeEndTick": 140101,
+        "endTick": 147441,
+        "snapshots": [
+          {
+            "boundary": "start",
+            "tick": 138821,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "freeze_end",
+            "tick": 140101,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "end",
+            "tick": 147441,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          }
+        ],
+        "lifecycle": {
+          "spawn": 10
+        }
+      },
+      {
+        "round": 18,
+        "startTick": 147889,
+        "freezeEndTick": 149169,
+        "endTick": 153597,
+        "snapshots": [
+          {
+            "boundary": "start",
+            "tick": 147889,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "freeze_end",
+            "tick": 149169,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "end",
+            "tick": 153597,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          }
+        ],
+        "lifecycle": {
+          "spawn": 10
+        }
+      },
+      {
+        "round": 19,
+        "startTick": 154045,
+        "freezeEndTick": 157950,
+        "endTick": 162598,
+        "snapshots": [
+          {
+            "boundary": "start",
+            "tick": 154045,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "freeze_end",
+            "tick": 157950,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "end",
+            "tick": 162598,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          }
+        ],
+        "lifecycle": {
+          "spawn": 10
+        }
+      },
+      {
+        "round": 20,
+        "startTick": 163046,
+        "freezeEndTick": 164326,
+        "endTick": 168079,
+        "snapshots": [
+          {
+            "boundary": "start",
+            "tick": 163046,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "freeze_end",
+            "tick": 164326,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "end",
+            "tick": 168079,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          }
+        ],
+        "lifecycle": {
+          "spawn": 10
+        }
+      },
+      {
+        "round": 21,
+        "startTick": 168527,
+        "freezeEndTick": 169807,
+        "endTick": 177167,
+        "snapshots": [
+          {
+            "boundary": "start",
+            "tick": 168527,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "freeze_end",
+            "tick": 169807,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "end",
+            "tick": 177167,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          }
+        ],
+        "lifecycle": {
+          "spawn": 10
+        }
+      },
+      {
+        "round": 22,
+        "startTick": 177615,
+        "freezeEndTick": 178895,
+        "endTick": 185517,
+        "snapshots": [
+          {
+            "boundary": "start",
+            "tick": 177615,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "freeze_end",
+            "tick": 178895,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "end",
+            "tick": 185517,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          }
+        ],
+        "lifecycle": {
+          "spawn": 10
+        }
+      },
+      {
+        "round": 23,
+        "startTick": 185965,
+        "freezeEndTick": 187245,
+        "endTick": 194146,
+        "snapshots": [
+          {
+            "boundary": "start",
+            "tick": 185965,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "freeze_end",
+            "tick": 187245,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "end",
+            "tick": 194146,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          }
+        ],
+        "lifecycle": {
+          "spawn": 10
+        }
+      },
+      {
+        "round": 24,
+        "startTick": 194594,
+        "freezeEndTick": 195874,
+        "endTick": 201562,
+        "snapshots": [
+          {
+            "boundary": "start",
+            "tick": 194594,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "freeze_end",
+            "tick": 195874,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          },
+          {
+            "boundary": "end",
+            "tick": 201562,
+            "availability": "observed",
+            "players": 10,
+            "unidentified": 0
+          }
+        ],
+        "lifecycle": {
+          "disconnect": 1,
+          "spawn": 10
+        }
+      }
+    ],
+    "eventCoverage": {
+      "damage": {
+        "tick": {
+          "total": 629,
+          "present": 629,
+          "valid": 629
+        },
+        "dmg_health": {
+          "total": 629,
+          "present": 629,
+          "valid": 629
+        },
+        "dmg_armor": {
+          "total": 629,
+          "present": 629,
+          "valid": 629
+        },
+        "health": {
+          "total": 629,
+          "present": 629,
+          "valid": 629
+        },
+        "armor": {
+          "total": 629,
+          "present": 629,
+          "valid": 629
+        },
+        "user_steamid": {
+          "total": 629,
+          "present": 629,
+          "valid": 629
+        },
+        "attacker_steamid": {
+          "total": 629,
+          "present": 618,
+          "valid": 618
+        }
+      },
+      "kill": {
+        "tick": {
+          "total": 166,
+          "present": 166,
+          "valid": 166
+        },
+        "user_steamid": {
+          "total": 166,
+          "present": 166,
+          "valid": 166
+        },
+        "attacker_steamid": {
+          "total": 166,
+          "present": 161,
+          "valid": 161
+        },
+        "user_team_num": {
+          "total": 166,
+          "present": 166,
+          "valid": 166
+        },
+        "attacker_team_num": {
+          "total": 166,
+          "present": 161,
+          "valid": 161
+        }
+      },
+      "fire": {
+        "tick": {
+          "total": 3991,
+          "present": 3991,
+          "valid": 3991
+        },
+        "user_steamid": {
+          "total": 3991,
+          "present": 3991,
+          "valid": 3991
+        },
+        "user_team_num": {
+          "total": 3991,
+          "present": 3991,
+          "valid": 3991
+        },
+        "weapon": {
+          "total": 3991,
+          "present": 3991,
+          "valid": 3991
+        }
+      },
+      "lifecycle": {
+        "tick": {
+          "total": 251,
+          "present": 251,
+          "valid": 251
+        },
+        "user_steamid": {
+          "total": 251,
+          "present": 251,
+          "valid": 251
+        },
+        "user_team_num": {
+          "total": 251,
+          "present": 251,
+          "valid": 251
+        }
+      },
+      "bomb": {
+        "tick": {
+          "total": 168,
+          "present": 168,
+          "valid": 168
+        },
+        "user_steamid": {
+          "total": 168,
+          "present": 168,
+          "valid": 168
+        },
+        "user_team_num": {
+          "total": 168,
+          "present": 168,
+          "valid": 168
+        }
+      },
+      "utility": {
+        "tick": {
+          "total": 632,
+          "present": 632,
+          "valid": 632
+        },
+        "x": {
+          "total": 632,
+          "present": 632,
+          "valid": 632
+        },
+        "y": {
+          "total": 632,
+          "present": 632,
+          "valid": 632
+        },
+        "z": {
+          "total": 632,
+          "present": 632,
+          "valid": 632
+        }
+      },
+      "defuse": {
+        "haskit": {
+          "total": 4,
+          "present": 4,
+          "valid": 4
+        }
+      }
+    },
+    "existingProducts": {
+      "unchangedMatch": true,
+      "spatial": {
+        "sampling": {
+          "tickBudget": 24000,
+          "contextOffsetTicks": 8,
+          "coreTicks": 4702,
+          "optionalTicks": 6835,
+          "omittedOptionalTicks": 0,
+          "returnedTicks": 11537,
+          "rowCount": 115370
+        },
+        "coverage": {
+          "status": "partial",
+          "reasons": [
+            "participant-unidentified",
+            "weapon-unavailable",
+            "context-outside-round",
+            "position-missing",
+            "view-missing",
+            "state-missing"
+          ]
+        },
+        "representativeUniqueSamples": 116570,
+        "representativeUniqueComplete": 115340,
+        "representativeDedup": "requestedTick:playerId; last binding; includes omitted out-of-round context; not a coverage denominator",
+        "core": {
+          "uniqueRequestedPlayerSamples": 47020,
+          "actualExact": 47020,
+          "complete": 47020
+        },
+        "aliveSamples": 92488,
+        "aliveWeaponPresent": 92488,
+        "relevantBindings": 138860
+      },
+      "replay": {
+        "rounds": 24,
+        "frames": 27466,
+        "samples": 274660,
+        "excludedRounds": [],
+        "source": "native-final-tick-observation",
+        "hz": 8,
+        "missingPlayerSamples": 0
+      }
+    },
+    "discovery": {
+      "roundsChecked": 24,
+      "offlineCoverage": {
+        "complete": 24
+      },
+      "atomicGroupsChecked": 162,
+      "postRoundDeathsExcluded": 4,
+      "outcomes": {
+        "at-or-after-round-end": 17,
+        "candidate": 4,
+        "not-one-per-side": 141
+      },
+      "candidates": 4,
+      "observerInputs": 8,
+      "offlineAndPrefixAgree": true
+    },
+    "fixedQuery": {
+      "fields": [
+        "X",
+        "Y",
+        "Z",
+        "yaw",
+        "pitch",
+        "health",
+        "is_alive",
+        "team_num",
+        "active_weapon_name"
+      ],
+      "requestedTicks": [
+        92395,
+        185100,
+        194101,
+        201348
+      ],
+      "returnedTicks": [
+        92395,
+        185100,
+        194101,
+        201348
+      ],
+      "fieldCoverage": {
+        "X": {
+          "total": 40,
+          "present": 40,
+          "valid": 40
+        },
+        "Y": {
+          "total": 40,
+          "present": 40,
+          "valid": 40
+        },
+        "Z": {
+          "total": 40,
+          "present": 40,
+          "valid": 40
+        },
+        "yaw": {
+          "total": 40,
+          "present": 40,
+          "valid": 40
+        },
+        "pitch": {
+          "total": 40,
+          "present": 40,
+          "valid": 40
+        },
+        "health": {
+          "total": 40,
+          "present": 40,
+          "valid": 40
+        },
+        "is_alive": {
+          "total": 40,
+          "present": 40,
+          "valid": 40
+        },
+        "team_num": {
+          "total": 40,
+          "present": 40,
+          "valid": 40
+        },
+        "active_weapon_name": {
+          "total": 40,
+          "present": 8,
+          "valid": 8
+        }
+      },
+      "aliveFieldCoverage": {
+        "X": {
+          "total": 8,
+          "present": 8,
+          "valid": 8
+        },
+        "Y": {
+          "total": 8,
+          "present": 8,
+          "valid": 8
+        },
+        "Z": {
+          "total": 8,
+          "present": 8,
+          "valid": 8
+        },
+        "yaw": {
+          "total": 8,
+          "present": 8,
+          "valid": 8
+        },
+        "pitch": {
+          "total": 8,
+          "present": 8,
+          "valid": 8
+        },
+        "health": {
+          "total": 8,
+          "present": 8,
+          "valid": 8
+        },
+        "is_alive": {
+          "total": 8,
+          "present": 8,
+          "valid": 8
+        },
+        "team_num": {
+          "total": 8,
+          "present": 8,
+          "valid": 8
+        },
+        "active_weapon_name": {
+          "total": 8,
+          "present": 8,
+          "valid": 8
+        }
+      }
+    },
+    "incrementalCapability": {
+      "scope": "four-anchor native probe; not production/decision contract",
+      "fields": [
+        "armor_value",
+        "active_weapon_ammo",
+        "total_ammo_left",
+        "inventory",
+        "balance",
+        "has_defuser",
+        "has_helmet"
+      ],
+      "inventoryElementValidation": {
+        "elements": 26,
+        "invalid": 0
+      },
+      "all": {
+        "armor_value": {
+          "total": 40,
+          "present": 40,
+          "valid": 40
+        },
+        "active_weapon_ammo": {
+          "total": 40,
+          "present": 8,
+          "valid": 8
+        },
+        "total_ammo_left": {
+          "total": 40,
+          "present": 8,
+          "valid": 8
+        },
+        "inventory": {
+          "total": 40,
+          "present": 40,
+          "valid": 40
+        },
+        "balance": {
+          "total": 40,
+          "present": 40,
+          "valid": 40
+        },
+        "has_defuser": {
+          "total": 40,
+          "present": 40,
+          "valid": 40
+        },
+        "has_helmet": {
+          "total": 40,
+          "present": 40,
+          "valid": 40
+        }
+      },
+      "alive": {
+        "armor_value": {
+          "total": 8,
+          "present": 8,
+          "valid": 8
+        },
+        "active_weapon_ammo": {
+          "total": 8,
+          "present": 8,
+          "valid": 8
+        },
+        "total_ammo_left": {
+          "total": 8,
+          "present": 8,
+          "valid": 8
+        },
+        "inventory": {
+          "total": 8,
+          "present": 8,
+          "valid": 8
+        },
+        "balance": {
+          "total": 8,
+          "present": 8,
+          "valid": 8
+        },
+        "has_defuser": {
+          "total": 8,
+          "present": 8,
+          "valid": 8
+        },
+        "has_helmet": {
+          "total": 8,
+          "present": 8,
+          "valid": 8
+        }
+      }
+    },
+    "nativeCoreFields": {
+      "X": {
+        "total": 47020,
+        "present": 47020,
+        "valid": 47020
+      },
+      "Y": {
+        "total": 47020,
+        "present": 47020,
+        "valid": 47020
+      },
+      "Z": {
+        "total": 47020,
+        "present": 47020,
+        "valid": 47020
+      },
+      "yaw": {
+        "total": 47020,
+        "present": 47020,
+        "valid": 47020
+      },
+      "pitch": {
+        "total": 47020,
+        "present": 47020,
+        "valid": 47020
+      },
+      "health": {
+        "total": 47020,
+        "present": 47020,
+        "valid": 47020
+      },
+      "is_alive": {
+        "total": 47020,
+        "present": 47020,
+        "valid": 47020
+      },
+      "team_num": {
+        "total": 47020,
+        "present": 47020,
+        "valid": 47020
+      },
+      "active_weapon_name": {
+        "total": 47020,
+        "present": 37948,
+        "valid": 37948
+      }
+    },
+    "nativeQueryStability": {
+      "status": "PASS",
+      "fixedTicks": 4,
+      "denseTicks": 4702,
+      "comparedRows": 40,
+      "scope": "unchanged DEM; different requested future ticks"
+    },
+    "candidates": [
+      {
+        "round": 11,
+        "anchorTick": 92395,
+        "cutTick": 92396,
+        "observerAlias": "self-T",
+        "baselineTick": 85208,
+        "formationRefs": [
+          {
+            "round": 11,
+            "type": "kill",
+            "tick": 92395,
+            "eventIndex": 255
+          }
+        ],
+        "localRowLocator": {
+          "tick": 92395,
+          "side": "T",
+          "selection": "sole alive baseline participant of this side"
+        },
+        "retrospectiveOnly": {
+          "ticksUntilRoundEnd": 39
+        },
+        "modelBodySha256": "3ee2ec361fecff81388dc81730407dbb9de421e12000b1845936034aadea7fd6",
+        "auditedSelfSha256": "bb998a3784020ae974a3c6b3e3137918662fb70d6b78a0893c7a28b6009efe2e",
+        "prefixTickRate": 64,
+        "describeSelf": "abstain",
+        "tacticalDecision": "abstain"
+      },
+      {
+        "round": 11,
+        "anchorTick": 92395,
+        "cutTick": 92396,
+        "observerAlias": "self-CT",
+        "baselineTick": 85208,
+        "formationRefs": [
+          {
+            "round": 11,
+            "type": "kill",
+            "tick": 92395,
+            "eventIndex": 255
+          }
+        ],
+        "localRowLocator": {
+          "tick": 92395,
+          "side": "CT",
+          "selection": "sole alive baseline participant of this side"
+        },
+        "retrospectiveOnly": {
+          "ticksUntilRoundEnd": 39
+        },
+        "modelBodySha256": "3ee2ec361fecff81388dc81730407dbb9de421e12000b1845936034aadea7fd6",
+        "auditedSelfSha256": "a7722afc309085d268a6bc247e918d2325a0ae0faff569f9a01b5b9dc8f9d58a",
+        "prefixTickRate": 64,
+        "describeSelf": "abstain",
+        "tacticalDecision": "abstain"
+      },
+      {
+        "round": 22,
+        "anchorTick": 185100,
+        "cutTick": 185101,
+        "observerAlias": "self-CT",
+        "baselineTick": 178895,
+        "formationRefs": [
+          {
+            "round": 22,
+            "type": "kill",
+            "tick": 185100,
+            "eventIndex": 280
+          }
+        ],
+        "localRowLocator": {
+          "tick": 185100,
+          "side": "CT",
+          "selection": "sole alive baseline participant of this side"
+        },
+        "retrospectiveOnly": {
+          "ticksUntilRoundEnd": 416
+        },
+        "modelBodySha256": "233cad8a80a75367c9358752ea980f9502d34cb6dc2ab4f600be008952099b38",
+        "auditedSelfSha256": "44a3fa0a073574f8db284fdfbc8855ed63296b782cbe1555725b94b7ee744e56",
+        "prefixTickRate": 64,
+        "describeSelf": "abstain",
+        "tacticalDecision": "abstain"
+      },
+      {
+        "round": 22,
+        "anchorTick": 185100,
+        "cutTick": 185101,
+        "observerAlias": "self-T",
+        "baselineTick": 178895,
+        "formationRefs": [
+          {
+            "round": 22,
+            "type": "kill",
+            "tick": 185100,
+            "eventIndex": 280
+          }
+        ],
+        "localRowLocator": {
+          "tick": 185100,
+          "side": "T",
+          "selection": "sole alive baseline participant of this side"
+        },
+        "retrospectiveOnly": {
+          "ticksUntilRoundEnd": 416
+        },
+        "modelBodySha256": "233cad8a80a75367c9358752ea980f9502d34cb6dc2ab4f600be008952099b38",
+        "auditedSelfSha256": "261cb6c05d56e46e74a8ecb8c4a78fc79ef158bc32743bb68dc30c1368f901ee",
+        "prefixTickRate": 64,
+        "describeSelf": "abstain",
+        "tacticalDecision": "abstain"
+      },
+      {
+        "round": 23,
+        "anchorTick": 194101,
+        "cutTick": 194102,
+        "observerAlias": "self-CT",
+        "baselineTick": 187245,
+        "formationRefs": [
+          {
+            "round": 23,
+            "type": "kill",
+            "tick": 194101,
+            "eventIndex": 260
+          }
+        ],
+        "localRowLocator": {
+          "tick": 194101,
+          "side": "CT",
+          "selection": "sole alive baseline participant of this side"
+        },
+        "retrospectiveOnly": {
+          "ticksUntilRoundEnd": 44
+        },
+        "modelBodySha256": "09b5582243466e3adef9a925f6155274193d1052a03df14e14486dcad7b64b98",
+        "auditedSelfSha256": "92f1341b2f776d657dc500f5ada65e6993ddd927eeca4c98cdebbd3627a94b3d",
+        "prefixTickRate": 64,
+        "describeSelf": "abstain",
+        "tacticalDecision": "abstain"
+      },
+      {
+        "round": 23,
+        "anchorTick": 194101,
+        "cutTick": 194102,
+        "observerAlias": "self-T",
+        "baselineTick": 187245,
+        "formationRefs": [
+          {
+            "round": 23,
+            "type": "kill",
+            "tick": 194101,
+            "eventIndex": 260
+          }
+        ],
+        "localRowLocator": {
+          "tick": 194101,
+          "side": "T",
+          "selection": "sole alive baseline participant of this side"
+        },
+        "retrospectiveOnly": {
+          "ticksUntilRoundEnd": 44
+        },
+        "modelBodySha256": "09b5582243466e3adef9a925f6155274193d1052a03df14e14486dcad7b64b98",
+        "auditedSelfSha256": "d79c42061b5cbab4becf8fb30cd2bcdd51d84791f237667679da1a4dd663ffd2",
+        "prefixTickRate": 64,
+        "describeSelf": "abstain",
+        "tacticalDecision": "abstain"
+      },
+      {
+        "round": 24,
+        "anchorTick": 201348,
+        "cutTick": 201349,
+        "observerAlias": "self-T",
+        "baselineTick": 195874,
+        "formationRefs": [
+          {
+            "round": 24,
+            "type": "kill",
+            "tick": 201348,
+            "eventIndex": 287
+          }
+        ],
+        "localRowLocator": {
+          "tick": 201348,
+          "side": "T",
+          "selection": "sole alive baseline participant of this side"
+        },
+        "retrospectiveOnly": {
+          "ticksUntilRoundEnd": 213
+        },
+        "modelBodySha256": "77794569c14362a7b6fdf7bed7389dc5a32ad9a771c4bcc1269dcb50535e5cd9",
+        "auditedSelfSha256": "6cf99f28441865e362f421be7fae87002befb943416392dfa1db04a36d8e806f",
+        "prefixTickRate": 64,
+        "describeSelf": "abstain",
+        "tacticalDecision": "abstain"
+      },
+      {
+        "round": 24,
+        "anchorTick": 201348,
+        "cutTick": 201349,
+        "observerAlias": "self-CT",
+        "baselineTick": 195874,
+        "formationRefs": [
+          {
+            "round": 24,
+            "type": "kill",
+            "tick": 201348,
+            "eventIndex": 287
+          }
+        ],
+        "localRowLocator": {
+          "tick": 201348,
+          "side": "CT",
+          "selection": "sole alive baseline participant of this side"
+        },
+        "retrospectiveOnly": {
+          "ticksUntilRoundEnd": 213
+        },
+        "modelBodySha256": "77794569c14362a7b6fdf7bed7389dc5a32ad9a771c4bcc1269dcb50535e5cd9",
+        "auditedSelfSha256": "624df71401f0bf080bf619b5fec9dddf9cb635d7ca56f68efa1d4109945ffc70",
+        "prefixTickRate": 64,
+        "describeSelf": "abstain",
+        "tacticalDecision": "abstain"
+      }
+    ],
+    "prefixTests": {
+      "status": "PASS",
+      "scope": "real native history plus controlled native-output mutations; not edited DEM bytes",
+      "variants": [
+        "hidden-enemy-state",
+        "hidden-enemy-roster-lifecycle",
+        "future-combat",
+        "future-winner",
+        "future-deaths-final-state",
+        "future-count-density",
+        "suffix-removed",
+        "future-clock",
+        "future-restart"
+      ],
+      "observerInputs": 8,
+      "comparisons": 72,
+      "wholeModelBodyCompared": true,
+      "includesUnknownsAliasesSamplingMetadata": true,
+      "privateIdentifiersAbsent": true,
+      "nonemptyLocalOwnStateCompared": true,
+      "warning": "Strict model self values are unknown: this is refusal stability, NOT usable player-information validation."
+    },
+    "offlineSampler": {
+      "decisionSuitability": "FAIL",
+      "witnessStatus": "PASS",
+      "tickBudget": 24000,
+      "originalCore": 4702,
+      "changedCore": 78362,
+      "originalOptional": 6835,
+      "changedOptional": 0,
+      "pastOptionalLost": 3452,
+      "firstLostTicks": [
+        2719,
+        2735,
+        2744,
+        2760,
+        2770,
+        2786,
+        2796,
+        2812
+      ],
+      "isolation": "fixed one-tick native query per cut; no offline sampling/coverage exported"
+    },
+    "validationHarness": "PASS",
+    "blockers": [
+      "Native own-entity rows do not establish P8.1A availableTick; no verified player observation channel.",
+      "Strict InformationState has no admitted gameplay facts; full P8.1B gate is NOT PASS."
+    ]
+  },
+  "realEvidenceSha256": "526d9ac8ac7263def8f5baf23e4eeb7b0b4edb88aea3396be35673fa5a3da6f9",
+  "commands": [
+    {
+      "label": "syntax-p8-1b-prefix.mjs",
+      "command": "node --check docs/experiments/p8-1b-prefix.mjs",
+      "exitCode": 0,
+      "status": "PASS",
+      "started": "2026-10-25T05:15:20.703Z",
+      "ended": "2026-10-25T05:15:20.841Z",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "syntax-p8-1b-dust2.mjs",
+      "command": "node --check docs/experiments/p8-1b-dust2.mjs",
+      "exitCode": 0,
+      "status": "PASS",
+      "started": "2026-10-25T05:15:20.842Z",
+      "ended": "2026-10-25T05:15:21.199Z",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "syntax-p8-1b-prefix.test.mjs",
+      "command": "node --check docs/experiments/p8-1b-prefix.test.mjs",
+      "exitCode": 0,
+      "status": "PASS",
+      "started": "2026-10-25T05:15:21.199Z",
+      "ended": "2026-10-25T05:15:21.62Z",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "syntax-p8-1b-checks.mjs",
+      "command": "node --check docs/experiments/p8-1b-checks.mjs",
+      "exitCode": 0,
+      "status": "PASS",
+      "started": "2026-10-25T05:15:21.62Z",
+      "ended": "2026-10-25T05:15:21.886Z",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "typecheck-force",
+      "command": "pnpm exec turbo run typecheck --force",
+      "exitCode": 0,
+      "status": "PASS",
+      "started": "2026-10-25T05:15:21.886Z",
+      "ended": "2026-10-25T05:15:31.773Z",
+      "logSha256": "2648a9ba2b5b4cc68d2c89a9cadef936ad787b98bf62a6f55640740ea18ab6b5"
+    },
+    {
+      "label": "build-force",
+      "command": "pnpm exec turbo run build --force",
+      "exitCode": 0,
+      "status": "PASS",
+      "started": "2026-10-25T05:15:31.774Z",
+      "ended": "2026-10-25T05:15:52.473Z",
+      "logSha256": "5ffeac558169d7977cb539f12909c2fe506560691292818a8a6dbb810f459e87"
+    },
+    {
+      "label": "match-model-tests",
+      "command": "pnpm --filter @cs2-analyst/match-model test",
+      "exitCode": 0,
+      "status": "PASS",
+      "started": "2026-10-25T05:15:52.48Z",
+      "ended": "2026-10-25T05:15:53.388Z",
+      "logSha256": "b5ef5404857ef8b8471bfbcac66874fa503ec7ce82af9130c969cd3bef8ef752"
+    },
+    {
+      "label": "parser-contract-tests",
+      "command": "pnpm --filter @cs2-analyst/dem-parser exec tsc -p tests/tsconfig.json",
+      "exitCode": 0,
+      "status": "PASS",
+      "started": "2026-10-25T05:15:53.389Z",
+      "ended": "2026-10-25T05:15:54.585Z",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "deep-review-contract-tests",
+      "command": "pnpm --filter @cs2-analyst/deep-review exec tsc -p tests/tsconfig.json",
+      "exitCode": 0,
+      "status": "PASS",
+      "started": "2026-10-25T05:15:54.585Z",
+      "ended": "2026-10-25T05:15:55.669Z",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "boundary",
+      "command": "node --test --test-reporter=tap docs/experiments/p8-1b-prefix.test.mjs",
+      "exitCode": 0,
+      "status": "PASS",
+      "started": "2026-10-25T05:15:55.67Z",
+      "ended": "2026-10-25T05:15:55.903Z",
+      "tests": 21,
+      "pass": 21,
+      "fail": 0,
+      "skipped": 0,
+      "logSha256": "a25c077c6b2aba8c09aced9dde6555e8b2fa9d886fd579c45dfc2c45826f0ffb"
+    },
+    {
+      "label": "parser-tests",
+      "command": "$env:DEM_TEST_FILE='.demo/dust2.dem'; node --test --test-concurrency=1 --test-reporter=tap packages/dem-parser/tests/converters.test.mjs packages/dem-parser/tests/native-provenance.test.mjs packages/dem-parser/tests/provider.test.mjs packages/dem-parser/tests/round-state.test.mjs packages/dem-parser/tests/replay.test.mjs packages/dem-parser/tests/spatial.test.mjs packages/dem-parser/tests/replay-real.test.mjs",
+      "exitCode": 0,
+      "status": "PASS",
+      "started": "2026-10-25T05:15:55.904Z",
+      "ended": "2026-10-25T05:16:50.239Z",
+      "tests": 48,
+      "pass": 48,
+      "fail": 0,
+      "skipped": 0,
+      "logSha256": "f9d52b0c30f7d928dfe07f7d70e8be8bd962bb694874087dc1bb05f66b61ed7c"
+    },
+    {
+      "label": "deep-review-tests",
+      "command": "node --test --test-concurrency=1 --test-reporter=tap packages/deep-review/tests/engagements.test.mjs packages/deep-review/tests/execution.test.mjs packages/deep-review/tests/findings.test.mjs packages/deep-review/tests/kill-impact.test.mjs packages/deep-review/tests/teamplay.test.mjs packages/deep-review/tests/utility.test.mjs",
+      "exitCode": 0,
+      "status": "PASS",
+      "started": "2026-10-25T05:16:50.24Z",
+      "ended": "2026-10-25T05:16:51.272Z",
+      "tests": 192,
+      "pass": 192,
+      "fail": 0,
+      "skipped": 0,
+      "logSha256": "5fc931865edc43636625b5b66ca3904662d573ecd54d241802c407111d5a815b"
+    },
+    {
+      "label": "real",
+      "command": "node docs/experiments/p8-1b-dust2.mjs .tmp/p8-1b/real.json",
+      "exitCode": 0,
+      "status": "PASS",
+      "started": "2026-10-25T05:16:51.273Z",
+      "ended": "2026-10-25T05:18:09.644Z",
+      "logSha256": "0eceee78518f47933751adfd5c0e1ea34b957307d05d655a95f39c0e6891c443"
+    },
+    {
+      "label": "parser-tests-explicit-fixture",
+      "command": "$env:DEM_TEST_FILE='.demo/dust2.dem'; $env:REPLAY_TEST_FILE='.demo/dust2.dem'; node --test --test-concurrency=1 --test-reporter=tap packages/dem-parser/tests/converters.test.mjs packages/dem-parser/tests/native-provenance.test.mjs packages/dem-parser/tests/provider.test.mjs packages/dem-parser/tests/round-state.test.mjs packages/dem-parser/tests/replay.test.mjs packages/dem-parser/tests/spatial.test.mjs packages/dem-parser/tests/replay-real.test.mjs",
+      "exitCode": 0,
+      "status": "PASS",
+      "started": "2026-10-25T05:21:10.304Z",
+      "ended": "2026-10-25T05:22:00.701Z",
+      "priorEnvReplay": null,
+      "tests": 48,
+      "pass": 48,
+      "fail": 0,
+      "skipped": 0,
+      "logSha256": "dce003e3aa38238573a5817a480fb09bceae3c7e8a06c755acf099f5388fa6c5"
+    }
+  ],
+  "validationHarness": {
+    "status": "PASS",
+    "runner": "node docs/experiments/p8-1b-checks.mjs",
+    "exitCode": 0,
+    "typecheck": {
+      "tasks": 15,
+      "cached": 0
+    },
+    "build": {
+      "tasks": 8,
+      "cached": 0
+    },
+    "uniqueRuntimeTests": {
+      "boundary": 21,
+      "parser": 48,
+      "deepReview": 192
+    },
+    "note": "Exit 0 is successful measurement/refusal verification, not stage PASS."
+  },
+  "exploratoryRuns": [
+    {
+      "command": "pnpm --filter @cs2-analyst/match-model build",
+      "exitCode": 0,
+      "status": "PASS",
+      "scope": "prerequisite build",
+      "logSha256": "4b8abc6267230906616a2e59917d16aac0f37f408b4ab806b4945c4116a59722"
+    },
+    {
+      "command": "pnpm --filter @cs2-analyst/dem-parser build",
+      "exitCode": 0,
+      "status": "PASS",
+      "scope": "prerequisite build",
+      "logSha256": "beb14c4af1f0ef81387aa091d8eb043f657754ce0558e1fad8cf4d9572aefb5e"
+    },
+    {
+      "command": "pnpm --filter @cs2-analyst/deep-review build",
+      "exitCode": 0,
+      "status": "PASS",
+      "scope": "prerequisite build",
+      "logSha256": "5425ea4d5a49f05e6f293f72d251c0b2d271c720297a2fbd4e275663dc06f65f"
+    },
+    {
+      "command": "node .tmp/p8-1b/probe.mjs",
+      "exitCode": 0,
+      "status": "PASS",
+      "scope": "initial raw field/candidate reconnaissance; superseded by reproducible final script",
+      "logSha256": "7d86855c86d407e257a148b76dac07c178faec7d211b1d9d3cff95cb5d64b70d"
+    },
+    {
+      "command": "node docs/experiments/p8-1b-dust2.mjs .tmp/p8-1b/real.json",
+      "exitCode": 0,
+      "status": "SUPERSEDED",
+      "acceptedStageEvidence": false,
+      "reason": "Initial version incorrectly equated native sample tick with availableTick; rejected during independent review. Saved initial PASS is invalid as stage evidence.",
+      "logSha256": "2b6af087ad121aed722cbe3612a78c47efc76c14211cd89c55ecd060c856aa05",
+      "resultSha256": "f448c4752e65253f8385d80e8b202235d321a06feaa97e805be974f68220c296"
+    },
+    {
+      "command": "node --test --test-reporter=tap docs/experiments/p8-1b-prefix.test.mjs",
+      "exitCode": 0,
+      "tests": 20,
+      "status": "SUPERSEDED",
+      "reason": "Before invalid-tick test added; final 21 tests supersede, not cumulative."
+    },
+    {
+      "command": "pnpm typecheck",
+      "exitCode": 0,
+      "status": "SUPERSEDED",
+      "tasks": 15,
+      "cached": 13,
+      "reason": "Replaced by final forced uncached typecheck.",
+      "logSha256": "a65ac8da217f69805ef2a3d4b1d2d2333cd91cb05b986b6920e1424485cbf7ba"
+    }
+  ],
+  "sourceDigests": {
+    "docs/experiments/p8-1b-prefix.mjs": {
+      "bytes": 7573,
+      "sha256": "a88edc4f387c0cedca4d720f8539e12e6cb5f0f9772ee6fc7dece3088f07fca6"
+    },
+    "docs/experiments/p8-1b-dust2.mjs": {
+      "bytes": 17978,
+      "sha256": "57145494373d300e47deec4690fbb45ffd4f1326c89e5cac4a7cd90accca76b4"
+    },
+    "docs/experiments/p8-1b-prefix.test.mjs": {
+      "bytes": 8672,
+      "sha256": "1b2edc57016ab3a95a986ed0df65d34f6f7ea2fd78898762480801639e5a5e4c"
+    },
+    "docs/experiments/p8-1b-checks.mjs": {
+      "bytes": 3324,
+      "sha256": "06a32f189752c61aa5395a3ec892c8ac29402db2a3d4a4f3e9c4554f2ed37a53"
+    }
+  },
+  "validationMeaning": {
+    "PASS": "Executed check met its stated scope",
+    "FAIL": "Executed criterion not met (e.g. offline sampler decision suitability)",
+    "NOT_RUN": "Not executed",
+    "BLOCKED": "Missing necessary evidence prevents P8.1B gate completion",
+    "SUPERSEDED": "Exploratory result invalidated or replaced, not final evidence"
+  },
+  "finalVerification": {
+    "status": "PASS",
+    "command": "node .tmp/p8-1b/final-check.mjs",
+    "exitCode": 0,
+    "checks": [
+      "JSON parsed",
+      "source hashes match",
+      "HEAD matches",
+      "production diff empty",
+      "recorded exits and counts consistent",
+      "no raw SteamID-valued observer fields"
+    ],
+    "runnerSyntaxAfterFixturePin": {
+      "command": "node --check docs/experiments/p8-1b-checks.mjs",
+      "exitCode": 0
+    },
+    "productionDiff": {
+      "command": "git diff --exit-code f44984e5464552c81737922c67df3d9f17c27c71 -- packages apps package.json pnpm-lock.yaml pnpm-workspace.yaml AGENTS.md",
+      "exitCode": 0
+    }
+  },
+  "mutationScopeClarification": "hidden-enemy-state changes all non-observer spatial rows, including opponents. hidden-enemy-roster-lifecycle chooses the first non-observer, which may be a teammate or opponent; it verifies isolation from global QC, not an opponent-specific selection guarantee."
+}
