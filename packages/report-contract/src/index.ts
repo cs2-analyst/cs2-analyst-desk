@@ -7,6 +7,7 @@ export type * from './performance.js';
 export type * from './replay.js';
 export type * from './heatmap.js';
 export type * from './library.js';
+export * from './spatial-facts.js';
 
 /**
  * Presentation-only addition to a frozen evidence row. Seconds from the round
@@ -150,6 +151,8 @@ export interface DesktopPlayerAnalysis {
 export interface DesktopAnalysisViews {
   players: DesktopPlayerComparison[];
   perPlayer: DesktopPlayerAnalysis[];
+  /** Additive local P8 facts; absent in older archives. */
+  spatialFacts?: import('./spatial-facts.js').DesktopSpatialFactsV1;
 }
 
 export interface DesktopMatchReport {

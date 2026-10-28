@@ -54,6 +54,15 @@ export type {
   RoundClutchResolution,
 } from "./clutch.js";
 export { analyzeMatch } from "./metrics.js";
+export { calculateDemDistance } from "./distance.js";
+export { resolvePrefixRoster } from "./prefix-roster.js";
+export { buildPrefixSpatialContext } from "./prefix-spatial-context.js";
+export { buildPrefixEndpointChange } from "./prefix-endpoint-change.js";
+export { buildPrefixReviewFragment } from "./prefix-review-fragment.js";
+export type { PrefixMatchForRoster, PrefixRosterResult } from "./prefix-roster.js";
+export type { PrefixRowsForContext, PrefixSpatialContext } from "./prefix-spatial-context.js";
+export type { PrefixEndpointChange } from "./prefix-endpoint-change.js";
+export type { PrefixReviewFragment } from "./prefix-review-fragment.js";
 export { computeRating, computePlayerPerformance, playerPerformanceInput, summarizePlayerPerformance, ratingAlgorithm, highlightRules } from './performance.js';
 export type { PlayerRating, RatingInput, PlayerHighlight, HighlightType, PlayerPerformance, PlayerPerformanceInput } from './performance.js';
 export { classifyUtilityWeapon, summarizeUtility } from "./utility.js";

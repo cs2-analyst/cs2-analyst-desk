@@ -49,7 +49,8 @@ const useStyles = makeStyles({
   banner: { flexShrink: 0, padding: '12px 24px 0' },
   center: { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px', padding: '24px', overflowY: 'auto' },
   reportFrame: { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' },
-  viewHeader: { flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', padding: '14px 24px', borderBottom: `1px solid ${palette.rowDivider}` },
+  viewHeader: { flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', padding: '14px 24px', borderBottom: `1px solid ${palette.rowDivider}`,
+    '@media (max-width: 750px)': { flexDirection: 'column', alignItems: 'stretch', gap: '8px' } },
   tabPanel: { flex: 1, minHeight: 0, overflowY: 'auto', padding: '20px 24px 32px', '&[hidden]': { display: 'none' } },
   // Layout A: the report panel never scrolls as a page; only the two content columns do.
   reportPanel: {
@@ -140,7 +141,8 @@ const useStyles = makeStyles({
   },
   timelineTime: { color: tokens.colorNeutralForeground3, fontVariantNumeric: 'tabular-nums' },
   playerName: { display: 'block', minWidth: 0, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  identityRow: { display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end', gap: '8px', flexWrap: 'wrap' },
+  identityRow: { display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end', gap: '8px', flexWrap: 'wrap',
+    '@media (max-width: 750px)': { justifyContent: 'flex-start' } },
 });
 
 /** Display-only number rules: counts 0, ADR/seconds 2, percentages 1, KAST integer. */
@@ -544,7 +546,7 @@ function Report({ report, playerId, replayActive, activeTab, onSelectView }: {
       <RoundTimeline rounds={timeline} expanded={expanded} highlighted={highlighted} onToggle={toggleRound} onReplay={report.replay?.available?showReplay:undefined} />
     </div>
     <div id="analysis-panel" role="tabpanel" aria-labelledby="analysis-tab" className={s.tabPanel} hidden={activeTab !== 'analysis'}>
-      <AnalysisViews analysis={report.analysis} playerId={playerId} />
+      <AnalysisViews analysis={report.analysis} playerId={playerId} onReplay={report.replay?.available ? showReplay : undefined} />
     </div>
     <div id="replay-panel" role="tabpanel" aria-labelledby="replay-tab" className={s.replayPanel} hidden={activeTab!=='replay'}>
       {unavailableReplayRound!==null?<><Body1>R{unavailableReplayRound} 的正式回合窗口不可靠，无法定位回放。</Body1><Button appearance="subtle" onClick={()=>setUnavailableReplayRound(null)}>浏览可用回合</Button></>:<>

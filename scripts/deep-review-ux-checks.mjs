@@ -275,7 +275,7 @@ export async function checkDeepReviewUx(evaluate, send, qaDir) {
       const panel = await evaluate(`(() => { const p = document.querySelector('[data-deep-panel="${tab}"]'); const r = p.getBoundingClientRect(); return { clientHeight: p.clientHeight, scrollHeight: p.scrollHeight, widthOverflow: p.scrollWidth - p.clientWidth, top: r.top, bottom: r.bottom, overflowY: getComputedStyle(p).overflowY }; })()`);
       assert.equal(panel.overflowY, 'auto', tab + ' must own its vertical scrolling');
       assert.ok(panel.widthOverflow <= 1, tab + ' horizontal overflow');
-      assert.ok(panel.clientHeight > 120, tab + ' lost usable height');
+      assert.ok(panel.clientHeight > 120, `${width}px ${tab} lost usable height: ${JSON.stringify(panel)}`);
       assert.ok(panel.bottom <= height + 1, tab + ' extends below viewport');
       assert.ok(panel.scrollHeight >= panel.clientHeight, tab + ' invalid scroll height');
       await screenshot('deep-review-real-' + width + '-' + tab);

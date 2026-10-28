@@ -5,6 +5,7 @@ import { promisify } from 'node:util';
 import { gzip as gzipCallback, gunzip as gunzipCallback, brotliCompress as brotliCallback, brotliDecompress as unbrotliCallback, constants } from 'node:zlib';
 import type { Match, MatchReplay, MatchSpatialEvidence } from '@cs2-analyst/match-model';
 import type { ArchiveVersions, ArchiveCapabilities, LibraryCapability, DesktopMatchReport, DesktopReplayChunk, DesktopReplayRequest } from '@cs2-analyst/report-contract';
+import { isDesktopSpatialFacts } from '@cs2-analyst/report-contract';
 import { upgradeReportPerformance } from './player-performance.ts';
 import { encodeStoredReplay, decodeStoredReplay } from './library-replay-codec.ts';
 import { createReplayProjections, validateReplayProjection, restoreProjectedChunk, type ReplayProjection } from './library-derived-replay.ts';
@@ -228,6 +229,10 @@ function validateReport(value: unknown, manifest: ArchiveManifest): asserts valu
     || !plain(value.analysis) || !Array.isArray(value.analysis.players) || !Array.isArray(value.analysis.perPlayer)
     || !plain(value.deepReview) || typeof value.deepReview.available !== 'boolean' || !Array.isArray(value.deepReview.players)
     || hasSession(value)) fail('report contract or identity');
+  if (value.analysis.spatialFacts !== undefined
+    && !isDesktopSpatialFacts(value.analysis.spatialFacts, manifest.matchId,
+      value.players.map(player => plain(player) && typeof player.id === 'string' ? player.id : '')))
+    fail('spatial facts contract or identity');
   const replay = value.replay;
   if (replay !== undefined && (!plain(replay) || replay.schemaVersion !== 1 || replay.matchId !== manifest.matchId
     || replay.map !== manifest.summary.map || typeof replay.available !== 'boolean' || !Array.isArray(replay.rounds)
