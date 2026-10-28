@@ -544,7 +544,7 @@ function Report({ report, playerId, replayActive, activeTab, onSelectView }: {
       <RoundTimeline rounds={timeline} expanded={expanded} highlighted={highlighted} onToggle={toggleRound} onReplay={report.replay?.available?showReplay:undefined} />
     </div>
     <div id="analysis-panel" role="tabpanel" aria-labelledby="analysis-tab" className={s.tabPanel} hidden={activeTab !== 'analysis'}>
-      <AnalysisViews analysis={report.analysis} playerId={playerId} />
+      <AnalysisViews analysis={report.analysis} playerId={playerId} onReplay={report.replay?.available ? showReplay : undefined} />
     </div>
     <div id="replay-panel" role="tabpanel" aria-labelledby="replay-tab" className={s.replayPanel} hidden={activeTab!=='replay'}>
       {unavailableReplayRound!==null?<><Body1>R{unavailableReplayRound} 的正式回合窗口不可靠，无法定位回放。</Body1><Button appearance="subtle" onClick={()=>setUnavailableReplayRound(null)}>浏览可用回合</Button></>:<>

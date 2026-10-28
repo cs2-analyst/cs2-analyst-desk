@@ -6,7 +6,8 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" }
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
+    "./local-evidence": { "types": "./dist/local-evidence.d.ts", "import": "./dist/local-evidence.js" }
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

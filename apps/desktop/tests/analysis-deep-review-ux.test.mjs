@@ -23,6 +23,7 @@ registerHooks({ resolve(specifier, context, nextResolve) {
   return nextLoad(url, context);
 } });
 const { AnalysisViews } = await import('../renderer/src/analysis-views.tsx');
+const { SpatialFactsView } = await import('../renderer/src/spatial-facts-view.tsx');
 const { DeepReview, DEEP_REVIEW_HELP, DEEP_REVIEW_PARTIAL_HELP } = await import('../renderer/src/deep-review.tsx');
 const render = element => renderToStaticMarkup(createElement(SSRProvider, null, element));
 const tag = (html, marker) => html.match(new RegExp('<[^>]*' + marker + '[^>]*>'))?.[0] ?? '';
@@ -57,30 +58,62 @@ const deepPlayer = (status = 'complete', populated = true) => ({
   contexts: populated ? [finding('context')] : [],
 });
 
-test('analysis keeps three mounted panels and defaults to player comparison', () => {
+test('analysis keeps four mounted panels and defaults to player comparison', () => {
   const html = render(createElement(AnalysisViews, { analysis: analysis(), playerId: '1' }));
-  assert.equal([...html.matchAll(/data-analysis-tab="/g)].length, 3);
-  assert.equal([...html.matchAll(/data-analysis-panel="/g)].length, 3);
+  assert.equal([...html.matchAll(/data-analysis-tab="/g)].length, 4);
+  assert.equal([...html.matchAll(/data-analysis-panel="/g)].length, 4);
   assert.ok(tag(html, 'data-analysis-tab="comparison"').includes('aria-selected="true"'));
   assert.ok(!tag(html, 'data-analysis-panel="comparison"').includes('hidden'));
   assert.ok(tag(html, 'data-analysis-panel="trend"').includes('hidden'));
   assert.ok(tag(html, 'data-analysis-panel="sides"').includes('hidden'));
+  assert.ok(tag(html, 'data-analysis-panel="spatial"').includes('hidden'));
   assert.equal([...html.matchAll(/data-comparison-player=/g)].length, 2);
   assert.equal([...html.matchAll(/data-trend-round=/g)].length, 2);
   assert.equal([...html.matchAll(/data-analysis-side=/g)].length, 2);
-  for (const text of ['全场玩家对比', '回合表现趋势', 'CT / T 表现对比', '按所选指标降序']) assert.ok(html.includes(text), text);
+  for (const text of ['全场玩家对比', '回合表现趋势', 'CT / T 表现对比', '空间事实', '按所选指标降序']) assert.ok(html.includes(text), text);
 });
 
 test('analysis tabs survive missing comparison and per-player data with honest empty states', () => {
   const noPlayers = render(createElement(AnalysisViews, { analysis: analysis([]), playerId: '1' }));
-  assert.equal([...noPlayers.matchAll(/data-analysis-tab="/g)].length, 3);
+  assert.equal([...noPlayers.matchAll(/data-analysis-tab="/g)].length, 4);
   assert.ok(noPlayers.includes('这场没有可用的玩家对比数据。'));
   assert.ok(noPlayers.includes('当前玩家没有可用的回合趋势数据。'));
   assert.ok(noPlayers.includes('当前玩家没有可用的 CT / T 对比数据。'));
   const noCurrent = render(createElement(AnalysisViews, { analysis: { ...analysis(), perPlayer: [] }, playerId: '1' }));
-  assert.equal([...noCurrent.matchAll(/data-analysis-tab="/g)].length, 3);
+  assert.equal([...noCurrent.matchAll(/data-analysis-tab="/g)].length, 4);
   assert.ok(noCurrent.includes('当前玩家没有可用的回合趋势数据。'));
   assert.ok(noCurrent.includes('当前玩家没有可用的 CT / T 对比数据。'));
+});
+
+test('spatial facts show exact server values, limits and honest legacy/unavailable states', () => {
+  const legacy = render(createElement(SpatialFactsView, { players: analysis().players }));
+  assert.ok(legacy.includes('此归档尚未计算空间事实'));
+  const unavailable = render(createElement(SpatialFactsView, { players: analysis().players,
+    facts: { status: 'unavailable', reason: 'extraction-failed' } }));
+  assert.ok(unavailable.includes('空间事实暂时无法计算'));
+  const limited = render(createElement(SpatialFactsView, { players: analysis().players,
+    facts: { status: 'unavailable', reason: 'no-valid-facts', coverage: { truncated: true, withheld: 2 } } }));
+  assert.ok(limited.includes('已检查的范围内'));
+  assert.ok(limited.includes('后续内容未评估'));
+  assert.ok(limited.includes('证据不足或冲突'));
+  const facts = { status: 'partial', coverage: { inspectedTicks: 8, deathTicks: 9, withheld: 1, truncated: true },
+    cards: [{ kind: 'event-prestate', round: 3, eventTick: 40, sampleTick: 39,
+      participants: [{ role: 'killer', playerId: '1', side: 'CT', position: { x: 0, y: 0, z: 0 } },
+        { role: 'victim', playerId: '2', side: 'T', position: { x: 3, y: 4, z: 12 } }],
+      horizontal: 5, threeDimensional: 13 }] };
+  const html = render(createElement(SpatialFactsView, { facts, players: analysis().players, onReplay: () => {} }));
+  for (const text of ['服务器空间事实', '击杀事件前状态', 'tick 39', '水平距离 5.0', '三维距离 13.0',
+    '不证明视野', '查看回放']) assert.ok(html.includes(text), text);
+  assert.ok(tag(html, 'data-spatial-card="event-prestate"').length > 0);
+  const formation = { ...facts, cards: [{ kind: 'one-vs-one-formation', round: 3, eventTick: 40, startTick: 30,
+    interiorNotEvaluatedTicks: 9, separation: { startHorizontal: 5, formationHorizontal: 10,
+      startThreeDimensional: 5, formationThreeDimensional: 10 },
+    participants: [{ playerId: '1', side: 'CT', startPosition: { x: 1, y: 2, z: 3 },
+      endPosition: { x: 4, y: 5, z: 6 }, horizontalDisplacement: 3, threeDimensionalDisplacement: 4 },
+    { playerId: '2', side: 'T', startPosition: { x: 7, y: 8, z: 9 },
+      endPosition: { x: 10, y: 11, z: 12 }, horizontalDisplacement: 3, threeDimensionalDisplacement: 4 }] }] };
+  const formationHtml = render(createElement(SpatialFactsView, { facts: formation, players: analysis().players }));
+  for (const text of ['起点 XYZ：1.0, 2.0, 3.0', '形成时 XYZ：4.0, 5.0, 6.0']) assert.ok(formationHtml.includes(text), text);
 });
 
 test('deep review keeps all three tabs mounted and defaults to priority reviews', () => {

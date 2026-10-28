@@ -2,12 +2,12 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { createReadStream,existsSync,mkdirSync,mkdtempSync,readFileSync,readdirSync,statSync,writeFileSync } from 'node:fs';
+import { createReadStream,existsSync,mkdirSync,mkdtempSync,readFileSync,readdirSync,realpathSync,statSync,writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { createServer } from 'node:net';
-import { dirname,join,resolve } from 'node:path';
+import { dirname,isAbsolute,join,relative,resolve,sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 import { closeApp, connectCdp, waitFor as waitForState, withCleanup } from './smoke-runtime.mjs';
@@ -86,7 +86,7 @@ async function waitForPausedFrame(evaluate, label) {
 const root=fileURLToPath(new URL('../',import.meta.url)),desktop=join(root,'apps/desktop');
 const require=createRequire(new URL('../apps/desktop/package.json',import.meta.url));
 const production=process.argv.includes('--production'),broken=process.argv.includes('--broken'),noMaps=process.argv.includes('--no-map'),nuke=process.argv.includes('--nuke');
-const qa=join(root,'.tmp/p6-qa');mkdirSync(qa,{recursive:true});
+const qa=process.env.CS2_ANALYST_QA_DIR??join(root,'.tmp/p6-qa');mkdirSync(qa,{recursive:true});
 const resourceManifest=JSON.parse(readFileSync(join(root,'docs/replay-resources.json'),'utf8'));
 const expectedImages=resourceManifest.maps.flatMap(map=>map.images.map(image=>({prefix:`${map.map}${image.id==='default'?'':'_'+image.id}-`,...image})));
 if(broken)writeFileSync(join(qa,'broken.dem'),'synthetic corrupt input, not a real DEM fixture');
@@ -102,7 +102,8 @@ const executable=installed??require('electron');assert.ok(existsSync(executable)
 const server=createServer();await new Promise(r=>server.listen(0,'127.0.0.1',r));const port=server.address().port;await new Promise(r=>server.close(r));
 const profilePrefix=join(tmpdir(),'cs2-analyst-replay-profile-');
 const profile=mkdtempSync(profilePrefix);
-const env={...process.env,NODE_PATH:'',CS2_ANALYST_DEM_PATH:demo,CS2_ANALYST_TEST_DEM_PATH:demo};delete env.ELECTRON_RUN_AS_NODE;delete env.ELECTRON_RENDERER_URL;
+const localAppData=mkdtempSync(join(tmpdir(),'cs2-analyst-replay-data-'));
+const env={...process.env,NODE_PATH:'',LOCALAPPDATA:localAppData,CS2_ANALYST_DEM_PATH:demo,CS2_ANALYST_TEST_DEM_PATH:demo};delete env.ELECTRON_RUN_AS_NODE;delete env.ELECTRON_RENDERER_URL;
 const startedAt=Date.now();
 const child=spawn(executable,[...(installed?[]:['.']),`--remote-debugging-port=${port}`,`--user-data-dir=${profile}`,'--disable-features=CalculateNativeWinOcclusion','--disable-backgrounding-occluded-windows'],{cwd:installed?dirname(installed):desktop,env,windowsHide:true,stdio:['ignore','pipe','pipe']});
 const scope=new ProcessScope(),tracked=scope.track(child,'replay Electron',startedAt);
@@ -110,6 +111,7 @@ let logs='',page,browser,metrics={};child.stdout.on('data',d=>logs+=d);child.std
 async function waitFor(fn,label,timeout=30_000){
   return waitForState(async()=>{
     if(tracked.error)throw new Error(`Electron launcher failed: ${tracked.error.message}`,{cause:tracked.error});
+    if(page)await page.evaluate(`document.querySelector('[data-import-player-later]')?.click()`).catch(()=>{});
     const result=await fn();if(result)return result;
     if(child.exitCode!==null||child.signalCode!==null)throw new Error(`Electron exited while waiting for ${label}: ${child.exitCode} ${logs}`);
     return result;
@@ -125,7 +127,7 @@ let reportFingerprint,runFailure;
 try{
   await scope.live();
   const target=await waitFor(async()=>{try{return (await(await fetch(`http://127.0.0.1:${port}/json/list`,{signal:AbortSignal.timeout(1000)})).json()).find(p=>p.type==='page');}catch{return null;}},'CDP page');
-  page=await connect(target.webSocketDebuggerUrl);const version=await(await fetch(`http://127.0.0.1:${port}/json/version`,{signal:AbortSignal.timeout(1000)})).json();browser=await connect(version.webSocketDebuggerUrl);
+  page=await connect(target.webSocketDebuggerUrl,120000);const version=await(await fetch(`http://127.0.0.1:${port}/json/version`,{signal:AbortSignal.timeout(1000)})).json();browser=await connect(version.webSocketDebuggerUrl);
   const exceptions=[];page.socket.addEventListener('message',e=>{const m=JSON.parse(e.data);if(m.method==='Runtime.exceptionThrown')exceptions.push(m.params);});
   const evaluate=async expression=>{const r=await page.send('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true});if(r.exceptionDetails)throw new Error(JSON.stringify(r.exceptionDetails));return r.result?.value;};
   const canvasSelector='#replay-panel canvas[role=img]';
@@ -158,10 +160,11 @@ try{
     await closeApp({child,evaluate,socket:page.socket});
   }else{
   const before=(await processTree()).map(p=>p.Id);
-  const imported=await evaluate('(async()=>{const start=performance.now();window.__p6=await window.cs2Analyst.importDemo();return {result:window.__p6,totalMs:performance.now()-start};})()');
+  const imported=await evaluate('(async()=>{const stop=window.cs2Analyst.onImportPlayers(()=>void window.cs2Analyst.selectImportPlayer(null));const start=performance.now();try{window.__p6=await window.cs2Analyst.importDemo();return {result:window.__p6,totalMs:performance.now()-start};}finally{stop();}})()');
   assert.equal(imported.result.kind,'success');const report=imported.result.report,meta=report.replay;
   assert.equal(meta.available,true,meta.unavailableReason??'Replay unavailable');assert.equal(report.schemaVersion,2);assert.equal(meta.perspective,'global');
-  const {replay,heatmap,...baseReport}=report;reportFingerprint=hash(baseReport);
+  const {replay,heatmap,...baseReport}=report;const {spatialFacts,...originalAnalysis}=baseReport.analysis;
+  reportFingerprint=hash({...baseReport,analysis:originalAnalysis});
   const processes=(await browser.send('SystemInfo.getProcessInfo')).processInfo;
   const osProcesses=(await processTree());
   const workerIds=osProcesses.filter(p=>!before.includes(p.Id)&&p.Role==='analysis-utility').map(p=>p.Id);
@@ -414,7 +417,7 @@ finally{
   await withCleanup(()=>{if(runFailure)throw runFailure;},[
     ()=>{page?.socket.close();browser?.socket.close();},
     ()=>scope.cleanup(),
-    async()=>{assert.ok(resolve(profile).startsWith(resolve(profilePrefix)),'Profile cleanup stays within this task temporary profile');await rm(profile,{recursive:true,force:true,maxRetries:8,retryDelay:250});}
+    async()=>{for(const target of [profile,localAppData]){const rootTemp=realpathSync(tmpdir()),resolved=realpathSync(target),rel=relative(rootTemp,resolved);assert.ok(rel&&!isAbsolute(rel)&&rel!=='..'&&!rel.startsWith(`..${sep}`),'Cleanup stays inside the temporary directory');await rm(resolved,{recursive:true,force:true,maxRetries:8,retryDelay:250});}}
   ]);
 }
 // The unchanged public report path must equal the worker's report, excluding additive replay metadata.

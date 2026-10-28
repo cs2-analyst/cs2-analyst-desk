@@ -11,7 +11,9 @@ async function reanalysisHarness({ expectedMatchId = 'a'.repeat(64), selfPlayerI
   const code = transformSync(readFileSync(new URL('../electron/report-worker.ts', import.meta.url), 'utf8'), { loader: 'ts', format: 'cjs' }).code;
   vm.runInNewContext(code, { process: { parentPort: port, on() {} }, require: name => {
     if (name === '@cs2-analyst/dem-parser') return { Demoparser2Provider: class { async parseWithReplay() { return { match: { id: 'a'.repeat(64), map: 'de_dust2', players: [{ steamId: 'self', nickname: 'Self' }] }, spatial: null, replay: null }; } } };
-    if (name === './report.js') return { buildDesktopReport: (_m, _p, _s, _t, self) => { identities.push(self); return { schemaVersion: 2, players: [{ id: 'self' }], match: { id: 'a'.repeat(64) } }; } };
+    if (name === './report.js') return { buildDesktopReport: (_m, _p, _s, _t, self) => { identities.push(self); return { schemaVersion: 2, players: [{ id: 'self' }], analysis: { players: [], perPlayer: [] }, match: { id: 'a'.repeat(64) } }; } };
+    if (name === './spatial-facts.ts') return { buildDesktopSpatialFacts: async () => null, unavailableDesktopSpatialFacts: matchId => ({ matchId, status: 'unavailable' }) };
+    if (name === '@cs2-analyst/report-contract') return { isDesktopSpatialFacts: () => false };
     if (name === './player-name.ts') return { displayPlayerName: (_id, name) => name };
     if (name === './replay-session.ts') return { ReplaySession: class {} };
     if (name === './library-derived-replay.ts') return {};
@@ -46,11 +48,13 @@ test('reanalysis worker rejects a missing saved player rather than clearing the 
 
 test('replay cache failure degrades independently after the successful unchanged report',async()=>{
   const port=new EventEmitter(),sent=[];port.postMessage=value=>sent.push(value);
-  const report={schemaVersion:2,match:{id:'id'},analytics:[{kills:4}]};let reads=0;
+  const report={schemaVersion:2,match:{id:'id'},players:[],analysis:{players:[],perPlayer:[]},analytics:[{kills:4}]};let reads=0;
   const code=transformSync(readFileSync(new URL('../electron/report-worker.ts',import.meta.url),'utf8'),{loader:'ts',format:'cjs'}).code;
   vm.runInNewContext(code,{process:{parentPort:port,on(){}},require:name=>{
     if(name==='@cs2-analyst/dem-parser')return {Demoparser2Provider:class {async parseWithReplay(){reads++;return {match:{id:'id',map:'map'},spatial:{},replay:{},replayUnavailableReason:null};}}};
     if(name==='./report.js')return {buildDesktopReport:()=>report};
+    if(name==='./spatial-facts.ts')return {buildDesktopSpatialFacts:async()=>null,unavailableDesktopSpatialFacts:matchId=>({matchId,status:'unavailable'})};
+    if(name==='@cs2-analyst/report-contract')return {isDesktopSpatialFacts:()=>false};
     if(name==='./player-name.ts')return {displayPlayerName:(_id,nickname)=>nickname?.trim()?nickname:'未知玩家'};
     if(name==='./replay-session.ts')return {ReplaySession:class {constructor(){throw new Error('budget');}}};
     if(name==='./library-derived-replay.ts')return {};

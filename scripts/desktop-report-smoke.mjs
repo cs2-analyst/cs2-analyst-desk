@@ -6,11 +6,11 @@ import { ProcessScope } from './installed-smoke-lifecycle.mjs';
 import { checkWindowShell } from './window-shell-checks.mjs';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { existsSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, realpathSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { isAbsolute, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { rm } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -27,6 +27,13 @@ assert.ok(existsSync(join(desktop, 'dist/electron/main.js')), '请先构建桌�
 const STIFF_ENGLISH = [/\bUtility\b/, /\bFlash\b/, /\bSmoke\b/, /\bHE\b/, /\bIncendiary\b/, /\bMolotov\b/, /\bDecoy\b/, /\bduration\b/i, /\btraded\b/i, /\btradeable\b/i, /可交易/, /被交易/, /\bwin\b/, /\bloss\b/];
 function assertNoStiffEnglish(text) {
   for (const pattern of STIFF_ENGLISH) assert.ok(!pattern.test(text), 'UI 出现生硬英文或旧术语：' + pattern);
+}
+
+async function removeOwnedTemp(target) {
+  const root = realpathSync(tmpdir()), resolved = realpathSync(target), rel = relative(root, resolved);
+  if (!rel || isAbsolute(rel) || rel === '..' || rel.startsWith(`..${sep}`))
+    throw new Error('unsafe temporary cleanup target');
+  await rm(resolved, { recursive: true, force: true, maxRetries: 8, retryDelay: 250 });
 }
 
 async function freePort() {
@@ -108,6 +115,7 @@ async function scenario({ label, demPath, ready, assertReport, assertDom, import
       await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 });
     }
     const body = await waitFor(async () => {
+      await evaluate(`document.querySelector('[data-import-player-later]')?.click()`);
       const text = await evaluate('document.body.textContent');
       return ready(text) ? text : null;
     }, 120_000, label, { diagnostics: () => evaluate('({text:document.body.innerText,status:document.querySelector("main")?.dataset.status})') });
@@ -125,8 +133,8 @@ async function scenario({ label, demPath, ready, assertReport, assertDom, import
       () => socket?.close(),
       () => scope.cleanup(),
       // Windows helpers may briefly hold profile handles after the parent exits.
-      () => rm(profile, { recursive: true, force: true, maxRetries: 8, retryDelay: 250 }),
-      () => rm(localAppData, { recursive: true, force: true, maxRetries: 8, retryDelay: 250 }),
+      () => removeOwnedTemp(profile),
+      () => removeOwnedTemp(localAppData),
     ]);
   }
 }
@@ -145,10 +153,11 @@ await scenario({
       '回合开始后', '26.63 秒', '局面', '结果', '回合时间线', '查看详情']) {
       assert.ok(text.includes(expected), `报告缺少内容：${expected}`);
     }
-    assert.ok(!/tick \d+/.test(text), '证据行不应默认显示原始 tick');
   },
   assertDom: async (evaluate, send) => {
     assert.equal(await evaluate(`document.getElementById('report-panel').hidden`), false);
+    assert.equal(await evaluate(`/tick \d+/.test(document.getElementById('report-panel').textContent)`), false,
+      '默认报告证据行不应显示原始 tick');
     assert.equal(await evaluate(`document.getElementById('report-tab').getAttribute('aria-selected')`), 'true');
     assert.deepEqual(await evaluate(`[...document.querySelectorAll('[data-app-sidebar] [role="tab"]')].map(t => t.querySelector('.fui-Tab__content').textContent)`), ['比赛报告', '深度复盘', '回合时间线', '分析', '比赛回放', '热力图']);
     assert.equal(await evaluate(`[...document.querySelectorAll('[role="tabpanel"]')].filter(p => !p.parentElement.closest('[role="tabpanel"]')).length`), 6);
@@ -247,8 +256,8 @@ await scenario({
         key: t.dataset.analysisTab, label: t.querySelector('.fui-Tab__content')?.textContent ?? t.textContent, selected: t.getAttribute('aria-selected'),
         panelHidden: document.querySelector('[data-analysis-panel="' + t.dataset.analysisTab + '"]').hidden,
       }))`);
-      assert.deepEqual(tabs.map(t => t.key), ['comparison', 'trend', 'sides']);
-      assert.deepEqual(tabs.map(t => t.label), ['全场玩家对比', '回合表现趋势', 'CT / T 表现对比']);
+      assert.deepEqual(tabs.map(t => t.key), ['comparison', 'trend', 'sides', 'spatial']);
+      assert.deepEqual(tabs.map(t => t.label), ['全场玩家对比', '回合表现趋势', 'CT / T 表现对比', '空间事实']);
       for (const t of tabs) {
         assert.equal(t.selected, String(t.key === active), 'analysis selected: ' + t.key);
         assert.equal(t.panelHidden, t.key !== active, 'analysis panel: ' + t.key);
@@ -256,7 +265,7 @@ await scenario({
     };
     await showAnalysisTab('comparison');
     await assertNoPageScroll(evaluate, '分析初始视图');
-    assert.equal(await evaluate(`document.querySelectorAll('#analysis-panel [data-analysis-tab]').length`), 3, '分析应始终显示三个选项卡');
+    assert.equal(await evaluate(`document.querySelectorAll('#analysis-panel [data-analysis-tab]').length`), 4, '分析应始终显示四个选项卡');
     const analysis = await evaluate(`(() => {
       const rows = [...document.querySelectorAll('[data-comparison-player]')];
       return { count: rows.length, values: rows.map(r => Number(r.dataset.metricValue)),
@@ -321,6 +330,18 @@ await scenario({
       }
     }
 
+    await showAnalysisTab('spatial');
+    await assertNoPageScroll(evaluate, '空间事实');
+    const spatial = await evaluate(`(() => {const panel=document.querySelector('[data-analysis-panel="spatial"]');
+      return {text:panel.textContent,cards:panel.querySelectorAll('[data-spatial-card]').length,
+        replayButtons:[...panel.querySelectorAll('button')].filter(b=>b.textContent.includes('查看回放')).length};})()`);
+    assert.ok(spatial.cards > 0 && spatial.replayButtons > 0, '真实 DEM 应显示可回放的空间事实');
+    for (const text of ['服务器空间事实', '不证明视野', 'DEM 单位']) assert.ok(spatial.text.includes(text), text);
+    await evaluate(`document.querySelector('[data-analysis-panel="spatial"] [data-spatial-card] button').click()`);
+    await waitFor(async () => evaluate(`!document.getElementById('replay-panel').hidden`), 15_000, '空间事实回放链接');
+    await evaluate(`document.getElementById('analysis-tab').click()`);
+    await waitFor(async () => evaluate(`!document.getElementById('analysis-panel').hidden`), 10_000, '返回空间事实');
+
     // Screenshot artifacts outside the checkout; each tab owns its own scroll surface.
     if (process.env.CS2_ANALYST_QA_DIR) {
       await send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
@@ -344,6 +365,10 @@ await scenario({
       await settleUi(evaluate, 'sides screenshot');
       const sidesShot = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
       writeFileSync(join(process.env.CS2_ANALYST_QA_DIR, 'analysis-sides.png'), Buffer.from(sidesShot.data, 'base64'));
+      await showAnalysisTab('spatial');
+      await settleUi(evaluate, 'spatial facts screenshot');
+      const spatialShot = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
+      writeFileSync(join(process.env.CS2_ANALYST_QA_DIR, 'analysis-spatial.png'), Buffer.from(spatialShot.data, 'base64'));
       await send('Emulation.clearDeviceMetricsOverride');
     }
     await evaluate(`document.getElementById('report-tab').click()`);
@@ -391,6 +416,7 @@ await scenario({
       return status && status !== 'success' ? status : null;
     }, 15_000, '重新导入开始');
     await waitFor(async () => {
+      await evaluate(`document.querySelector('[data-import-player-later]')?.click()`);
       const state = await evaluate(`({ status: document.querySelector('main')?.dataset.status,
         report: !document.getElementById('report-panel')?.hidden,
         selected: document.getElementById('report-tab')?.getAttribute('aria-selected') })`);
@@ -438,4 +464,4 @@ await withCleanup(async () => {
       assert.ok(text.includes('选择 DEM'), '拒绝后应保留重新选择入口');
     },
   });
-}, [() => rm(dir, { recursive: true, force: true, maxRetries: 8, retryDelay: 250 })]);
+}, [() => removeOwnedTemp(dir)]);

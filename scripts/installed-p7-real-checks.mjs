@@ -45,13 +45,14 @@ export async function checkInstalledP7Real(session, qaDir) {
       assert.equal(await evaluate(`document.querySelectorAll('[data-rule]').length`), 5);
       record('report real KPI and Findings', { kda: '25 / 20 / 4', findings: 5 });
       await navigate('analysis');
-      await tabs('analysis', ['comparison', 'trend', 'sides']);
+      await tabs('analysis', ['comparison', 'trend', 'sides', 'spatial']);
       assert.equal(await evaluate(`document.querySelectorAll('[data-comparison-player]').length`), 10);
       assert.equal(await evaluate(`document.querySelectorAll('[data-trend-round]').length`), 24);
       assert.ok(await evaluate(`document.querySelector('[data-analysis-side="CT"]').textContent.includes('68.25')&&document.querySelector('[data-analysis-side="T"]').textContent.includes('114.50')`));
+      await evaluate(`document.querySelector('[data-analysis-tab="sides"]').click()`);
       await navigate('report'); await navigate('analysis');
       assert.equal(await evaluate(`document.querySelector('[data-analysis-tab="sides"]').getAttribute('aria-selected')`), 'true');
-      record('analysis three tabs and navigation state', { players: 10, rounds: 24 });
+      record('analysis four tabs and navigation state', { players: 10, rounds: 24 });
       await navigate('deep-review');
       await tabs('deep', ['reviews', 'highlights', 'contexts']);
       assert.ok(await evaluate(`document.querySelectorAll('#deep-review-panel [data-deep-kind]').length>0`), 'real imported Deep Review must contain findings');
@@ -114,7 +115,7 @@ export async function checkInstalledP7Real(session, qaDir) {
           await shot(`${view}-${width}x${height}`);
           if (view === 'analysis' || view === 'deep-review') {
             const kind = view === 'analysis' ? 'analysis' : 'deep';
-            const keys = kind === 'analysis' ? ['comparison', 'trend', 'sides'] : ['reviews', 'highlights', 'contexts'];
+            const keys = kind === 'analysis' ? ['comparison', 'trend', 'sides', 'spatial'] : ['reviews', 'highlights', 'contexts'];
             for (const key of keys) {
               await evaluate(`document.querySelector('[data-${kind}-tab="${key}"]').click()`);
               await settleUi(evaluate);
