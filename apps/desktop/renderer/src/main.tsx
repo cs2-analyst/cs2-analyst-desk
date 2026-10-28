@@ -49,7 +49,8 @@ const useStyles = makeStyles({
   banner: { flexShrink: 0, padding: '12px 24px 0' },
   center: { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px', padding: '24px', overflowY: 'auto' },
   reportFrame: { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' },
-  viewHeader: { flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', padding: '14px 24px', borderBottom: `1px solid ${palette.rowDivider}` },
+  viewHeader: { flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', padding: '14px 24px', borderBottom: `1px solid ${palette.rowDivider}`,
+    '@media (max-width: 750px)': { flexDirection: 'column', alignItems: 'stretch', gap: '8px' } },
   tabPanel: { flex: 1, minHeight: 0, overflowY: 'auto', padding: '20px 24px 32px', '&[hidden]': { display: 'none' } },
   // Layout A: the report panel never scrolls as a page; only the two content columns do.
   reportPanel: {
@@ -140,7 +141,8 @@ const useStyles = makeStyles({
   },
   timelineTime: { color: tokens.colorNeutralForeground3, fontVariantNumeric: 'tabular-nums' },
   playerName: { display: 'block', minWidth: 0, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  identityRow: { display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end', gap: '8px', flexWrap: 'wrap' },
+  identityRow: { display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end', gap: '8px', flexWrap: 'wrap',
+    '@media (max-width: 750px)': { justifyContent: 'flex-start' } },
 });
 
 /** Display-only number rules: counts 0, ADR/seconds 2, percentages 1, KAST integer. */
