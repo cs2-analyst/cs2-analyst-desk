@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   Badge, Body1, Button, Card, Caption1,
-  FluentProvider, MessageBar, MessageBarBody, Subtitle1,
+  FluentProvider, Subtitle1,
   Tab, TabList, Title1, Title2, Tooltip, makeStyles, tokens,
 } from '@fluentui/react-components';
 import type {
@@ -28,6 +28,7 @@ import { HeatmapView } from './heatmap-view';
 import type { ReplayJump } from './replay-player';
 import { TaskDialog, taskBlocksWorkspace } from './task-dialog';
 import { LoadingRows, LoadingOverlay, useLoadingFeedback } from './loading-ui';
+import { DismissibleMessageBar } from './dismissible-message-bar';
 import './collapse-motion.css';
 
 /** One surface for every card on the page: same background, same weak border, same radius, no shadows. */
@@ -489,10 +490,10 @@ function Report({ report, playerId, replayActive, activeTab, onSelectView }: {
       </div>
     </div>
     <div id="deep-review-panel" role="tabpanel" aria-labelledby="deep-review-tab" className={s.tabPanel} hidden={activeTab !== 'deep-review'}>
-      <DeepReview key={playerId} player={report.deepReview.players.find(p => p.playerId === playerId)!} onShowRounds={showRounds} onReplayRound={report.replay?.available?showReplay:undefined} />
+      <DeepReview key={playerId} active={activeTab === 'deep-review'} player={report.deepReview.players.find(p => p.playerId === playerId)!} onShowRounds={showRounds} onReplayRound={report.replay?.available?showReplay:undefined} />
     </div>
     <div id="report-panel" role="tabpanel" aria-labelledby="report-tab" className={s.reportPanel} hidden={activeTab !== 'report'}>
-      {p.coverage.notes.length ? <div className={s.reportWarning}><MessageBar intent="warning"><MessageBarBody>{p.coverage.notes.join(' ')}</MessageBarBody></MessageBar></div> : null}
+      {activeTab === 'report' && p.coverage.notes.length ? <DismissibleMessageBar key={`${playerId}:${p.coverage.notes.join(' ')}`} wrapperClassName={s.reportWarning} intent="warning">{p.coverage.notes.join(' ')}</DismissibleMessageBar> : null}
       <div className={s.reportKpiGrid} role="group" aria-label="玩家指标">
         <Stat label="K / D / A" value={`${p.kills} / ${p.deaths} / ${p.assists}`} tip={help.kda} />
         <Stat label="ADR" value={decimal(p.adr, 2)} hint="每回合平均有效伤害" tip={help.adr} />
@@ -597,7 +598,7 @@ function App() {
     <main className={s.main} data-app-content data-status={status} data-route-kind={route.kind}
       data-match-id={route.kind === 'match' ? route.matchId : ''} data-session-active={sessionActive ? 'true' : 'false'}>
       {matchMode ? <>
-        {error && !taskBlocking ? <div className={s.banner}><MessageBar intent="error"><MessageBarBody>{error}</MessageBarBody></MessageBar></div> : null}
+        {error && !taskBlocking ? <DismissibleMessageBar key={error} wrapperClassName={s.banner} intent="error">{error}</DismissibleMessageBar> : null}
         {report ? <>
           <Report key={reportRevision} report={report} playerId={playerId} replayActive={sessionActive} activeTab={activeView} onSelectView={setMatchView} />
         </> : <div className={s.center} role="status">
@@ -605,7 +606,7 @@ function App() {
             : <LoadingRows rows={4} label="正在恢复比赛报告、回放与热力图…" />}
         </div>}
       </> : <>
-        {error && !taskBlocking ? <div className={s.banner}><MessageBar intent="error"><MessageBarBody>{error}</MessageBarBody></MessageBar></div> : null}
+        {error && !taskBlocking ? <DismissibleMessageBar key={error} wrapperClassName={s.banner} intent="error">{error}</DismissibleMessageBar> : null}
         {route.section === 'personal' ? <PersonalSection /> : <LibraryPage />}
       </>}
       {matchMode && report && status === 'opening' && openingVisible ? <LoadingOverlay label="正在打开比赛…" hint="正在恢复报告、回放与热力图。" /> : null}
@@ -618,7 +619,7 @@ class ReportErrorBoundary extends React.Component<React.PropsWithChildren, { fai
   state = { failed: false };
   static getDerivedStateFromError() { return { failed: true }; }
   render() {
-    return this.state.failed ? <MessageBar intent="error"><MessageBarBody>报告展示失败。<Button onClick={() => { void useReport.getState().selectSection('library'); this.setState({ failed: false }); }}>返回比赛数据</Button></MessageBarBody></MessageBar> : this.props.children;
+    return this.state.failed ? <div><DismissibleMessageBar intent="error">报告展示失败。</DismissibleMessageBar><Button onClick={() => { void useReport.getState().selectSection('library'); this.setState({ failed: false }); }}>返回比赛数据</Button></div> : this.props.children;
   }
 }
 function DesktopShell() {

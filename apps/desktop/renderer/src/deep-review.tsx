@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Badge, Body1, Button, Card, Caption1, MessageBar, MessageBarBody, Subtitle1, Tab, TabList, Title2, Tooltip, makeStyles, tokens } from '@fluentui/react-components';
+import { Badge, Body1, Button, Card, Caption1, Subtitle1, Tab, TabList, Title2, Tooltip, makeStyles, tokens } from '@fluentui/react-components';
 import type { DesktopDeepReviewPlayer } from '@cs2-analyst/report-contract';
 import { QuestionCircleIcon } from './icons';
 import { palette } from './theme';
+import { DismissibleMessageBar } from './dismissible-message-bar';
 
 export const DEEP_REVIEW_HELP = '根据 DEM 中能够明确记录的交火、人数变化、队友跟进和道具效果生成。';
 export const DEEP_REVIEW_PARTIAL_HELP = '这场录像中有部分记录无法完整判断，具体限制可在每张卡片的「说明与限制」中查看。';
@@ -86,8 +87,9 @@ function WarningIcon() {
 }
 
 /** All copy/counts/rounds are supplied by the presenter. No evidence inference here. */
-export function DeepReview({ player, onShowRounds, onReplayRound }: {
+export function DeepReview({ player, onShowRounds, onReplayRound, active = true }: {
   player: DesktopDeepReviewPlayer; onShowRounds: (rounds: number[]) => void;
+  active?: boolean;
   onReplayRound?: (round:number)=>void;
 }) {
   const s = useStyles();
@@ -107,9 +109,7 @@ export function DeepReview({ player, onShowRounds, onReplayRound }: {
             aria-label="部分记录限制说明" data-deep-partial-help />
         </Tooltip> : null}
       </div>
-      {unavailable ? <MessageBar intent="error" data-deep-unavailable>
-        <MessageBarBody>{DEEP_REVIEW_UNAVAILABLE}</MessageBarBody>
-      </MessageBar> : null}
+      {unavailable && active ? <DismissibleMessageBar intent="error" data-deep-unavailable>{DEEP_REVIEW_UNAVAILABLE}</DismissibleMessageBar> : null}
     </div>
     <TabList className={s.tabs} aria-label="深度复盘分区" selectedValue={activeTab}
       onTabSelect={(_, data) => setActiveTab(data.value as DeepTabKey)}>

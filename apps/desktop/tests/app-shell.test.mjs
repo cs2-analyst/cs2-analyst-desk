@@ -32,6 +32,7 @@ const { TitlebarView } = await import('../renderer/src/app-titlebar.tsx');
 const { brandCenterOffset, isBrandCentered } = await import('../renderer/src/titlebar-geometry.ts');
 const { toLibraryListQuery, formatBytes, formatImportedAt, formatImportedDate, libraryMapOptions } = await import('../renderer/src/library-query.ts');
 const { HighlightTags, RatingValue, ReportSecondaryLine, formatRating, formatKast } = await import('../renderer/src/performance-display.tsx');
+const { DismissibleMessageBar } = await import('../renderer/src/dismissible-message-bar.tsx');
 const { useReport } = await import('../renderer/src/store.ts');
 const render = element => renderToStaticMarkup(createElement(SSRProvider, null, element));
 const noop = () => {};
@@ -158,6 +159,15 @@ test('estimated ratings are visibly distinguished from fully covered ratings', (
   assert.ok(html.includes('data-rating-value="1.23"'));
   assert.ok(html.includes('data-rating-estimated="true"'));
   assert.ok(html.includes('（估）'));
+});
+
+test('message bars use a labelled icon-only close action inside the bar', () => {
+  const html = render(createElement(DismissibleMessageBar, { intent: 'success', 'data-test-message': '' }, '已删除 1 场比赛。'));
+  assert.ok(html.includes('已删除 1 场比赛。'));
+  assert.ok(html.includes('aria-label="关闭提示"'));
+  assert.ok(html.includes('<svg'));
+  assert.equal(html.includes('>关闭</button>'), false);
+  assert.ok(html.indexOf('aria-label="关闭提示"') < html.lastIndexOf('</div>'));
 });
 
 test('the library renders all eight qualifying highlight categories without dropping later items', () => {

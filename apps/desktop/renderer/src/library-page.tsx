@@ -9,8 +9,6 @@ import {
   DialogContent,
   DialogSurface,
   DialogTitle,
-  MessageBar,
-  MessageBarBody,
   Menu,
   MenuItem,
   MenuList,
@@ -40,6 +38,7 @@ import { palette } from "./theme";
 import { RatingValue, HighlightTags, formatMetric, formatKast } from "./performance-display";
 import { WinSelect } from "./winui-select";
 import { LoadingRows, useLoadingFeedback } from './loading-ui';
+import { DismissibleMessageBar } from './dismissible-message-bar';
 import './library-loading.css';
 
 const useStyles = makeStyles({
@@ -463,7 +462,6 @@ export function LibraryPage() {
   const importArchive = useReport((state) => state.importArchive);
   const importDemo = useReport((state) => state.importDemo);
   const importDroppedFile = useReport((state) => state.importDroppedFile);
-  const clearLibraryMessage = useReport((state) => state.clearLibraryMessage);
   const filters = useReport((state) => state.libraryFilters);
   const setFilters = useReport((state) => state.setLibraryFilters);
   const importBusy = status === "selecting" || status === "parsing" || status === "awaiting-player"
@@ -488,6 +486,8 @@ export function LibraryPage() {
   const [deleting, setDeleting] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const requestRef = useRef(0);
+  const dismissLibraryError = () => useReport.setState(state => state.libraryError === libraryError ? { libraryError: null } : {});
+  const dismissLibraryNotice = () => useReport.setState(state => state.libraryNotice === libraryNotice ? { libraryNotice: null } : {});
 
   const query = useMemo(() => ({ ...toLibraryListQuery(filters, 25), offset }), [filters, offset]);
   const queryKey = JSON.stringify([query, libraryRevision, reload]);
@@ -631,47 +631,16 @@ export function LibraryPage() {
       </div>
 
       {libraryError ? (
-        <div className={s.status}>
-          <MessageBar intent="error" data-library-error>
-            <MessageBarBody>
-              {libraryError}
-              <Button size="small" appearance="transparent" onClick={clearLibraryMessage}>
-                关闭
-              </Button>
-            </MessageBarBody>
-          </MessageBar>
-        </div>
+        <DismissibleMessageBar key={libraryError} wrapperClassName={s.status} intent="error" onDismiss={dismissLibraryError} data-library-error>{libraryError}</DismissibleMessageBar>
       ) : null}
       {libraryNotice ? (
-        <div className={s.status}>
-          <MessageBar intent="success" data-library-notice>
-            <MessageBarBody>
-              {libraryNotice}
-              <Button size="small" appearance="transparent" onClick={clearLibraryMessage}>
-                关闭
-              </Button>
-            </MessageBarBody>
-          </MessageBar>
-        </div>
+        <DismissibleMessageBar key={libraryNotice} wrapperClassName={s.status} intent="success" onDismiss={dismissLibraryNotice} data-library-notice>{libraryNotice}</DismissibleMessageBar>
       ) : null}
       {listError ? (
-        <div className={s.status}>
-          <MessageBar intent="error" data-library-list-error>
-            <MessageBarBody>
-              {listError}
-              <Button size="small" appearance="transparent" onClick={() => setReload(value => value + 1)}>
-                重试
-              </Button>
-            </MessageBarBody>
-          </MessageBar>
-        </div>
+        <DismissibleMessageBar key={`${reload}:${listError}`} wrapperClassName={s.status} intent="error" data-library-list-error>{listError}</DismissibleMessageBar>
       ) : null}
       {unreadable > 0 ? (
-        <div className={s.status}>
-          <MessageBar intent="warning" data-library-unreadable>
-            <MessageBarBody>有 {unreadable} 条索引记录无法读取，已从列表隐藏；磁盘文件未自动删除。</MessageBarBody>
-          </MessageBar>
-        </div>
+        <DismissibleMessageBar key={unreadable} wrapperClassName={s.status} intent="warning" data-library-unreadable>有 {unreadable} 条索引记录无法读取，已从列表隐藏；磁盘文件未自动删除。</DismissibleMessageBar>
       ) : null}
 
       <div className={s.updateStatus} role="status" aria-live="polite" data-library-update>
@@ -679,6 +648,7 @@ export function LibraryPage() {
           : hasLoaded && listError ? <Caption1>更新失败，当前为上次结果；请重试。</Caption1>
           : hasLoaded && showUpdating ? <Caption1>列表已更新。</Caption1> : null}
       </div>
+      {listError ? <div className={s.status}><Button size="small" onClick={() => setReload(value => value + 1)}>重试</Button></div> : null}
       <div className={mergeClasses(s.scroll, hasLoaded && (updating || Boolean(listError)) && s.stale)} aria-busy={updating}>
         {!hasLoaded && !listError ? <div data-library-loading><LibraryList entries={[]} busy loading onOpen={() => {}} onExport={() => {}} onDelete={() => {}} /></div>
         : !hasLoaded && listError ? <div className={s.center}><Body1>比赛库暂时无法读取，请重试。</Body1></div>
@@ -777,7 +747,7 @@ export function LibraryPage() {
               <Caption1 className={s.muted}>
                 将从本机比赛库永久删除该归档与索引，无法撤销。源 DEM 文件不受影响。
               </Caption1>
-              {libraryError ? <MessageBar intent="error"><MessageBarBody>{libraryError}</MessageBarBody></MessageBar> : null}
+              {libraryError ? <DismissibleMessageBar key={libraryError} intent="error" onDismiss={dismissLibraryError}>{libraryError}</DismissibleMessageBar> : null}
             </DialogContent>
             <DialogActions>
               <Button appearance="secondary" disabled={deleting} onClick={() => setPendingDelete(null)}>

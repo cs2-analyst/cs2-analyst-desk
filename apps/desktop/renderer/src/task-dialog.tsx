@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Body1, Button, Caption1, Dialog, DialogActions, DialogBody, DialogContent, DialogSurface, DialogTitle,
-  MessageBar, MessageBarBody, ProgressBar, makeStyles, tokens } from '@fluentui/react-components';
+  ProgressBar, makeStyles, tokens } from '@fluentui/react-components';
 import { useReport } from './store';
 import { WinSelect } from './winui-select';
 import { useElapsedSeconds, useLoadingFeedback } from './loading-ui';
 import { palette } from './theme';
+import { DismissibleMessageBar } from './dismissible-message-bar';
 
 const useStyles = makeStyles({
   backdrop: { position: 'fixed', top: '40px', right: 0, bottom: 0, left: 0, backgroundColor: 'rgba(0, 0, 0, 0.55)', zIndex: 900 },
@@ -72,7 +73,7 @@ export function TaskDialog() {
             <Body1>{cancelling ? '正在停止后台任务并清理临时数据，请稍候。' : phase}</Body1>
             <ProgressBar aria-label={cancelling ? '正在取消导入' : phase} style={{ marginTop: 16 }} />
           </div>}
-          {active && error ? <MessageBar intent="error"><MessageBarBody>{error}</MessageBarBody></MessageBar> : null}
+          {active && error ? <DismissibleMessageBar key={error} intent="error">{error}</DismissibleMessageBar> : null}
           {dem && !waiting && !cancelling ? <ol className={s.steps} aria-label="分析阶段">{steps.map((step, i) => <li key={step} className={i === stage ? s.current : s.step} aria-current={i === stage ? 'step' : undefined}>
             <span className={s.dot}>{i < stage ? '✓' : i + 1}</span> {step}
           </li>)}</ol> : null}
