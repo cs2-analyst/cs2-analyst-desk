@@ -390,7 +390,7 @@ for (const [name, disconnect] of [
     for (const candidate of analyzeMatch(match).players) {
       assert.equal(candidate.kast.unavailableRounds, 1);
       assert.equal(candidate.trade.complete, false);
-      assert.equal(summarizePlayerPerformance(candidate).rating.status, "unavailable");
+      assert.match(summarizePlayerPerformance(candidate).rating.reason, /估算/);
     }
   });
 }
@@ -426,7 +426,7 @@ for (const defect of ["multiple deaths", "dead baseline", "unknown baseline", "d
     for (const candidate of analyzeMatch(match).players) {
       assert.equal(candidate.kast.complete, false);
       assert.equal(candidate.trade.complete, false);
-      assert.equal(summarizePlayerPerformance(candidate).rating.status, "unavailable");
+      assert.match(summarizePlayerPerformance(candidate).rating.reason, /估算/);
     }
   });
 }

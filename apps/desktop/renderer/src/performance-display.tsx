@@ -28,9 +28,9 @@ export function RatingValue({ rating, prefix = false }: { rating?: DesktopPlayer
   const value = text === '—' ? null : rating!.value;
   const color = value === null ? palette.textMuted : value >= 1.1 ? palette.performance.strong : value < 0.9 ? palette.performance.weak : palette.text;
   const tip = value === null ? `评分不可用：${rating?.reason || '缺少该玩家的必要分析输入。'}`
-    : 'HLTV Rating 2.0 社区近似评分，非官方精确结果。';
+    : `HLTV Rating 2.0 社区近似评分，非官方精确结果。${rating?.reason ? ` ${rating.reason}` : ''}`;
   return <Tooltip content={tip} relationship="description"><span className={s.rating} style={{ color }} tabIndex={0}
-    data-rating-value={text} data-rating-algorithm={rating?.algorithm}>{prefix ? 'Rating: ' : ''}{text}</span></Tooltip>;
+    data-rating-value={text} data-rating-algorithm={rating?.algorithm} data-rating-estimated={rating?.reason ? 'true' : undefined}>{prefix ? 'Rating: ' : ''}{text}{value !== null && rating?.reason ? '（估）' : ''}</span></Tooltip>;
 }
 
 const tagColors: Record<DesktopPlayerHighlight['color'], string> = {

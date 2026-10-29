@@ -22,6 +22,9 @@ export interface RatingInput {
   roundsAligned: boolean;
   /** K/D/A and enemy damage have no unknown attribution needed by this calculation. */
   countsComplete: boolean;
+  /** Alternative observations used only when the standard inputs are missing. */
+  fallbackAdr?: number | null;
+  fallbackRounds?: number | null;
 }
 export type HighlightType = 'clutch' | 'multi-kill' | 'opening' | 'trade' | 'assists' | 'headshot' | 'flash' | 'utility';
 export interface PlayerHighlight {
@@ -61,30 +64,40 @@ export const highlightRules = Object.freeze({
 const count = (value: unknown): value is number => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
 const nonnegative = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value >= 0;
 const percent = (value: unknown): value is number => nonnegative(value) && value <= 100;
-const unavailable = (reason: string): PlayerRating => ({ value: null, algorithm: ratingAlgorithm, status: 'unavailable', reason });
-
 /** Community linear fit with approximate Impact, not HLTV's unpublished official formula. */
 export function computeRating(input: RatingInput): PlayerRating {
-  const { kills, deaths, assists, validRounds, adr, kastPercent, kastEligibleRounds } = input;
-  if ([kills, deaths, assists, validRounds, adr, kastPercent, kastEligibleRounds].some(value => value == null)) {
-    return unavailable('缺少评分所需的击杀、死亡、助攻、有效回合、ADR 或 KAST 数据。');
+  const notes: string[] = [];
+  // Bound corrupt inputs as well as avoiding overflow; defaults are estimates, never evidence.
+  const safeCount = (value: unknown, name: string): number => {
+    if (count(value) && value <= 1_000_000) return value;
+    notes.push(`${name}缺失或无效，按 0 估算`); return 0;
+  };
+  const kills = safeCount(input.kills, '击杀');
+  const deaths = safeCount(input.deaths, '死亡');
+  const assists = safeCount(input.assists, '助攻');
+  let validRounds = input.validRounds;
+  if (!count(validRounds) || validRounds === 0 || validRounds > 1_000_000) {
+    validRounds = count(input.fallbackRounds) && input.fallbackRounds > 0 && input.fallbackRounds <= 1_000_000 ? input.fallbackRounds : 1;
+    notes.push(validRounds === 1 ? '有效回合缺失，按 1 回合估算' : `有效回合缺失，按 ${validRounds} 个已知回合估算`);
   }
-  if (!count(kills) || !count(deaths) || !count(assists) || !count(validRounds)
-    || !count(kastEligibleRounds) || !nonnegative(adr) || !percent(kastPercent)) {
-    return unavailable('评分输入包含非法或非有限数值。');
+  let adr = input.adr;
+  if (!nonnegative(adr) || adr > 1_000_000) {
+    if (nonnegative(input.fallbackAdr) && input.fallbackAdr <= 1_000_000) {
+      adr = input.fallbackAdr; notes.push('有效 ADR 缺失，使用记录伤害估算 ADR');
+    } else { adr = 80; notes.push('ADR 缺失，按 80 估算'); }
   }
-  if (validRounds === 0) return unavailable('没有可用于评分的有效回合。');
-  if (!input.kastComplete || !input.roundsAligned || !input.countsComplete || kastEligibleRounds !== validRounds) {
-    return unavailable('评分所需统计覆盖不完整，或有效回合集合不一致。');
-  }
+  let kastPercent = input.kastPercent;
+  if (!percent(kastPercent)) { kastPercent = 70; notes.push('KAST 缺失，按 70% 估算'); }
+  else if (!input.kastComplete || input.kastEligibleRounds !== validRounds) notes.push('KAST 使用部分或降级回合的比例');
+  if (!input.roundsAligned) notes.push('统计回合集合未完全对齐');
+  if (!input.countsComplete) notes.push('击杀或伤害归属不完整');
   const kpr = kills / validRounds;
   const dpr = deaths / validRounds;
   const apr = assists / validRounds;
   const impactApprox = 2.13 * kpr + 0.42 * apr - 0.41;
   const value = 0.0073 * kastPercent + 0.3591 * kpr - 0.5329 * dpr
     + 0.2372 * impactApprox + 0.0032 * adr + 0.1587;
-  if (!Number.isFinite(value)) return unavailable('评分计算结果不是有限数值。');
-  return { value, algorithm: ratingAlgorithm, status: 'available', reason: null };
+  return { value, algorithm: ratingAlgorithm, status: 'available', reason: notes.length ? `估算：${notes.join('；')}。` : null };
 }
 
 /** No inference from Rating: every badge is backed by its own existing metric. */
@@ -156,6 +169,7 @@ export function playerPerformanceInput(player: PlayerMetrics): PlayerPerformance
     roundsAligned: c.eligibleRounds === c.countedRounds && c.countedRounds === player.roundsPlayed
       && c.skippedUnconfirmedParticipation === 0,
     countsComplete: c.killsWithoutTeamkillStatus === 0 && c.damageWithoutKnownSides === 0,
+    fallbackAdr: player.reportedAdr, fallbackRounds: c.eligibleRounds,
     opening: player.opening,
     trade: { kills: player.trade.tradeKills, complete: player.trade.complete },
     // Each list item was already generated only from a reliable clutch round.

@@ -153,6 +153,13 @@ test('shared rating formatter handles missing values, preserves precision and ex
   assert.equal(html.includes(' title='), false, 'rating reasons are provided by Fluent Tooltip on hover/focus');
 });
 
+test('estimated ratings are visibly distinguished from fully covered ratings', () => {
+  const html = render(createElement(RatingValue, { rating: { ...rating(1.23), reason: '估算：KAST 使用部分回合。' } }));
+  assert.ok(html.includes('data-rating-value="1.23"'));
+  assert.ok(html.includes('data-rating-estimated="true"'));
+  assert.ok(html.includes('（估）'));
+});
+
 test('the library renders all eight qualifying highlight categories without dropping later items', () => {
   const types = ['clutch', 'multi-kill', 'opening', 'trade', 'headshot', 'flash', 'utility', 'assists'];
   const highlights = types.map((type, i) => ({ type, label: ['残', '神', '突', '补', '准', '闪', '辅', '助'][i],

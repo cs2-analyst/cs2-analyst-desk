@@ -255,7 +255,7 @@ export function LibraryList({
     ["比分", 72],
     ["K/D/A", 96],
     ["ADR", 64],
-    ["Rating", 64],
+    ["Rating", 96],
     ["KAST", 72],
     ["高光", undefined],
     ["操作", 48],

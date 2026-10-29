@@ -3,7 +3,7 @@ import type { PlayerPerformanceInput } from '@cs2-analyst/analytics';
 import type { DesktopMatchReport, DesktopPlayerPerformance, LibraryPlayerSummary } from '@cs2-analyst/report-contract';
 
 /** Independent from report/archive schema: derived data may be discarded and rebuilt. */
-export const PERFORMANCE_CACHE_VERSION = 'hltv-2.0-community-approx-v1/highlights-v2-all/adapter-v4';
+export const PERFORMANCE_CACHE_VERSION = 'hltv-2.0-community-approx-v1/highlights-v2-all/adapter-v5-estimate';
 const object = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
 const number = (value: unknown): number | null => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
 const count = (value: unknown): number | null => Number.isSafeInteger(value) ? number(value) : null;
@@ -41,6 +41,7 @@ export function upgradeReportPerformance(report: DesktopMatchReport): DesktopMat
       kills: count(p.kills), deaths: count(p.deaths), assists: count(p.assists), validRounds: count(p.roundsPlayed),
       adr: number(p.adr), kastPercent: number(p.kast?.percentage), kastEligibleRounds: count(p.kast?.eligibleRounds),
       kastComplete: p.kast?.complete === true, roundsAligned: proof?.roundsAligned === true, countsComplete: proof?.countsComplete === true,
+      fallbackRounds: count(report.match.rounds),
       ...(opening ? { opening } : {}), ...(trade ? { trade } : {}), ...(clutch ? { clutch } : {}),
       ...(validMulti ? { multiKills: multi } : {}),
       // Historical HS% does not preserve the unknown-headshot count: no precision badge guessed.
@@ -48,14 +49,12 @@ export function upgradeReportPerformance(report: DesktopMatchReport): DesktopMat
       flashAssists: count(p.utility?.flashAssists), heDamage: number(p.utility?.heDamage), fireDamage: number(p.utility?.fireDamage),
     };
     const performance: DesktopPlayerPerformance = computePlayerPerformance(input);
-    if (!proof) performance.rating = { ...performance.rating, value: null, status: 'unavailable',
-      reason: '旧报告缺少评分所需的统计覆盖证明；当前归档无法计算可靠评分。' };
     if (existing) {
       // Old archives may contain only the former top three. Preserve their proven badges
       // and exact rating, adding any further badges supported by saved metrics/coverage.
       const highlights = new Map(existing.highlights.map(item => [item.type, item]));
       for (const item of performance.highlights) if (!highlights.has(item.type)) highlights.set(item.type, item);
-      performance.rating = existing.rating;
+      if (existing.rating.status === 'available') performance.rating = existing.rating;
       performance.highlights = [...highlights.values()].sort((a, b) => ratingTypes.indexOf(a.type) - ratingTypes.indexOf(b.type));
     }
     return { ...p, performance };
