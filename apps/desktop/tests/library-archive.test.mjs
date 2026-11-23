@@ -81,6 +81,43 @@ test('fresh report/chunk session handles preserve report metrics, guards, effect
   await assert.rejects(readArchiveChunk(directory, manifest, { sessionId: next, round: 1, block: 99 }), /unknown replay chunk/);
 });
 
+test('spatial facts survive local archive restore and forged arithmetic is rejected', async t => {
+  const { directory } = await ownedDirectory(t), data = input();
+  const [a, b] = data.report.players.map(player => player.id);
+  data.report.analysis.spatialFacts = { schemaVersion: 1, methodVersion: 'dem-native-spatial-facts-v1',
+    matchId: data.report.match.id, informationScope: 'server-global', status: 'available', reason: null,
+    coverage: { deathTicks: 1, inspectedTicks: 1, eventProbes: 1, eventCards: 1,
+      formationProbes: 0, formationCards: 0, withheld: 0, truncated: false },
+    cards: [{ kind: 'event-prestate', round: 1, eventTick: 8, sampleTick: 7, eventIndex: 0,
+      retrospectiveSelection: true, participants: [
+        { role: 'killer', playerId: a, side: 'CT', position: { x: 0, y: 0, z: 0 }, rowRef: `native-exact:${'a'.repeat(64)}` },
+        { role: 'victim', playerId: b, side: 'T', position: { x: 3, y: 4, z: 12 }, rowRef: `native-exact:${'b'.repeat(64)}` },
+      ], horizontal: 5, threeDimensional: 13, unit: 'DEM-world-unit' }] };
+  const { manifest } = await writeLibraryArchive(directory, data);
+  const restored = await readArchiveReport(directory, manifest, randomUUID());
+  assert.deepEqual(restored.analysis.spatialFacts, data.report.analysis.spatialFacts);
+  const reportFile = manifest.files.find(file => file.role === 'report');
+  const stored = JSON.parse(gunzipSync(await readFile(join(directory, reportFile.path))).toString('utf8'));
+  stored.analysis.spatialFacts.cards[0].horizontal = 99;
+  await replacePayload(directory, manifest, 'report', stored);
+  await assert.rejects(verifyLibraryArchive(directory), /spatial facts contract/);
+});
+
+test('archive v2 preserves an unavailable spatial result without affecting other views', async t => {
+  const { directory } = await ownedDirectory(t), data = input();
+  data.versions.archive = 2;
+  data.report.analysis.spatialFacts = { schemaVersion: 1, methodVersion: 'dem-native-spatial-facts-v1',
+    matchId: data.report.match.id, informationScope: 'server-global', status: 'unavailable', reason: 'extraction-failed',
+    coverage: { deathTicks: 0, inspectedTicks: 0, eventProbes: 0, eventCards: 0,
+      formationProbes: 0, formationCards: 0, withheld: 0, truncated: false }, cards: [] };
+  const { manifest } = await writeLibraryArchive(directory, data);
+  const restored = await readArchiveReport(directory, manifest, randomUUID());
+  assert.deepEqual(restored.analysis.spatialFacts, data.report.analysis.spatialFacts);
+  assert.equal(restored.replay.available, true);
+  assert.equal(restored.heatmap.available, true);
+  await verifyLibraryArchive(directory);
+});
+
 test('source absence is honestly retained; event-only Heatmap can remain partial and report stays usable', async t => {
   const { directory } = await ownedDirectory(t), data = input();
   data.replay = null; data.chunks.clear();

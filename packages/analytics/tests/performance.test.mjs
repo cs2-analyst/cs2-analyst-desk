@@ -26,44 +26,36 @@ test('KAST input uses percentage points; a 74.25 point difference adds exactly i
   const fraction = computeRating(base({ kastPercent: 0.75 }));
   assert.ok(Math.abs(points.value - fraction.value - 0.0073 * 74.25) < 1e-12);
 });
-test('zero valid rounds are unavailable, never Rating zero', () => {
-  const result = computeRating(base({ validRounds: 0, kastEligibleRounds: 0 }));
-  assert.equal(result.value, null);
-  assert.equal(result.status, 'unavailable');
-  assert.match(result.reason, /有效回合/);
-});
-for (const field of ['kills', 'deaths', 'assists', 'validRounds', 'adr', 'kastPercent', 'kastEligibleRounds']) {
-  test(`Rating missing ${field} is unavailable`, () => {
-    for (const value of [null, undefined]) {
+test('missing and invalid inputs always produce a finite, explicitly explained estimate', () => {
+  for (const field of ['kills', 'deaths', 'assists', 'validRounds', 'adr', 'kastPercent', 'kastEligibleRounds']) {
+    for (const value of [null, undefined, NaN, Infinity, -1, '20']) {
       const result = computeRating(base({ [field]: value }));
-      assert.equal(result.value, null);
-      assert.match(result.reason, /缺少/);
-      assert.equal(result.algorithm, ratingAlgorithm);
+      assert.equal(result.status, 'available', `${field}=${value}`);
+      assert.ok(Number.isFinite(result.value));
+      assert.match(result.reason, /估算/);
     }
-  });
-  test(`Rating rejects illegal ${field}`, () => {
-    for (const value of [NaN, Infinity, -Infinity, -1, '20']) {
-      const result = computeRating(base({ [field]: value }));
-      assert.equal(result.status, 'unavailable', `${field}=${value}`);
-      assert.match(result.reason, /非法/);
-    }
-  });
-}
-test('Rating rejects fractional counts and percentages over 100', () => {
-  for (const field of ['kills', 'deaths', 'assists', 'validRounds', 'kastEligibleRounds']) {
-    assert.equal(computeRating(base({ [field]: 0.5 })).value, null);
-    assert.equal(computeRating(base({ [field]: Number.MAX_SAFE_INTEGER + 1 })).value, null);
   }
-  assert.equal(computeRating(base({ kastPercent: 100.1 })).value, null);
+  const empty = computeRating({ kills: null, deaths: null, assists: null, validRounds: 0, adr: null,
+    kastPercent: null, kastEligibleRounds: null, kastComplete: false, roundsAligned: false, countsComplete: false });
+  assert.ok(Number.isFinite(empty.value));
+  assert.match(empty.reason, /1 回合/);
+  assert.match(empty.reason, /70%/);
+  assert.match(empty.reason, /80/);
 });
-for (const field of ['kastComplete', 'roundsAligned', 'countsComplete']) {
-  test(`Rating requires ${field}`, () => {
-    assert.equal(computeRating(base({ [field]: false })).status, 'unavailable');
-    assert.match(computeRating(base({ [field]: false })).reason, /覆盖/);
-  });
-}
-test('Rating refuses mismatched KAST and ADR denominators', () => {
-  assert.equal(computeRating(base({ kastEligibleRounds: 23 })).value, null);
+test('partial KAST and coverage use the observed values but visibly mark the result as estimated', () => {
+  const partial = computeRating(base({ kastPercent: 70, kastEligibleRounds: 20, kastComplete: false }));
+  assert.equal(partial.value, computeRating(base({ kastPercent: 70 })).value);
+  assert.match(partial.reason, /KAST/);
+  for (const field of ['roundsAligned', 'countsComplete']) {
+    assert.match(computeRating(base({ [field]: false })).reason, /估算/);
+  }
+  assert.match(computeRating(base({ kastEligibleRounds: 23 })).reason, /KAST/);
+});
+test('reported ADR and known rounds are preferred to neutral fallback values', () => {
+  const estimate = computeRating(base({ validRounds: 0, fallbackRounds: 21, adr: null, fallbackAdr: 85 }));
+  assert.equal(estimate.value, computeRating(base({ validRounds: 21, kastEligibleRounds: 21, adr: 85 })).value);
+  assert.match(estimate.reason, /21 个已知回合/);
+  assert.match(estimate.reason, /记录伤害/);
 });
 test('low, normal and high performance preserve order and negative values are not clamped', () => {
   const low = computeRating(base({ kills: 0, deaths: 24, assists: 0, adr: 0, kastPercent: 0 }));
@@ -174,7 +166,8 @@ test('every qualifying highlight is returned in stable priority without top-thre
 });
 test('highlights remain independently available when ADR/KAST cannot support Rating', () => {
   const result = computePlayerPerformance(base({ adr: null, kastComplete: false, flashAssists: 3 }));
-  assert.equal(result.rating.status, 'unavailable');
+  assert.equal(result.rating.status, 'available');
+  assert.match(result.rating.reason, /估算/);
   assert.deepEqual(result.highlights.map(b => b.type), ['flash']);
 });
 
@@ -250,10 +243,10 @@ test('real demo1 performance is deterministic, player-isolated and uses unchange
       assert.equal(summarizePlayerPerformance({ ...player, utility: { ...player.utility,
         flash: { ...player.utility.flash, assists: null }, he: { ...player.utility.he, enemyDamage: null } } }).rating.value,
       performance.rating.value, 'utility gaps must not suppress Rating');
-      assert.equal(summarizePlayerPerformance({ ...player, coverage: { ...player.coverage,
-        skippedUnconfirmedParticipation: 1 } }).rating.status, 'unavailable');
-      assert.equal(summarizePlayerPerformance({ ...player, coverage: { ...player.coverage,
-        killsWithoutTeamkillStatus: 1 } }).rating.status, 'unavailable');
+      assert.match(summarizePlayerPerformance({ ...player, coverage: { ...player.coverage,
+        skippedUnconfirmedParticipation: 1 } }).rating.reason, /回合/);
+      assert.match(summarizePlayerPerformance({ ...player, coverage: { ...player.coverage,
+        killsWithoutTeamkillStatus: 1 } }).rating.reason, /归属/);
     }
     assert.ok(ratings.size > 1);
     assert.deepEqual(analytics, snapshot, 'performance must not alter existing analytics definitions');

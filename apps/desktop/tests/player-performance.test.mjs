@@ -113,22 +113,37 @@ test('100 matches with 10 players stay within IPC budget through exact SQL-page 
   }
   assert.equal(seen.size, 100); assert.equal(reduced, true);
 });
-test('missing, incomplete or mismatched legacy inputs stay unavailable instead of zero', () => {
+test('missing, incomplete or mismatched legacy inputs produce explained estimates', () => {
   for (const patch of [{ adr: null }, { performanceCoverage: { countsComplete: false, roundsAligned: true } }, { kills: undefined },
     { kast: { percentage: 75, complete: true, eligibleRounds: 23 } }, { roundsPlayed: 0 }]) {
     const r = report(); r.analytics = [player('one', patch)];
     const rating = upgradeReportPerformance(r).analytics[0].performance.rating;
-    assert.equal(rating.status, 'unavailable'); assert.equal(rating.value, null); assert.ok(rating.reason);
+    assert.equal(rating.status, 'available'); assert.ok(Number.isFinite(rating.value)); assert.match(rating.reason, /估算/);
   }
 });
-test('old coverage.complete cannot prove unknown-teamkill attribution; legacy rating stays unavailable', () => {
+test('old coverage.complete cannot prove attribution; legacy rating is estimated', () => {
   const r = report(); delete r.analytics[0].performanceCoverage;
   const performance = upgradeReportPerformance(r).analytics[0].performance;
   assert.equal(r.analytics[0].coverage.complete, true);
-  assert.equal(performance.rating.status, 'unavailable'); assert.equal(performance.rating.value, null);
-  assert.match(performance.rating.reason, /旧报告.*覆盖证明/);
+  assert.equal(performance.rating.status, 'available'); assert.ok(Number.isFinite(performance.rating.value));
+  assert.match(performance.rating.reason, /估算/);
   assert.equal(performance.highlights.some(h => ['opening', 'assists', 'multi-kill', 'headshot'].includes(h.type)), false);
   assert.equal(performance.highlights.some(h => h.type === 'clutch'), true, 'independently proven clutch wins survive');
+});
+test('saved unavailable ratings are recalculated from saved partial KAST without rewriting the source', () => {
+  const r = report();
+  r.analytics[0].kast = { percentage: 70, complete: false, rounds: 14, eligibleRounds: 20 };
+  r.analytics[0].performance = { rating: { value: null, algorithm: 'hltv-2.0-community-approx-v1',
+    status: 'unavailable', reason: '评分所需统计覆盖不完整' }, highlights: [] };
+  const source = structuredClone(r);
+  const upgraded = upgradeReportPerformance(structuredClone(r));
+  assert.equal(upgraded.analytics[0].performance.rating.status, 'available');
+  assert.match(upgraded.analytics[0].performance.rating.reason, /KAST/);
+  assert.equal(upgraded.analytics[0].performance.rating.value,
+    0.0073 * 70 + 0.3591 * (25 / 24) - 0.5329 * (20 / 24)
+      + 0.2372 * (2.13 * (25 / 24) + 0.42 * (4 / 24) - 0.41) + 0.0032 * 91.375 + 0.1587);
+  assert.deepEqual(r, source);
+  assert.deepEqual(upgradeReportPerformance(upgraded), upgraded);
 });
 test('legacy headshot data lacks complete sample evidence, so precision is never guessed', () => {
   const r = report(); r.analytics = [player('one', { clutch: undefined, opening: undefined, trade: undefined })];
@@ -157,11 +172,12 @@ test('a player crossing stable teams is unknown even if their mixed record looks
   r.timeline[0].rounds[0].result = 'loss'; // 12 wins / 12 losses, while actual stable teams scored 13:11.
   assert.equal(reportPlayerSummaries(r).playerSummaries[0].outcome, 'unknown');
 });
-test('missing player analytics yields null summary values and unavailable rating', () => {
+test('missing player analytics yields null summary values and a clearly estimated rating', () => {
   const r = report(); r.analytics = [];
   const p = reportPlayerSummaries(r).playerSummaries[0];
   assert.deepEqual([p.kills, p.deaths, p.assists, p.adr, p.kastPercentage], [null, null, null, null, null]);
-  assert.equal(p.performance.rating.status, 'unavailable');
+  assert.equal(p.performance.rating.status, 'available');
+  assert.match(p.performance.rating.reason, /估算/);
 });
 test('malformed optional performance is safely recalculated, and cache cannot mix roster identities', () => {
   const r = report(); r.analytics[0].performance = { rating: { value: Infinity }, highlights: null };

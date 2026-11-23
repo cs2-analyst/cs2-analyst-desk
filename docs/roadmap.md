@@ -110,11 +110,11 @@ Current: **v0.1 Final Acceptance FINAL PASS; P5 COMPLETE; P5.7 FINAL PASS.** 验
 - P6.0–P6.4已按用户指定的单一Dust2 fixture与本机个人非商业使用范围通过自动化验收：固定Valve manifest定向提取与区域配准、独立8Hz采样、生命周期断点、有界会话/受信分块IPC、Canvas播放器、Timeline/Findings联动、源码外安装与离线资源检查。
 - `pnpm typecheck` / `pnpm build`、相关回归、真实Electron与生产/测试seam安装检查通过；原报告与旧公开入口完整hash相同。其他地图/个人DEM及缺少的demo1 golden未重跑，不冒充PASS。Nuke仅资源/楼层边界合成验证。
 - 地图版本匹配仍未确认，所有地图明确标示示意。按用户2026-10-16扩图指令，Dust2、Inferno、Mirage、Ancient、Overpass、Vertigo、Nuke、Anubis、Train、Cache十图的13张Valve PNG与10份原overview随仓库提交/推送；Nuke/Vertigo/Train双层。新增地图资源/坐标/楼层验证不代表新增真实DEM已验收；保留来源摘要与第三方分发许可未确认记录。缺图时仍可构建并浏览报告/事件。
-- 技术机制见 [P6 回放技术路线](./replay-technical-route.md)，实际范围、命令、失败历史、预算实测和限制见 [实施记录](./replay-implementation.md) / [验收JSON](./replay-acceptance.json)。P7.1/P7.2/P7.3 PASS见下文；P8未开始。
+- 技术机制见 [P6 回放技术路线](./replay-technical-route.md)，实际范围、命令、失败历史、预算实测和限制见 [实施记录](./replay-implementation.md) / [验收JSON](./replay-acceptance.json)。P7.1/P7.2/P7.3 PASS见下文；当时 P8 未开始。
 
 ## P7 地图热力图（FINAL ACCEPTANCE PASS，2026-10-20）
 
-> **P7 — FINAL ACCEPTANCE PASS（2026-10-20），阶段封板；S0–S6 全部完成。** 产品所有者明确签收 P7，自动化门禁、独立复审与产品签收记录见 [S6 最终统一验收](./p7-s6-final-acceptance.md)。封板不追认未执行项 PASS，也不表示已知性能技术债已解决。P7 签收时 L 阶段尚未启动；后续单独授权及进度见下方 Local Match Library。P8 仍未启动。
+> **P7 — FINAL ACCEPTANCE PASS（2026-10-20），阶段封板；S0–S6 全部完成。** 产品所有者明确签收 P7，自动化门禁、独立复审与产品签收记录见 [S6 最终统一验收](./p7-s6-final-acceptance.md)。封板不追认未执行项 PASS，也不表示已知性能技术债已解决。P7 签收时 L 阶段及 P8 尚未启动；后续进度见下方。
 
 - P7 及后续研发阶段的真实 DEM 输入遵循 [DEM 样本白名单](./demo-fixtures.md)：纯地图名文件（如 `dust2.dem`）及 `demo1.dem`、`demo2.dem`、`demo.dem`；不使用带比赛名称的文件名或历史 `demo3.dem` 样本。
 
@@ -140,7 +140,9 @@ Current: **v0.1 Final Acceptance FINAL PASS; P5 COMPLETE; P5.7 FINAL PASS.** 验
 - **S6 — 完成**：[最终统一验收](./p7-s6-final-acceptance.md)自动化门禁及独立复审 PASS，产品所有者明确签收 P7；阶段结论为 **FINAL ACCEPTANCE PASS（2026-10-20）**。
 - **保留技术债与未覆盖项**：独立 Replay 查询 **5131.302ms（约 5.131 秒）> 5000ms**，仍超预算；真实 DEM 正式 Replay 窗口内全员阵亡 UI、真实 Vertigo、Explorer 原生文件选择、Narrator/NVDA/系统高对比度、物理跨显示器 DPI、全 21 回合所有目标/速度穷举仍 **NOT RUN**。地图与 DEM 版本仍 `unconfirmed`；产品签收不将这些项追认 PASS，不修改原始验收 JSON。
 
-## P8 AI Coach（原 P6，未开始）
+## P8 AI Coach（原 P6；个人本机 MVP 先行）
+
+> 用户决定先交付八图 DEM 原生空间事实卡片，后续再迭代完整 P8；本机路线无需后端，未来模型优先完全离线。MVP 范围及历史门禁见 [空间事实卡片](./p8-mvp-spatial-facts.md)。下列为早期规划记录，其中后端方案已被本机产品决定取代，P8.1–P8.5 不因 MVP 自动签收。
 
 - 模型可替换的 AI 解释与训练建议；职业 DEM 经验沉淀为后端私有规则、案例与评测资产，不依赖特定模型记忆。
 - 首批范围：Dust2 的 1v1 残局，研究个人操作与决策；手动补充已知信息后续再做。
@@ -149,7 +151,7 @@ Current: **v0.1 Final Acceptance FINAL PASS; P5 COMPLETE; P5.7 FINAL PASS.** 验
 - 内部知识管线可复用领域包解析职业 DEM；后端 SQLite、native 部署、鉴权和只读快照发布需在 P8.1 验证。个人 DEM 不上传；P8 不包含独立规划的客户端本地比赛库与历史归档。
 - 职业案例库作为 P8 的一部分；候选规律须经人工审核与验证后发布，不能仅凭职业比赛结果认定正确。
 - 子阶段：P8.1 基础与可行性验证 → P8.2 知识积累 → P8.3 独立评测 → P8.4 教练复盘 → P8.5 持续积累。
-- 完整设计及空间能力门槛见 [P8 AI Coach 技术路线](./ai-coach-technical-route.md)。当前仅完成路线设计，未开始实现。
+- 早期完整设计及空间能力门槛见 [P8 AI Coach 技术路线](./ai-coach-technical-route.md)；当前优先范围见上方 MVP 决定。
 
 ## Local Match Library & History（已授权，L0–L5 PASS）
 
@@ -165,4 +167,4 @@ Current: **v0.1 Final Acceptance FINAL PASS; P5 COMPLETE; P5.7 FINAL PASS.** 验
 - **阶段采用独立代号 L0–L5，并非 P8 或自动确认的新版本**：L0 容量/完整恢复可行性 → L1 本地库索引/原子写入 → L2 六视图无 DEM 恢复 → L3 删除/导出/导入 → L4 标题栏导航/库 UI → L5 安装版/多样本最终验收。全部阶段已授权，严格按 Gate 推进；L0–L5 PASS，版本号/tag/Release 不自动启动。
 - DEM 始终由用户主动选择；不做自动目录扫描、自动云上传、客户端账号或公共服务端。
 - 详细实施门槛：[本地比赛库阶段计划](./match-library-plan.md)；UI 权威规范：[窗口标题栏与历史导航](./match-library-navigation.md)；存储权威规范：[容量、SQLite 与可移植归档](./match-library-storage.md)。
-- P8 AI Coach 技术路线仍独立保留且**未开始**。历史 Replay 查询/解析 ≤5s 性能技术债继续独立跟踪，不作为本次文档规划的已解决事项。
+- 这份 L 阶段记录形成时 P8 尚未开始；后续 P8 范围见上文。历史 Replay 查询/解析 ≤5s 性能技术债继续独立跟踪，不作为本次文档规划的已解决事项。

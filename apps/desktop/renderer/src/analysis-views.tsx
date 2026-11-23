@@ -5,6 +5,7 @@ import { comparisonMetrics, comparisonValue, comparisonIncomplete, sortedCompari
 import type { ComparisonMetricKey } from './analysis-metrics';
 import { palette } from './theme';
 import { WinSelect } from './winui-select';
+import { SpatialFactsView } from './spatial-facts-view';
 
 const useStyles = makeStyles({
   section: { display: 'flex', flexDirection: 'column', gap: '12px', height: '100%', minHeight: 0, overflow: 'hidden' },
@@ -49,6 +50,7 @@ const analysisTabs = [
   { value: 'comparison', label: '全场玩家对比' },
   { value: 'trend', label: '回合表现趋势' },
   { value: 'sides', label: 'CT / T 表现对比' },
+  { value: 'spatial', label: '空间事实' },
 ] as const;
 type AnalysisTabKey = typeof analysisTabs[number]['value'];
 
@@ -109,7 +111,8 @@ function SideComparison({ player }: { player: DesktopPlayerAnalysis }) {
   </Card>;
 }
 
-export function AnalysisViews({ analysis, playerId }: { analysis: DesktopAnalysisViews; playerId: string }) {
+export function AnalysisViews({ analysis, playerId, onReplay }: { analysis: DesktopAnalysisViews; playerId: string;
+  onReplay?: (round: number, tick: number) => void }) {
   const s = useStyles();
   const [activeTab, setActiveTab] = useState<AnalysisTabKey>('comparison');
   const [metricKey, setMetricKey] = useState<ComparisonMetricKey>('adr');
@@ -160,6 +163,10 @@ export function AnalysisViews({ analysis, playerId }: { analysis: DesktopAnalysi
       <div id="analysis-view-panel-sides" role="tabpanel" aria-labelledby="analysis-view-tab-sides"
         className={s.tabPanel} hidden={activeTab !== 'sides'} data-analysis-panel="sides">
         {player ? <SideComparison player={player} /> : <NoPlayerData title="当前玩家没有可用的 CT / T 对比数据。" />}
+      </div>
+      <div id="analysis-view-panel-spatial" role="tabpanel" aria-labelledby="analysis-view-tab-spatial"
+        className={s.tabPanel} hidden={activeTab !== 'spatial'} data-analysis-panel="spatial">
+        <SpatialFactsView facts={analysis.spatialFacts} players={analysis.players} onReplay={onReplay} />
       </div>
     </div>
   </section>;

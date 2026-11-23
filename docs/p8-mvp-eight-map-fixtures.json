@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "p8-mvp-eight-map-fixtures-v1",
+  "scope": "personal-local-only",
+  "records": [
+    { "file": "ancient.dem", "map": "de_ancient", "sha256": "ca7b6b7cefdde927d654ac101ea1bee4fd996efc9b86ac89dac33874a0115f4e" },
+    { "file": "anubis.dem", "map": "de_anubis", "sha256": "5ee94d7f475a7723f214636e438bf33acccd8c30a85bdb192dfd1a26772b966d" },
+    { "file": "dust2.dem", "map": "de_dust2", "sha256": "db90fe85aab023a1d2c8a5996182e6120d98ef494f02a070b17982b235e4958c" },
+    { "file": "inferno.dem", "map": "de_inferno", "sha256": "b61c040074f84f1f2c1b683642923243dbe123c2a0c70ed3c0670b0e4cd7a265" },
+    { "file": "mirage.dem", "map": "de_mirage", "sha256": "62cb3af35c3893a91c7dd8c9007fdb1105950ec8963a46eca6006dac96655acb" },
+    { "file": "nuke.dem", "map": "de_nuke", "sha256": "dea9382b9cc263fed9ee4ed7e71fa6be8c176cf888868f05b26d850af6f5cb3c" },
+    { "file": "overpass.dem", "map": "de_overpass", "sha256": "7b43fa4215d99ce767d17f9d1f36e8997b7aeeb6227fa8b2738b9d377b48f28e" },
+    { "file": "train.dem", "map": "de_train", "sha256": "20d3fb5e31b6e2d392f95a2c004257823f680e5f258aed76c8bde98aa480ce0b" }
+  ]
+}

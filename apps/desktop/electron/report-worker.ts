@@ -5,7 +5,9 @@ import { DerivedReplaySession, createReplayProjections } from './library-derived
 import { replayResourceId } from '../shared/replay-resource.ts';
 import { createHeatmapSession, type HeatmapSession } from './heatmap-session.ts';
 import { displayPlayerName } from './player-name.ts';
-import type { ArchiveVersions, DesktopReplayMetadata, DesktopReplayRequest, ImportPlayerChoice } from '@cs2-analyst/report-contract';
+import { buildDesktopSpatialFacts, unavailableDesktopSpatialFacts } from './spatial-facts.ts';
+import { isDesktopSpatialFacts } from '@cs2-analyst/report-contract';
+import type { ArchiveVersions, DesktopReplayMetadata, DesktopReplayRequest, DesktopSpatialFactsV1, ImportPlayerChoice } from '@cs2-analyst/report-contract';
 
 declare const __CS2_ANALYST_ARCHIVE_VERSIONS__: Omit<ArchiveVersions, 'sampling' | 'mapResource'>;
 
@@ -93,7 +95,9 @@ process.parentPort?.on('message', async ({ data }: { data: { kind?: string; file
   if (disposed || initialized || typeof data.filePath !== 'string' || typeof data.sessionId !== 'string') return;
   initialized = true;
   try {
-    const parsed = await new Demoparser2Provider().parseWithReplay(data.filePath);
+    let spatialFacts: DesktopSpatialFactsV1 | null = null;
+    const parsed = await new Demoparser2Provider().parseWithReplay(data.filePath, undefined,
+      async access => { spatialFacts = await buildDesktopSpatialFacts(access); });
     if(disposed)return;
     if (data.expectedMatchId !== undefined && parsed.match.id !== data.expectedMatchId) {
       process.parentPort?.postMessage({ kind: 'error', message: '所选 DEM 与这条比赛记录不匹配，请选择原始录像；原报告保持不变。' }); return;
@@ -122,6 +126,8 @@ process.parentPort?.on('message', async ({ data }: { data: { kind?: string; file
     }
     process.parentPort?.postMessage({ kind:'progress',phase:'analyzing' });
     const report = buildDesktopReport(parsed.match,data.filePath,parsed.spatial,undefined,selfPlayerId);
+    report.analysis.spatialFacts = isDesktopSpatialFacts(spatialFacts, parsed.match.id,
+      report.players.map(player => player.id)) ? spatialFacts : unavailableDesktopSpatialFacts(parsed.match.id);
     const validSelfPlayerId = selfPlayerId && report.players.some(player => player.id === selfPlayerId) ? selfPlayerId : null;
     let metadata:DesktopReplayMetadata={schemaVersion:1,available:false,unavailableReason:parsed.replayUnavailableReason??'回放不可用。',
       sessionId:null,matchId:parsed.match.id,map:parsed.match.map,resourceId:replayResourceId,samplingVersion:parsed.replay?.samplingVersion??'unavailable',

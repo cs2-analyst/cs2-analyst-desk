@@ -37,9 +37,9 @@ export async function checkWindowLayout(evaluate) {
   assert.equal(shell.height, 40); assert.equal(shell.top, 0); assert.equal(shell.left, 0); assert.equal(shell.right, shell.width);
   assert.equal(shell.drag, 'drag'); assert.equal(shell.logoDrag, 'drag');
   assert.ok(shell.brandCenterDelta <= 1, 'brand group must be centered on the full window width: ' + JSON.stringify(shell.brand));
-  assert.deepEqual(shell.nav.map(b => b.action), ['back', 'forward']);
+  assert.deepEqual(shell.nav.map(b => b.action), ['back', 'home', 'forward']);
   for (const b of shell.nav) {
-    assert.ok(['后退', '前进'].includes(b.label), 'history button needs an aria label');
+    assert.ok(['后退', '返回首页', '前进'].includes(b.label), 'navigation button needs an aria label');
     assert.equal(b.width, 32); assert.equal(b.height, 32); assert.equal(b.drag, 'no-drag'); assert.equal(b.svg, true);
   }
   assert.equal(shell.contentTop, 40); assert.equal(shell.overflow, false);

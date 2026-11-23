@@ -7,7 +7,8 @@ import type { SpatialParseResult, SpatialSamplingOptions } from "../spatial.js";
 import { convertToMatch } from "./converters.js";
 import { buildSpatialEvidence, planSpatialSampling, spatialFields } from "./spatial-evidence.js";
 import { buildReplay, planReplay, replayFields } from './replay.js';
-import type { ReplayParseResult } from '../replay.js';
+import type { LocalDemEvidenceConsumer, ReplayParseResult } from '../replay.js';
+import { boundLocalEvidenceInput } from './prefix-input.js';
 
 // Keep all native APIs and their untyped results behind this adapter.
 export class Demoparser2Adapter implements ParserAdapter {
@@ -23,16 +24,39 @@ export class Demoparser2Adapter implements ParserAdapter {
     return { match, spatial, performance };
   }
 
-  async parseWithReplay(filePath: string, options: SpatialSamplingOptions = {}): Promise<ReplayParseResult> {
-    return this.parseEvidence(filePath, options, true);
+  async parseWithReplay(filePath: string, options: SpatialSamplingOptions = {},
+    localEvidenceConsumer?: LocalDemEvidenceConsumer): Promise<ReplayParseResult> {
+    return this.parseEvidence(filePath, options, true, localEvidenceConsumer);
   }
 
-  private async parseEvidence(filePath: string, options: SpatialSamplingOptions, includeReplay: boolean): Promise<ReplayParseResult> {
+  private async parseEvidence(filePath: string, options: SpatialSamplingOptions, includeReplay: boolean,
+    localEvidenceConsumer?: LocalDemEvidenceConsumer): Promise<ReplayParseResult> {
     const started = performance.now();
     const { bytes, native } = await this.readInput(filePath);
     const input = this.parseInput(bytes, native);
     const match = convertToMatch(input);
     const parsed = performance.now();
+    if (localEvidenceConsumer) {
+      let activeBytes: Buffer | null = bytes;
+      try {
+        const parserVersion = `demoparser2:${native.getBindingProvenance().verifiedSha256}`;
+        const raw = input as { id: string; header: { map_name: string };
+          events: unknown[]; stateRows: unknown[] };
+        const prefixInput = structuredClone(boundLocalEvidenceInput(raw));
+        await localEvidenceConsumer({ rawInput: prefixInput, parserVersion,
+          playerIds: match.players.map(player => player.steamId),
+          queryExactTicks: (ticks, playerIds) => {
+            if (!activeBytes || !Array.isArray(ticks) || ticks.length === 0 || ticks.length > 64
+              || ticks.some(tick => !Number.isSafeInteger(tick) || tick < 0)
+              || new Set(ticks).size !== ticks.length || !Array.isArray(playerIds)
+              || playerIds.length === 0 || playerIds.length > 10
+              || playerIds.some(id => typeof id !== 'string' || !/^[1-9]\d*$/.test(id))
+              || new Set(playerIds).size !== playerIds.length) throw new Error('invalid-local-evidence-query');
+            return native.parseTicks(activeBytes, spatialFields, [...ticks], [...playerIds]) as unknown;
+          } });
+      } catch { /* P8 facts degrade independently; report/replay must remain available. */ }
+      finally { activeBytes = null; }
+    }
     const plan = planSpatialSampling(match, options);
     const ticks = [...plan.coreTicks, ...plan.optionalTicks].sort((a, b) => a - b);
     let rawRows: unknown = [];

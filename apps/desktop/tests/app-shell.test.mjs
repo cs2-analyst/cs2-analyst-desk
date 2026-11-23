@@ -32,6 +32,7 @@ const { TitlebarView } = await import('../renderer/src/app-titlebar.tsx');
 const { brandCenterOffset, isBrandCentered } = await import('../renderer/src/titlebar-geometry.ts');
 const { toLibraryListQuery, formatBytes, formatImportedAt, formatImportedDate, libraryMapOptions } = await import('../renderer/src/library-query.ts');
 const { HighlightTags, RatingValue, ReportSecondaryLine, formatRating, formatKast } = await import('../renderer/src/performance-display.tsx');
+const { DismissibleMessageBar } = await import('../renderer/src/dismissible-message-bar.tsx');
 const { useReport } = await import('../renderer/src/store.ts');
 const render = element => renderToStaticMarkup(createElement(SSRProvider, null, element));
 const noop = () => {};
@@ -151,6 +152,22 @@ test('shared rating formatter handles missing values, preserves precision and ex
   const html = render(createElement(RatingValue, { rating: { ...rating(null), status: 'unavailable', reason: '有效回合不可用' } }));
   assert.ok(html.includes('data-rating-value="—"'));
   assert.equal(html.includes(' title='), false, 'rating reasons are provided by Fluent Tooltip on hover/focus');
+});
+
+test('estimated ratings are visibly distinguished from fully covered ratings', () => {
+  const html = render(createElement(RatingValue, { rating: { ...rating(1.23), reason: '估算：KAST 使用部分回合。' } }));
+  assert.ok(html.includes('data-rating-value="1.23"'));
+  assert.ok(html.includes('data-rating-estimated="true"'));
+  assert.ok(html.includes('（估）'));
+});
+
+test('message bars use a labelled icon-only close action inside the bar', () => {
+  const html = render(createElement(DismissibleMessageBar, { intent: 'success', 'data-test-message': '' }, '已删除 1 场比赛。'));
+  assert.ok(html.includes('已删除 1 场比赛。'));
+  assert.ok(html.includes('aria-label="关闭提示"'));
+  assert.ok(html.includes('<svg'));
+  assert.equal(html.includes('>关闭</button>'), false);
+  assert.ok(html.indexOf('aria-label="关闭提示"') < html.lastIndexOf('</div>'));
 });
 
 test('the library renders all eight qualifying highlight categories without dropping later items', () => {

@@ -14,7 +14,9 @@ async function harness({replay=true,spatial=true,replayFailure=false,heatmapFail
   const code=transformSync(readFileSync(new URL('../electron/report-worker.ts',import.meta.url),'utf8'),{loader:'ts',format:'cjs'}).code;
   vm.runInNewContext(code,{process:{parentPort:port,on:(...args)=>processEvents.on(...args)},require:name=>{
     if(name==='@cs2-analyst/dem-parser')return {Demoparser2Provider:class {async parseWithReplay(){parses++;if(defer)await new Promise(resolve=>{complete=resolve;});return {...f,replay:replay?f.replay:null,spatial:spatial?f.spatial:null};}}};
-    if(name==='./report.js')return {buildDesktopReport:()=>({schemaVersion:2,match:{id:f.match.id},analytics:[{kills:4}]})};
+    if(name==='./report.js')return {buildDesktopReport:()=>({schemaVersion:2,match:{id:f.match.id},players:[],analysis:{players:[],perPlayer:[]},analytics:[{kills:4}]})};
+    if(name==='./spatial-facts.ts')return {buildDesktopSpatialFacts:async()=>null,unavailableDesktopSpatialFacts:matchId=>({matchId,status:'unavailable'})};
+    if(name==='@cs2-analyst/report-contract')return {isDesktopSpatialFacts:()=>false};
     if(name==='./player-name.ts')return {displayPlayerName:(_id,nickname)=>nickname?.trim()?nickname:'未知玩家'};
     if(name==='./library-derived-replay.ts')return {};
     if(name==='./replay-session.ts')return {ReplaySession:class {
