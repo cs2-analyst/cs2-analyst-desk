@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-25",
+  "workUnit": "P8.1A",
+  "status": "DRAFT_CONTRACT_AND_SYNTHETIC_EXPERIMENT_ONLY",
+  "codeBaseline": "f44984e5464552c81737922c67df3d9f17c27c71",
+  "auditCommit": "ad80128c227188b267eb5f978ae1b962713e2aa7",
+  "environment": {
+    "platform": "Linux",
+    "node": "v22.16.0"
+  },
+  "subject": {
+    "path": "docs/experiments/p8-1a-boundary.test.mjs",
+    "bytes": 12766,
+    "sha256": "90139ad1ffc1379fe06a2efb286a50f833c0cca9a960f068e582f97e44e3e9f3",
+    "gitBlobSha1": "f8aac2a4473b248e10c03f6d3331b1c2320323fd",
+    "production": false,
+    "input": "synthetic normalized observations; source/audience assertions are trusted"
+  },
+  "syntaxCheck": {
+    "command": "node --check docs/experiments/p8-1a-boundary.test.mjs",
+    "exitCode": 0
+  },
+  "runs": [
+    {
+      "run": 1,
+      "command": "node --test --test-reporter=tap docs/experiments/p8-1a-boundary.test.mjs",
+      "exitCode": 0,
+      "tests": 24,
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "logSha256": "694095a194a46c281c393cdd255764e607d6eae700763184b917e0f62fdc515d"
+    },
+    {
+      "run": 2,
+      "command": "node --test --test-reporter=tap docs/experiments/p8-1a-boundary.test.mjs",
+      "exitCode": 0,
+      "tests": 24,
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "logSha256": "c2d01fd9e38483b20ff44bfb6bb69c2febac84fc297f6d7941e7e7245ea2165d"
+    }
+  ],
+  "uniqueTestCount": 24,
+  "behaviorTests": 22,
+  "limitationWitnesses": {
+    "L01": "Forged source/audience labels can be accepted; authenticity is NOT established.",
+    "L02": "Projection cannot restore observations removed by upstream future-dependent sampling."
+  },
+  "notRun": [
+    "repository typecheck/build/test",
+    "native parser",
+    "real DEM",
+    "Windows/Electron/installed app",
+    "1v1 candidate extraction",
+    "raw DEM to InformationState adapter",
+    "end-to-end prefix invariance",
+    "map geometry and perception validation",
+    "native/SQLite backend deployment",
+    "service auth/quota/retention",
+    "model calls/training",
+    "expert evaluation",
+    "independent second reviewer"
+  ],
+  "phaseGate": "P8.1 NOT COMPLETE; no P8.2 authorized by this record"
+}
